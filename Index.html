@@ -1,0 +1,2693 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RSS Reader">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="Your personal RSS news reader">
+    <title>RSS Reader</title>
+
+    <!-- PWA Manifest (inline data URI — no separate file needed) -->
+    <link rel="manifest" href="data:application/manifest+json,{
+        %22name%22:%22RSS%20Reader%22,
+        %22short_name%22:%22RSS%22,
+        %22description%22:%22Your%20personal%20RSS%20news%20reader%22,
+        %22start_url%22:%22.%22,
+        %22display%22:%22standalone%22,
+        %22background_color%22:%22%231f2937%22,
+        %22theme_color%22:%22%232563eb%22,
+        %22orientation%22:%22any%22,
+        %22icons%22:[
+            {%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20512%20512'%3E%3Crect%20width%3D'512'%20height%3D'512'%20rx%3D'80'%20fill%3D'%232563eb'%2F%3E%3Cpath%20d%3D'M100%20280a200%20200%200%200%201%20200%20200'%20stroke%3D'white'%20stroke-width%3D'60'%20stroke-linecap%3D'round'%20fill%3D'none'%2F%3E%3Cpath%20d%3D'M100%20120a360%20360%200%200%201%20360%20360'%20stroke%3D'white'%20stroke-width%3D'60'%20stroke-linecap%3D'round'%20fill%3D'none'%2F%3E%3Ccircle%20cx%3D'112'%20cy%3D'440'%20r%3D'50'%20fill%3D'white'%2F%3E%3C%2Fsvg%3E%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22,%22purpose%22:%22any%20maskable%22}
+        ]
+    }">
+
+    <!-- Apple Touch Icon (inline SVG → PNG not needed for modern iOS) -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%232563eb'/%3E%3Cpath d='M36 100a72 72 0 0 1 72 72' stroke='white' stroke-width='22' stroke-linecap='round' fill='none'/%3E%3Cpath d='M36 43a130 130 0 0 1 130 130' stroke='white' stroke-width='22' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='40' cy='158' r='18' fill='white'/%3E%3C/svg%3E">
+
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' rx='6' fill='%232563eb'/%3E%3Cpath d='M4 11a9 9 0 0 1 9 9'/%3E%3Cpath d='M4 4a16 16 0 0 1 16 16'/%3E%3Ccircle cx='5' cy='19' r='1' fill='white' stroke='none'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        /* Importing readability fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
+        
+        body {
+            font-family: var(--list-font-family, 'Inter'), sans-serif;
+            overflow: hidden;
+        }
+
+        .active-item {
+            background-color: #3b82f6;
+            color: white !important;
+        }
+
+        .article-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+        }
+
+        /* Modern sky-blue for all article links and feed name */
+        .article-content a { color: #60a5fa; text-decoration: none; }
+        .article-content a:hover { color: #93c5fd; }
+        #article-meta { color: #60a5fa !important; }
+        a { text-decoration: none !important; }
+
+        /* Article list title em size (desktop + mobile) */
+        .dynamic-list-title { font-size: var(--list-title-em-size) !important; }
+
+        /* Whiter article list and viewer text in dark mode */
+        .dark .dynamic-list-title { color: #f1f5f9 !important; }
+        .dark .dynamic-list-preview { color: #cbd5e1 !important; }
+        .dark #article-body { color: #e2e8f0 !important; }
+        .dark #article-title { color: #e2e8f0 !important; }
+        .dark #article-author { color: #cbd5e1 !important; }
+        .dark #article-date { color: #94a3b8 !important; }
+
+        .line-clamp-custom {
+            display: -webkit-box;
+            -webkit-line-clamp: var(--list-preview-lines, 10);
+            -webkit-box-orient: vertical;  
+            overflow: hidden;
+        }
+
+        .pane-transition {
+            transition: background-color 0.2s;
+        }
+
+        /* Draggable Resizer Styling */
+        #resizer {
+            width: 4px;
+            cursor: col-resize;
+            background-color: transparent;
+            z-index: 50;
+            flex-shrink: 0;
+            transition: background-color 0.2s;
+        }
+        #resizer:hover, .resizing #resizer {
+            background-color: #3b82f6;
+        }
+        .resizing {
+            cursor: col-resize;
+            user-select: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+        }
+
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        #web-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
+        :root {
+            --list-title-font-size: 16px;
+            --list-preview-font-size: 15px;
+            --view-font-size: 16px;
+            --category-font-size: 14px;
+            --list-preview-lines: 10;
+            --list-font-family: 'Inter', sans-serif;
+            --view-font-family: 'Inter', sans-serif;
+            --mob-feed-name-size: 0.7em;
+            --mob-article-title-size: 1.1em;
+            --mob-body-size: 1.0em;
+            --mob-author-size: 0.7em;
+            --list-title-em-size: 1.0em;
+            --mob-list-preview-size: 0.7em;
+            --mob-list-title-size: 1.0em;
+        }
+
+        .dynamic-list-title { 
+            font-size: var(--list-title-font-size); 
+            font-family: var(--list-font-family);
+        }
+        .dynamic-list-preview { 
+            font-size: var(--list-preview-font-size); 
+            font-family: var(--list-font-family);
+        }
+        .dynamic-view-text { 
+            font-size: var(--view-font-size); 
+            font-family: var(--view-font-family);
+        }
+        .dynamic-category-text {
+            font-size: var(--category-font-size);
+            font-weight: 400 !important;
+        }
+        
+        .is-fullscreen #sidebar-pane, 
+        .is-fullscreen #timeline-pane,
+        .is-fullscreen #resizer {
+            display: none;
+        }
+
+        .animate-pulse-fast {
+            animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Smooth dark/light mode transition */
+        *, *::before, *::after {
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+        }
+        /* Exclude transitions that would look bad */
+        img, video, iframe, input[type="range"], .no-transition {
+            transition: none !important;
+        }
+
+        /* Reading progress bar */
+        #reading-progress {
+            position: absolute;
+            top: 0; left: 0;
+            height: 3px;
+            width: 0%;
+            background: #3b82f6;
+            z-index: 20;
+            transition: width 0.1s linear !important;
+            border-radius: 0 2px 2px 0;
+        }
+
+        /* Feed health dot */
+        .feed-stale::after, .feed-error::after {
+            content: '';
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .feed-stale::after { background: #f59e0b; }
+        .feed-error::after { background: #ef4444; }
+
+        /* New articles banner */
+        #new-articles-banner {
+            transition: transform 0.3s ease, opacity 0.3s ease !important;
+        }
+
+        /* Card view */
+        #article-list.card-view .article-card {
+            display: flex;
+            flex-direction: column;
+            margin: 8px;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+        }
+        .dark #article-list.card-view .article-card {
+            border-color: #374151;
+        }
+        #article-list.card-view .article-card-img {
+            width: 100%; height: 120px;
+            object-fit: cover;
+        }
+
+        /* ===== MOBILE LAYOUT ===== */
+        @media (max-width: 900px) {
+            #app-container { flex-direction: column; }
+            #sidebar-pane, #timeline-pane, #viewer-pane, #resizer {
+                display: none !important;
+            }
+            #sidebar-pane.mobile-active,
+            #timeline-pane.mobile-active,
+            #viewer-pane.mobile-active {
+                display: flex !important;
+                width: 100% !important;
+                flex: 1;
+                height: calc(100vh - 56px);
+            }
+            #resizer { display: none !important; }
+            #mobile-tab-bar { display: flex !important; }
+            #sidebar-pane.mobile-active { flex-direction: column; }
+            /* Show mobile reader action bar, hide desktop toolbar equivalents */
+            #mobile-reader-bar { display: flex !important; }
+            #prev-article-btn, #next-article-btn,
+            #full-article-btn, #share-btn, #tts-btn,
+            #read-later-action-btn, #view-density-toggle,
+            #viewer-pane .h-12 button[onclick="toggleUnreadManual()"] { display: none !important; }
+            /* Mobile article view font scaling */
+            #article-meta { font-size: var(--mob-feed-name-size) !important; }
+            #article-title { font-size: var(--mob-article-title-size) !important; }
+            #article-author, #article-date { font-size: var(--mob-author-size) !important; }
+            #article-body { font-size: var(--mob-body-size) !important; }
+            /* Use higher specificity to override global .dynamic-list-title rule */
+            #article-list .dynamic-list-title { font-size: var(--mob-list-title-size) !important; }
+            #article-list .dynamic-list-preview { font-size: var(--mob-list-preview-size) !important; }
+        }
+        #mobile-tab-bar { display: none; }
+        #mobile-reader-bar { display: none; }
+
+        /* Mobile fullscreen — hides all chrome */
+        body.mob-fullscreen #mobile-tab-bar,
+        body.mob-fullscreen #mobile-reader-bar,
+        body.mob-fullscreen .h-12 { display: none !important; }
+        body.mob-fullscreen .mobile-active { height: 100vh !important; }
+
+        /* Fullscreen exit button */
+        #mob-fs-exit {
+            display: none;
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            z-index: 200;
+            background: rgba(30,30,40,0.85);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 20px;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px);
+            cursor: pointer;
+        }
+        body.mob-fullscreen #mob-fs-exit { display: flex; }
+    </style>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+
+    <!-- SVG Symbol Definitions -->
+    <svg xmlns="http://www.w3.org/2000/svg" class="hidden">
+        <defs>
+            <symbol id="icon-rss" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>
+            </symbol>
+            <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+            </symbol>
+            <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </symbol>
+            <symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </symbol>
+            <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </symbol>
+            <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </symbol>
+            <symbol id="icon-chevron-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 15l7-7 7 7"/>
+            </symbol>
+            <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 9l-7 7-7-7"/>
+            </symbol>
+            <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </symbol>
+            <symbol id="icon-bookmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+            </symbol>
+            <symbol id="icon-newspaper" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+            </symbol>
+        </defs>
+    </svg>
+
+    <!-- Global Toast Notification -->
+    <div id="toast-notification" class="fixed top-4 left-1/2 transform -translate-x-1/2 px-4 py-2 text-white text-sm font-bold rounded-lg shadow-xl z-[100] transition-opacity duration-300 opacity-0 pointer-events-none">
+        Notification message
+    </div>
+
+    <div id="app-container" class="flex h-screen w-full overflow-hidden">
+        
+        <!-- PANE 1: Sidebar -->
+        <aside id="sidebar-pane" class="w-64 flex-shrink-0 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm">
+                        <svg class="w-5 h-5"><use href="#icon-rss"/></svg>
+                    </div>
+                    <h1 class="font-bold text-sm text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
+                </div>
+                <div class="flex space-x-1">
+                    <button id="theme-toggle" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Switch Theme">
+                        <svg id="theme-icon" class="h-5 w-5"><use href="#icon-moon"/></svg>
+                    </button>
+                    <button onclick="refreshAll()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Refresh Feeds">
+                        <svg class="h-5 w-5"><use href="#icon-refresh"/></svg>
+                    </button>
+                    <button onclick="toggleSettings()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Settings">
+                        <svg class="h-5 w-5"><use href="#icon-settings"/></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-2 no-scrollbar">
+                <div class="mb-4">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2">Smart Feeds</p>
+                    <div class="space-y-1" style="font-size: var(--category-font-size, 0.8em)">
+                        <button id="feed-btn-all" onclick="setSmartFeed('all')" oncontextmenu="showFolderContextMenu(event,'smart','all')" class="smart-feed-btn w-full flex items-center justify-between px-3 py-1.5 rounded-md active-item">
+                            <span class="flex items-center"><svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> All Unread</span>
+                            <span id="badge-all" class="feed-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-blue-600 hidden">0</span>
+                        </button>
+                        <button id="feed-btn-today" onclick="setSmartFeed('today')" oncontextmenu="showFolderContextMenu(event,'smart','today')" class="smart-feed-btn w-full flex items-center justify-between px-3 py-1.5 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <span class="flex items-center"><svg class="w-4 h-4 mr-2"><use href="#icon-calendar"/></svg> Today</span>
+                            <span id="badge-today" class="feed-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 hidden">0</span>
+                        </button>
+                        <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn w-full flex items-center justify-between px-3 py-1.5 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <span class="flex items-center"><svg class="w-4 h-4 mr-2"><use href="#icon-bookmark"/></svg> Read Later</span>
+                            <span id="badge-read-later" class="feed-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 hidden">0</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="feed-list" class="space-y-1"></div>
+            </div>
+
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 text-[10px] text-gray-400 flex justify-between items-center">
+                <span id="sync-status" class="cursor-pointer hover:text-blue-500" onclick="showAccountInfo()" title="Account info">Local Only</span>
+                <div class="flex space-x-3">
+                    <button onclick="exportReadState()" class="hover:text-blue-500 font-bold uppercase outline-none" title="Export read/saved state">Read State</button>
+                    <button onclick="exportSubscriptions()" class="hover:text-blue-500 font-bold uppercase outline-none" title="Export feed list as OPML">OPML</button>
+                    <button id="signout-btn" onclick="handleSignOut()" class="hidden hover:text-red-500 font-bold uppercase outline-none" title="Sign out">Sign Out</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- PANE 2: Timeline -->
+        <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition" style="width: 336px;">
+            <div class="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <input type="text" id="search-input" placeholder="Search articles..." class="w-full px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                <div class="flex items-center">
+                    <span id="timeline-count" class="mr-2">0 Articles</span>
+                    <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded">DEDUPED</span>
+                </div>
+                <button onclick="markAllRead()" class="hover:text-blue-500">Mark All Read</button>
+            </div>
+            
+            <div id="article-list" class="flex-1 overflow-y-auto no-scrollbar"></div>
+        </section>
+
+        <!-- Column Resizer -->
+        <div id="resizer" class="border-r border-gray-200 dark:border-gray-700 hover:bg-blue-500 transition-colors"></div>
+
+        <!-- PANE 3: Viewer -->
+        <main id="viewer-pane" class="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
+            <!-- New Articles Banner -->
+            <div id="new-articles-banner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-30 bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg cursor-pointer select-none" onclick="dismissNewArticlesBanner()">
+                ↑ New articles available — click to refresh
+            </div>
+            <div class="h-12 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 bg-gray-50 dark:bg-gray-800 z-10" ondblclick="toggleFullScreenManual()" title="Double-click to toggle Full Screen">
+                <div class="flex space-x-3 items-center">
+                    <button id="exit-fullscreen-btn" onclick="toggleFullScreen(false)" class="hidden text-blue-500 font-bold text-[10px] border border-blue-500 px-2 py-1 rounded hover:bg-blue-500 hover:text-white transition-all mr-2">
+                        EXIT FULL SCREEN
+                    </button>
+                    
+                    <button onclick="toggleUnreadManual()" class="text-gray-500 hover:text-blue-600" title="Toggle Unread">
+                        <svg class="h-5 w-5"><use href="#icon-check"/></svg>
+                    </button>
+
+                    <!-- Prev / Next -->
+                    <button id="prev-article-btn" onclick="navigateArticle(-1)" class="hidden text-gray-500 hover:text-blue-600" title="Previous Article (↑)">
+                        <svg class="h-5 w-5"><use href="#icon-chevron-up"/></svg>
+                    </button>
+                    <button id="next-article-btn" onclick="navigateArticle(1)" class="hidden text-gray-500 hover:text-blue-600" title="Next Article (↓)">
+                        <svg class="h-5 w-5"><use href="#icon-chevron-down"/></svg>
+                    </button>
+
+                    <div class="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
+
+                    <!-- Read time estimate -->
+                    <span id="read-time" class="hidden text-[10px] text-gray-400 font-medium"></span>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <div class="flex space-x-2 mr-2">
+                        <!-- Full Article Attempt Button -->
+                        <button id="full-article-btn" onclick="loadFullArticle()" class="hidden px-2 py-1 text-[10px] font-bold text-blue-500 border border-blue-500 rounded-md hover:bg-blue-50 transition-colors">
+                            FULL ARTICLE
+                        </button>
+                        <!-- Share Button -->
+                        <button id="share-btn" onclick="shareArticle()" class="hidden px-2 py-1 text-[10px] font-bold text-gray-500 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            SHARE
+                        </button>
+                        <!-- TTS Button -->
+                        <button id="tts-btn" onclick="toggleTTS()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            LISTEN
+                        </button>
+                        <!-- Dynamic Read Later Action Button -->
+                        <button id="read-later-action-btn" onclick="handleReadLaterAction()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border transition-colors">
+                            READ LATER
+                        </button>
+                    </div>
+                    <!-- View mode toggle: List / Card -->
+                    <button onclick="toggleViewMode()" id="view-density-toggle" class="text-[10px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md" title="Toggle List/Card view">LIST</button>
+                    <button onclick="toggleContentView()" id="view-mode-toggle" class="text-[10px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md">READER</button>
+                    <button onclick="openExternal()" class="px-2 py-1 text-[10px] font-bold text-gray-400 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200">WEB</button>
+                </div>
+            </div>
+
+            <div class="flex-1 relative">
+                <div id="reader-view" class="absolute inset-0 overflow-y-auto p-2 md:p-4 lg:p-6 no-scrollbar" id="reader-scroll">
+                    <div id="reading-progress"></div>
+                    <div class="max-w-2xl mx-auto">
+                        <div id="empty-state" class="text-center py-20 text-gray-400">
+                            <svg class="w-16 h-16 mx-auto mb-4 opacity-20"><use href="#icon-newspaper"/></svg>
+                            <p class="text-sm">Select an article to read.</p>
+                            <p class="text-xs mt-1 opacity-60">Double-click the toolbar to toggle Full Screen.</p>
+                            <div class="mt-6 text-left inline-block text-xs opacity-50 space-y-1">
+                                <p><kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↑↓</kbd> or <kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">j k</kbd> Navigate</p>
+                                <p><kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">r</kbd> Toggle read &nbsp;&nbsp;<kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">b</kbd> Save for later</p>
+                                <p><kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">o</kbd> Open in browser</p>
+                            </div>
+                        </div>
+                        
+                        <article id="article-content" class="hidden animate-in fade-in duration-300">
+                            <p id="article-meta" onclick="filterByCurrentSource()" class="text-[10px] font-bold uppercase tracking-widest mb-2 cursor-pointer hover:opacity-70 transition-opacity"></p>
+                            <h1 id="article-title" onclick="openExternal()" class="font-extrabold leading-tight mb-6 dark:text-white cursor-pointer hover:opacity-80 transition-opacity" style="font-size: 1.7em;"></h1>
+                            <div class="flex items-center text-xs text-gray-500 mb-8 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                <span id="article-author" class="font-semibold"></span><span class="mx-2">•</span><span id="article-date"></span>
+                            </div>
+                            <div id="article-body" class="article-content dynamic-view-text text-gray-800 dark:text-gray-300 leading-relaxed space-y-4"></div>
+                            <!-- Prev / Next footer navigation (handy on mobile) -->
+                            <div id="article-nav-footer" class="hidden mt-8 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                                <button id="prev-article-footer" onclick="navigateArticle(-1)" class="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors p-3">
+                                    <svg class="w-6 h-6"><use href="#icon-chevron-up"/></svg>
+                                    <span id="prev-article-title" class="hidden md:inline max-w-[140px] truncate text-sm"></span>
+                                </button>
+                                <button id="next-article-footer" onclick="navigateArticle(1)" class="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors p-3">
+                                    <span id="next-article-title" class="hidden md:inline max-w-[140px] truncate text-sm"></span>
+                                    <svg class="w-6 h-6"><use href="#icon-chevron-down"/></svg>
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+                <div id="web-view" class="absolute inset-0 hidden bg-white">
+                    <iframe id="web-frame" src="about:blank"></iframe>
+                </div>
+            </div>
+
+            <!-- Mobile Reader Action Bar (shown only on mobile, in reader pane) -->
+            <div id="mobile-reader-bar" class="hidden border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-around px-2 py-2">
+                <button onclick="navigateArticle(-1)" id="mob-prev-btn" class="flex flex-col items-center justify-center px-4 py-1 text-gray-400 disabled:opacity-30" title="Previous">
+                    <svg class="w-6 h-6"><use href="#icon-chevron-up"/></svg>
+                    <span class="text-[10px]">Prev</span>
+                </button>
+                <button onclick="toggleUnreadManual()" class="flex flex-col items-center justify-center px-4 py-1 text-gray-500 hover:text-blue-500" title="Toggle Read">
+                    <svg class="w-6 h-6"><use href="#icon-check"/></svg>
+                    <span class="text-[10px]">Read</span>
+                </button>
+                <button onclick="handleReadLaterAction()" class="flex flex-col items-center justify-center px-4 py-1 text-gray-500 hover:text-blue-500" title="Save for Later">
+                    <svg class="w-6 h-6"><use href="#icon-bookmark"/></svg>
+                    <span class="text-[10px]">Later</span>
+                </button>
+                <button onclick="shareArticle()" class="flex flex-col items-center justify-center px-4 py-1 text-gray-500 hover:text-blue-500" title="Share">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                    <span class="text-[10px]">Share</span>
+                </button>
+                <button onclick="navigateArticle(1)" id="mob-next-btn" class="flex flex-col items-center justify-center px-4 py-1 text-gray-400 disabled:opacity-30" title="Next">
+                    <svg class="w-6 h-6"><use href="#icon-chevron-down"/></svg>
+                    <span class="text-[10px]">Next</span>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- MOBILE FULLSCREEN EXIT BUTTON -->
+    <button id="mob-fs-exit" onclick="toggleMobileFullscreen()" title="Exit fullscreen">✕</button>
+
+    <!-- MOBILE BOTTOM TAB BAR -->
+    <nav id="mobile-tab-bar" class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 h-14 flex items-center justify-around px-2">
+        <button id="mob-tab-feeds" onclick="setMobilePane('sidebar')" class="flex flex-col items-center justify-center flex-1 h-full text-blue-600">
+            <svg class="w-5 h-5 mb-0.5"><use href="#icon-rss"/></svg>
+            <span class="text-[10px] font-semibold">Feeds</span>
+        </button>
+        <button id="mob-tab-articles" onclick="setMobilePane('timeline')" class="flex flex-col items-center justify-center flex-1 h-full text-gray-400">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+            <span class="text-[10px] font-semibold">Articles</span>
+        </button>
+        <button id="mob-tab-reader" onclick="setMobilePane('viewer')" class="flex flex-col items-center justify-center flex-1 h-full text-gray-400">
+            <svg class="w-5 h-5 mb-0.5"><use href="#icon-newspaper"/></svg>
+            <span class="text-[10px] font-semibold">Reader</span>
+        </button>
+        <button onclick="toggleMobileFullscreen()" class="flex flex-col items-center justify-center flex-1 h-full text-gray-400">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
+            <span class="text-[10px] font-semibold" id="mob-fs-label">Full</span>
+        </button>
+    </nav>
+
+    <!-- LOGIN MODAL -->
+    <div id="login-modal" class="fixed inset-0 z-[200] flex items-center justify-center modal-backdrop">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl p-8 border border-gray-100 dark:border-gray-700">
+            <div class="flex items-center justify-center space-x-3 mb-6">
+                <div class="bg-blue-600 text-white p-2 rounded-xl shadow-sm">
+                    <svg class="w-6 h-6"><use href="#icon-rss"/></svg>
+                </div>
+                <h1 class="font-bold text-xl text-gray-900 dark:text-white">RSS Reader</h1>
+            </div>
+            <p id="login-subtitle" class="text-center text-xs text-gray-400 mb-6">Sign in to sync across all your devices</p>
+
+            <div id="login-error" class="hidden mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs rounded-lg border border-red-100 dark:border-red-900/40"></div>
+
+            <input type="email" id="login-email" placeholder="Email address" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="password" id="login-password" placeholder="Password" class="w-full mb-6 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+
+            <button id="login-btn" onclick="handleSignIn()" class="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all mb-3">Sign In</button>
+            <button id="register-btn" onclick="handleRegister()" class="w-full py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all">Create Account</button>
+
+            <p class="text-center mt-4">
+                <button onclick="handleForgotPassword()" class="text-xs text-blue-500 hover:text-blue-400 underline">Forgot password?</button>
+            </p>
+
+            <p id="login-loading" class="hidden text-center text-xs text-gray-400 mt-4">Signing in...</p>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-in zoom-in duration-200">
+
+            <!-- Header -->
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+                <h2 class="font-bold text-lg">App Settings</h2>
+                <button onclick="toggleSettings()" class="text-gray-400 hover:text-gray-600 p-1">✕</button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <button id="settings-tab-feeds" onclick="switchSettingsTab('feeds')"
+                    class="flex-1 py-2.5 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 transition-colors">
+                    Feeds
+                </button>
+                <button id="settings-tab-prefs" onclick="switchSettingsTab('prefs')"
+                    class="flex-1 py-2.5 text-sm font-semibold text-gray-400 border-b-2 border-transparent hover:text-gray-600 transition-colors">
+                    Preferences
+                </button>
+            </div>
+
+            <!-- Tab: Feeds -->
+            <div id="settings-panel-feeds" class="p-6 overflow-y-auto max-h-[65vh] space-y-6 no-scrollbar">
+                <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div class="flex space-x-2 mb-4">
+                        <button onclick="document.getElementById('opml-import').click()" class="flex-1 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-xs font-semibold hover:bg-gray-50">Import OPML</button>
+                        <input type="file" id="opml-import" class="hidden" accept=".opml,.xml" onchange="importSubscriptions(event)">
+                    </div>
+                    <button onclick="openAddFeedModal()" class="w-full py-1.5 border border-dashed border-gray-300 dark:border-gray-600 rounded text-xs text-gray-500 hover:border-blue-500">+ Add Manual Feed</button>
+                    <div id="local-feed-list" class="mt-4 space-y-2 text-sm"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Preferences -->
+            <div id="settings-panel-prefs" class="hidden p-6 overflow-y-auto max-h-[65vh] space-y-8 no-scrollbar">
+                <div>
+                    <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Refresh & Sync</h3>
+                    <div>
+                        <label class="text-xs font-medium block mb-2">Auto-Refresh Interval</label>
+                        <select id="pref-auto-refresh" onchange="updateAutoRefresh(this.value)" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="0">Off</option>
+                            <option value="15">Every 15 minutes</option>
+                            <option value="30" selected>Every 30 minutes</option>
+                            <option value="60">Every hour</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- DESKTOP -->
+                <div>
+                    <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Desktop</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <label class="text-xs font-medium block mb-2">Sort Order</label>
+                            <select id="pref-sort-order" onchange="renderTimeline()" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="asc" selected>Oldest Published First</option>
+                                <option value="desc">Newest Published First</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-medium">Search excerpt & source</label>
+                            <button id="full-search-toggle" onclick="toggleFullSearch()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">OFF</button>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-medium">Show empty category folders</label>
+                            <button id="show-empty-cats-toggle" onclick="toggleShowEmptyCategories()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">OFF</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-medium block mb-2">List Font</label>
+                                <select id="list-font-family-select" onchange="updateFontFamily('list', this.value)" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs outline-none">
+                                    <option value="'Inter', sans-serif">Inter</option>
+                                    <option value="'Roboto', sans-serif">Roboto</option>
+                                    <option value="Georgia, serif">Georgia</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium block mb-2">View Font</label>
+                                <select id="view-font-family-select" onchange="updateFontFamily('view', this.value)" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs outline-none">
+                                    <option value="'Inter', sans-serif">Inter</option>
+                                    <option value="'Lora', serif">Lora</option>
+                                    <option value="Georgia, serif">Georgia</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Article List Title Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="list-title-em-val">1.0em</span>
+                            </div>
+                            <input type="range" min="7" max="12" value="10" id="list-title-em-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateListTitleEmSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Timeline Preview Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="list-preview-font-val">1.0em</span>
+                            </div>
+                            <input type="range" min="5" max="14" value="10" id="list-preview-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('list-preview', this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Article Body Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="view-font-val">1.0em</span>
+                            </div>
+                            <input type="range" min="7" max="14" value="10" id="view-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('view', this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Article Title Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="article-title-size-val">1.0em</span>
+                            </div>
+                            <input type="range" min="9" max="18" value="10" id="article-title-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateArticleTitleSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Category Folder Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="category-font-val">0.8em</span>
+                            </div>
+                            <input type="range" min="5" max="12" value="8" id="category-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('category', this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Preview Lines</span>
+                                <span class="text-xs font-bold text-blue-500" id="lines-val">10 Lines</span>
+                            </div>
+                            <input type="range" min="2" max="20" value="10" id="lines-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateLines(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOBILE -->
+                <div>
+                    <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Mobile</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Article List Title Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-list-title-val">1.0em</span>
+                            </div>
+                            <input type="range" min="9" max="18" value="10" id="mob-list-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobListTitleSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Article Body Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-body-val">1.0em</span>
+                            </div>
+                            <input type="range" min="5" max="15" value="10" id="mob-body-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobBodySize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Author / Date Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-author-val">0.7em</span>
+                            </div>
+                            <input type="range" min="4" max="12" value="7" id="mob-author-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobAuthorSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">List Preview Text Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-list-preview-val">0.7em</span>
+                            </div>
+                            <input type="range" min="4" max="12" value="7" id="mob-list-preview-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobListPreviewSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Feed Name Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-feed-name-val">0.7em</span>
+                            </div>
+                            <input type="range" min="4" max="12" value="7" id="mob-feed-name-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobFeedNameSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Article Title Size (Viewer)</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-article-title-val">1.1em</span>
+                            </div>
+                            <input type="range" min="8" max="25" value="11" id="mob-article-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobArticleTitleSize(this.value)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                <button onclick="toggleSettings()" class="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold active:scale-95 transition-all">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD FEED MODAL -->
+    <div id="add-feed-modal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop hidden p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
+            <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Add Manual Feed</h3>
+            <input type="text" id="manual-feed-title" placeholder="Feed Title" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="url" id="manual-feed-url" placeholder="Feed URL" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="manual-feed-category" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            </select>
+            <div id="manual-feed-newcat-wrap" class="hidden mb-3">
+                <input type="text" id="manual-feed-newcat" placeholder="New category name" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeAddFeedModal()" class="px-5 py-2 text-sm text-gray-500">Cancel</button>
+                <button onclick="submitManualFeed()" class="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Add Feed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ARTICLE CONTEXT MENU -->
+    <div id="article-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-sm"></div>
+
+    <!-- FOLDER CONTEXT MENU -->
+    <div id="folder-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-sm">
+        <button onclick="markFolderRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
+        <button onclick="renameFolderFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Rename</button>
+        <button onclick="deleteFolderFromContext()" class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete Folder & Feeds</button>
+    </div>
+
+    <!-- FEED CONTEXT MENU -->
+    <div id="feed-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-sm">
+        <button onclick="refreshSingleFeed()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Refresh Feed</button>
+        <button onclick="markSingleFeedRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
+    </div>
+
+    <script>
+        // Global State & Definitions
+        window.articles = [];
+        window.feeds = [];
+        window.accountStates = { local: [] };
+        window.currentArticle = null;
+        window.currentSmartFeed = 'all';
+        window.currentCategoryFilter = null;
+        window.currentSourceFilter = null;
+        window.collapsedCategories = {};
+        window.currentTimeline = [];
+        window.contextMenuArticleId = null;
+        window._autoRefreshTimer = null;
+        window._newArticleCount = 0;
+        window._pendingNewArticles = [];
+        window._feedHealth = {};
+        window._fullSearchEnabled = false;
+        window._viewMode = 'list';
+        window._ttsActive = false;
+        window._readLaterLinks = new Set();
+        window._categoryOrder = []; // persisted manual category sort order
+        window._showEmptyCategories = false; // hide empty categories by default
+
+        // Helper: URL to Links — walks text nodes only, never touches attributes
+        function linkify(html) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_TEXT, null);
+            const urlRegex = /(https?:\/\/[^\s<>'"]+)/g;
+            const replacements = [];
+            let node;
+            while ((node = walker.nextNode())) {
+                if (['A','SCRIPT','STYLE'].includes(node.parentNode.nodeName)) continue;
+                const text = node.textContent;
+                urlRegex.lastIndex = 0;
+                if (!urlRegex.test(text)) continue;
+                urlRegex.lastIndex = 0;
+                const frag = document.createDocumentFragment();
+                let last = 0, match;
+                while ((match = urlRegex.exec(text)) !== null) {
+                    if (match.index > last) frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+                    const a = document.createElement('a');
+                    a.href = match[0];
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    try {
+                        const u = new URL(match[0]);
+                        // Strip tracking params for display only
+                        const cleanPath = (u.hostname + u.pathname).replace(/\/$/, '');
+                        a.textContent = cleanPath.length > 55 ? cleanPath.slice(0, 52) + '…' : cleanPath;
+                    } catch(e) {
+                        const raw = match[0];
+                        a.textContent = raw.length > 55 ? raw.slice(0, 52) + '…' : raw;
+                    }
+                    frag.appendChild(a);
+                    last = match.index + match[0].length;
+                }
+                if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+                replacements.push([node, frag]);
+            }
+            replacements.forEach(([n, f]) => n.parentNode.replaceChild(f, n));
+            return tmp.innerHTML;
+        }
+
+        // Helper: Relative Time
+        function getRelativeTime(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - date) / 1000);
+            if (isNaN(diffInSeconds) || diffInSeconds < 0) return 'Just now';
+            if (diffInSeconds < 60) return 'Just now';
+            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+            if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        // --- RESIZER IMPLEMENTATION ---
+        const resizer = document.getElementById('resizer');
+        const timelinePane = document.getElementById('timeline-pane');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => { isResizing = true; document.body.classList.add('resizing'); });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const sidebarWidth = document.getElementById('sidebar-pane').offsetWidth;
+            const newWidth = e.clientX - sidebarWidth;
+            if (newWidth >= 210 && newWidth <= 800) timelinePane.style.width = `${newWidth}px`;
+        });
+        document.addEventListener('mouseup', () => { isResizing = false; document.body.classList.remove('resizing'); });
+
+        // --- FETCH & ARTICLE LOGIC ---
+        const PROXIES = [
+            url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+            url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            url => `https://thingproxy.freeboard.io/fetch/${url}`,
+        ];
+
+        async function fetchWithProxyFallback(feedUrl) {
+            for (const proxyFn of PROXIES) {
+                try {
+                    const res = await fetch(proxyFn(feedUrl), { signal: AbortSignal.timeout(8000) });
+                    if (!res.ok) continue;
+                    // allorigins wraps in JSON; others return raw XML
+                    const ct = res.headers.get('content-type') || '';
+                    let xmlText;
+                    if (proxyFn(feedUrl).includes('allorigins')) {
+                        const json = await res.json();
+                        xmlText = json.contents;
+                    } else {
+                        xmlText = await res.text();
+                    }
+                    if (xmlText && xmlText.trim().startsWith('<')) return xmlText;
+                } catch(e) { /* try next proxy */ }
+            }
+            return null;
+        }
+
+        async function fetchRecentArticles(feedUrl, sourceName, maxItems = null, isBackground = false) {
+            try {
+                const xmlText = await fetchWithProxyFallback(feedUrl);
+                if (!xmlText) throw new Error('All proxies failed');
+
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(xmlText, 'text/xml');
+                if (xml.querySelector('parsererror')) throw new Error('XML parse error');
+
+                // Support both RSS and Atom
+                const isAtom = !!xml.querySelector('feed');
+                const entries = isAtom
+                    ? Array.from(xml.querySelectorAll('entry'))
+                    : Array.from(xml.querySelectorAll('item'));
+
+                if (entries.length === 0) throw new Error('No items');
+
+                // Update feed health + favicon
+                window._feedHealth[feedUrl] = { lastSuccess: Date.now(), errorCount: 0 };
+                const feedObj = window.feeds.find(f => f.url === feedUrl);
+                if (feedObj && !feedObj.favicon) {
+                    try {
+                        const linkEl = xml.querySelector('channel > link:not([rel]), feed > link[rel="alternate"], channel > link');
+                        const siteUrl = linkEl?.textContent?.trim() || linkEl?.getAttribute('href') || feedUrl;
+                        const domain = new URL(siteUrl).hostname;
+                        feedObj.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+                    } catch(e) {}
+                }
+
+                const getText = (el, ...tags) => {
+                    for (const tag of tags) {
+                        const node = el.querySelector(tag);
+                        if (node?.textContent?.trim()) return node.textContent.trim();
+                    }
+                    return '';
+                };
+
+                const getLink = (el) => {
+                    const atomLink = el.querySelector('link[rel="alternate"], link:not([rel])');
+                    if (atomLink) return atomLink.getAttribute('href') || atomLink.textContent.trim();
+                    return getText(el, 'link');
+                };
+
+                const items = maxItems ? entries.slice(0, maxItems) : entries.slice(0, 20);
+                let newCount = 0;
+
+                // Remove existing articles from this source so we always show fresh feed content
+                window.articles = window.articles.filter(a => a.source !== sourceName);
+
+                items.forEach(item => {
+                    const link = getLink(item);
+                    if (!link || window.articles.some(a => a.link === link)) return;
+                    const isNew = !window._readLinks.has(link);
+                    const rawBody = getText(item, 'content\\:encoded', 'content', 'description', 'summary');
+                    const pubDate = getText(item, 'pubDate', 'published', 'updated', 'dc\\:date');
+                    const image = (() => {
+                        const enc = item.querySelector('enclosure[type^="image"]');
+                        if (enc) return enc.getAttribute('url');
+                        const med = item.querySelector('media\\:thumbnail, media\\:content');
+                        if (med) return med.getAttribute('url');
+                        const imgMatch = rawBody.match(/<img[^>]+src=["']([^"']+)["']/i);
+                        return imgMatch ? imgMatch[1] : null;
+                    })();
+                    window.articles.push({
+                        id: crypto.randomUUID(),
+                        source: sourceName,
+                        title: getText(item, 'title'),
+                        author: getText(item, 'author name', 'author', 'dc\\:creator') || sourceName,
+                        timestamp: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+                        excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
+                        body: DOMPurify.sanitize(rawBody),
+                        link,
+                        unread: isNew,
+                        readLater: window._readLaterLinks.has(link),
+                        image
+                    });
+                    if (isNew && isBackground) newCount++;
+                });
+
+                if (isBackground && newCount > 0) {
+                    window._newArticleCount += newCount;
+                    showNewArticlesBanner(window._newArticleCount);
+                } else {
+                    renderTimeline();
+                    renderFeeds();
+                }
+            } catch (e) {
+                console.warn(`Feed fetch failed [${sourceName}]:`, e.message);
+                if (!window._feedHealth[feedUrl]) window._feedHealth[feedUrl] = { lastSuccess: null, errorCount: 0 };
+                window._feedHealth[feedUrl].errorCount = (window._feedHealth[feedUrl].errorCount || 0) + 1;
+            }
+        }
+
+        window.renderTimeline = function() {
+            const list = document.getElementById('article-list');
+            if (!list) return;
+
+            const sortOrder = document.getElementById('pref-sort-order')?.value || 'asc';
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+
+            let filtered = window.articles;
+
+            // 1. Smart Folders
+            if (window.currentSmartFeed === 'all') {
+                filtered = filtered.filter(a => a.unread || a.id === window.currentArticle?.id);
+            } else if (window.currentSmartFeed === 'today') {
+                const dayAgo = new Date(Date.now() - 86400000);
+                filtered = filtered.filter(a => new Date(a.timestamp) > dayAgo || a.id === window.currentArticle?.id);
+            } else if (window.currentSmartFeed === 'read-later') {
+                filtered = filtered.filter(a => a.readLater || a.id === window.currentArticle?.id);
+            }
+
+            // 2. Clicked Filters
+            if (window.currentCategoryFilter) {
+                const sources = window.feeds.filter(f => f.category === window.currentCategoryFilter).map(f => f.name);
+                filtered = filtered.filter(a => sources.includes(a.source));
+            } else if (window.currentSourceFilter) {
+                filtered = filtered.filter(a => a.source === window.currentSourceFilter);
+            }
+
+            // 3. Search
+            if (searchQuery) {
+                filtered = window._fullSearchEnabled
+                    ? filtered.filter(a =>
+                        a.title.toLowerCase().includes(searchQuery) ||
+                        a.excerpt.toLowerCase().includes(searchQuery) ||
+                        a.source.toLowerCase().includes(searchQuery))
+                    : filtered.filter(a => a.title.toLowerCase().includes(searchQuery));
+            }
+
+            // 4. Sort
+            filtered.sort((a, b) => {
+                const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                return sortOrder === 'desc' ? -diff : diff;
+            });
+
+            window.currentTimeline = filtered;
+
+            const listEl = document.getElementById('article-list');
+            listEl.classList.toggle('card-view', window._viewMode === 'card');
+            listEl.innerHTML = filtered.map(a => buildArticleCard(a)).join('');
+
+            document.getElementById('timeline-count').textContent = `${filtered.length} Articles`;
+            updateBadges();
+        };
+
+        function getFavicon(sourceName) {
+            const feedObj = window.feeds.find(f => f.name === sourceName);
+            return feedObj?.favicon
+                ? `<img src="${feedObj.favicon}" class="w-3 h-3 rounded-sm mr-1 inline-block" loading="lazy" onerror="this.style.display='none'">`
+                : '';
+        }
+
+        function buildArticleCard(a) {
+            const favicon = getFavicon(a.source);
+            const selected = window.currentArticle?.id === a.id;
+            const selCls = selected ? 'bg-blue-50 dark:bg-blue-900/10 border-l-4 border-l-blue-500' : '';
+            const unreadDot = a.unread ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2 flex-shrink-0"></span>' : '<span class="w-1.5 h-1.5 mr-2 opacity-0 flex-shrink-0"></span>';
+            if (window._viewMode === 'card') {
+                return `<div onclick="selectArticle('${a.id}')" oncontextmenu="showArticleContextMenu(event,'${a.id}')" class="article-card cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors ${selCls}">
+                    ${a.image ? `<img src="${a.image}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
+                    <div class="p-3">
+                        <div class="flex items-center text-[10px] text-gray-400 mb-1">
+                            ${a.unread ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>' : ''}
+                            ${favicon}<span class="font-bold uppercase tracking-widest truncate">${a.source}</span>
+                            <span class="ml-auto flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                        </div>
+                        <h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${a.title}</h3>
+                    </div>
+                </div>`;
+            }
+            return `<div onclick="selectArticle('${a.id}')" oncontextmenu="showArticleContextMenu(event,'${a.id}')" class="p-4 border-b border-gray-50 dark:border-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors ${selCls}">
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1 text-[10px]">
+                            <div class="flex items-center">${unreadDot}<span class="flex items-center font-bold text-gray-400 uppercase tracking-widest">${favicon}${a.source}</span></div>
+                            <span class="text-gray-400 font-medium">${getRelativeTime(a.timestamp)}</span>
+                        </div>
+                        <h3 class="font-bold text-gray-900 dark:text-white leading-tight mb-1 dynamic-list-title">${a.title}</h3>
+                        <p class="text-gray-500 line-clamp-custom dynamic-list-preview">${a.excerpt}</p>
+                    </div>
+                    ${a.image ? `<img src="${a.image}" loading="lazy" class="w-16 h-16 object-cover rounded-md bg-gray-100 flex-shrink-0" onerror="this.style.display='none'">` : ''}
+                </div>
+            </div>`;
+        }
+
+        window.selectArticle = function(id) {
+            const article = window.articles.find(a => a.id === id);
+            if (!article) return;
+            
+            window.articles.forEach(a => { if (a.id === id) a.unread = false; });
+            window.currentArticle = article;
+            window._readLinks.add(article.link);
+            saveReadState();
+            
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('article-content').classList.remove('hidden');
+            document.getElementById('article-meta').textContent = article.source;
+            const titleEl = document.getElementById('article-title');
+            titleEl.textContent = article.title;
+            titleEl.style.fontSize = window._savedArticleTitleSize || '1.7em';
+            document.getElementById('article-author').textContent = article.author;
+            document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+            document.getElementById('article-body').innerHTML = DOMPurify.sanitize(linkify(article.body));
+            document.getElementById('web-frame').src = article.link;
+
+            // Read time estimate
+            const wordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
+            const minutes = Math.max(1, Math.ceil(wordCount / 200));
+            const readTimeEl = document.getElementById('read-time');
+            if (readTimeEl) { readTimeEl.textContent = `~${minutes} min read`; readTimeEl.classList.remove('hidden'); }
+
+            // Prev / Next buttons (toolbar)
+            const idx = window.currentTimeline.findIndex(a => a.id === id);
+            const prevBtn = document.getElementById('prev-article-btn');
+            const nextBtn = document.getElementById('next-article-btn');
+            if (prevBtn) prevBtn.classList.toggle('hidden', idx <= 0);
+            if (nextBtn) nextBtn.classList.toggle('hidden', idx >= window.currentTimeline.length - 1);
+
+            // Mobile action bar prev/next opacity
+            const mobPrev = document.getElementById('mob-prev-btn');
+            const mobNext = document.getElementById('mob-next-btn');
+            if (mobPrev) mobPrev.style.opacity = idx <= 0 ? '0.3' : '1';
+            if (mobNext) mobNext.style.opacity = idx >= window.currentTimeline.length - 1 ? '0.3' : '1';
+
+            // Prev / Next footer (article body — useful on mobile)
+            const navFooter = document.getElementById('article-nav-footer');
+            const prevFooter = document.getElementById('prev-article-footer');
+            const nextFooter = document.getElementById('next-article-footer');
+            const prevTitle = document.getElementById('prev-article-title');
+            const nextTitle = document.getElementById('next-article-title');
+            if (navFooter) {
+                const hasPrev = idx > 0;
+                const hasNext = idx < window.currentTimeline.length - 1;
+                navFooter.classList.toggle('hidden', !hasPrev && !hasNext);
+                if (prevFooter) prevFooter.classList.toggle('invisible', !hasPrev);
+                if (nextFooter) nextFooter.classList.toggle('invisible', !hasNext);
+                if (prevTitle && hasPrev) prevTitle.textContent = window.currentTimeline[idx - 1].title;
+                if (nextTitle && hasNext) nextTitle.textContent = window.currentTimeline[idx + 1].title;
+            }
+
+            // Share button
+            const shareBtn = document.getElementById('share-btn');
+            if (shareBtn) shareBtn.classList.remove('hidden');
+
+            // Reset reading progress
+            const progressBar = document.getElementById('reading-progress');
+            if (progressBar) progressBar.style.width = '0%';
+            const readerEl = document.getElementById('reader-view');
+            if (readerEl) readerEl.scrollTop = 0;
+
+            // Stop any active TTS
+            if (window._ttsActive) stopTTS();
+
+            // On mobile, auto-navigate to reader pane
+            if (isMobile()) setMobilePane('viewer');
+
+            renderTimeline();
+            // Scroll selected article into view in the timeline
+            setTimeout(() => {
+                const listEl = document.getElementById('article-list');
+                if (listEl) {
+                    const selectedEl = listEl.querySelector('.border-l-blue-500');
+                    if (selectedEl) selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }, 30);
+            renderFeeds();
+            updateActionButton();
+        };
+
+        // --- RESILIENT FULL ARTICLE FETCHING ---
+        window.loadFullArticle = async function() {
+            if (!window.currentArticle || !window.currentArticle.link) return;
+            const body = document.getElementById('article-body');
+            const originalContent = body.innerHTML;
+            body.innerHTML = '<div class="flex items-center justify-center py-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div><span class="ml-3 font-semibold text-sm">Attempting Extraction...</span></div>';
+            
+            // Note: content is fetched via public CORS proxies (allorigins, corsproxy.io, thingproxy).
+            // These services may log requested URLs. Use the WEB view for sensitive articles.
+            const proxies = [
+                `https://api.allorigins.win/get?url=${encodeURIComponent(window.currentArticle.link)}`,
+                `https://corsproxy.io/?${encodeURIComponent(window.currentArticle.link)}`,
+                `https://thingproxy.freeboard.io/fetch/${window.currentArticle.link}`
+            ];
+
+            let success = false;
+            for (let proxyUrl of proxies) {
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) continue;
+                    
+                    let html;
+                    if (proxyUrl.includes('allorigins')) {
+                        const data = await response.json();
+                        html = data.contents;
+                    } else {
+                        html = await response.text();
+                    }
+
+                    if (!html) continue;
+                    
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Cleanup common noise
+                    doc.querySelectorAll('script, style, nav, footer, header, aside, iframe, .ads, .sidebar, [aria-hidden="true"]').forEach(el => el.remove());
+
+                    // Heuristic Selection
+                    let content = doc.querySelector('.ArticleBody-articleBody, .caas-body, .story-body, article, [itemprop="articleBody"], .main-content, .entry-content');
+                    
+                    if (!content) {
+                        let bestDiv = null;
+                        let bestScore = 0;
+                        doc.querySelectorAll('div').forEach(div => {
+                            const pCount = div.querySelectorAll('p').length;
+                            if (pCount > bestScore) {
+                                bestScore = pCount;
+                                bestDiv = div;
+                            }
+                        });
+                        content = bestDiv;
+                    }
+
+                    if (content && content.querySelectorAll('p').length > 1) {
+                        body.innerHTML = DOMPurify.sanitize(linkify(content.innerHTML));
+                        window.showToast("Success: Content extracted");
+                        success = true;
+                        break;
+                    }
+                } catch (e) { console.warn("Proxy attempt failed:", proxyUrl); }
+            }
+
+            if (!success) {
+                body.innerHTML = originalContent;
+                window.showToast("Extraction failed — showing RSS preview", true);
+            }
+        };
+
+        // --- KEYBOARD NAVIGATION ---
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            if (!window.currentTimeline || window.currentTimeline.length === 0) return;
+
+            let currentIndex = -1;
+            if (window.currentArticle) {
+                currentIndex = window.currentTimeline.findIndex(a => a.id === window.currentArticle.id);
+            }
+
+            if (e.key === 'ArrowDown' || e.key === 'j') {
+                e.preventDefault();
+                const nextIndex = Math.min(currentIndex + 1, window.currentTimeline.length - 1);
+                if (nextIndex !== currentIndex) selectArticle(window.currentTimeline[nextIndex].id);
+            } else if (e.key === 'ArrowUp' || e.key === 'k') {
+                e.preventDefault();
+                const prevIndex = Math.max(currentIndex - 1, 0);
+                if (prevIndex !== currentIndex) selectArticle(window.currentTimeline[prevIndex].id);
+            } else if (e.key === 'r' || e.key === 'R') {
+                if (window.currentArticle) {
+                    window.currentArticle.unread = !window.currentArticle.unread;
+                    if (!window.currentArticle.unread) window._readLinks.add(window.currentArticle.link);
+                    else window._readLinks.delete(window.currentArticle.link);
+                    saveReadState();
+                    renderTimeline(); renderFeeds();
+                }
+            } else if (e.key === 'b' || e.key === 'B') {
+                if (window.currentArticle) handleReadLaterAction();
+            } else if (e.key === 'o' || e.key === 'O') {
+                openExternal();
+            }
+        });
+
+        // --- MARK READ BULK ---
+        window.markAboveRead = function() {
+            if (!window.contextMenuArticleId || !window.currentTimeline) return;
+            const idx = window.currentTimeline.findIndex(a => a.id === window.contextMenuArticleId);
+            if (idx > 0) {
+                const slice = window.currentTimeline.slice(0, idx);
+                slice.forEach(item => {
+                    window.articles.forEach(a => { if (a.id === item.id) { a.unread = false; window._readLinks.add(a.link); } });
+                });
+                saveReadState();
+                renderTimeline();
+                renderFeeds();
+            }
+            document.getElementById('article-context-menu').classList.add('hidden');
+        };
+
+        window.markBelowRead = function() {
+            if (!window.contextMenuArticleId || !window.currentTimeline) return;
+            const idx = window.currentTimeline.findIndex(a => a.id === window.contextMenuArticleId);
+            if (idx !== -1 && idx < window.currentTimeline.length - 1) {
+                const slice = window.currentTimeline.slice(idx + 1);
+                slice.forEach(item => {
+                    window.articles.forEach(a => { if (a.id === item.id) { a.unread = false; window._readLinks.add(a.link); } });
+                });
+                saveReadState();
+                renderTimeline();
+                renderFeeds();
+            }
+            document.getElementById('article-context-menu').classList.add('hidden');
+        };
+
+        // --- SIDEBAR UI & FILTERING ---
+        function renderFeeds() {
+            const list = document.getElementById('feed-list');
+            if (!list) return;
+            const groups = {};
+            window.feeds.forEach(f => {
+                const c = f.category || 'Uncategorized';
+                if (!groups[c]) groups[c] = [];
+                f.unread = window.articles.filter(a => a.source === f.name && a.unread).length;
+                groups[c].push(f);
+            });
+
+            // Sort categories: use manual order if set, otherwise alphabetical
+            const allCats = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+            // Merge manual order with any new categories not yet in it
+            allCats.forEach(c => { if (!window._categoryOrder.includes(c)) window._categoryOrder.push(c); });
+            // Remove categories that no longer exist
+            window._categoryOrder = window._categoryOrder.filter(c => groups[c]);
+            const sortedEntries = window._categoryOrder.map(c => [c, groups[c]]).filter(([,v]) => v);
+
+            list.innerHTML = sortedEntries.map(([cat, feeds]) => {
+                const total = feeds.reduce((sum, f) => sum + (f.unread || 0), 0);
+                if (total === 0 && !window._showEmptyCategories) return '';
+                if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = true;
+                const isCollapsed = window.collapsedCategories[cat];
+                const formattedCat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+
+                return `
+                    <div class="mt-4 mb-2" data-category="${cat}"
+                         draggable="true"
+                         ondragstart="handleCategoryDragStart(event, '${cat}')"
+                         ondragend="handleCategoryDragEnd(event)"
+                         ondragover="handleCategoryDragOver(event, '${cat}')"
+                         ondragleave="handleCategoryDragLeave(event)"
+                         ondrop="handleCategoryOrFeedDrop(event, '${cat}')">
+                        <button onclick="setCategoryFilter('${cat}')" oncontextmenu="showFolderContextMenu(event, 'category', '${cat}')" class="w-full px-3 text-gray-400 flex items-center justify-between hover:text-gray-200 outline-none dynamic-category-text">
+                            <div class="flex items-center">
+                                <span class="mr-2">
+                                    ${isCollapsed ? 
+                                        `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2v8z"></path></svg>` : 
+                                        `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9l-2-2H5a2 2 0 00-2 2v8z"></path></svg>`
+                                    }
+                                </span> 
+                                <span>${formattedCat}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                ${total > 0 ? `<span class="text-blue-500 dark:text-blue-400 text-[11px] font-bold">${total}</span>` : ''}
+                                <svg onclick="event.stopPropagation(); toggleCategory('${cat}')" class="w-3 h-3 transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="2" stroke="currentColor"></path></svg>
+                            </div>
+                        </button>
+                        ${!isCollapsed ? feeds.map(f => {
+                            const health = window._feedHealth[f.url];
+                            const isError = health && health.errorCount >= 3;
+                            const isStale = health && health.lastSuccess && (Date.now() - health.lastSuccess > 7 * 86400000);
+                            const healthClass = isError ? 'feed-error' : (isStale ? 'feed-stale' : '');
+                            const favicon = f.favicon ? `<img src="${f.favicon}" class="w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0" onerror="this.style.display='none'">` : '<span class="w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
+                            return `
+                            <button draggable="true"
+                                ondragstart="handleFeedDragStart(event, '${f.id}')"
+                                ondragend="event.target.classList.remove('opacity-40')"
+                                onclick="setSourceFilter('${f.name}')" oncontextmenu="showFeedContextMenu(event, '${f.url}', '${f.name}')" class="w-full flex items-center justify-between pl-9 pr-3 py-1.5 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 outline-none cursor-grab active:cursor-grabbing">
+                                <span class="flex items-center truncate pr-2">
+                                    ${favicon}<span class="truncate font-medium ${healthClass}">${f.name}</span>
+                                </span>
+                                <span class="text-[10px] font-bold text-gray-400 flex-shrink-0">${f.unread || 0}</span>
+                            </button>`;
+                        }).join('') : ''}
+                    </div>
+                `;
+            }).join('');
+
+            const localList = document.getElementById('local-feed-list');
+            if (localList) {
+                localList.innerHTML = (window.accountStates.local || []).map((f) => `
+                    <div class="flex justify-between items-center p-2 bg-white dark:bg-gray-800 border rounded mb-2">
+                        <span class="text-xs truncate font-medium">${f.name}</span>
+                        <button onclick="removeLocalFeed('${String(f.id)}')" class="text-red-500 text-[10px] font-bold">REMOVE</button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        window.setCategoryFilter = (cat) => { window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
+        window.setSourceFilter = (source) => { window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
+        window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
+
+        // --- DRAG & DROP: FEED between categories + CATEGORY reorder ---
+        window._draggingCategory = null;
+
+        window.handleFeedDragStart = (e, feedId) => {
+            e.dataTransfer.setData('feedId', feedId);
+            e.dataTransfer.setData('type', 'feed');
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => e.target.classList.add('opacity-40'), 0);
+        };
+
+        window.handleCategoryDragStart = (e, cat) => {
+            // Only start category drag from the folder row itself, not from feed buttons inside
+            if (e.target.closest('button') && !e.target.closest('[data-category]')) return;
+            e.dataTransfer.setData('categoryName', cat);
+            e.dataTransfer.setData('type', 'category');
+            e.dataTransfer.effectAllowed = 'move';
+            window._draggingCategory = cat;
+            setTimeout(() => e.currentTarget.classList.add('opacity-40'), 0);
+        };
+
+        window.handleCategoryDragEnd = (e) => {
+            e.currentTarget.classList.remove('opacity-40', 'ring-2', 'ring-blue-400', 'ring-inset', 'border-t-2', 'border-blue-400');
+            window._draggingCategory = null;
+        };
+
+        window.handleCategoryDragOver = (e, cat) => {
+            e.preventDefault();
+            const type = e.dataTransfer.types.includes('categoryname') || window._draggingCategory ? 'category' : 'feed';
+            if (type === 'category' && window._draggingCategory !== cat) {
+                e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
+            } else if (type === 'feed') {
+                e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
+            }
+        };
+
+        window.handleCategoryDragLeave = (e) => {
+            e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+        };
+
+        // Combined drop handler — figures out if it's a feed drop or category reorder
+        window.handleCategoryOrFeedDrop = (e, targetCat) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+
+            const feedId = e.dataTransfer.getData('feedId');
+            const draggedCat = e.dataTransfer.getData('categoryName') || window._draggingCategory;
+
+            if (feedId) {
+                // Feed dropped into a category
+                const feed = window.feeds.find(f => f.id === feedId);
+                const localFeed = window.accountStates.local.find(f => f.id === feedId);
+                if (!feed || feed.category === targetCat) return;
+                feed.category = targetCat;
+                if (localFeed) localFeed.category = targetCat;
+                saveLocalFeeds();
+                if (typeof window.saveFeeds === 'function') window.saveFeeds([feed]);
+                renderFeeds();
+                window.showToast(`Moved to ${targetCat}`);
+            } else if (draggedCat && draggedCat !== targetCat) {
+                // Category reordered
+                const order = window._categoryOrder;
+                const fromIdx = order.indexOf(draggedCat);
+                const toIdx   = order.indexOf(targetCat);
+                if (fromIdx === -1 || toIdx === -1) return;
+                order.splice(fromIdx, 1);
+                order.splice(toIdx, 0, draggedCat);
+                saveCategoryOrder();
+                renderFeeds();
+            }
+        };
+
+        function saveCategoryOrder() {
+            try { localStorage.setItem('newsreader_catorder', JSON.stringify(window._categoryOrder)); } catch(e) {}
+        }
+        function restoreCategoryOrder() {
+            try {
+                const stored = localStorage.getItem('newsreader_catorder');
+                if (stored) window._categoryOrder = JSON.parse(stored);
+            } catch(e) {}
+        }
+
+        function updateBadges() {
+            const allUnread = window.articles.filter(a => a.unread).length;
+            const todayCount = window.articles.filter(a => (new Date(Date.now() - 86400000) < new Date(a.timestamp)) && a.unread).length;
+            const readLaterCount = window.articles.filter(a => a.readLater).length;
+
+            const badgeAll = document.getElementById('badge-all');
+            const badgeToday = document.getElementById('badge-today');
+            const badgeReadLater = document.getElementById('badge-read-later');
+
+            if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
+            if (badgeToday) { badgeToday.textContent = todayCount; badgeToday.classList.toggle('hidden', todayCount === 0); }
+            if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
+
+            // Update browser tab title with unread count
+            document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
+        }
+
+        // --- OPML & FEED CONFIG ---
+        window.importSubscriptions = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            window.showToast("Importing feeds...");
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const parser = new DOMParser();
+                    const xml = parser.parseFromString(e.target.result, "text/xml");
+
+                    // Detect XML parse errors
+                    if (xml.querySelector('parsererror')) throw new Error("Invalid OPML/XML file");
+
+                    const nodes = xml.querySelectorAll("outline[xmlUrl]");
+                    let added = 0;
+                    let newFeeds = [];
+
+                    nodes.forEach(node => {
+                        const url = node.getAttribute("xmlUrl");
+                        if (!url) return;
+                        if (!window.accountStates.local.some(f => f.url === url)) {
+                            const parent = node.parentElement;
+                            const cat = (parent && typeof parent.getAttribute === 'function')
+                                ? (parent.getAttribute("title") || parent.getAttribute("text") || "Imported")
+                                : "Imported";
+                            // Avoid using the root <body> tag as a category name
+                            const safeCat = (cat.toLowerCase() === 'body' || cat.toLowerCase() === 'opml') ? "Imported" : cat;
+                            const name = node.getAttribute("title") || node.getAttribute("text") || url;
+                            const f = { id: crypto.randomUUID(), name, url, category: safeCat, icon: '🗞️', unread: 0 };
+                            window.accountStates.local.push(f);
+                            window.feeds.push(f);
+                            newFeeds.push(f);
+                            added++;
+                        }
+                    });
+
+                    renderFeeds();
+                    saveLocalFeeds();
+                    if (newFeeds.length > 0 && typeof window.saveFeeds === 'function') await window.saveFeeds(newFeeds);
+                    fetchAllStaggered(newFeeds, 2);
+                    window.showToast(`Imported ${added} feed${added !== 1 ? 's' : ''}.`);
+                } catch (err) {
+                    console.error("OPML import error:", err);
+                    window.showToast(`Import error: ${err.message || 'Unknown error'}`, true);
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        window.submitManualFeed = () => {
+            const t = document.getElementById('manual-feed-title').value.trim();
+            const u = document.getElementById('manual-feed-url').value.trim();
+            if (!t || !u) return;
+            const sel = document.getElementById('manual-feed-category');
+            let cat = sel.value === '__new__'
+                ? (document.getElementById('manual-feed-newcat').value.trim() || 'Uncategorized')
+                : (sel.value || 'Uncategorized');
+            const f = { id: crypto.randomUUID(), name: t, url: u, category: cat, icon: '🗞️', unread: 0 };
+            window.accountStates.local.push(f);
+            window.feeds.push(f);
+            renderFeeds();
+            closeAddFeedModal();
+            fetchRecentArticles(u, t);
+            saveLocalFeeds();
+            if (typeof window.saveFeeds === 'function') window.saveFeeds([f]);
+        };
+
+        window.removeLocalFeed = async (feedId) => {
+            // Use loose equality to handle numeric vs string IDs from older imports
+            const idx = window.accountStates.local.findIndex(f => f.id == feedId || String(f.id) === String(feedId));
+            if (idx === -1) return;
+            const f = window.accountStates.local.splice(idx, 1)[0];
+            window.feeds = window.feeds.filter(feed => feed.url !== f.url);
+            renderFeeds();
+            saveLocalFeeds();
+            if (f.docId) window.removeFeedFromDatabase(f.docId);
+        };
+
+        window.exportSubscriptions = () => {
+            if (!window.accountStates.local?.length) return;
+            const groups = {};
+            window.accountStates.local.forEach(f => {
+                const cat = f.category || 'Uncategorized';
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push(f);
+            });
+            let opml = `<?xml version="1.0" encoding="UTF-8"?><opml version="1.0"><body>`;
+            Object.entries(groups).forEach(([cat, feeds]) => {
+                const escapedCat = cat.replace(/"/g, '&quot;');
+                opml += `<outline title="${escapedCat}" text="${escapedCat}">`;
+                feeds.forEach(f => {
+                    opml += `<outline type="rss" xmlUrl="${f.url}" title="${f.name.replace(/"/g, '&quot;')}" text="${f.name.replace(/"/g, '&quot;')}"/>`;
+                });
+                opml += `</outline>`;
+            });
+            opml += `</body></opml>`;
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([opml], {type: 'text/xml'})); a.download = 'news_feeds.opml'; a.click();
+        };
+
+        // --- UI ACTIONS ---
+        window.setSmartFeed = (type) => {
+            window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
+            document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
+            document.getElementById('feed-btn-' + type).classList.add('active-item');
+            if (isMobile()) setMobilePane('timeline');
+            renderTimeline();
+        };
+        // Staggered fetch — fires feeds in batches to avoid 429 rate limits
+        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 500) {
+            for (let i = 0; i < feeds.length; i++) {
+                fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground);
+                if (i < feeds.length - 1) await new Promise(r => setTimeout(r, delayMs));
+            }
+        }
+
+        window.refreshAll = () => {
+            window.showToast("Refreshing feeds...");
+            fetchAllStaggered(window.feeds);
+        };
+
+        // --- AUTO REFRESH ---
+        window.updateAutoRefresh = (minutes) => {
+            if (window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
+            saveTypographyPrefs();
+            const mins = parseInt(minutes);
+            if (mins > 0) {
+                window._autoRefreshTimer = setInterval(() => {
+                    window._newArticleCount = 0;
+                    fetchAllStaggered(window.feeds, null, true);
+                }, mins * 60 * 1000);
+            }
+        };
+
+        // --- NEW ARTICLES BANNER ---
+        function showNewArticlesBanner(count) {
+            const banner = document.getElementById('new-articles-banner');
+            if (!banner) return;
+            banner.textContent = `↑ ${count} new article${count !== 1 ? 's' : ''} — click to refresh view`;
+            banner.classList.remove('hidden');
+        }
+
+        window.dismissNewArticlesBanner = () => {
+            document.getElementById('new-articles-banner')?.classList.add('hidden');
+            window._newArticleCount = 0;
+            renderTimeline();
+            renderFeeds();
+        };
+
+        // --- NAVIGATE PREV/NEXT ---
+        window.navigateArticle = (direction) => {
+            if (!window.currentTimeline?.length) return;
+            const idx = window.currentTimeline.findIndex(a => a.id === window.currentArticle?.id);
+            const newIdx = idx + direction;
+            if (newIdx >= 0 && newIdx < window.currentTimeline.length) {
+                selectArticle(window.currentTimeline[newIdx].id);
+            }
+        };
+
+        // --- SHARE ---
+        window.shareArticle = async () => {
+            if (!window.currentArticle) return;
+            const shareData = { title: window.currentArticle.title, url: window.currentArticle.link };
+            try {
+                if (navigator.share) {
+                    await navigator.share(shareData);
+                } else {
+                    await navigator.clipboard.writeText(window.currentArticle.link);
+                    window.showToast("Link copied to clipboard");
+                }
+            } catch(e) {
+                try { await navigator.clipboard.writeText(window.currentArticle.link); window.showToast("Link copied to clipboard"); }
+                catch(e2) { window.showToast("Could not share", true); }
+            }
+        };
+
+        // --- TEXT TO SPEECH ---
+        window.toggleTTS = () => {
+            if (window._ttsActive) { stopTTS(); return; }
+            if (!window.currentArticle) return;
+            const text = document.getElementById('article-body')?.innerText || '';
+            if (!text.trim()) return;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onend = () => { window._ttsActive = false; updateTTSButton(); };
+            utterance.onerror = () => { window._ttsActive = false; updateTTSButton(); };
+            speechSynthesis.speak(utterance);
+            window._ttsActive = true;
+            updateTTSButton();
+        };
+        function stopTTS() { speechSynthesis.cancel(); window._ttsActive = false; updateTTSButton(); }
+        function updateTTSButton() {
+            const btn = document.getElementById('tts-btn');
+            if (!btn) return;
+            btn.textContent = window._ttsActive ? 'STOP' : 'LISTEN';
+            btn.className = window._ttsActive
+                ? 'text-[10px] font-bold px-2 py-1 rounded-md border border-red-400 text-red-500 hover:bg-red-50 transition-colors'
+                : 'text-[10px] font-bold px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
+        }
+
+        // --- VIEW MODE (list/card) ---
+        window.toggleViewMode = () => {
+            window._viewMode = window._viewMode === 'list' ? 'card' : 'list';
+            document.getElementById('view-density-toggle').textContent = window._viewMode === 'card' ? 'CARD' : 'LIST';
+            renderTimeline();
+            try { localStorage.setItem('newsreader_viewmode', window._viewMode); } catch(e) {}
+        };
+
+        // --- FULL-TEXT SEARCH TOGGLE ---
+        window.toggleFullSearch = () => {
+            window._fullSearchEnabled = !window._fullSearchEnabled;
+            const btn = document.getElementById('full-search-toggle');
+            if (btn) {
+                btn.textContent = window._fullSearchEnabled ? 'ON' : 'OFF';
+                btn.className = window._fullSearchEnabled
+                    ? 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400';
+            }
+            renderTimeline();
+            try { localStorage.setItem('newsreader_fullsearch', window._fullSearchEnabled ? '1' : '0'); } catch(e) {}
+        };
+
+        window.toggleShowEmptyCategories = () => {
+            window._showEmptyCategories = !window._showEmptyCategories;
+            const btn = document.getElementById('show-empty-cats-toggle');
+            if (btn) {
+                btn.textContent = window._showEmptyCategories ? 'ON' : 'OFF';
+                btn.className = window._showEmptyCategories
+                    ? 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400';
+            }
+            renderFeeds();
+            try { localStorage.setItem('newsreader_showemptycats', window._showEmptyCategories ? '1' : '0'); } catch(e) {}
+        };
+
+        // --- READ LATER PERSISTENCE ---
+        function saveReadLaterState() {
+            try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) {}
+            if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
+        }
+        function restoreReadLaterState() {
+            try {
+                const stored = localStorage.getItem('newsreader_readlater');
+                if (stored) window._readLaterLinks = new Set(JSON.parse(stored));
+            } catch(e) {}
+        }
+
+        // --- READING PROGRESS BAR ---
+        document.getElementById('reader-view')?.addEventListener('scroll', function() {
+            const bar = document.getElementById('reading-progress');
+            if (!bar || !window.currentArticle) return;
+            const { scrollTop, scrollHeight, clientHeight } = this;
+            const progress = scrollHeight <= clientHeight ? 100 : (scrollTop / (scrollHeight - clientHeight)) * 100;
+            bar.style.width = `${Math.min(100, progress)}%`;
+        });
+
+        // --- SWIPE GESTURES on viewer-pane (full width, no padding dead zone) ---
+        (function() {
+            const el = document.getElementById('viewer-pane');
+            if (!el) return;
+            let startX = 0, startY = 0, startTime = 0;
+            el.addEventListener('touchstart', e => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                startTime = Date.now();
+            }, { passive: true });
+            el.addEventListener('touchend', e => {
+                if (!window.currentArticle) return;
+                const dx = e.changedTouches[0].clientX - startX;
+                const dy = e.changedTouches[0].clientY - startY;
+                const dt = Date.now() - startTime;
+                // Trigger on: horizontal dominant, > 25px, completed within 350ms
+                if (Math.abs(dx) < 25 || Math.abs(dx) < Math.abs(dy) || dt > 250) return;
+                if (dx < 0) navigateArticle(1);   // swipe left  → next
+                else        navigateArticle(-1);  // swipe right → prev
+            }, { passive: true });
+        })();
+        window.toggleSettings = () => document.getElementById('settings-modal').classList.toggle('hidden');
+        window.switchSettingsTab = (tab) => {
+            ['feeds','prefs'].forEach(t => {
+                const panel = document.getElementById(`settings-panel-${t}`);
+                const btn   = document.getElementById(`settings-tab-${t}`);
+                const active = t === tab;
+                panel.classList.toggle('hidden', !active);
+                btn.classList.toggle('text-blue-600', active);
+                btn.classList.toggle('border-blue-600', active);
+                btn.classList.toggle('text-gray-400', !active);
+                btn.classList.toggle('border-transparent', !active);
+            });
+        };
+        window.openAddFeedModal = () => {
+            // Populate category dropdown with existing categories + New option
+            const cats = [...new Set(window.feeds.map(f => f.category || 'Uncategorized'))].sort();
+            const sel = document.getElementById('manual-feed-category');
+            sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('') +
+                `<option value="__new__">+ New category...</option>`;
+            sel.value = cats[0] || 'Uncategorized';
+            document.getElementById('manual-feed-newcat-wrap').classList.add('hidden');
+            sel.onchange = () => {
+                document.getElementById('manual-feed-newcat-wrap').classList.toggle('hidden', sel.value !== '__new__');
+            };
+            document.getElementById('add-feed-modal').classList.remove('hidden');
+        };
+        window.closeAddFeedModal = () => {
+            document.getElementById('add-feed-modal').classList.add('hidden');
+            document.getElementById('manual-feed-title').value = '';
+            document.getElementById('manual-feed-url').value = '';
+            document.getElementById('manual-feed-newcat').value = '';
+            document.getElementById('manual-feed-newcat-wrap').classList.add('hidden');
+        };
+        // --- TOAST QUEUE ---
+        window._toastQueue = [];
+        window._toastBusy = false;
+        window.showToast = (msg, isError = false) => {
+            window._toastQueue.push({ msg, isError });
+            if (!window._toastBusy) processToastQueue();
+        };
+        function processToastQueue() {
+            if (window._toastQueue.length === 0) { window._toastBusy = false; return; }
+            window._toastBusy = true;
+            const { msg, isError } = window._toastQueue.shift();
+            const toast = document.getElementById('toast-notification');
+            if (!toast) { processToastQueue(); return; }
+            toast.textContent = msg;
+            toast.className = `fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 text-white text-sm font-bold rounded-lg shadow-xl z-[100] transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-blue-600'}`;
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => processToastQueue(), 350);
+            }, 2500);
+        }
+        
+        // --- TYPOGRAPHY HANDLERS ---
+        window.updateFontSize = (t, v) => {
+            document.documentElement.style.setProperty(`--${t}-font-size`, `${v}px`);
+            const label = document.getElementById(`${t}-font-val`);
+            if (label) label.textContent = `${v}px`;
+            if (t.includes('list')) renderTimeline();
+            if (t === 'category') renderFeeds();
+            saveTypographyPrefs();
+        };
+
+        window.updateFontSizeEm = (t, v) => {
+            const em = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty(`--${t}-font-size`, `${em}em`);
+            const label = document.getElementById(`${t}-font-val`);
+            if (label) label.textContent = `${em}em`;
+            if (t.includes('list')) renderTimeline();
+            if (t === 'category') renderFeeds();
+            saveTypographyPrefs();
+        };
+        window.updateLines = (v) => {
+            document.documentElement.style.setProperty('--list-preview-lines', v);
+            const label = document.getElementById('lines-val');
+            if (label) label.textContent = `${v} Lines`;
+            renderTimeline();
+            saveTypographyPrefs();
+        };
+        window.updateFontFamily = (t, f) => {
+            document.documentElement.style.setProperty(`--${t}-font-family`, f);
+            if (t === 'list') renderTimeline();
+            saveTypographyPrefs();
+        };
+
+        window.updateArticleTitleSize = (v) => {
+            const em = (v / 10).toFixed(1);
+            window._savedArticleTitleSize = `${em}em`;
+            document.getElementById('article-title').style.fontSize = `${em}em`;
+            const label = document.getElementById('article-title-size-val');
+            if (label) label.textContent = `${em}em`;
+            saveTypographyPrefs();
+        };
+
+        window.updateMobListTitleSize = (v) => {
+            const em = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--mob-list-title-size', `${em}em`);
+            const label = document.getElementById('mob-list-title-val');
+            if (label) label.textContent = `${em}em`;
+            saveTypographyPrefs();
+        };
+
+        window.updateMobFeedNameSize = (v) => {
+            const em = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--mob-feed-name-size', `${em}em`);
+            const label = document.getElementById('mob-feed-name-val');
+            if (label) label.textContent = `${em}em`;
+            saveTypographyPrefs();
+        };
+
+        window.updateMobArticleTitleSize = (v) => {
+            const em = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--mob-article-title-size', `${em}em`);
+            const label = document.getElementById('mob-article-title-val');
+            if (label) label.textContent = `${em}em`;
+            saveTypographyPrefs();
+        };
+
+        window.updateMobBodySize = (v) => {
+            const em = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--mob-body-size', `${em}em`);
+            const label = document.getElementById('mob-body-val');
+            if (label) label.textContent = `${em}em`;
+            saveTypographyPrefs();
+        };
+
+        window.updateMobAuthorSize = (v) => {
+            const em = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--mob-author-size', `${em}em`);
+            const label = document.getElementById('mob-author-val');
+            if (label) label.textContent = `${em}em`;
+            saveTypographyPrefs();
+        };
+
+        window.updateListTitleEmSize = (v) => {
+            const em = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--list-title-em-size', `${em}em`);
+            const label = document.getElementById('list-title-em-val');
+            if (label) label.textContent = `${em}em`;
+            renderTimeline();
+            saveTypographyPrefs();
+        };
+
+        window.updateMobListPreviewSize = (v) => {
+            const em = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--mob-list-preview-size', `${em}em`);
+            const label = document.getElementById('mob-list-preview-val');
+            if (label) label.textContent = `${em}em`;
+            saveTypographyPrefs();
+        };
+
+        window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
+        window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
+        window.toggleContentView = () => {
+            const r = document.getElementById('reader-view'), w = document.getElementById('web-view');
+            r.classList.toggle('hidden'); w.classList.toggle('hidden');
+            document.getElementById('view-mode-toggle').textContent = r.classList.contains('hidden') ? "WEB" : "READER";
+        };
+        window.openExternal = () => { if(window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
+        window.filterByCurrentSource = () => { if(window.currentArticle) setSourceFilter(window.currentArticle.source); };
+        
+        window.handleReadLaterAction = () => {
+            if (!window.currentArticle) return;
+            
+            const wasReadLater = window.currentArticle.readLater;
+            window.currentArticle.readLater = !wasReadLater;
+
+            // Persist read-later state
+            if (window.currentArticle.readLater) {
+                window._readLaterLinks.add(window.currentArticle.link);
+            } else {
+                window._readLaterLinks.delete(window.currentArticle.link);
+            }
+            saveReadLaterState();
+            
+            if (window.currentSmartFeed === 'read-later' && wasReadLater) {
+                window.showToast("Removed from Read Later");
+                document.getElementById('article-content').classList.add('hidden');
+                document.getElementById('empty-state').classList.remove('hidden');
+                window.currentArticle = null;
+            } else {
+                window.showToast(window.currentArticle.readLater ? "Saved to Read Later" : "Removed from Read Later");
+            }
+            
+            renderTimeline();
+            updateActionButton();
+        };
+
+        window.updateActionButton = () => {
+            const b = document.getElementById('read-later-action-btn');
+            const fullBtn = document.getElementById('full-article-btn');
+            const shareBtn = document.getElementById('share-btn');
+            const ttsBtn = document.getElementById('tts-btn');
+            const hasArticle = !!window.currentArticle;
+            [b, fullBtn, shareBtn, ttsBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            if (!hasArticle) return;
+
+            const BASE = 'text-[10px] font-bold px-2 py-1 rounded-md border transition-colors cursor-pointer';
+            if (window.currentSmartFeed === 'read-later') {
+                b.textContent = "REMOVE FROM READ LATER";
+                b.className = `${BASE} border-red-500 text-red-500 hover:bg-red-50`;
+            } else if (window.currentArticle.readLater) {
+                b.textContent = "SAVED TO READ LATER";
+                b.className = `${BASE} border-green-500 text-green-500 bg-green-50`;
+            } else {
+                b.textContent = "READ LATER";
+                b.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
+            }
+        };
+
+        window.markAllRead = () => {
+            window.articles.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
+            saveReadState();
+            renderTimeline();
+            renderFeeds();
+        };
+        window.markArticleRead = (id) => {
+            window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
+            saveReadState();
+            renderTimeline();
+            renderFeeds();
+            document.getElementById('article-context-menu').classList.add('hidden');
+        };
+        window.toggleUnreadManual = () => { if(window.currentArticle) { window.currentArticle.unread = !window.currentArticle.unread; if (!window.currentArticle.unread) window._readLinks.add(window.currentArticle.link); else window._readLinks.delete(window.currentArticle.link); saveReadState(); renderTimeline(); renderFeeds(); } };
+        window.showArticleContextMenu = (e, id) => {
+            e.preventDefault();
+            window.contextMenuArticleId = id;
+            const article = (window.articles || []).find(a => a.id === id);
+            const idx = (window.currentTimeline || []).findIndex(a => a.id === id);
+            const total = (window.currentTimeline || []).length;
+            const btnClass = "w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700";
+            const readLabel = article?.unread ? 'Mark Read' : 'Mark Unread';
+            const laterLabel = article?.readLater ? 'Remove from Read Later' : 'Save for Later';
+            let items = `<button onclick="markArticleRead('${id}')" class="${btnClass}">${readLabel}</button>`;
+            items += `<button onclick="toggleArticleReadLater('${id}')" class="${btnClass}">${laterLabel}</button>`;
+            if (idx > 0)         items += `<button onclick="markAboveRead()" class="${btnClass}">Mark Above Read</button>`;
+            if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
+            const menu = document.getElementById('article-context-menu');
+            menu.innerHTML = items;
+            menu.classList.remove('hidden');
+            // Position — keep within viewport
+            const x = Math.min(e.pageX, window.innerWidth - 200);
+            const y = Math.min(e.pageY, window.innerHeight - menu.scrollHeight - 20);
+            menu.style.top = `${y}px`;
+            menu.style.left = `${x}px`;
+        };
+
+        // Toggle read-later from context menu by article id
+        window.toggleArticleReadLater = (id) => {
+            const article = window.articles.find(a => a.id === id);
+            if (!article) return;
+            article.readLater = !article.readLater;
+            if (article.readLater) window._readLaterLinks.add(article.link);
+            else window._readLaterLinks.delete(article.link);
+            saveReadLaterState();
+            renderTimeline();
+            window.showToast(article.readLater ? 'Saved for Later' : 'Removed from Read Later');
+            document.getElementById('article-context-menu').classList.add('hidden');
+        };
+
+        // Long-press support for article list items
+        let _longPressTimer = null;
+        document.getElementById('article-list').addEventListener('touchstart', (e) => {
+            const card = e.target.closest('[oncontextmenu]');
+            if (!card) return;
+            _longPressTimer = setTimeout(() => {
+                const match = card.getAttribute('oncontextmenu').match(/'([^']+)'\)$/);
+                if (!match) return;
+                const id = match[1];
+                const touch = e.touches[0];
+                showArticleContextMenu({ preventDefault: () => {}, pageX: touch.pageX, pageY: touch.pageY }, id);
+            }, 500);
+        }, { passive: true });
+        document.getElementById('article-list').addEventListener('touchend', () => {
+            clearTimeout(_longPressTimer);
+        });
+        document.getElementById('article-list').addEventListener('touchmove', () => {
+            clearTimeout(_longPressTimer);
+        }, { passive: true });
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#article-context-menu')) document.getElementById('article-context-menu').classList.add('hidden');
+            if (!e.target.closest('#folder-context-menu')) document.getElementById('folder-context-menu').classList.add('hidden');
+            if (!e.target.closest('#feed-context-menu')) document.getElementById('feed-context-menu').classList.add('hidden');
+        });
+
+        // --- INDIVIDUAL FEED CONTEXT MENU ---
+        window.showFeedContextMenu = (e, url, name) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window._feedContextUrl = url;
+            window._feedContextName = name;
+            const menu = document.getElementById('feed-context-menu');
+            menu.classList.remove('hidden');
+            menu.style.top = `${e.pageY}px`;
+            menu.style.left = `${e.pageX}px`;
+        };
+
+        window.refreshSingleFeed = () => {
+            if (!window._feedContextUrl) return;
+            window.showToast(`Refreshing ${window._feedContextName}...`);
+            fetchRecentArticles(window._feedContextUrl, window._feedContextName);
+            document.getElementById('feed-context-menu').classList.add('hidden');
+        };
+
+        window.markSingleFeedRead = () => {
+            if (!window._feedContextName) return;
+            window.articles.forEach(a => {
+                if (a.source === window._feedContextName) { a.unread = false; window._readLinks.add(a.link); }
+            });
+            saveReadState();
+            renderTimeline(); renderFeeds();
+            document.getElementById('feed-context-menu').classList.add('hidden');
+        };
+
+        // --- CATEGORY RENAME ---
+        window.renameCategory = (oldName) => {
+            const newName = prompt(`Rename category "${oldName}" to:`, oldName);
+            if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+            const trimmed = newName.trim();
+            window.feeds.forEach(f => { if (f.category === oldName) f.category = trimmed; });
+            window.accountStates.local.forEach(f => { if (f.category === oldName) f.category = trimmed; });
+            if (window.collapsedCategories[oldName] !== undefined) {
+                window.collapsedCategories[trimmed] = window.collapsedCategories[oldName];
+                delete window.collapsedCategories[oldName];
+            }
+            saveLocalFeeds();
+            if (typeof window.saveFeeds === 'function') window.saveFeeds(window.accountStates.local);
+            renderFeeds();
+            window.showToast(`Renamed to "${trimmed}"`);
+        };
+
+        window.renameFolderFromContext = () => {
+            document.getElementById('folder-context-menu').classList.add('hidden');
+            if (window.folderContextType === 'category') renameCategory(window.folderContextKey);
+        };
+
+        window.deleteFolderFromContext = () => {
+            document.getElementById('folder-context-menu').classList.add('hidden');
+            if (window.folderContextType !== 'category') return;
+            const cat = window.folderContextKey;
+            if (!confirm(`Delete folder "${cat}" and all its feeds? This cannot be undone.`)) return;
+            // Remove all feeds in this category
+            const toRemove = window.accountStates.local.filter(f => f.category === cat);
+            toRemove.forEach(f => {
+                window.accountStates.local = window.accountStates.local.filter(x => x.id !== f.id);
+                window.feeds = window.feeds.filter(x => x.url !== f.url);
+                window.articles = window.articles.filter(a => a.source !== f.name);
+                if (f.docId && typeof window.removeFeedFromDatabase === 'function') window.removeFeedFromDatabase(f.docId);
+            });
+            // Clean up category order
+            window._categoryOrder = window._categoryOrder.filter(c => c !== cat);
+            delete window.collapsedCategories[cat];
+            saveLocalFeeds();
+            renderFeeds();
+            renderTimeline();
+            window.showToast(`Deleted "${cat}" and ${toRemove.length} feed${toRemove.length !== 1 ? 's' : ''}`);
+        };
+
+        // Long-press on category folders (mobile)
+        let _catLongPressTimer = null;
+        document.getElementById('feed-list').addEventListener('touchstart', (e) => {
+            const catDiv = e.target.closest('[data-category]');
+            if (!catDiv) return;
+            const cat = catDiv.getAttribute('data-category');
+            _catLongPressTimer = setTimeout(() => {
+                const touch = e.touches[0];
+                showFolderContextMenu({ preventDefault: () => {}, pageX: touch.pageX, pageY: touch.pageY }, 'category', cat);
+            }, 500);
+        }, { passive: true });
+        document.getElementById('feed-list').addEventListener('touchend', () => clearTimeout(_catLongPressTimer));
+        document.getElementById('feed-list').addEventListener('touchmove', () => clearTimeout(_catLongPressTimer), { passive: true });
+
+        // --- EXPORT READ STATE ---
+        window.exportReadState = () => {
+            const data = {
+                exported: new Date().toISOString(),
+                readLinks: Array.from(window._readLinks),
+                readLaterLinks: Array.from(window._readLaterLinks)
+            };
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+            a.download = 'newsreader_state.json';
+            a.click();
+            window.showToast(`Exported ${data.readLinks.length} read + ${data.readLaterLinks.length} saved`);
+        };
+
+        window.showFolderContextMenu = (e, type, key) => {
+            e.preventDefault();
+            window.folderContextType = type;
+            window.folderContextKey = key;
+            const menu = document.getElementById('folder-context-menu');
+            menu.classList.remove('hidden');
+            menu.style.top = `${e.pageY}px`;
+            menu.style.left = `${e.pageX}px`;
+        };
+
+        window.markFolderRead = () => {
+            const type = window.folderContextType;
+            const key  = window.folderContextKey;
+            if (type === 'smart') {
+                if (key === 'all') {
+                    window.articles.forEach(a => { if (a.unread) { a.unread = false; window._readLinks.add(a.link); } });
+                } else if (key === 'today') {
+                    const dayAgo = new Date(Date.now() - 86400000);
+                    window.articles.forEach(a => { if (new Date(a.timestamp) > dayAgo) { a.unread = false; window._readLinks.add(a.link); } });
+                }
+            } else if (type === 'category') {
+                const sources = window.feeds.filter(f => f.category === key).map(f => f.name);
+                window.articles.forEach(a => { if (sources.includes(a.source)) { a.unread = false; window._readLinks.add(a.link); } });
+            }
+            saveReadState();
+            renderTimeline();
+            renderFeeds();
+            document.getElementById('folder-context-menu').classList.add('hidden');
+        };
+
+        // --- TYPOGRAPHY PERSISTENCE ---
+        const SLIDER_DEFS = [
+            { key: 'listTitleSize',   slider: 'list-title-font-slider',  label: 'list-title-font-val',  prop: '--list-title-font-size',   suffix: 'px' },
+            { key: 'listPreviewSize', slider: 'list-preview-font-slider', label: 'list-preview-font-val',prop: '--list-preview-font-size',  suffix: 'em', divisor: 10 },
+            { key: 'viewSize',        slider: 'view-font-slider',         label: 'view-font-val',        prop: '--view-font-size',          suffix: 'em', divisor: 10 },
+            { key: 'categorySize',    slider: 'category-font-slider',     label: 'category-font-val',    prop: '--category-font-size',      suffix: 'em', divisor: 10 },
+        ];
+
+        function saveTypographyPrefs() {
+            const get = id => document.getElementById(id)?.value;
+            try {
+                localStorage.setItem('newsreader_prefs', JSON.stringify({
+                    listTitleSize: get('list-title-font-slider'), listPreviewSize: get('list-preview-font-slider'),
+                    viewSize: get('view-font-slider'), categorySize: get('category-font-slider'),
+                    previewLines: get('lines-slider'), listFont: get('list-font-family-select'),
+                    viewFont: get('view-font-family-select'), sortOrder: get('pref-sort-order'),
+                    articleTitleSize: get('article-title-size-slider'), autoRefresh: get('pref-auto-refresh'),
+                mobFeedNameSize: get('mob-feed-name-slider'), mobArticleTitleSize: get('mob-article-title-slider'),
+                mobBodySize: get('mob-body-slider'), mobAuthorSize: get('mob-author-slider'),
+                listTitleEmSize: get('list-title-em-slider'), mobListPreviewSize: get('mob-list-preview-slider'),
+                mobListTitleSize: get('mob-list-title-slider')
+                }));
+            } catch(e) {}
+        }
+
+        function restoreTypographyPrefs() {
+            let prefs;
+            try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')); } catch(e) {}
+            if (!prefs) return;
+            const root = document.documentElement;
+            SLIDER_DEFS.forEach(({ key, slider, label, prop, suffix, divisor }) => {
+                const v = prefs[key]; if (!v) return;
+                const el = document.getElementById(slider); if (el) el.value = v;
+                const lb = document.getElementById(label);
+                const display = divisor ? (v / divisor).toFixed(1) + suffix : v + suffix;
+                if (lb) lb.textContent = display;
+                root.style.setProperty(prop, display);
+            });
+            if (prefs.previewLines) {
+                const el = document.getElementById('lines-slider'); if (el) el.value = prefs.previewLines;
+                const lb = document.getElementById('lines-val');    if (lb) lb.textContent = prefs.previewLines + ' Lines';
+                root.style.setProperty('--list-preview-lines', prefs.previewLines);
+            }
+            [['listFont','list-font-family-select','--list-font-family'],
+             ['viewFont','view-font-family-select','--view-font-family']].forEach(([key, id, prop]) => {
+                if (!prefs[key]) return;
+                const el = document.getElementById(id); if (el) el.value = prefs[key];
+                root.style.setProperty(prop, prefs[key]);
+            });
+            if (prefs.sortOrder) { const el = document.getElementById('pref-sort-order'); if (el) el.value = prefs.sortOrder; }
+            if (prefs.articleTitleSize) {
+                const el = document.getElementById('article-title-size-slider'); if (el) el.value = prefs.articleTitleSize;
+                const em = (prefs.articleTitleSize / 10).toFixed(1);
+                const lb = document.getElementById('article-title-size-val'); if (lb) lb.textContent = em + 'em';
+                window._savedArticleTitleSize = em + 'em';
+            }
+            if (prefs.autoRefresh) { const el = document.getElementById('pref-auto-refresh'); if (el) el.value = prefs.autoRefresh; }
+            const mobSliders = [
+                { key: 'mobFeedNameSize',     id: 'mob-feed-name-slider',     label: 'mob-feed-name-val',     prop: '--mob-feed-name-size',     fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobArticleTitleSize', id: 'mob-article-title-slider', label: 'mob-article-title-val', prop: '--mob-article-title-size', fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobBodySize',         id: 'mob-body-slider',          label: 'mob-body-val',          prop: '--mob-body-size',          fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobAuthorSize',       id: 'mob-author-slider',        label: 'mob-author-val',        prop: '--mob-author-size',        fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'listTitleEmSize',     id: 'list-title-em-slider',     label: 'list-title-em-val',     prop: '--list-title-em-size',     fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobListPreviewSize',  id: 'mob-list-preview-slider',  label: 'mob-list-preview-val',  prop: '--mob-list-preview-size',  fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobListTitleSize',    id: 'mob-list-title-slider',    label: 'mob-list-title-val',    prop: '--mob-list-title-size',    fmt: v => (v/10).toFixed(1)+'em' },
+            ];
+            mobSliders.forEach(({ key, id, label, prop, fmt }) => {
+                if (!prefs[key]) return;
+                const el = document.getElementById(id); if (el) el.value = prefs[key];
+                const lb = document.getElementById(label); if (lb) lb.textContent = fmt(prefs[key]);
+                document.documentElement.style.setProperty(prop, fmt(prefs[key]));
+            });
+        }
+
+        // --- FEED PERSISTENCE (localStorage) ---
+        function saveLocalFeeds() {
+            try { localStorage.setItem('newsreader_feeds', JSON.stringify(window.accountStates.local)); } catch(e) {}
+        }
+
+        function restoreLocalFeeds() {
+            try {
+                const stored = localStorage.getItem('newsreader_feeds');
+                if (!stored) return;
+                const feeds = JSON.parse(stored);
+                if (!Array.isArray(feeds) || feeds.length === 0) return;
+                window.accountStates.local = feeds;
+                window.feeds = feeds;
+            } catch(e) {}
+        }
+
+        // --- READ STATE PERSISTENCE ---
+        function saveReadState() {
+            try {
+                const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
+                const existing = getStoredReadLinks();
+                const merged = Array.from(new Set([...existing, ...readLinks]));
+                const trimmed = merged.slice(-5000);
+                localStorage.setItem('newsreader_read', JSON.stringify(trimmed));
+            } catch(e) {}
+            // Also push to Firestore if connected
+            if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
+        }
+
+        function getStoredReadLinks() {
+            try {
+                const stored = localStorage.getItem('newsreader_read');
+                return stored ? JSON.parse(stored) : [];
+            } catch(e) { return []; }
+        }
+
+        window._readLinks = new Set(getStoredReadLinks());
+
+        // --- MOBILE FULLSCREEN ---
+        window.toggleMobileFullscreen = () => {
+            const isFS = document.body.classList.toggle('mob-fullscreen');
+            const label = document.getElementById('mob-fs-label');
+            if (label) label.textContent = isFS ? 'Exit' : 'Full';
+            // Try browser native fullscreen on supported devices
+            if (isFS && document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else if (!isFS && document.exitFullscreen) {
+                document.exitFullscreen().catch(() => {});
+            }
+        };
+        // Exit mobile fullscreen when browser exits native fullscreen
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && document.body.classList.contains('mob-fullscreen')) {
+                document.body.classList.remove('mob-fullscreen');
+                const label = document.getElementById('mob-fs-label');
+                if (label) label.textContent = 'Full';
+            }
+        });
+        window._mobilePane = 'timeline'; // default to articles on mobile
+
+        window.setMobilePane = (pane) => {
+            window._mobilePane = pane;
+            const paneMap = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
+            const tabMap  = { sidebar: 'mob-tab-feeds', timeline: 'mob-tab-articles', viewer: 'mob-tab-reader' };
+            Object.entries(paneMap).forEach(([key, id]) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('mobile-active', key === pane);
+            });
+            Object.entries(tabMap).forEach(([key, id]) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.classList.toggle('text-blue-600', key === pane);
+                btn.classList.toggle('text-gray-400', key !== pane);
+            });
+        };
+
+        function isMobile() { return window.innerWidth <= 900; }
+
+        // Init mobile on load
+        if (isMobile()) setMobilePane('timeline');
+
+        // Re-check on resize (e.g. rotating phone or resizing browser)
+        window.addEventListener('resize', () => {
+            if (isMobile() && !document.getElementById('timeline-pane').classList.contains('mobile-active') &&
+                !document.getElementById('sidebar-pane').classList.contains('mobile-active') &&
+                !document.getElementById('viewer-pane').classList.contains('mobile-active')) {
+                setMobilePane('timeline');
+            }
+        });
+
+        // Save sort order preference on change
+        document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
+
+        // Debounced search
+        let _searchDebounce = null;
+        document.getElementById('search-input')?.addEventListener('input', () => {
+            clearTimeout(_searchDebounce);
+            _searchDebounce = setTimeout(() => renderTimeline(), 200);
+        });
+
+        // Relative time auto-update every 60s
+        setInterval(() => renderTimeline(), 60000);
+
+        // Initial setup data
+        window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
+        
+        restoreReadLaterState();
+        restoreTypographyPrefs();
+        restoreLocalFeeds();
+        restoreCategoryOrder();
+
+        // Restore view mode
+        try {
+            const vm = localStorage.getItem('newsreader_viewmode');
+            if (vm === 'card') { window._viewMode = 'card'; const btn = document.getElementById('view-density-toggle'); if (btn) btn.textContent = 'CARD'; }
+        } catch(e) {}
+
+        // Restore full-text search
+        try {
+            if (localStorage.getItem('newsreader_fullsearch') === '1') {
+                window._fullSearchEnabled = true;
+                const btn = document.getElementById('full-search-toggle');
+                if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
+            }
+        } catch(e) {}
+
+        try {
+            if (localStorage.getItem('newsreader_showemptycats') === '1') {
+                window._showEmptyCategories = true;
+                const btn = document.getElementById('show-empty-cats-toggle');
+                if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
+            }
+        } catch(e) {}
+
+        // Restore & start auto-refresh
+        try {
+            const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+            if (prefs.autoRefresh) {
+                const sel = document.getElementById('pref-auto-refresh');
+                if (sel) sel.value = prefs.autoRefresh;
+                updateAutoRefresh(prefs.autoRefresh);
+            }
+        } catch(e) {}
+
+        // Defer local fetch — Firebase onSnapshot will cancel this if it fires first
+        window._localFetchTimer = null;
+        if (window.feeds.length > 0) {
+            window._localFetchTimer = setTimeout(() => {
+                if (window.feeds.length > 0) fetchAllStaggered(window.feeds);
+            }, 4000); // wait 4s for Firebase; if no auth, fall back to local
+        }
+        renderFeeds();
+        renderTimeline();
+    </script>
+
+    <!-- FIREBASE MODULE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBA4sMC6MGHYSCEd1ldTs2JPKVRAAbyYQk",
+            authDomain: "rss-reader-fyi.firebaseapp.com",
+            projectId: "rss-reader-fyi",
+            storageBucket: "rss-reader-fyi.firebasestorage.app",
+            messagingSenderId: "110083336585",
+            appId: "1:110083336585:web:2f123d7b0d96f85fa0d958"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const APP_ID = 'rss-reader-fyi';
+        let userId = null;
+        let userEmail = null;
+
+        // --- AUTH STATE ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userId = user.uid;
+                userEmail = user.email;
+                document.getElementById('login-modal').classList.add('hidden');
+                document.getElementById('sync-status').textContent = 'Syncing...';
+                document.getElementById('signout-btn').classList.remove('hidden');
+                setupPersistence();
+            } else {
+                userId = null;
+                userEmail = null;
+                document.getElementById('login-modal').classList.remove('hidden');
+                document.getElementById('sync-status').textContent = 'Not signed in';
+                document.getElementById('signout-btn').classList.add('hidden');
+            }
+        });
+
+        // --- SIGN IN ---
+        window.handleSignIn = async () => {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errEl = document.getElementById('login-error');
+            const loadEl = document.getElementById('login-loading');
+            errEl.classList.add('hidden');
+            if (!email || !password) { errEl.textContent = 'Please enter email and password.'; errEl.classList.remove('hidden'); return; }
+            loadEl.classList.remove('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (e) {
+                loadEl.classList.add('hidden');
+                errEl.textContent = friendlyAuthError(e.code);
+                errEl.classList.remove('hidden');
+            }
+        };
+
+        // --- REGISTER ---
+        window.handleRegister = async () => {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errEl = document.getElementById('login-error');
+            const loadEl = document.getElementById('login-loading');
+            errEl.classList.add('hidden');
+            if (!email || !password) { errEl.textContent = 'Please enter email and password.'; errEl.classList.remove('hidden'); return; }
+            if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.remove('hidden'); return; }
+            loadEl.classList.remove('hidden');
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+            } catch (e) {
+                loadEl.classList.add('hidden');
+                errEl.textContent = friendlyAuthError(e.code);
+                errEl.classList.remove('hidden');
+            }
+        };
+
+        // --- FORGOT PASSWORD ---
+        window.handleForgotPassword = async () => {
+            const email = document.getElementById('login-email').value.trim();
+            const errEl = document.getElementById('login-error');
+            errEl.classList.add('hidden');
+            if (!email) {
+                errEl.textContent = 'Enter your email address above first.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            try {
+                await sendPasswordResetEmail(auth, email);
+                errEl.className = 'mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-xs rounded-lg border border-green-100 dark:border-green-900/40';
+                errEl.textContent = `Reset email sent to ${email} — check your inbox.`;
+                errEl.classList.remove('hidden');
+            } catch(e) {
+                errEl.className = 'mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs rounded-lg border border-red-100 dark:border-red-900/40';
+                errEl.textContent = friendlyAuthError(e.code);
+                errEl.classList.remove('hidden');
+            }
+        };
+        window.handleSignOut = async () => {
+            if (!confirm('Sign out of RSS Reader?')) return;
+            await signOut(auth);
+            window.showToast('Signed out');
+        };
+
+        // --- ACCOUNT INFO ---
+        window.showAccountInfo = () => {
+            if (userEmail) window.showToast(`Signed in as ${userEmail}`);
+        };
+
+        // --- ENTER KEY on login form ---
+        document.getElementById('login-password')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') handleSignIn();
+        });
+        document.getElementById('login-email')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') document.getElementById('login-password').focus();
+        });
+
+        function friendlyAuthError(code) {
+            const map = {
+                'auth/invalid-email': 'Invalid email address.',
+                'auth/user-not-found': 'No account found with that email.',
+                'auth/wrong-password': 'Incorrect password.',
+                'auth/invalid-credential': 'Incorrect email or password.',
+                'auth/email-already-in-use': 'An account with this email already exists.',
+                'auth/weak-password': 'Password must be at least 6 characters.',
+                'auth/too-many-requests': 'Too many attempts. Please try again later.',
+                'auth/network-request-failed': 'Network error. Check your connection.'
+            };
+            return map[code] || 'Something went wrong. Please try again.';
+        }
+
+        // --- FIRESTORE PERSISTENCE ---
+        function setupPersistence() {
+            if (!userId) return;
+            const feedsRef = collection(db, 'artifacts', APP_ID, 'users', userId, 'feeds');
+
+            // Sync feeds from Firestore → app
+            let _firstSnapshot = true;
+            onSnapshot(feedsRef, (snap) => {
+                const dbFeeds = [];
+                snap.forEach(d => dbFeeds.push({ ...d.data(), docId: d.id }));
+                if (dbFeeds.length > 0) {
+                    // Cancel the local fallback fetch timer
+                    if (window._localFetchTimer) { clearTimeout(window._localFetchTimer); window._localFetchTimer = null; }
+                    window.accountStates.local = dbFeeds;
+                    window.feeds = dbFeeds;
+                    window.renderFeeds();
+                    // Only fetch articles on first snapshot load, not on every Firestore write
+                    if (_firstSnapshot) {
+                        _firstSnapshot = false;
+                        fetchAllStaggered(dbFeeds);
+                    }
+                }
+                document.getElementById('sync-status').textContent = `☁ ${userEmail}`;
+            });
+
+            // Load read state from Firestore on first load
+            const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
+            getDoc(stateRef).then(snap => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (data.readLinks) {
+                        window._readLinks = new Set([...window._readLinks, ...data.readLinks]);
+                        try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
+                    }
+                    if (data.readLaterLinks) {
+                        window._readLaterLinks = new Set([...window._readLaterLinks, ...data.readLaterLinks]);
+                        try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) {}
+                    }
+                }
+            }).catch(e => console.warn('Could not load remote read state:', e));
+
+            // Expose cloud save for read + read-later state
+            window.saveReadStateCloud = async () => {
+                if (!userId) return;
+                try {
+                    const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
+                    await setDoc(stateRef, {
+                        readLinks: Array.from(window._readLinks).slice(-5000),
+                        readLaterLinks: Array.from(window._readLaterLinks),
+                        updatedAt: new Date().toISOString()
+                    });
+                } catch(e) { console.warn('Cloud read state save failed:', e); }
+            };
+        }
+
+        window.saveFeeds = async (newFeeds) => {
+            if (!userId) return;
+            const feedsRef = collection(db, 'artifacts', APP_ID, 'users', userId, 'feeds');
+            try {
+                await Promise.all(newFeeds.map(f => {
+                    const id = f.url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100);
+                    return setDoc(doc(feedsRef, id), f);
+                }));
+            } catch (err) {
+                console.error("Failed to save feeds:", err);
+                window.showToast("Failed to save feeds to cloud", true);
+            }
+        };
+
+        window.removeFeedFromDatabase = async (docId) => {
+            if (!userId) return;
+            await deleteDoc(doc(db, 'artifacts', APP_ID, 'users', userId, 'feeds', docId));
+        };
+    </script>
+    <!-- PWA Service Worker (inline registration — no separate file needed) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+const CACHE = 'newsreader-v1';
+const ASSETS = [
+    'https://cdn.tailwindcss.com',
+    'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js',
+    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap'
+];
+
+self.addEventListener('install', e => {
+    e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})));
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', e => {
+    e.waitUntil(caches.keys().then(keys =>
+        Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ));
+    self.clients.claim();
+});
+
+self.addEventListener('fetch', e => {
+    // Only cache GET requests for static assets; skip API/RSS calls
+    const url = new URL(e.request.url);
+    const isAsset = ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';
+    if (e.request.method !== 'GET' || !isAsset) return;
+    e.respondWith(
+        caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+            return res;
+        }))
+    );
+});
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            navigator.serviceWorker.register(swUrl, { scope: '/' })
+                .then(() => console.log('RSS Reader: service worker registered'))
+                .catch(e => console.warn('RSS Reader: SW registration skipped:', e.message));
+        }
+    </script>
+</body>
+</html>
