@@ -633,8 +633,8 @@
                         <label class="text-xs font-medium block mb-2">Auto-Refresh Interval</label>
                         <select id="pref-auto-refresh" onchange="updateAutoRefresh(this.value)" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="0">Off</option>
-                            <option value="15">Every 15 minutes</option>
-                            <option value="30" selected>Every 30 minutes</option>
+                            <option value="15" selected>Every 15 minutes</option>
+                            <option value="30">Every 30 minutes</option>
                             <option value="60">Every hour</option>
                         </select>
                     </div>
@@ -906,7 +906,7 @@
 
         // --- FETCH & ARTICLE LOGIC ---
         const PROXIES = [
-            url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+            url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&timestamp=${Date.now()}`,
             url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
             url => `https://thingproxy.freeboard.io/fetch/${url}`,
         ];
@@ -914,12 +914,16 @@
         async function fetchWithProxyFallback(feedUrl) {
             for (const proxyFn of PROXIES) {
                 try {
-                    const res = await fetch(proxyFn(feedUrl), { signal: AbortSignal.timeout(8000) });
+                    const proxyUrl = proxyFn(feedUrl);
+                    const res = await fetch(proxyUrl, {
+                        cache: 'no-store',
+                        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+                        signal: AbortSignal.timeout(8000)
+                    });
                     if (!res.ok) continue;
-                    // allorigins wraps in JSON; others return raw XML
                     const ct = res.headers.get('content-type') || '';
                     let xmlText;
-                    if (proxyFn(feedUrl).includes('allorigins')) {
+                    if (proxyUrl.includes('allorigins')) {
                         const json = await res.json();
                         xmlText = json.contents;
                     } else {
@@ -2609,6 +2613,13 @@
                         window._readLaterLinks = new Set([...window._readLaterLinks, ...data.readLaterLinks]);
                         try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) {}
                     }
+                    // Re-apply read state to any articles already in memory
+                    window.articles.forEach(a => {
+                        a.unread = !window._readLinks.has(a.link);
+                        a.readLater = window._readLaterLinks.has(a.link);
+                    });
+                    window.renderTimeline();
+                    window.renderFeeds();
                 }
             }).catch(e => console.warn('Could not load remote read state:', e));
 
