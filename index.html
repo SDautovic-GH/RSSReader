@@ -1269,6 +1269,7 @@
                     renderTimeline();
                     renderFeeds();
                 }
+                saveArticleCache();
             } catch (e) {
                 console.warn(`Feed fetch failed [${sourceName}]:`, e.message);
                 if (!window._feedHealth[feedUrl]) window._feedHealth[feedUrl] = { lastSuccess: null, errorCount: 0 };
@@ -2515,6 +2516,35 @@
             if (prefs.autoRefresh) { const el = document.getElementById('pref-auto-refresh'); if (el) el.value = prefs.autoRefresh; }
         }
 
+        // --- ARTICLE CACHE (localStorage) ---
+        function saveArticleCache() {
+            try {
+                // Store lightweight version — omit body to keep size down, max 500 articles
+                const cache = window.articles.slice(-500).map(a => ({
+                    id: a.id, source: a.source, title: a.title, author: a.author,
+                    timestamp: a.timestamp, excerpt: a.excerpt, link: a.link,
+                    unread: a.unread, readLater: a.readLater, image: a.image
+                }));
+                localStorage.setItem('newsreader_articles', JSON.stringify(cache));
+            } catch(e) {}
+        }
+
+        function restoreArticleCache() {
+            try {
+                const stored = localStorage.getItem('newsreader_articles');
+                if (!stored) return;
+                const cache = JSON.parse(stored);
+                if (!Array.isArray(cache) || cache.length === 0) return;
+                // Apply current read/readLater state
+                cache.forEach(a => {
+                    a.unread = !window._readLinks.has(a.link);
+                    a.readLater = window._readLaterLinks.has(a.link);
+                    a.body = ''; // body not cached — will load from feed on next fetch
+                });
+                window.articles = cache;
+            } catch(e) {}
+        }
+
         // --- FEED PERSISTENCE (localStorage) ---
         function saveLocalFeeds() {
             try { localStorage.setItem('newsreader_feeds', JSON.stringify(window.accountStates.local)); } catch(e) {}
@@ -2611,13 +2641,17 @@
         // Relative time auto-update every 60s
         setInterval(() => renderTimeline(), 60000);
 
-        // Initial setup data
-        window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
+        // Initial setup — welcome article shown only if no cached articles
+        window.articles = [];
         
         restoreReadLaterState();
         restoreTypographyPrefs();
         restoreLocalFeeds();
         restoreCategoryOrder();
+        restoreArticleCache(); // Show cached articles immediately before network fetch
+        if (window.articles.length === 0) {
+            window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
+        }
 
         // Restore view mode
         try {
