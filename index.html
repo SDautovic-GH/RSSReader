@@ -400,10 +400,6 @@
 
         <!-- PANE 2: Timeline -->
         <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition" style="width: 336px;">
-            <div class="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <input type="text" id="search-input" placeholder="Search articles..." class="w-full px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            
             <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center">
                     <span id="timeline-count" class="mr-2">0 Articles</span>
@@ -650,10 +646,6 @@
                                 <option value="asc" selected>Oldest Published First</option>
                                 <option value="desc">Newest Published First</option>
                             </select>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <label class="text-xs font-medium">Search excerpt & source</label>
-                            <button id="full-search-toggle" onclick="toggleFullSearch()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">OFF</button>
                         </div>
                         <div class="flex items-center justify-between">
                             <label class="text-xs font-medium">Show empty category folders</label>
@@ -1034,7 +1026,6 @@
             if (!list) return;
 
             const sortOrder = document.getElementById('pref-sort-order')?.value || 'asc';
-            const searchQuery = document.getElementById('search-input').value.toLowerCase();
 
             let filtered = window.articles;
 
@@ -1056,17 +1047,7 @@
                 filtered = filtered.filter(a => a.source === window.currentSourceFilter);
             }
 
-            // 3. Search
-            if (searchQuery) {
-                filtered = window._fullSearchEnabled
-                    ? filtered.filter(a =>
-                        a.title.toLowerCase().includes(searchQuery) ||
-                        a.excerpt.toLowerCase().includes(searchQuery) ||
-                        a.source.toLowerCase().includes(searchQuery))
-                    : filtered.filter(a => a.title.toLowerCase().includes(searchQuery));
-            }
-
-            // 4. Sort
+            // 3. Sort
             filtered.sort((a, b) => {
                 const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
                 return sortOrder === 'desc' ? -diff : diff;
@@ -1107,17 +1088,20 @@
                     </div>
                 </div>`;
             }
-            return `<div onclick="selectArticle('${a.id}')" oncontextmenu="showArticleContextMenu(event,'${a.id}')" class="p-4 border-b border-gray-50 dark:border-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors ${selCls}">
-                <div class="flex gap-4">
-                    <div class="flex-1">
-                        <div class="flex items-center justify-between mb-1 text-[10px]">
-                            <div class="flex items-center">${unreadDot}<span class="flex items-center font-bold text-gray-400 uppercase tracking-widest">${favicon}${a.source}</span></div>
-                            <span class="text-gray-400 font-medium">${getRelativeTime(a.timestamp)}</span>
-                        </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white leading-tight mb-1 dynamic-list-title">${a.title}</h3>
-                        <p class="text-gray-500 line-clamp-custom dynamic-list-preview">${a.excerpt}</p>
+            return `<div onclick="selectArticle('${a.id}')" oncontextmenu="showArticleContextMenu(event,'${a.id}')" class="px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors ${selCls}">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 mt-1.5">
+                        ${a.unread ? '<span class="w-2 h-2 bg-blue-500 rounded-full block"></span>' : '<span class="w-2 h-2 rounded-full block opacity-0"></span>'}
                     </div>
-                    ${a.image ? `<img src="${a.image}" loading="lazy" class="w-16 h-16 object-cover rounded-md bg-gray-100 flex-shrink-0" onerror="this.style.display='none'">` : ''}
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-bold text-blue-500 uppercase tracking-widest truncate mr-2">${favicon}${a.source}</span>
+                            <span class="text-[10px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                        </div>
+                        <h3 class="font-bold text-gray-900 dark:text-white leading-snug mb-1 dynamic-list-title">${a.title}</h3>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs line-clamp-custom dynamic-list-preview">${a.excerpt}</p>
+                    </div>
+                    ${a.image ? `<img src="${a.image}" loading="lazy" class="w-14 h-14 object-cover rounded-lg flex-shrink-0" onerror="this.style.display='none'">` : ''}
                 </div>
             </div>`;
         }
