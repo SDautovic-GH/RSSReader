@@ -151,6 +151,8 @@
             --mob-list-title-size: 1.0em;
             --line-height: 1.6;
             --mob-line-height: 1.8;
+            --feed-line-height: 1.0;
+            --mob-feed-line-height: 1.0;
             --mob-folder-size: 1.4em;
             --mob-list-source-size: 1.0em;
             --mob-list-date-size: 1.0em;
@@ -268,9 +270,9 @@
             #read-later-action-btn, #view-density-toggle,
             #viewer-pane .h-12 button[onclick="toggleUnreadManual()"] { display: none !important; }
             /* Mobile sidebar — folder/smart feed sizing via CSS variable */
-            #sidebar-pane .smart-feed-btn { font-size: var(--mob-folder-size) !important; padding-top: 0.6rem !important; padding-bottom: 0.6rem !important; }
-            #sidebar-pane .dynamic-category-text { font-size: var(--mob-folder-size) !important; }
-            #sidebar-pane #feed-list button { font-size: calc(var(--mob-folder-size) * 0.85) !important; padding-top: 0.4rem !important; padding-bottom: 0.4rem !important; }
+            #sidebar-pane .smart-feed-btn { font-size: var(--mob-folder-size) !important; padding-top: 0.6rem !important; padding-bottom: 0.6rem !important; line-height: var(--mob-feed-line-height) !important; }
+            #sidebar-pane .dynamic-category-text { font-size: var(--mob-folder-size) !important; line-height: var(--mob-feed-line-height) !important; }
+            #sidebar-pane #feed-list button { font-size: calc(var(--mob-folder-size) * 0.85) !important; padding-top: 0.4rem !important; padding-bottom: 0.4rem !important; line-height: var(--mob-feed-line-height) !important; }
             /* Article list source name and date size */
             #article-list .list-source-label { font-size: var(--mob-list-source-size) !important; }
             #article-list .list-date-label { font-size: var(--mob-list-date-size) !important; }
@@ -315,7 +317,10 @@
             cursor: pointer;
         }
         body.mob-fullscreen #mob-fs-exit { display: flex; }
-        /* Settings visual hierarchy */
+        /* Feed screen line height */
+        #feed-list, #sidebar-pane .smart-feed-btn, #sidebar-pane .dynamic-category-text {
+            line-height: var(--feed-line-height) !important;
+        }
         .settings-section-label {
             font-size: 11px; font-weight: 700; text-transform: uppercase;
             letter-spacing: 0.08em; color: #94a3b8;
@@ -720,6 +725,13 @@
                             </div>
                             <input type="range" min="5" max="12" value="8" id="category-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('category', this.value)">
                         </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="settings-item-label">Line Height</span>
+                                <span class="text-xs font-bold text-blue-500" id="feed-line-height-val">1.0</span>
+                            </div>
+                            <input type="range" min="8" max="16" value="10" id="feed-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFeedLineHeight(this.value)">
+                        </div>
                     </div>
 
                     <p class="settings-group-label">Article List</p>
@@ -785,6 +797,13 @@
                                 <span class="text-xs font-bold text-blue-500" id="mob-folder-size-val">1.4em</span>
                             </div>
                             <input type="range" min="10" max="18" value="14" id="mob-folder-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobFolderSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="settings-item-label">Line Height</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-feed-line-height-val">1.0</span>
+                            </div>
+                            <input type="range" min="8" max="16" value="10" id="mob-feed-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobFeedLineHeight(this.value)">
                         </div>
                     </div>
 
@@ -1983,6 +2002,22 @@
             saveTypographyPrefs();
         };
 
+        window.updateFeedLineHeight = (v) => {
+            const lh = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--feed-line-height', lh);
+            const label = document.getElementById('feed-line-height-val');
+            if (label) label.textContent = lh;
+            saveTypographyPrefs();
+        };
+
+        window.updateMobFeedLineHeight = (v) => {
+            const lh = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--mob-feed-line-height', lh);
+            const label = document.getElementById('mob-feed-line-height-val');
+            if (label) label.textContent = lh;
+            saveTypographyPrefs();
+        };
+
         window.updateLineHeight = (v) => {
             const lh = (v / 10).toFixed(1);
             document.documentElement.style.setProperty('--line-height', lh);
@@ -2360,7 +2395,8 @@
                 mobListTitleSize: get('mob-list-title-slider'),
                 lineHeight: get('line-height-slider'), mobLineHeight: get('mob-line-height-slider'),
                 mobFolderSize: get('mob-folder-size-slider'),
-                mobListSourceSize: get('mob-list-source-slider'), mobListDateSize: get('mob-list-date-slider')
+                mobListSourceSize: get('mob-list-source-slider'), mobListDateSize: get('mob-list-date-slider'),
+                feedLineHeight: get('feed-line-height-slider'), mobFeedLineHeight: get('mob-feed-line-height-slider')
                 }));
             } catch(e) {}
         }
@@ -2410,6 +2446,8 @@
                 { key: 'mobFolderSize',       id: 'mob-folder-size-slider',   label: 'mob-folder-size-val',   prop: '--mob-folder-size',        fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobListSourceSize',   id: 'mob-list-source-slider',   label: 'mob-list-source-val',   prop: '--mob-list-source-size',   fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobListDateSize',     id: 'mob-list-date-slider',     label: 'mob-list-date-val',     prop: '--mob-list-date-size',     fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'feedLineHeight',      id: 'feed-line-height-slider',  label: 'feed-line-height-val',  prop: '--feed-line-height',       fmt: v => (v/10).toFixed(1) },
+                { key: 'mobFeedLineHeight',   id: 'mob-feed-line-height-slider', label: 'mob-feed-line-height-val', prop: '--mob-feed-line-height', fmt: v => (v/10).toFixed(1) },
             ];
             mobSliders.forEach(({ key, id, label, prop, fmt }) => {
                 if (!prefs[key]) return;
