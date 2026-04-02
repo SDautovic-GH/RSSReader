@@ -135,7 +135,6 @@
         }
 
         :root {
-            --list-title-font-size: 16px;
             --list-preview-font-size: 15px;
             --view-font-size: 16px;
             --category-font-size: 14px;
@@ -159,7 +158,6 @@
         }
 
         .dynamic-list-title { 
-            font-size: var(--list-title-font-size); 
             font-family: var(--list-font-family);
         }
         .dynamic-list-preview { 
@@ -1058,14 +1056,13 @@
         window.contextMenuArticleId = null;
         window._autoRefreshTimer = null;
         window._newArticleCount = 0;
-        window._pendingNewArticles = [];
         window._feedHealth = {};
-        window._fullSearchEnabled = false;
         window._viewMode = 'list';
         window._ttsActive = false;
         window._readLaterLinks = new Set();
-        window._categoryOrder = []; // persisted manual category sort order
-        window._showEmptyCategories = false; // hide empty categories by default
+        window._categoryOrder = [];
+        window._showEmptyCategories = false;
+        window._navigating = false;
 
         // Helper: URL to Links — walks text nodes only, never touches attributes
         function linkify(html) {
@@ -1293,6 +1290,9 @@
             });
 
             window.currentTimeline = filtered;
+            // Refresh nav snapshot whenever the list is rendered from a filter change
+            // (not during navigation — selectArticle will preserve the existing snapshot)
+            if (!window._navigating) window._navSnapshot = filtered.slice();
 
             const listEl = document.getElementById('article-list');
             listEl.classList.toggle('card-view', window._viewMode === 'card');
@@ -1895,12 +1895,19 @@
         };
 
         // --- NAVIGATE PREV/NEXT ---
+        // _navSnapshot holds the timeline at the moment the user enters reader view,
+        // so Prev/Next keep working even after articles are marked read and drop out of the filtered list.
+        window._navSnapshot = [];
+
         window.navigateArticle = (direction) => {
-            if (!window.currentTimeline?.length) return;
-            const idx = window.currentTimeline.findIndex(a => a.id === window.currentArticle?.id);
+            const nav = window._navSnapshot.length ? window._navSnapshot : window.currentTimeline;
+            if (!nav.length) return;
+            const idx = nav.findIndex(a => a.id === window.currentArticle?.id);
             const newIdx = idx + direction;
-            if (newIdx >= 0 && newIdx < window.currentTimeline.length) {
-                selectArticle(window.currentTimeline[newIdx].id);
+            if (newIdx >= 0 && newIdx < nav.length) {
+                window._navigating = true;
+                selectArticle(nav[newIdx].id);
+                window._navigating = false;
             }
         };
 
@@ -1950,20 +1957,6 @@
             document.getElementById('view-density-toggle').textContent = window._viewMode === 'card' ? 'CARD' : 'LIST';
             renderTimeline();
             try { localStorage.setItem('newsreader_viewmode', window._viewMode); } catch(e) {}
-        };
-
-        // --- FULL-TEXT SEARCH TOGGLE ---
-        window.toggleFullSearch = () => {
-            window._fullSearchEnabled = !window._fullSearchEnabled;
-            const btn = document.getElementById('full-search-toggle');
-            if (btn) {
-                btn.textContent = window._fullSearchEnabled ? 'ON' : 'OFF';
-                btn.className = window._fullSearchEnabled
-                    ? 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400';
-            }
-            renderTimeline();
-            try { localStorage.setItem('newsreader_fullsearch', window._fullSearchEnabled ? '1' : '0'); } catch(e) {}
         };
 
         window.toggleShowEmptyCategories = () => {
@@ -2077,15 +2070,6 @@
         }
         
         // --- TYPOGRAPHY HANDLERS ---
-        window.updateFontSize = (t, v) => {
-            document.documentElement.style.setProperty(`--${t}-font-size`, `${v}px`);
-            const label = document.getElementById(`${t}-font-val`);
-            if (label) label.textContent = `${v}px`;
-            if (t.includes('list')) renderTimeline();
-            if (t === 'category') renderFeeds();
-            saveTypographyPrefs();
-        };
-
         window.updateFontSizeEm = (t, v) => {
             const em = (v / 10).toFixed(1);
             document.documentElement.style.setProperty(`--${t}-font-size`, `${em}em`);
@@ -2117,118 +2101,43 @@
             saveTypographyPrefs();
         };
 
-        window.updateMobListTitleSize = (v) => {
+        window.updateArticleTitleSize = (v) => {
             const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-list-title-size', `${em}em`);
-            const label = document.getElementById('mob-list-title-val');
+            window._savedArticleTitleSize = `${em}em`;
+            document.getElementById('article-title').style.fontSize = `${em}em`;
+            const label = document.getElementById('article-title-size-val');
             if (label) label.textContent = `${em}em`;
             saveTypographyPrefs();
         };
 
-        window.updateFeedLineHeight = (v) => {
-            const lh = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--feed-line-height', lh);
-            const label = document.getElementById('feed-line-height-val');
-            if (label) label.textContent = lh;
-            saveTypographyPrefs();
+        // Generic slider handler — driven by lookup table
+        const SLIDER_MAP = {
+            updateMobListTitleSize:    { prop: '--mob-list-title-size',    label: 'mob-list-title-val',        suffix: 'em', rerender: null },
+            updateFeedLineHeight:      { prop: '--feed-line-height',        label: 'feed-line-height-val',      suffix: '',   rerender: null },
+            updateMobFeedLineHeight:   { prop: '--mob-feed-line-height',    label: 'mob-feed-line-height-val',  suffix: '',   rerender: null },
+            updateLineHeight:          { prop: '--line-height',             label: 'line-height-val',           suffix: '',   rerender: null },
+            updateMobLineHeight:       { prop: '--mob-line-height',         label: 'mob-line-height-val',       suffix: '',   rerender: null },
+            updateMobFolderSize:       { prop: '--mob-folder-size',         label: 'mob-folder-size-val',       suffix: 'em', rerender: null },
+            updateMobListSourceSize:   { prop: '--mob-list-source-size',    label: 'mob-list-source-val',       suffix: 'em', rerender: null },
+            updateMobListDateSize:     { prop: '--mob-list-date-size',      label: 'mob-list-date-val',         suffix: 'em', rerender: null },
+            updateMobFeedNameSize:     { prop: '--mob-feed-name-size',      label: 'mob-feed-name-val',         suffix: 'em', rerender: null },
+            updateMobArticleTitleSize: { prop: '--mob-article-title-size',  label: 'mob-article-title-val',     suffix: 'em', rerender: null },
+            updateMobBodySize:         { prop: '--mob-body-size',           label: 'mob-body-val',              suffix: 'em', rerender: null },
+            updateMobAuthorSize:       { prop: '--mob-author-size',         label: 'mob-author-val',            suffix: 'em', rerender: null },
+            updateListTitleEmSize:     { prop: '--list-title-em-size',      label: 'list-title-em-val',         suffix: 'em', rerender: 'timeline' },
+            updateMobListPreviewSize:  { prop: '--mob-list-preview-size',   label: 'mob-list-preview-val',      suffix: 'em', rerender: null },
         };
-
-        window.updateMobFeedLineHeight = (v) => {
-            const lh = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-feed-line-height', lh);
-            const label = document.getElementById('mob-feed-line-height-val');
-            if (label) label.textContent = lh;
-            saveTypographyPrefs();
-        };
-
-        window.updateLineHeight = (v) => {
-            const lh = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--line-height', lh);
-            const label = document.getElementById('line-height-val');
-            if (label) label.textContent = lh;
-            saveTypographyPrefs();
-        };
-
-        window.updateMobLineHeight = (v) => {
-            const lh = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-line-height', lh);
-            const label = document.getElementById('mob-line-height-val');
-            if (label) label.textContent = lh;
-            saveTypographyPrefs();
-        };
-
-        window.updateMobFolderSize = (v) => {
-            const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-folder-size', `${em}em`);
-            const label = document.getElementById('mob-folder-size-val');
-            if (label) label.textContent = `${em}em`;
-            saveTypographyPrefs();
-        };
-
-        window.updateMobListSourceSize = (v) => {
-            const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-list-source-size', `${em}em`);
-            const label = document.getElementById('mob-list-source-val');
-            if (label) label.textContent = `${em}em`;
-            saveTypographyPrefs();
-        };
-
-        window.updateMobListDateSize = (v) => {
-            const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-list-date-size', `${em}em`);
-            const label = document.getElementById('mob-list-date-val');
-            if (label) label.textContent = `${em}em`;
-            saveTypographyPrefs();
-        };
-
-        window.updateMobFeedNameSize = (v) => {
-            const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-feed-name-size', `${em}em`);
-            const label = document.getElementById('mob-feed-name-val');
-            if (label) label.textContent = `${em}em`;
-            saveTypographyPrefs();
-        };
-
-        window.updateMobArticleTitleSize = (v) => {
-            const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-article-title-size', `${em}em`);
-            const label = document.getElementById('mob-article-title-val');
-            if (label) label.textContent = `${em}em`;
-            saveTypographyPrefs();
-        };
-
-        window.updateMobBodySize = (v) => {
-            const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-body-size', `${em}em`);
-            const label = document.getElementById('mob-body-val');
-            if (label) label.textContent = `${em}em`;
-            saveTypographyPrefs();
-        };
-
-        window.updateMobAuthorSize = (v) => {
-            const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-author-size', `${em}em`);
-            const label = document.getElementById('mob-author-val');
-            if (label) label.textContent = `${em}em`;
-            saveTypographyPrefs();
-        };
-
-        window.updateListTitleEmSize = (v) => {
-            const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--list-title-em-size', `${em}em`);
-            const label = document.getElementById('list-title-em-val');
-            if (label) label.textContent = `${em}em`;
-            renderTimeline();
-            saveTypographyPrefs();
-        };
-
-        window.updateMobListPreviewSize = (v) => {
-            const em = (v / 10).toFixed(1);
-            document.documentElement.style.setProperty('--mob-list-preview-size', `${em}em`);
-            const label = document.getElementById('mob-list-preview-val');
-            if (label) label.textContent = `${em}em`;
-            saveTypographyPrefs();
-        };
+        Object.entries(SLIDER_MAP).forEach(([name, { prop, label: labelId, suffix, rerender }]) => {
+            window[name] = (v) => {
+                const val = (v / 10).toFixed(1);
+                const display = val + suffix;
+                document.documentElement.style.setProperty(prop, display);
+                const lb = document.getElementById(labelId);
+                if (lb) lb.textContent = display;
+                if (rerender === 'timeline') renderTimeline();
+                saveTypographyPrefs();
+            };
+        });
 
         window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
         window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
@@ -2497,30 +2406,22 @@
         };
 
         // --- TYPOGRAPHY PERSISTENCE ---
-        const SLIDER_DEFS = [
-            { key: 'listTitleSize',   slider: 'list-title-font-slider',  label: 'list-title-font-val',  prop: '--list-title-font-size',   suffix: 'px' },
-            { key: 'listPreviewSize', slider: 'list-preview-font-slider', label: 'list-preview-font-val',prop: '--list-preview-font-size',  suffix: 'em', divisor: 10 },
-            { key: 'viewSize',        slider: 'view-font-slider',         label: 'view-font-val',        prop: '--view-font-size',          suffix: 'em', divisor: 10 },
-            { key: 'categorySize',    slider: 'category-font-slider',     label: 'category-font-val',    prop: '--category-font-size',      suffix: 'em', divisor: 10 },
-        ];
-
         function saveTypographyPrefs() {
             const get = id => document.getElementById(id)?.value;
             try {
                 localStorage.setItem('newsreader_prefs', JSON.stringify({
-                    listTitleSize: get('list-title-font-slider'), listPreviewSize: get('list-preview-font-slider'),
-                    viewSize: get('view-font-slider'), categorySize: get('category-font-slider'),
-                    previewLines: get('lines-slider'), listFont: get('list-font-family-select'),
-                    viewFont: get('view-font-family-select'), sortOrder: get('pref-sort-order'),
-                    articleTitleSize: get('article-title-size-slider'), autoRefresh: get('pref-auto-refresh'),
-                mobFeedNameSize: get('mob-feed-name-slider'), mobArticleTitleSize: get('mob-article-title-slider'),
-                mobBodySize: get('mob-body-slider'), mobAuthorSize: get('mob-author-slider'),
-                listTitleEmSize: get('list-title-em-slider'), mobListPreviewSize: get('mob-list-preview-slider'),
-                mobListTitleSize: get('mob-list-title-slider'),
-                lineHeight: get('line-height-slider'), mobLineHeight: get('mob-line-height-slider'),
-                mobFolderSize: get('mob-folder-size-slider'),
-                mobListSourceSize: get('mob-list-source-slider'), mobListDateSize: get('mob-list-date-slider'),
-                feedLineHeight: get('feed-line-height-slider'), mobFeedLineHeight: get('mob-feed-line-height-slider')
+                    listPreviewSize: get('list-preview-font-slider'), viewSize: get('view-font-slider'),
+                    categorySize: get('category-font-slider'), previewLines: get('lines-slider'),
+                    listFont: get('list-font-family-select'), viewFont: get('view-font-family-select'),
+                    sortOrder: get('pref-sort-order'), articleTitleSize: get('article-title-size-slider'),
+                    autoRefresh: get('pref-auto-refresh'), listTitleEmSize: get('list-title-em-slider'),
+                    mobFeedNameSize: get('mob-feed-name-slider'), mobArticleTitleSize: get('mob-article-title-slider'),
+                    mobBodySize: get('mob-body-slider'), mobAuthorSize: get('mob-author-slider'),
+                    mobListPreviewSize: get('mob-list-preview-slider'), mobListTitleSize: get('mob-list-title-slider'),
+                    lineHeight: get('line-height-slider'), mobLineHeight: get('mob-line-height-slider'),
+                    mobFolderSize: get('mob-folder-size-slider'),
+                    mobListSourceSize: get('mob-list-source-slider'), mobListDateSize: get('mob-list-date-slider'),
+                    feedLineHeight: get('feed-line-height-slider'), mobFeedLineHeight: get('mob-feed-line-height-slider')
                 }));
             } catch(e) {}
         }
@@ -2530,17 +2431,34 @@
             try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')); } catch(e) {}
             if (!prefs) return;
             const root = document.documentElement;
-            SLIDER_DEFS.forEach(({ key, slider, label, prop, suffix, divisor }) => {
-                const v = prefs[key]; if (!v) return;
-                const el = document.getElementById(slider); if (el) el.value = v;
-                const lb = document.getElementById(label);
-                const display = divisor ? (v / divisor).toFixed(1) + suffix : v + suffix;
-                if (lb) lb.textContent = display;
-                root.style.setProperty(prop, display);
+            const sliders = [
+                { key: 'listPreviewSize',     id: 'list-preview-font-slider', label: 'list-preview-font-val', prop: '--list-preview-font-size',  fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'viewSize',            id: 'view-font-slider',          label: 'view-font-val',         prop: '--view-font-size',           fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'categorySize',        id: 'category-font-slider',      label: 'category-font-val',     prop: '--category-font-size',       fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'listTitleEmSize',     id: 'list-title-em-slider',      label: 'list-title-em-val',     prop: '--list-title-em-size',       fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobFeedNameSize',     id: 'mob-feed-name-slider',      label: 'mob-feed-name-val',     prop: '--mob-feed-name-size',       fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobArticleTitleSize', id: 'mob-article-title-slider',  label: 'mob-article-title-val', prop: '--mob-article-title-size',   fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobBodySize',         id: 'mob-body-slider',           label: 'mob-body-val',          prop: '--mob-body-size',            fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobAuthorSize',       id: 'mob-author-slider',         label: 'mob-author-val',        prop: '--mob-author-size',          fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobListPreviewSize',  id: 'mob-list-preview-slider',   label: 'mob-list-preview-val',  prop: '--mob-list-preview-size',    fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobListTitleSize',    id: 'mob-list-title-slider',     label: 'mob-list-title-val',    prop: '--mob-list-title-size',      fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobFolderSize',       id: 'mob-folder-size-slider',    label: 'mob-folder-size-val',   prop: '--mob-folder-size',          fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobListSourceSize',   id: 'mob-list-source-slider',    label: 'mob-list-source-val',   prop: '--mob-list-source-size',     fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobListDateSize',     id: 'mob-list-date-slider',      label: 'mob-list-date-val',     prop: '--mob-list-date-size',       fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'lineHeight',          id: 'line-height-slider',        label: 'line-height-val',       prop: '--line-height',              fmt: v => (v/10).toFixed(1) },
+                { key: 'mobLineHeight',       id: 'mob-line-height-slider',    label: 'mob-line-height-val',   prop: '--mob-line-height',          fmt: v => (v/10).toFixed(1) },
+                { key: 'feedLineHeight',      id: 'feed-line-height-slider',   label: 'feed-line-height-val',  prop: '--feed-line-height',         fmt: v => (v/10).toFixed(1) },
+                { key: 'mobFeedLineHeight',   id: 'mob-feed-line-height-slider',label: 'mob-feed-line-height-val',prop: '--mob-feed-line-height',  fmt: v => (v/10).toFixed(1) },
+            ];
+            sliders.forEach(({ key, id, label, prop, fmt }) => {
+                if (!prefs[key]) return;
+                const el = document.getElementById(id); if (el) el.value = prefs[key];
+                const lb = document.getElementById(label); if (lb) lb.textContent = fmt(prefs[key]);
+                root.style.setProperty(prop, fmt(prefs[key]));
             });
             if (prefs.previewLines) {
                 const el = document.getElementById('lines-slider'); if (el) el.value = prefs.previewLines;
-                const lb = document.getElementById('lines-val');    if (lb) lb.textContent = prefs.previewLines + ' Lines';
+                const lb = document.getElementById('lines-val'); if (lb) lb.textContent = prefs.previewLines + ' Lines';
                 root.style.setProperty('--list-preview-lines', prefs.previewLines);
             }
             [['listFont','list-font-family-select','--list-font-family'],
@@ -2557,28 +2475,6 @@
                 window._savedArticleTitleSize = em + 'em';
             }
             if (prefs.autoRefresh) { const el = document.getElementById('pref-auto-refresh'); if (el) el.value = prefs.autoRefresh; }
-            const mobSliders = [
-                { key: 'mobFeedNameSize',     id: 'mob-feed-name-slider',     label: 'mob-feed-name-val',     prop: '--mob-feed-name-size',     fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'mobArticleTitleSize', id: 'mob-article-title-slider', label: 'mob-article-title-val', prop: '--mob-article-title-size', fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'mobBodySize',         id: 'mob-body-slider',          label: 'mob-body-val',          prop: '--mob-body-size',          fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'mobAuthorSize',       id: 'mob-author-slider',        label: 'mob-author-val',        prop: '--mob-author-size',        fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'listTitleEmSize',     id: 'list-title-em-slider',     label: 'list-title-em-val',     prop: '--list-title-em-size',     fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'mobListPreviewSize',  id: 'mob-list-preview-slider',  label: 'mob-list-preview-val',  prop: '--mob-list-preview-size',  fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'mobListTitleSize',    id: 'mob-list-title-slider',    label: 'mob-list-title-val',    prop: '--mob-list-title-size',    fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'lineHeight',          id: 'line-height-slider',       label: 'line-height-val',       prop: '--line-height',            fmt: v => (v/10).toFixed(1) },
-                { key: 'mobLineHeight',       id: 'mob-line-height-slider',   label: 'mob-line-height-val',   prop: '--mob-line-height',        fmt: v => (v/10).toFixed(1) },
-                { key: 'mobFolderSize',       id: 'mob-folder-size-slider',   label: 'mob-folder-size-val',   prop: '--mob-folder-size',        fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'mobListSourceSize',   id: 'mob-list-source-slider',   label: 'mob-list-source-val',   prop: '--mob-list-source-size',   fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'mobListDateSize',     id: 'mob-list-date-slider',     label: 'mob-list-date-val',     prop: '--mob-list-date-size',     fmt: v => (v/10).toFixed(1)+'em' },
-                { key: 'feedLineHeight',      id: 'feed-line-height-slider',  label: 'feed-line-height-val',  prop: '--feed-line-height',       fmt: v => (v/10).toFixed(1) },
-                { key: 'mobFeedLineHeight',   id: 'mob-feed-line-height-slider', label: 'mob-feed-line-height-val', prop: '--mob-feed-line-height', fmt: v => (v/10).toFixed(1) },
-            ];
-            mobSliders.forEach(({ key, id, label, prop, fmt }) => {
-                if (!prefs[key]) return;
-                const el = document.getElementById(id); if (el) el.value = prefs[key];
-                const lb = document.getElementById(label); if (lb) lb.textContent = fmt(prefs[key]);
-                document.documentElement.style.setProperty(prop, fmt(prefs[key]));
-            });
         }
 
         // --- FEED PERSISTENCE (localStorage) ---
@@ -2674,13 +2570,6 @@
         // Save sort order preference on change
         document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
 
-        // Debounced search
-        let _searchDebounce = null;
-        document.getElementById('search-input')?.addEventListener('input', () => {
-            clearTimeout(_searchDebounce);
-            _searchDebounce = setTimeout(() => renderTimeline(), 200);
-        });
-
         // Relative time auto-update every 60s
         setInterval(() => renderTimeline(), 60000);
 
@@ -2696,15 +2585,6 @@
         try {
             const vm = localStorage.getItem('newsreader_viewmode');
             if (vm === 'card') { window._viewMode = 'card'; const btn = document.getElementById('view-density-toggle'); if (btn) btn.textContent = 'CARD'; }
-        } catch(e) {}
-
-        // Restore full-text search
-        try {
-            if (localStorage.getItem('newsreader_fullsearch') === '1') {
-                window._fullSearchEnabled = true;
-                const btn = document.getElementById('full-search-toggle');
-                if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
-            }
         } catch(e) {}
 
         try {
