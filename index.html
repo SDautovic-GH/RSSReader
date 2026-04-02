@@ -75,8 +75,7 @@
         .dark .dynamic-list-preview { color: #cbd5e1 !important; }
         .dark #article-body { color: #e2e8f0 !important; }
         .dark #article-title { color: #e2e8f0 !important; }
-        .dark #article-author { color: #cbd5e1 !important; }
-        .dark #article-date { color: #94a3b8 !important; }
+        #article-author, #article-date { font-size: var(--article-meta-size) !important; }
 
         .line-clamp-custom {
             display: -webkit-box;
@@ -156,6 +155,7 @@
             --mob-list-date-size: 1.0em;
             --list-source-size: 1.0em;
             --desk-feed-name-size: 1.0em;
+            --article-meta-size: 0.9em;
         }
 
         .dynamic-list-title { 
@@ -911,6 +911,13 @@
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
+                                <span class="settings-item-label">Author / Date Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="article-meta-size-val">0.9em</span>
+                            </div>
+                            <input type="range" min="5" max="15" value="9" id="article-meta-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateArticleMetaSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Line Height</span>
                                 <span class="text-xs font-bold text-blue-500" id="line-height-val">1.6</span>
                             </div>
@@ -981,6 +988,13 @@
                                 <span class="text-xs font-bold text-blue-500" id="mob-article-title-val">1.1em</span>
                             </div>
                             <input type="range" min="8" max="25" value="11" id="mob-article-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobArticleTitleSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="settings-item-label">Author / Date Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-author-val">0.9em</span>
+                            </div>
+                            <input type="range" min="5" max="15" value="9" id="mob-author-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobAuthorSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
@@ -2123,6 +2137,8 @@
         // Generic slider handler — driven by lookup table
         const SLIDER_MAP = {
             updateDeskFeedNameSize:    { prop: '--desk-feed-name-size',     label: 'desk-feed-name-val',        suffix: 'em', rerender: null },
+            updateArticleMetaSize:     { prop: '--article-meta-size',       label: 'article-meta-size-val',     suffix: 'em', rerender: null },
+            updateMobAuthorSize:       { prop: '--mob-author-size',         label: 'mob-author-val',            suffix: 'em', rerender: null },
             updateMobListTitleSize:    { prop: '--mob-list-title-size',     label: 'mob-list-title-val',        suffix: 'em', rerender: null },
             updateFeedLineHeight:      { prop: '--feed-line-height',        label: 'feed-line-height-val',      suffix: '',   rerender: null },
             updateMobFeedLineHeight:   { prop: '--mob-feed-line-height',    label: 'mob-feed-line-height-val',  suffix: '',   rerender: null },
@@ -2424,8 +2440,9 @@
                     sortOrder: get('pref-sort-order'), articleTitleSize: get('article-title-size-slider'),
                     autoRefresh: get('pref-auto-refresh'), listTitleEmSize: get('list-title-em-slider'),
                     deskFeedNameSize: get('desk-feed-name-slider'),
+                    articleMetaSize: get('article-meta-size-slider'),
                     mobFeedNameSize: get('mob-feed-name-slider'), mobArticleTitleSize: get('mob-article-title-slider'),
-                    mobBodySize: get('mob-body-slider'),
+                    mobBodySize: get('mob-body-slider'), mobAuthorSize: get('mob-author-slider'),
                     mobListPreviewSize: get('mob-list-preview-slider'), mobListTitleSize: get('mob-list-title-slider'),
                     lineHeight: get('line-height-slider'), mobLineHeight: get('mob-line-height-slider'),
                     mobFolderSize: get('mob-folder-size-slider'),
@@ -2445,9 +2462,11 @@
                 { key: 'categorySize',        id: 'category-font-slider',       label: 'category-font-val',       prop: '--category-font-size',       fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'listTitleEmSize',     id: 'list-title-em-slider',       label: 'list-title-em-val',       prop: '--list-title-em-size',       fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'deskFeedNameSize',    id: 'desk-feed-name-slider',      label: 'desk-feed-name-val',      prop: '--desk-feed-name-size',      fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'articleMetaSize',     id: 'article-meta-size-slider',   label: 'article-meta-size-val',   prop: '--article-meta-size',        fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobFeedNameSize',     id: 'mob-feed-name-slider',       label: 'mob-feed-name-val',       prop: '--mob-feed-name-size',       fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobArticleTitleSize', id: 'mob-article-title-slider',   label: 'mob-article-title-val',   prop: '--mob-article-title-size',   fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobBodySize',         id: 'mob-body-slider',            label: 'mob-body-val',            prop: '--mob-body-size',            fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'mobAuthorSize',       id: 'mob-author-slider',          label: 'mob-author-val',          prop: '--mob-author-size',          fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobListPreviewSize',  id: 'mob-list-preview-slider',    label: 'mob-list-preview-val',    prop: '--mob-list-preview-size',    fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobListTitleSize',    id: 'mob-list-title-slider',      label: 'mob-list-title-val',      prop: '--mob-list-title-size',      fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobFolderSize',       id: 'mob-folder-size-slider',     label: 'mob-folder-size-val',     prop: '--mob-folder-size',          fmt: v => (v/10).toFixed(1)+'em' },
