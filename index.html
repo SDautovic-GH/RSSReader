@@ -66,6 +66,11 @@
         /* Article list title em size (desktop + mobile) */
         .dynamic-list-title { font-size: var(--list-title-em-size) !important; }
 
+        /* Global line height for article content and list */
+        .dynamic-list-title, .dynamic-list-preview, #article-body, #article-title {
+            line-height: var(--line-height) !important;
+        }
+
         /* Whiter article list and viewer text in dark mode */
         .dark .dynamic-list-title { color: #f1f5f9 !important; }
         .dark .dynamic-list-preview { color: #cbd5e1 !important; }
@@ -144,6 +149,8 @@
             --list-title-em-size: 1.0em;
             --mob-list-preview-size: 0.7em;
             --mob-list-title-size: 1.0em;
+            --line-height: 1.6;
+            --mob-line-height: 1.8;
         }
 
         .dynamic-list-title { 
@@ -269,6 +276,9 @@
             /* Use higher specificity to override global .dynamic-list-title rule */
             #article-list .dynamic-list-title { font-size: var(--mob-list-title-size) !important; }
             #article-list .dynamic-list-preview { font-size: var(--mob-list-preview-size) !important; }
+            .dynamic-list-title, .dynamic-list-preview, #article-body, #article-title {
+                line-height: var(--mob-line-height) !important;
+            }
         }
         #mobile-tab-bar { display: none; }
         #mobile-reader-bar { display: none; }
@@ -715,6 +725,13 @@
                             </div>
                             <input type="range" min="2" max="20" value="10" id="lines-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateLines(this.value)">
                         </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Line Height</span>
+                                <span class="text-xs font-bold text-blue-500" id="line-height-val">1.6</span>
+                            </div>
+                            <input type="range" min="8" max="20" value="16" id="line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateLineHeight(this.value)">
+                        </div>
                     </div>
                 </div>
 
@@ -763,6 +780,13 @@
                                 <span class="text-xs font-bold text-blue-500" id="mob-article-title-val">1.1em</span>
                             </div>
                             <input type="range" min="8" max="25" value="11" id="mob-article-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobArticleTitleSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-sm font-medium">Line Height</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-line-height-val">1.8</span>
+                            </div>
+                            <input type="range" min="8" max="20" value="18" id="mob-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobLineHeight(this.value)">
                         </div>
                     </div>
                 </div>
@@ -1890,6 +1914,22 @@
             saveTypographyPrefs();
         };
 
+        window.updateLineHeight = (v) => {
+            const lh = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--line-height', lh);
+            const label = document.getElementById('line-height-val');
+            if (label) label.textContent = lh;
+            saveTypographyPrefs();
+        };
+
+        window.updateMobLineHeight = (v) => {
+            const lh = (v / 10).toFixed(1);
+            document.documentElement.style.setProperty('--mob-line-height', lh);
+            const label = document.getElementById('mob-line-height-val');
+            if (label) label.textContent = lh;
+            saveTypographyPrefs();
+        };
+
         window.updateMobFeedNameSize = (v) => {
             const em = (v / 10).toFixed(1);
             document.documentElement.style.setProperty('--mob-feed-name-size', `${em}em`);
@@ -2224,7 +2264,8 @@
                 mobFeedNameSize: get('mob-feed-name-slider'), mobArticleTitleSize: get('mob-article-title-slider'),
                 mobBodySize: get('mob-body-slider'), mobAuthorSize: get('mob-author-slider'),
                 listTitleEmSize: get('list-title-em-slider'), mobListPreviewSize: get('mob-list-preview-slider'),
-                mobListTitleSize: get('mob-list-title-slider')
+                mobListTitleSize: get('mob-list-title-slider'),
+                lineHeight: get('line-height-slider'), mobLineHeight: get('mob-line-height-slider')
                 }));
             } catch(e) {}
         }
@@ -2269,6 +2310,8 @@
                 { key: 'listTitleEmSize',     id: 'list-title-em-slider',     label: 'list-title-em-val',     prop: '--list-title-em-size',     fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobListPreviewSize',  id: 'mob-list-preview-slider',  label: 'mob-list-preview-val',  prop: '--mob-list-preview-size',  fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobListTitleSize',    id: 'mob-list-title-slider',    label: 'mob-list-title-val',    prop: '--mob-list-title-size',    fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'lineHeight',          id: 'line-height-slider',       label: 'line-height-val',       prop: '--line-height',            fmt: v => (v/10).toFixed(1) },
+                { key: 'mobLineHeight',       id: 'mob-line-height-slider',   label: 'mob-line-height-val',   prop: '--mob-line-height',        fmt: v => (v/10).toFixed(1) },
             ];
             mobSliders.forEach(({ key, id, label, prop, fmt }) => {
                 if (!prefs[key]) return;
