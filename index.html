@@ -645,7 +645,7 @@
                         
                         <article id="article-content" class="hidden animate-in fade-in duration-300">
                             <p id="article-meta" onclick="filterByCurrentSource()" class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest mb-2 cursor-pointer hover:opacity-70 transition-opacity">
-                                <img id="article-favicon" src="" class="w-4 h-4 rounded-sm hidden" onerror="this.style.display='none'">
+                                <img id="article-favicon" src="" class="w-4 h-4 rounded-sm hidden">
                                 <span id="article-source-label"></span>
                             </p>
                             <h1 id="article-title" onclick="openExternal()" class="font-extrabold leading-tight mb-6 dark:text-white cursor-pointer hover:opacity-80 transition-opacity" style="font-size: 1.7em;"></h1>
@@ -1369,12 +1369,22 @@
             const faviconEl = document.getElementById('article-favicon');
             const sourceLabelEl = document.getElementById('article-source-label');
             const feedObj = window.feeds.find(f => f.name === article.source);
-            if (faviconEl && feedObj?.favicon) {
-                faviconEl.src = feedObj.favicon;
-                faviconEl.classList.remove('hidden');
-                faviconEl.style.display = '';
-            } else if (faviconEl) {
-                faviconEl.classList.add('hidden');
+            if (faviconEl) {
+                // Use stored favicon, fall back to Google S2 derived from article link
+                let faviconUrl = feedObj?.favicon;
+                if (!faviconUrl && article.link) {
+                    try {
+                        const domain = new URL(article.link).hostname;
+                        faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+                    } catch(e) {}
+                }
+                if (faviconUrl) {
+                    faviconEl.src = faviconUrl;
+                    faviconEl.classList.remove('hidden');
+                    faviconEl.style.display = '';
+                } else {
+                    faviconEl.classList.add('hidden');
+                }
             }
             if (sourceLabelEl) sourceLabelEl.textContent = article.source;
             const titleEl = document.getElementById('article-title');
