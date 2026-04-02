@@ -155,6 +155,7 @@
             --mob-folder-size: 1.4em;
             --mob-list-source-size: 1.0em;
             --mob-list-date-size: 1.0em;
+            --list-source-size: 1.0em;
         }
 
         .dynamic-list-title { 
@@ -433,7 +434,7 @@
             }
         }
 
-        .mob-unread-count { font-size: 11px; }
+        .list-source-label { font-size: var(--list-source-size); }
         /* No dividers between category rows inside the card */
         #feed-list [data-category] { border: none !important; }
         #feed-list, #sidebar-pane .smart-feed-btn, #sidebar-pane .dynamic-category-text {
@@ -643,7 +644,10 @@
                         </div>
                         
                         <article id="article-content" class="hidden animate-in fade-in duration-300">
-                            <p id="article-meta" onclick="filterByCurrentSource()" class="text-[10px] font-bold uppercase tracking-widest mb-2 cursor-pointer hover:opacity-70 transition-opacity"></p>
+                            <p id="article-meta" onclick="filterByCurrentSource()" class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest mb-2 cursor-pointer hover:opacity-70 transition-opacity">
+                                <img id="article-favicon" src="" class="w-4 h-4 rounded-sm hidden" onerror="this.style.display='none'">
+                                <span id="article-source-label"></span>
+                            </p>
                             <h1 id="article-title" onclick="openExternal()" class="font-extrabold leading-tight mb-6 dark:text-white cursor-pointer hover:opacity-80 transition-opacity" style="font-size: 1.7em;"></h1>
                             <div class="flex items-center text-xs text-gray-500 mb-8 pb-4 border-b border-gray-100 dark:border-gray-800">
                                 <span id="article-author" class="font-semibold"></span><span class="mx-2">•</span><span id="article-date"></span>
@@ -863,6 +867,13 @@
                                 <span class="text-xs font-bold text-blue-500" id="list-title-em-val">1.0em</span>
                             </div>
                             <input type="range" min="7" max="12" value="10" id="list-title-em-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateListTitleEmSize(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="settings-item-label">Feed Name Size</span>
+                                <span class="text-xs font-bold text-blue-500" id="list-source-size-val">1.0em</span>
+                            </div>
+                            <input type="range" min="7" max="16" value="10" id="list-source-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateListSourceSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
@@ -1355,7 +1366,18 @@
             
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('article-content').classList.remove('hidden');
-            document.getElementById('article-meta').textContent = article.source;
+            document.getElementById('article-meta').textContent = '';
+            const faviconEl = document.getElementById('article-favicon');
+            const sourceLabelEl = document.getElementById('article-source-label');
+            const feedObj = window.feeds.find(f => f.name === article.source);
+            if (faviconEl && feedObj?.favicon) {
+                faviconEl.src = feedObj.favicon;
+                faviconEl.classList.remove('hidden');
+                faviconEl.style.display = '';
+            } else if (faviconEl) {
+                faviconEl.classList.add('hidden');
+            }
+            if (sourceLabelEl) sourceLabelEl.textContent = article.source;
             const titleEl = document.getElementById('article-title');
             titleEl.textContent = article.title;
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.7em';
@@ -2110,6 +2132,7 @@
 
         // Generic slider handler — driven by lookup table
         const SLIDER_MAP = {
+            updateListSourceSize:      { prop: '--list-source-size',        label: 'list-source-size-val',      suffix: 'em', rerender: null },
             updateMobListTitleSize:    { prop: '--mob-list-title-size',    label: 'mob-list-title-val',        suffix: 'em', rerender: null },
             updateFeedLineHeight:      { prop: '--feed-line-height',        label: 'feed-line-height-val',      suffix: '',   rerender: null },
             updateMobFeedLineHeight:   { prop: '--mob-feed-line-height',    label: 'mob-feed-line-height-val',  suffix: '',   rerender: null },
@@ -2413,6 +2436,7 @@
                     listFont: get('list-font-family-select'), viewFont: get('view-font-family-select'),
                     sortOrder: get('pref-sort-order'), articleTitleSize: get('article-title-size-slider'),
                     autoRefresh: get('pref-auto-refresh'), listTitleEmSize: get('list-title-em-slider'),
+                    listSourceSize: get('list-source-size-slider'),
                     mobFeedNameSize: get('mob-feed-name-slider'), mobArticleTitleSize: get('mob-article-title-slider'),
                     mobBodySize: get('mob-body-slider'), mobAuthorSize: get('mob-author-slider'),
                     mobListPreviewSize: get('mob-list-preview-slider'), mobListTitleSize: get('mob-list-title-slider'),
@@ -2434,6 +2458,7 @@
                 { key: 'viewSize',            id: 'view-font-slider',          label: 'view-font-val',         prop: '--view-font-size',           fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'categorySize',        id: 'category-font-slider',      label: 'category-font-val',     prop: '--category-font-size',       fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'listTitleEmSize',     id: 'list-title-em-slider',      label: 'list-title-em-val',     prop: '--list-title-em-size',       fmt: v => (v/10).toFixed(1)+'em' },
+                { key: 'listSourceSize',      id: 'list-source-size-slider',   label: 'list-source-size-val',  prop: '--list-source-size',         fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobFeedNameSize',     id: 'mob-feed-name-slider',      label: 'mob-feed-name-val',     prop: '--mob-feed-name-size',       fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobArticleTitleSize', id: 'mob-article-title-slider',  label: 'mob-article-title-val', prop: '--mob-article-title-size',   fmt: v => (v/10).toFixed(1)+'em' },
                 { key: 'mobBodySize',         id: 'mob-body-slider',           label: 'mob-body-val',          prop: '--mob-body-size',            fmt: v => (v/10).toFixed(1)+'em' },
