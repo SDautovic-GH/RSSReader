@@ -906,7 +906,7 @@
 
         // --- FETCH & ARTICLE LOGIC ---
         const PROXIES = [
-            url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&timestamp=${Date.now()}`,
+            url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&_=${Date.now()}`,
             url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
             url => `https://thingproxy.freeboard.io/fetch/${url}`,
         ];
@@ -916,12 +916,9 @@
                 try {
                     const proxyUrl = proxyFn(feedUrl);
                     const res = await fetch(proxyUrl, {
-                        cache: 'no-store',
-                        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
-                        signal: AbortSignal.timeout(8000)
+                        signal: AbortSignal.timeout(10000)
                     });
                     if (!res.ok) continue;
-                    const ct = res.headers.get('content-type') || '';
                     let xmlText;
                     if (proxyUrl.includes('allorigins')) {
                         const json = await res.json();
@@ -929,8 +926,12 @@
                     } else {
                         xmlText = await res.text();
                     }
-                    if (xmlText && xmlText.trim().startsWith('<')) return xmlText;
-                } catch(e) { /* try next proxy */ }
+                    if (!xmlText) continue;
+                    const trimmed = xmlText.trim().replace(/^\uFEFF/, '');
+                    if (trimmed.startsWith('<')) return trimmed;
+                } catch(e) {
+                    console.warn(`Proxy failed [${proxyFn(feedUrl).split('?')[0]}]:`, e.message);
+                }
             }
             return null;
         }
