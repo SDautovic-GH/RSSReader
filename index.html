@@ -1753,6 +1753,7 @@
                 order.splice(toIdx, 0, draggedCat);
                 saveCategoryOrder();
                 renderFeeds();
+                if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             }
         };
 
@@ -2830,12 +2831,12 @@
                 const dbFeeds = [];
                 snap.forEach(d => dbFeeds.push({ ...d.data(), docId: d.id }));
                 if (dbFeeds.length > 0) {
-                    // Cancel the local fallback fetch timer
                     if (window._localFetchTimer) { clearTimeout(window._localFetchTimer); window._localFetchTimer = null; }
                     window.accountStates.local = dbFeeds;
                     window.feeds = dbFeeds;
+                    // Re-apply stored category order before rendering
+                    restoreCategoryOrder();
                     window.renderFeeds();
-                    // Only fetch articles on first snapshot load, not on every Firestore write
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
                         fetchAllStaggered(dbFeeds);
@@ -2878,6 +2879,11 @@
                             try { localStorage.setItem('newsreader_pane_width', data.paneWidth); } catch(e) {}
                         }
                     }
+                    if (data.categoryOrder && Array.isArray(data.categoryOrder)) {
+                        window._categoryOrder = data.categoryOrder;
+                        try { localStorage.setItem('newsreader_catorder', JSON.stringify(data.categoryOrder)); } catch(e) {}
+                        window.renderFeeds();
+                    }
                 }
             }).catch(e => console.warn('Could not load remote UI prefs:', e));
 
@@ -2901,6 +2907,7 @@
                     const paneWidth = document.getElementById('timeline-pane')?.style.width;
                     await setDoc(uiRef, {
                         paneWidth: paneWidth || '336px',
+                        categoryOrder: window._categoryOrder,
                         updatedAt: new Date().toISOString()
                     });
                 } catch(e) { console.warn('Cloud UI prefs save failed:', e); }
