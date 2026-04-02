@@ -1136,7 +1136,20 @@
             const newWidth = e.clientX - sidebarWidth;
             if (newWidth >= 210 && newWidth <= 800) timelinePane.style.width = `${newWidth}px`;
         });
-        document.addEventListener('mouseup', () => { isResizing = false; document.body.classList.remove('resizing'); });
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.classList.remove('resizing');
+                try { localStorage.setItem('newsreader_pane_width', timelinePane.style.width); } catch(e) {}
+                if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+            }
+        });
+
+        // Restore timeline pane width
+        try {
+            const w = localStorage.getItem('newsreader_pane_width');
+            if (w) timelinePane.style.width = w;
+        } catch(e) {}
 
         // --- FETCH & ARTICLE LOGIC ---
         const PROXIES = [
@@ -2810,7 +2823,6 @@
                         window._readLaterLinks = new Set([...window._readLaterLinks, ...data.readLaterLinks]);
                         try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) {}
                     }
-                    // Re-apply read state to any articles already in memory
                     window.articles.forEach(a => {
                         a.unread = !window._readLinks.has(a.link);
                         a.readLater = window._readLaterLinks.has(a.link);
@@ -2819,6 +2831,21 @@
                     window.renderFeeds();
                 }
             }).catch(e => console.warn('Could not load remote read state:', e));
+
+            // Load UI prefs (pane width) from Firestore
+            const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
+            getDoc(uiRef).then(snap => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (data.paneWidth) {
+                        const tp = document.getElementById('timeline-pane');
+                        if (tp) {
+                            tp.style.width = data.paneWidth;
+                            try { localStorage.setItem('newsreader_pane_width', data.paneWidth); } catch(e) {}
+                        }
+                    }
+                }
+            }).catch(e => console.warn('Could not load remote UI prefs:', e));
 
             // Expose cloud save for read + read-later state
             window.saveReadStateCloud = async () => {
@@ -2831,6 +2858,18 @@
                         updatedAt: new Date().toISOString()
                     });
                 } catch(e) { console.warn('Cloud read state save failed:', e); }
+            };
+
+            window.saveUiPrefsCloud = async () => {
+                if (!userId) return;
+                try {
+                    const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
+                    const paneWidth = document.getElementById('timeline-pane')?.style.width;
+                    await setDoc(uiRef, {
+                        paneWidth: paneWidth || '336px',
+                        updatedAt: new Date().toISOString()
+                    });
+                } catch(e) { console.warn('Cloud UI prefs save failed:', e); }
             };
         }
 
