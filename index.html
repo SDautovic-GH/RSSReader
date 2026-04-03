@@ -265,8 +265,8 @@
             /* Show mobile reader action bar, hide desktop toolbar equivalents */
             #mobile-reader-bar { display: flex !important; }
             #prev-article-btn, #next-article-btn,
-            #full-article-btn, #share-btn, #tts-btn,
-            #read-later-action-btn, #view-density-toggle,
+            #share-btn, #tts-btn, #read-later-action-btn,
+            #view-density-toggle,
             #viewer-pane .h-12 button[onclick="toggleUnreadManual()"] { display: none !important; }
             /* Mobile sidebar — folder/smart feed sizing via CSS variable */
             #sidebar-pane .smart-feed-btn { font-size: var(--mob-folder-size) !important; padding-top: 0.6rem !important; padding-bottom: 0.6rem !important; line-height: var(--mob-feed-line-height) !important; }
@@ -627,7 +627,6 @@
                     </div>
                     <!-- View mode toggle: List / Card -->
                     <button onclick="toggleViewMode()" id="view-density-toggle" class="text-[10px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md" title="Toggle List/Card view">LIST</button>
-                    <button onclick="toggleContentView()" id="view-mode-toggle" class="text-[10px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md">READER</button>
                     <button onclick="openExternal()" class="px-2 py-1 text-[10px] font-bold text-gray-400 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200">WEB</button>
                 </div>
             </div>
@@ -670,9 +669,6 @@
                             </div>
                         </article>
                     </div>
-                </div>
-                <div id="web-view" class="absolute inset-0 hidden bg-white">
-                    <iframe id="web-frame" src="about:blank"></iframe>
                 </div>
             </div>
 
@@ -1431,7 +1427,9 @@
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             document.getElementById('article-body').innerHTML = DOMPurify.sanitize(linkify(article.body));
-            document.getElementById('web-frame').src = article.link;
+
+            // Auto-attempt full content extraction silently in background
+            attemptFullContentLoad(article);
 
             const wordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
             const minutes = Math.max(1, Math.ceil(wordCount / 200));
@@ -1500,69 +1498,58 @@
             updateActionButton();
         };
 
-        // --- RESILIENT FULL ARTICLE FETCHING ---
-        window.loadFullArticle = async function() {
-            if (!window.currentArticle || !window.currentArticle.link) return;
-            const body = document.getElementById('article-body');
-            const originalContent = body.innerHTML;
-            body.innerHTML = '<div class="flex items-center justify-center py-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div><span class="ml-3 font-semibold text-sm">Attempting Extraction...</span></div>';
-            
+        // --- SILENT BACKGROUND FULL CONTENT EXTRACTION ---
+        // Automatically attempts to fetch full article content after RSS body is shown.
+        // Silently upgrades if successful and content is substantially longer. No error shown on failure.
+        async function attemptFullContentLoad(article) {
+            if (!article || !article.link || article.link === '#') return;
             const proxies = [
-                `https://api.allorigins.win/get?url=${encodeURIComponent(window.currentArticle.link)}`,
-                `https://corsproxy.io/?${encodeURIComponent(window.currentArticle.link)}`,
-                `https://thingproxy.freeboard.io/fetch/${window.currentArticle.link}`
+                `https://api.allorigins.win/get?url=${encodeURIComponent(article.link)}`,
+                `https://corsproxy.io/?${encodeURIComponent(article.link)}`,
+                `https://thingproxy.freeboard.io/fetch/${article.link}`
             ];
-
-            let success = false;
-            for (let proxyUrl of proxies) {
+            const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
+            for (const proxyUrl of proxies) {
                 try {
-                    const response = await fetch(proxyUrl);
-                    if (!response.ok) continue;
-                    
+                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+                    if (!res.ok) continue;
                     let html;
                     if (proxyUrl.includes('allorigins')) {
-                        const data = await response.json();
+                        const data = await res.json();
                         html = data.contents;
                     } else {
-                        html = await response.text();
+                        html = await res.text();
                     }
-
                     if (!html) continue;
-                    
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    
-                    doc.querySelectorAll('script, style, nav, footer, header, aside, iframe, .ads, .sidebar, [aria-hidden="true"]').forEach(el => el.remove());
-
-                    let content = doc.querySelector('.ArticleBody-articleBody, .caas-body, .story-body, article, [itemprop="articleBody"], .main-content, .entry-content');
-                    
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    doc.querySelectorAll('script,style,nav,footer,header,aside,iframe,.ads,.sidebar,[aria-hidden="true"]').forEach(el => el.remove());
+                    let content = doc.querySelector('.ArticleBody-articleBody,.caas-body,.story-body,article,[itemprop="articleBody"],.main-content,.entry-content,.post-content,.article-body');
                     if (!content) {
-                        let bestDiv = null;
-                        let bestScore = 0;
-                        doc.querySelectorAll('div').forEach(div => {
-                            const pCount = div.querySelectorAll('p').length;
-                            if (pCount > bestScore) {
-                                bestScore = pCount;
-                                bestDiv = div;
-                            }
+                        let best = null, bestScore = 0;
+                        doc.querySelectorAll('div,section,main').forEach(el => {
+                            const score = el.querySelectorAll('p').length;
+                            if (score > bestScore) { bestScore = score; best = el; }
                         });
-                        content = bestDiv;
+                        content = best;
                     }
-
-                    if (content && content.querySelectorAll('p').length > 1) {
-                        body.innerHTML = DOMPurify.sanitize(linkify(content.innerHTML));
-                        window.showToast("Success: Content extracted");
-                        success = true;
-                        break;
+                    if (!content) continue;
+                    const fullWordCount = content.innerText?.split(/\s+/).filter(Boolean).length || 0;
+                    // Only upgrade if full content is meaningfully longer than RSS excerpt
+                    if (fullWordCount > rssWordCount * 1.3 && fullWordCount > 100) {
+                        const bodyEl = document.getElementById('article-body');
+                        // Only update if user is still reading this same article
+                        if (bodyEl && window.currentArticle?.id === article.id) {
+                            bodyEl.innerHTML = DOMPurify.sanitize(linkify(content.innerHTML));
+                            // Update read time estimate
+                            const minutes = Math.max(1, Math.ceil(fullWordCount / 200));
+                            const readTimeEl = document.getElementById('read-time');
+                            if (readTimeEl) readTimeEl.textContent = `~${minutes} min read`;
+                        }
+                        return; // success — stop trying proxies
                     }
-                } catch (e) { console.warn("Proxy attempt failed:", proxyUrl); }
+                } catch(e) { /* silent fail */ }
             }
-
-            if (!success) {
-                body.innerHTML = originalContent;
-                window.showToast("Extraction failed — showing RSS preview", true);
-            }
-        };
+        }
 
         // --- KEYBOARD NAVIGATION ---
         document.addEventListener('keydown', (e) => {
@@ -2204,11 +2191,6 @@
 
         window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
         window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
-        window.toggleContentView = () => {
-            const r = document.getElementById('reader-view'), w = document.getElementById('web-view');
-            r.classList.toggle('hidden'); w.classList.toggle('hidden');
-            document.getElementById('view-mode-toggle').textContent = r.classList.contains('hidden') ? "WEB" : "READER";
-        };
         window.openExternal = () => { if(window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
         window.filterByCurrentSource = () => { if(window.currentArticle) setSourceFilter(window.currentArticle.source); };
         
@@ -2236,11 +2218,10 @@
 
         window.updateActionButton = () => {
             const b = document.getElementById('read-later-action-btn');
-            const fullBtn = document.getElementById('full-article-btn');
             const shareBtn = document.getElementById('share-btn');
             const ttsBtn = document.getElementById('tts-btn');
             const hasArticle = !!window.currentArticle;
-            [b, fullBtn, shareBtn, ttsBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            [b, shareBtn, ttsBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
             if (!hasArticle) return;
 
             const BASE = 'text-[10px] font-bold px-2 py-1 rounded-md border transition-colors cursor-pointer';
