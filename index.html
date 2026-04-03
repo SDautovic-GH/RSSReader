@@ -38,7 +38,7 @@
     </script>
     <style>
         /* Importing readability fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;600;700&family=Literata:ital,wght@0,400;0,700;1,400&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap');
+        /* Fonts loaded dynamically by JS based on user preference — see loadActiveFont() */
         
         body {
             font-family: var(--list-font-family, 'Inter'), sans-serif;
@@ -190,14 +190,13 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Smooth dark/light mode transition */
-        *, *::before, *::after {
+        /* Smooth dark/light mode transition — scoped to specific elements only (avoids mobile jank from wildcard *) */
+        body, #sidebar-pane, #timeline-pane, #viewer-pane, #reader-view,
+        #mobile-tab-bar, #mobile-reader-bar, .h-12,
+        .pane-transition, .smart-feed-btn, #feed-list button,
+        #article-list > div, .article-card,
+        .modal-backdrop, #settings-modal > div, #login-modal > div {
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
-        }
-        /* Exclude transitions that would look bad */
-        img, video, iframe, input[type="range"], .no-transition,
-        #article-list img, #feed-list img {
-            transition: none !important;
         }
 
         /* Reading progress bar */
@@ -1127,17 +1126,24 @@
             return tmp.innerHTML;
         }
 
-        // Helper: Relative Time
+        // Cache relative time per render cycle — avoids repeated Date construction per card
+        let _relTimeCache = {};
+        let _relTimeCacheTime = 0;
         function getRelativeTime(isoString) {
+            const now = Date.now();
+            // Invalidate cache every 30s
+            if (now - _relTimeCacheTime > 30000) { _relTimeCache = {}; _relTimeCacheTime = now; }
+            if (_relTimeCache[isoString] !== undefined) return _relTimeCache[isoString];
             const date = new Date(isoString);
-            const now = new Date();
             const diffInSeconds = Math.floor((now - date) / 1000);
-            if (isNaN(diffInSeconds) || diffInSeconds < 0) return 'Just now';
-            if (diffInSeconds < 60) return 'Just now';
-            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-            if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-            return date.toLocaleDateString();
+            let result;
+            if (isNaN(diffInSeconds) || diffInSeconds < 60) result = 'Just now';
+            else if (diffInSeconds < 3600) result = `${Math.floor(diffInSeconds / 60)}m ago`;
+            else if (diffInSeconds < 86400) result = `${Math.floor(diffInSeconds / 3600)}h ago`;
+            else if (diffInSeconds < 604800) result = `${Math.floor(diffInSeconds / 86400)}d ago`;
+            else result = date.toLocaleDateString();
+            _relTimeCache[isoString] = result;
+            return result;
         }
 
         // --- RESIZER IMPLEMENTATION ---
@@ -1255,6 +1261,8 @@
                 let newCount = 0;
 
                 window.articles = window.articles.filter(a => a.source !== sourceName);
+                // Invalidate excerpt cache for any re-fetched articles
+                window.articles.forEach(a => { if (a.source === sourceName) a._excerptHtml = null; });
 
                 items.forEach(item => {
                     const link = getLink(item);
@@ -1276,7 +1284,9 @@
                         title: getText(item, 'title'),
                         author: getText(item, 'author name', 'author', 'dc\\:creator') || sourceName,
                         timestamp: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+                        _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
                         excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
+                        _excerptHtml: null, // lazily cached on first render
                         body: DOMPurify.sanitize(rawBody),
                         link,
                         unread: isNew,
@@ -1328,7 +1338,7 @@
             }
 
             filtered.sort((a, b) => {
-                const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                const diff = (a._ts || new Date(a.timestamp).getTime()) - (b._ts || new Date(b.timestamp).getTime());
                 return sortOrder === 'desc' ? -diff : diff;
             });
 
@@ -1378,7 +1388,7 @@
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
                         <h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${a.title}</h3>
-                        <p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview">${linkify(a.excerpt)}</p>
+                        <p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview">${a._excerptHtml || (a._excerptHtml = linkify(a.excerpt))}</p>
                     </div>
                 </div>
             </div>`;
@@ -1466,14 +1476,26 @@
 
             if (isMobile()) setMobilePane('viewer');
 
-            renderTimeline();
-            setTimeout(() => {
-                const listEl = document.getElementById('article-list');
-                if (listEl) {
-                    const selectedEl = listEl.querySelector('.border-l-blue-500');
-                    if (selectedEl) selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // Targeted list update — only swap CSS on prev/new selected cards instead of full re-render
+            const listEl = document.getElementById('article-list');
+            if (listEl) {
+                const prevSelected = listEl.querySelector('.border-l-blue-500');
+                if (prevSelected) {
+                    prevSelected.classList.remove('bg-blue-50', 'dark:bg-blue-900/10', 'border-l-4', 'border-l-blue-500');
                 }
-            }, 30);
+                const newSelected = listEl.querySelector(`[data-id="${id}"]`);
+                if (newSelected) {
+                    newSelected.classList.add('bg-blue-50', 'border-l-4', 'border-l-blue-500');
+                    // Also flip unread dot
+                    const dot = newSelected.querySelector('.bg-blue-500.rounded-full');
+                    if (dot) dot.classList.add('opacity-0');
+                    setTimeout(() => newSelected.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30);
+                } else {
+                    // Article not in current DOM (filtered out) — full re-render needed
+                    renderTimeline();
+                }
+            }
+            // Only re-render feeds when unread count actually changed
             renderFeeds();
             updateActionButton();
         };
@@ -1580,10 +1602,8 @@
             if (!window.contextMenuArticleId || !window.currentTimeline) return;
             const idx = window.currentTimeline.findIndex(a => a.id === window.contextMenuArticleId);
             if (idx > 0) {
-                const slice = window.currentTimeline.slice(0, idx);
-                slice.forEach(item => {
-                    window.articles.forEach(a => { if (a.id === item.id) { a.unread = false; window._readLinks.add(a.link); } });
-                });
+                const idSet = new Set(window.currentTimeline.slice(0, idx).map(a => a.id));
+                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
                 saveReadState();
                 renderTimeline();
                 renderFeeds();
@@ -1595,10 +1615,8 @@
             if (!window.contextMenuArticleId || !window.currentTimeline) return;
             const idx = window.currentTimeline.findIndex(a => a.id === window.contextMenuArticleId);
             if (idx !== -1 && idx < window.currentTimeline.length - 1) {
-                const slice = window.currentTimeline.slice(idx + 1);
-                slice.forEach(item => {
-                    window.articles.forEach(a => { if (a.id === item.id) { a.unread = false; window._readLinks.add(a.link); } });
-                });
+                const idSet = new Set(window.currentTimeline.slice(idx + 1).map(a => a.id));
+                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
                 saveReadState();
                 renderTimeline();
                 renderFeeds();
@@ -1884,7 +1902,7 @@
             renderTimeline();
         };
 
-        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 500) {
+        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 150) {
             for (let i = 0; i < feeds.length; i++) {
                 fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground);
                 if (i < feeds.length - 1) await new Promise(r => setTimeout(r, delayMs));
@@ -2114,7 +2132,34 @@
             renderTimeline();
             saveTypographyPrefs();
         };
+        // --- DYNAMIC FONT LOADER (Fix 4) ---
+        // Maps CSS font-family values to Google Fonts query strings
+        const FONT_MAP = {
+            "'Inter', sans-serif":                          'Inter:wght@400;500;600;700',
+            "'Roboto', sans-serif":                         'Roboto:wght@400;500;700',
+            "'Lora', serif":                                'Lora:ital,wght@0,400;0,700;1,400',
+            "'Merriweather', serif":                        'Merriweather:ital,wght@0,400;0,700;1,400',
+            "'Source Sans 3', sans-serif":                  'Source+Sans+3:wght@400;600;700',
+            "'Literata', serif":                            'Literata:ital,wght@0,400;0,700;1,400',
+            "'Atkinson Hyperlegible', sans-serif":          'Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400',
+            // System fonts — no Google Fonts load needed
+            "-apple-system, BlinkMacSystemFont, sans-serif": null,
+            "Charter, 'Bitstream Charter', serif":          null,
+            "Georgia, serif":                               null,
+        };
+        const _loadedFonts = new Set();
+        function loadActiveFont(fontValue) {
+            const query = FONT_MAP[fontValue];
+            if (!query || _loadedFonts.has(query)) return; // system font or already loaded
+            _loadedFonts.add(query);
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = `https://fonts.googleapis.com/css2?family=${query}&display=swap`;
+            document.head.appendChild(link);
+        }
+        // Called on font family change in settings
         window.updateFontFamily = (t, f) => {
+            loadActiveFont(f);
             document.documentElement.style.setProperty(`--${t}-font-family`, f);
             if (t === 'list') renderTimeline();
             saveTypographyPrefs();
@@ -2475,6 +2520,7 @@
                 if (!prefs[key]) return;
                 const el = document.getElementById(id); if (el) el.value = prefs[key];
                 root.style.setProperty(prop, prefs[key]);
+                loadActiveFont(prefs[key]); // lazy-load only the fonts in use
             });
             if (prefs.sortOrder) { const el = document.getElementById('pref-sort-order'); if (el) el.value = prefs.sortOrder; }
             if (prefs.articleTitleSize) {
@@ -2507,6 +2553,8 @@
                 cache.forEach(a => {
                     a.unread = !window._readLinks.has(a.link);
                     a.readLater = window._readLaterLinks.has(a.link);
+                    a._ts = a._ts || new Date(a.timestamp).getTime();
+                    a._excerptHtml = null; // will be lazily rebuilt on first render
                     a.body = '';
                 });
                 window.articles = cache;
@@ -2536,15 +2584,19 @@
         }
 
         // --- READ STATE PERSISTENCE ---
+        // Debounced — localStorage writes are synchronous, batching avoids blocking main thread on every tap
+        let _saveReadStateTimer = null;
         function saveReadState() {
-            try {
-                const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
-                const existing = getStoredReadLinks();
-                const merged = Array.from(new Set([...existing, ...readLinks]));
-                const trimmed = merged.slice(-5000);
-                localStorage.setItem('newsreader_read', JSON.stringify(trimmed));
-            } catch(e) {}
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
+            clearTimeout(_saveReadStateTimer);
+            _saveReadStateTimer = setTimeout(() => {
+                try {
+                    const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
+                    const existing = getStoredReadLinks();
+                    const merged = Array.from(new Set([...existing, ...readLinks]));
+                    localStorage.setItem('newsreader_read', JSON.stringify(merged.slice(-5000)));
+                } catch(e) {}
+            }, 2000);
         }
 
         function getStoredReadLinks() {
@@ -2592,26 +2644,34 @@
             });
         };
 
-        function isMobile() { return window.innerWidth <= 900; }
+        // Cache isMobile — avoid layout reflow on every call
+        let _isMobileCache = window.innerWidth <= 900;
+        function isMobile() { return _isMobileCache; }
+        window.addEventListener('resize', () => {
+            _isMobileCache = window.innerWidth <= 900;
+        }, { passive: true });
 
         if (isMobile()) setMobilePane('timeline');
 
         window.addEventListener('resize', () => {
-            if (isMobile() && !document.getElementById('timeline-pane').classList.contains('mobile-active') &&
+            if (!_isMobileCache) return; // desktop — nothing to do
+            if (!document.getElementById('timeline-pane').classList.contains('mobile-active') &&
                 !document.getElementById('sidebar-pane').classList.contains('mobile-active') &&
                 !document.getElementById('viewer-pane').classList.contains('mobile-active')) {
                 setMobilePane('timeline');
             }
-        });
+        }, { passive: true });
 
         document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
 
-        setInterval(() => renderTimeline(), 60000);
+        setInterval(() => { if (!document.hidden) renderTimeline(); }, 60000);
 
         window.articles = [];
         
         restoreReadLaterState();
         restoreTypographyPrefs();
+        // Load Inter by default — restoreTypographyPrefs loads saved fonts if set
+        loadActiveFont("'Inter', sans-serif");
         restoreLocalFeeds();
         restoreCategoryOrder();
         restoreArticleCache();
@@ -2888,11 +2948,11 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE = 'newsreader-v1';
+const CACHE = 'newsreader-v2';
 const ASSETS = [
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap'
+    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;600;700&family=Literata:ital,wght@0,400;0,700;1,400&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap'
 ];
 
 self.addEventListener('install', e => {
