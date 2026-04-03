@@ -1219,8 +1219,14 @@
                 if (feedObj && !feedObj.favicon) {
                     try {
                         const linkEl = xml.querySelector('channel > link:not([rel]), feed > link[rel="alternate"], channel > link');
-                        const siteUrl = linkEl?.textContent?.trim() || linkEl?.getAttribute('href') || feedUrl;
-                        const domain = new URL(siteUrl).hostname;
+                        const siteUrl = linkEl?.textContent?.trim() || linkEl?.getAttribute('href') || '';
+                        let domain;
+                        try { domain = new URL(siteUrl).hostname; } catch(e) {}
+                        // Fall back to feed URL domain if channel link is missing or unparseable
+                        if (!domain) domain = new URL(feedUrl).hostname;
+                        // Strip subdomains like feeds.nytimes.com → nytimes.com for better favicon results
+                        const parts = domain.split('.');
+                        if (parts.length > 2) domain = parts.slice(-2).join('.');
                         feedObj.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
                     } catch(e) {}
                 }
