@@ -1216,18 +1216,23 @@
 
                 window._feedHealth[feedUrl] = { lastSuccess: Date.now(), errorCount: 0 };
                 const feedObj = window.feeds.find(f => f.url === feedUrl);
+                // Load favicon from local cache first
+                if (feedObj && !feedObj.favicon) {
+                    const cachedFavicon = (() => { try { return localStorage.getItem('favicon_' + feedUrl); } catch(e) { return null; } })();
+                    if (cachedFavicon) feedObj.favicon = cachedFavicon;
+                }
+                // Fetch/refresh favicon if missing or empty-string cached value
                 if (feedObj && !feedObj.favicon) {
                     try {
                         const linkEl = xml.querySelector('channel > link:not([rel]), feed > link[rel="alternate"], channel > link');
                         const siteUrl = linkEl?.textContent?.trim() || linkEl?.getAttribute('href') || '';
                         let domain;
                         try { domain = new URL(siteUrl).hostname; } catch(e) {}
-                        // Fall back to feed URL domain if channel link is missing or unparseable
                         if (!domain) domain = new URL(feedUrl).hostname;
-                        // Strip subdomains like feeds.nytimes.com → nytimes.com for better favicon results
                         const parts = domain.split('.');
                         if (parts.length > 2) domain = parts.slice(-2).join('.');
                         feedObj.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+                        try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) {}
                     } catch(e) {}
                 }
 
@@ -2516,6 +2521,12 @@
                 if (!stored) return;
                 const feeds = JSON.parse(stored);
                 if (!Array.isArray(feeds) || feeds.length === 0) return;
+                // Restore cached favicons
+                feeds.forEach(f => {
+                    if (!f.favicon) {
+                        try { f.favicon = localStorage.getItem('favicon_' + f.url) || undefined; } catch(e) {}
+                    }
+                });
                 window.accountStates.local = feeds;
                 window.feeds = feeds;
             } catch(e) {}
