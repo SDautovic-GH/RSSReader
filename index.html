@@ -2333,6 +2333,246 @@
             reader.readAsText(file);
         };
 
+        // --- UI & MODAL CONTROLS ---
+        window.showToast = (msg, isError = false) => {
+            const toast = document.getElementById('toast-notification');
+            if (!toast) return;
+            toast.textContent = msg;
+            toast.className = `fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 text-white text-sm font-bold rounded-lg shadow-xl z-[100] transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-blue-600'}`;
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2500);
+        };
+
+        window.toggleSettings = () => {
+            const modal = document.getElementById('settings-modal');
+            if (modal) modal.classList.toggle('hidden');
+        };
+
+        window.switchSettingsTab = (tab) => {
+            ['feeds', 'prefs'].forEach(t => {
+                const panel = document.getElementById(`settings-panel-${t}`);
+                const btn = document.getElementById(`settings-tab-${t}`);
+                if (panel) panel.classList.toggle('hidden', t !== tab);
+                if (btn) {
+                    btn.classList.toggle('text-blue-600', t === tab);
+                    btn.classList.toggle('border-blue-600', t === tab);
+                    btn.classList.toggle('text-gray-400', t !== tab);
+                    btn.classList.toggle('border-transparent', t !== tab);
+                }
+            });
+        };
+
+        window.toggleViewMode = () => {
+            App.viewMode = App.viewMode === 'list' ? 'card' : 'list';
+            const toggle = document.getElementById('view-density-toggle');
+            if (toggle) toggle.textContent = App.viewMode === 'card' ? 'CARD' : 'LIST';
+            window.renderTimeline();
+            try { localStorage.setItem('newsreader_viewmode', App.viewMode); } catch(e) {}
+        };
+
+        window.toggleShowEmptyCategories = () => {
+            App.showEmptyCategories = !App.showEmptyCategories;
+            const btn = document.getElementById('show-empty-cats-toggle');
+            if (btn) {
+                btn.textContent = App.showEmptyCategories ? 'ON' : 'OFF';
+                btn.className = App.showEmptyCategories 
+                    ? 'text-xs font-bold px-4 py-1.5 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                    : 'text-xs font-bold px-4 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500';
+            }
+            window.renderFeeds();
+            try { localStorage.setItem('newsreader_showemptycats', App.showEmptyCategories ? '1' : '0'); } catch(e) {}
+        };
+
+        window.openExternal = () => {
+            if (App.currentArticle) window.open(App.currentArticle.link, '_blank', 'noopener,noreferrer');
+        };
+
+        window.shareArticle = async () => {
+            if (!App.currentArticle) return;
+            try {
+                if (navigator.share) {
+                    await navigator.share({ title: App.currentArticle.title, url: App.currentArticle.link });
+                } else {
+                    await navigator.clipboard.writeText(App.currentArticle.link);
+                    window.showToast("Copied to clipboard");
+                }
+            } catch(e) {
+                try {
+                    await navigator.clipboard.writeText(App.currentArticle.link);
+                    window.showToast("Copied to clipboard");
+                } catch(err) {
+                    window.showToast("Failed to copy", true);
+                }
+            }
+        };
+
+        window.toggleUnreadManual = () => {
+            if (App.currentArticle) {
+                App.currentArticle.unread = !App.currentArticle.unread;
+                if (App.currentArticle.unread) {
+                    App.readLinks.delete(App.currentArticle.link);
+                } else {
+                    App.readLinks.add(App.currentArticle.link);
+                }
+                saveReadState();
+                window.renderTimeline();
+                window.renderFeeds();
+            }
+        };
+
+        window.toggleFullScreen = (force) => {
+            const container = document.getElementById('app-container');
+            if (container) container.classList.toggle('is-fullscreen', force);
+        };
+        
+        window.toggleFullScreenManual = () => {
+            const container = document.getElementById('app-container');
+            if (container) window.toggleFullScreen(!container.classList.contains('is-fullscreen'));
+        };
+
+        // --- LOCAL STORAGE PERSISTENCE ---
+        function saveReadState() {
+            try {
+                localStorage.setItem('newsreader_read', JSON.stringify(Array.from(App.readLinks).slice(-5000)));
+            } catch(e) {}
+            if (window.saveReadStateCloud) window.saveReadStateCloud();
+        }
+
+        function saveReadLaterState() {
+            try {
+                localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(App.readLaterLinks)));
+            } catch(e) {}
+            if (window.saveReadStateCloud) window.saveReadStateCloud();
+        }
+
+        function saveArticleCache() {
+            try {
+                const cache = App.articles.slice(-500).map(a => ({ ...a, body: '' }));
+                localStorage.setItem('newsreader_articles', JSON.stringify(cache));
+            } catch(e) {}
+        }
+
+        function saveLocalFeeds() {
+            try {
+                localStorage.setItem('newsreader_feeds', JSON.stringify(App.localFeeds));
+            } catch(e) {}
+        }
+
+        // --- EXPORT STATE ---
+        window.exportReadState = () => {
+            const data = {
+                exported: new Date().toISOString(),
+                readLinks: Array.from(App.readLinks),
+                readLaterLinks: Array.from(App.readLaterLinks)
+            };
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+            a.download = 'news_state.json';
+            a.click();
+        };
+
+        window.exportSubscriptions = () => {
+            let opml = `<?xml version="1.0" encoding="UTF-8"?><opml version="1.0"><body>`;
+            const groups = {};
+            App.localFeeds.forEach(f => {
+                const c = f.category || 'Uncategorized';
+                if (!groups[c]) groups[c] = [];
+                groups[c].push(f);
+            });
+            Object.entries(groups).forEach(([c, fs]) => {
+                opml += `<outline title="${c.replace(/"/g, '&quot;')}" text="${c.replace(/"/g, '&quot;')}">`;
+                fs.forEach(f => {
+                    opml += `<outline type="rss" xmlUrl="${f.url}" title="${f.name.replace(/"/g, '&quot;')}" text="${f.name.replace(/"/g, '&quot;')}"/>`;
+                });
+                opml += `</outline>`;
+            });
+            opml += `</body></opml>`;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([opml], { type: 'text/xml' }));
+            a.download = 'feeds.opml';
+            a.click();
+        };
+
+        // --- MOBILE LAYOUT & RESIZER ---
+        function isMobile() {
+            return window.innerWidth <= 900;
+        }
+
+        window.setMobilePane = (pane) => {
+            const panes = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
+            const tabs = { sidebar: 'mob-tab-feeds', timeline: 'mob-tab-articles', viewer: 'mob-tab-reader' };
+            
+            Object.entries(panes).forEach(([k, id]) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('mobile-active', k === pane);
+            });
+            
+            Object.entries(tabs).forEach(([k, id]) => {
+                const b = document.getElementById(id);
+                if (b) {
+                    b.classList.toggle('text-blue-600', k === pane);
+                    b.classList.toggle('text-gray-400', k !== pane);
+                }
+            });
+        };
+
+        window.toggleMobileFullscreen = () => {
+            const isFull = document.body.classList.toggle('mob-fullscreen');
+            if (isFull && document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else if (!isFull && document.exitFullscreen) {
+                document.exitFullscreen().catch(() => {});
+            }
+        };
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                document.body.classList.remove('mob-fullscreen');
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (isMobile() && !document.querySelector('.mobile-active')) {
+                window.setMobilePane('timeline');
+            }
+        });
+
+        const resizer = document.getElementById('resizer');
+        const tp = document.getElementById('timeline-pane');
+        let isResizing = false;
+
+        if (resizer && tp) {
+            resizer.addEventListener('mousedown', () => {
+                isResizing = true;
+                document.body.classList.add('resizing');
+            });
+            
+            document.addEventListener('mousemove', e => {
+                if (!isResizing) return;
+                const sw = document.getElementById('sidebar-pane').offsetWidth;
+                const nw = e.clientX - sw;
+                if (nw >= 250 && nw <= 800) {
+                    tp.style.width = `${nw}px`;
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.classList.remove('resizing');
+                    try { localStorage.setItem('nr_pw', tp.style.width); } catch(e) {}
+                    if (window.saveUiPrefsCloud) window.saveUiPrefsCloud();
+                }
+            });
+            
+            try {
+                const w = localStorage.getItem('nr_pw');
+                if (w) tp.style.width = w;
+            } catch(e) {}
+        }
+
         // --- UI / SETTINGS BINDINGS ---
         const SLIDER_MAP = {
             // Desktop
