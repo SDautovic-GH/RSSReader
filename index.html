@@ -133,29 +133,30 @@
         }
 
         :root {
-            --list-preview-font-size: 15px;
-            --view-font-size: 16px;
-            --category-font-size: 14px;
-            --list-preview-lines: 10;
+            --list-preview-font-size: 1em;
+            --view-font-size: 1em;
+            --category-font-size: 1em;
+            --list-preview-lines: 5;
             --list-font-family: 'Inter', sans-serif;
             --view-font-family: 'Inter', sans-serif;
-            --mob-feed-name-size: 0.7em;
-            --mob-article-title-size: 1.1em;
-            --mob-body-size: 1.0em;
-            --mob-author-size: 0.7em;
+            --mob-feed-name-size: 1.0em;
+            --mob-article-title-size: 1.0em;
+            --mob-body-size: 1.2em;
+            --mob-author-size: 1.0em;
             --list-title-em-size: 1.0em;
-            --mob-list-preview-size: 0.7em;
+            --mob-list-preview-size: 1.0em;
             --mob-list-title-size: 1.0em;
-            --line-height: 1.6;
-            --mob-line-height: 1.8;
+            --line-height: 1.0;
+            --mob-line-height: 1.4;
             --feed-line-height: 1.0;
             --mob-feed-line-height: 1.0;
-            --mob-folder-size: 1.4em;
+            --mob-folder-size: 1.2em;
             --mob-list-source-size: 1.0em;
             --mob-list-date-size: 1.0em;
             --list-source-size: 1.0em;
             --desk-feed-name-size: 1.0em;
-            --article-meta-size: 0.9em;
+            --article-meta-size: 1.0em;
+            --mob-zoom: 1;
         }
 
         .dynamic-list-title { 
@@ -287,8 +288,8 @@
             .dynamic-list-title, .dynamic-list-preview, #article-body, #article-title {
                 line-height: var(--mob-line-height) !important;
             }
-            /* Mobile article list — 2px left/right padding */
-            #article-list [data-id] { padding-left: 2px !important; padding-right: 2px !important; }
+            /* Mobile article list — 2px left/right padding, no text select (prevents long-press conflict) */
+            #article-list [data-id] { padding-left: 2px !important; padding-right: 2px !important; -webkit-user-select: none; user-select: none; }
         }
         #mobile-tab-bar { display: none; }
         #mobile-reader-bar { display: none; }
@@ -437,7 +438,12 @@
             }
         }
 
-        .list-source-label { font-size: var(--desk-feed-name-size) !important; }
+        /* Mobile article zoom */
+        @media (max-width: 900px) {
+            #article-body, #article-title, #article-author, #article-date {
+                zoom: var(--mob-zoom, 1);
+            }
+        }
         #article-meta { font-size: var(--desk-feed-name-size) !important; color: #60a5fa !important; }
         /* No dividers between category rows inside the card */
         #feed-list [data-category] { border: none !important; }
@@ -562,12 +568,12 @@
 
         <!-- PANE 2: Timeline -->
         <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition" style="width: 336px;">
-            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center">
-                    <span id="timeline-count" class="mr-2">0 Articles</span>
+                    <span id="timeline-count" class="mr-2">0 Unread</span>
                     <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded">DEDUPED</span>
                 </div>
-                <button onclick="markAllRead()" class="hover:text-blue-500">Mark All Read</button>
+                <button onclick="markAllRead()" class="hover:text-blue-500 text-sm font-bold">Mark All Read</button>
             </div>
             
             <div id="article-list" class="flex-1 overflow-y-auto no-scrollbar"></div>
@@ -860,9 +866,9 @@
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Category Folder Size</span>
-                                <span class="text-xs font-bold text-blue-500" id="category-font-val">0.8em</span>
+                                <span class="text-xs font-bold text-blue-500" id="category-font-val">1.0em</span>
                             </div>
-                            <input type="range" min="5" max="12" value="8" id="category-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('category', this.value)">
+                            <input type="range" min="8" max="15" value="10" id="category-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('category', this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
@@ -880,28 +886,28 @@
                                 <span class="settings-item-label">Feed Name Size</span>
                                 <span class="text-xs font-bold text-blue-500" id="desk-feed-name-val">1.0em</span>
                             </div>
-                            <input type="range" min="7" max="16" value="10" id="desk-feed-name-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateDeskFeedNameSize(this.value)">
+                            <input type="range" min="8" max="15" value="10" id="desk-feed-name-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateDeskFeedNameSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Article Title Size</span>
                                 <span class="text-xs font-bold text-blue-500" id="list-title-em-val">1.0em</span>
                             </div>
-                            <input type="range" min="7" max="12" value="10" id="list-title-em-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateListTitleEmSize(this.value)">
+                            <input type="range" min="8" max="15" value="10" id="list-title-em-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateListTitleEmSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Preview Text Size</span>
                                 <span class="text-xs font-bold text-blue-500" id="list-preview-font-val">1.0em</span>
                             </div>
-                            <input type="range" min="5" max="14" value="10" id="list-preview-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('list-preview', this.value)">
+                            <input type="range" min="8" max="15" value="10" id="list-preview-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('list-preview', this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Preview Lines</span>
-                                <span class="text-xs font-bold text-blue-500" id="lines-val">10 Lines</span>
+                                <span class="text-xs font-bold text-blue-500" id="lines-val">5 Lines</span>
                             </div>
-                            <input type="range" min="2" max="20" value="10" id="lines-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateLines(this.value)">
+                            <input type="range" min="2" max="15" value="5" id="lines-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateLines(this.value)">
                         </div>
                     </div>
 
@@ -912,28 +918,28 @@
                                 <span class="settings-item-label">Body Size</span>
                                 <span class="text-xs font-bold text-blue-500" id="view-font-val">1.0em</span>
                             </div>
-                            <input type="range" min="7" max="14" value="10" id="view-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('view', this.value)">
+                            <input type="range" min="8" max="15" value="10" id="view-font-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFontSizeEm('view', this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Title Size</span>
                                 <span class="text-xs font-bold text-blue-500" id="article-title-size-val">1.0em</span>
                             </div>
-                            <input type="range" min="9" max="18" value="10" id="article-title-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateArticleTitleSize(this.value)">
+                            <input type="range" min="8" max="15" value="10" id="article-title-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateArticleTitleSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Author / Date Size</span>
-                                <span class="text-xs font-bold text-blue-500" id="article-meta-size-val">0.9em</span>
+                                <span class="text-xs font-bold text-blue-500" id="article-meta-size-val">1.0em</span>
                             </div>
-                            <input type="range" min="5" max="15" value="9" id="article-meta-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateArticleMetaSize(this.value)">
+                            <input type="range" min="6" max="12" value="10" id="article-meta-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateArticleMetaSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Line Height</span>
-                                <span class="text-xs font-bold text-blue-500" id="line-height-val">1.6</span>
+                                <span class="text-xs font-bold text-blue-500" id="line-height-val">1.0</span>
                             </div>
-                            <input type="range" min="8" max="20" value="16" id="line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateLineHeight(this.value)">
+                            <input type="range" min="10" max="20" value="10" id="line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateLineHeight(this.value)">
                         </div>
                     </div>
                 </div>
@@ -947,16 +953,16 @@
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Folder Font Size</span>
-                                <span class="text-xs font-bold text-blue-500" id="mob-folder-size-val">1.4em</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-folder-size-val">1.2em</span>
                             </div>
-                            <input type="range" min="10" max="18" value="14" id="mob-folder-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobFolderSize(this.value)">
+                            <input type="range" min="10" max="16" value="12" id="mob-folder-size-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobFolderSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Line Height</span>
                                 <span class="text-xs font-bold text-blue-500" id="mob-feed-line-height-val">1.0</span>
                             </div>
-                            <input type="range" min="8" max="16" value="10" id="mob-feed-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobFeedLineHeight(this.value)">
+                            <input type="range" min="9" max="16" value="10" id="mob-feed-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobFeedLineHeight(this.value)">
                         </div>
                     </div>
 
@@ -967,21 +973,21 @@
                                 <span class="settings-item-label">Feed Name Size</span>
                                 <span class="text-xs font-bold text-blue-500" id="mob-feed-name-val">1.0em</span>
                             </div>
-                            <input type="range" min="7" max="16" value="10" id="mob-feed-name-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobFeedNameSize(this.value)">
+                            <input type="range" min="8" max="15" value="10" id="mob-feed-name-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobFeedNameSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Article Title Size</span>
                                 <span class="text-xs font-bold text-blue-500" id="mob-list-title-val">1.0em</span>
                             </div>
-                            <input type="range" min="9" max="18" value="10" id="mob-list-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobListTitleSize(this.value)">
+                            <input type="range" min="8" max="15" value="10" id="mob-list-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobListTitleSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Preview Text Size</span>
-                                <span class="text-xs font-bold text-blue-500" id="mob-list-preview-val">0.7em</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-list-preview-val">1.0em</span>
                             </div>
-                            <input type="range" min="4" max="12" value="7" id="mob-list-preview-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobListPreviewSize(this.value)">
+                            <input type="range" min="8" max="15" value="10" id="mob-list-preview-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobListPreviewSize(this.value)">
                         </div>
                     </div>
 
@@ -990,30 +996,37 @@
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Body Size</span>
-                                <span class="text-xs font-bold text-blue-500" id="mob-body-val">1.0em</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-body-val">1.2em</span>
                             </div>
-                            <input type="range" min="5" max="15" value="10" id="mob-body-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobBodySize(this.value)">
+                            <input type="range" min="10" max="18" value="12" id="mob-body-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobBodySize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Title Size</span>
-                                <span class="text-xs font-bold text-blue-500" id="mob-article-title-val">1.1em</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-article-title-val">1.0em</span>
                             </div>
-                            <input type="range" min="8" max="25" value="11" id="mob-article-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobArticleTitleSize(this.value)">
+                            <input type="range" min="8" max="18" value="10" id="mob-article-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobArticleTitleSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Author / Date Size</span>
-                                <span class="text-xs font-bold text-blue-500" id="mob-author-val">0.9em</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-author-val">1.0em</span>
                             </div>
-                            <input type="range" min="5" max="15" value="9" id="mob-author-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobAuthorSize(this.value)">
+                            <input type="range" min="8" max="15" value="10" id="mob-author-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobAuthorSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Line Height</span>
-                                <span class="text-xs font-bold text-blue-500" id="mob-line-height-val">1.8</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-line-height-val">1.4</span>
                             </div>
-                            <input type="range" min="8" max="20" value="18" id="mob-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobLineHeight(this.value)">
+                            <input type="range" min="10" max="20" value="14" id="mob-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobLineHeight(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="settings-item-label">Article Zoom</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-zoom-val">100%</span>
+                            </div>
+                            <input type="range" min="80" max="130" value="100" id="mob-zoom-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobZoom(this.value)">
                         </div>
                     </div>
                 </div>
@@ -1345,7 +1358,8 @@
             listEl.classList.toggle('card-view', window._viewMode === 'card');
             listEl.innerHTML = filtered.map(a => buildArticleCard(a)).join('');
 
-            document.getElementById('timeline-count').textContent = `${filtered.length} Articles`;
+            const unreadCount = filtered.filter(a => a.unread).length;
+            document.getElementById('timeline-count').textContent = `${unreadCount} Unread`;
             updateBadges();
         };
 
@@ -2178,6 +2192,14 @@
             updateListTitleEmSize:     { prop: '--list-title-em-size',      label: 'list-title-em-val',         suffix: 'em', rerender: 'timeline' },
             updateMobListPreviewSize:  { prop: '--mob-list-preview-size',   label: 'mob-list-preview-val',      suffix: 'em', rerender: null },
         };
+        // Zoom handler uses % not em
+        window.updateMobZoom = (v) => {
+            const pct = parseInt(v);
+            document.documentElement.style.setProperty('--mob-zoom', pct / 100);
+            const lb = document.getElementById('mob-zoom-val');
+            if (lb) lb.textContent = `${pct}%`;
+            saveTypographyPrefs();
+        };
         Object.entries(SLIDER_MAP).forEach(([name, { prop, label: labelId, suffix, rerender }]) => {
             window[name] = (v) => {
                 const val = (v / 10).toFixed(1);
@@ -2287,24 +2309,96 @@
             document.getElementById('article-context-menu').classList.add('hidden');
         };
 
-        // Long-press support for article list items
-        let _longPressTimer = null;
-        document.getElementById('article-list').addEventListener('touchstart', (e) => {
-            const card = e.target.closest('[data-id]');
-            if (!card) return;
-            const id = card.getAttribute('data-id');
-            if (!id) return;
-            _longPressTimer = setTimeout(() => {
-                const touch = e.touches[0];
-                showArticleContextMenu({ preventDefault: () => {}, pageX: touch.pageX, pageY: touch.pageY }, id);
-            }, 500);
-        }, { passive: true });
-        document.getElementById('article-list').addEventListener('touchend', () => {
-            clearTimeout(_longPressTimer);
-        });
-        document.getElementById('article-list').addEventListener('touchmove', () => {
-            clearTimeout(_longPressTimer);
-        }, { passive: true });
+        // --- ARTICLE LIST TOUCH INTERACTIONS ---
+        // Handles long-press (context menu), swipe left (read later), swipe right (mark read), swipe down (refresh feed)
+        (function() {
+            const list = document.getElementById('article-list');
+            let _lpTimer = null;
+            let _touchStartX = 0, _touchStartY = 0, _touchStartTime = 0;
+            let _swiping = false;
+            let _swipeCard = null;
+
+            list.addEventListener('touchstart', (e) => {
+                const card = e.target.closest('[data-id]');
+                _swipeCard = card || null;
+                _touchStartX = e.touches[0].clientX;
+                _touchStartY = e.touches[0].clientY;
+                _touchStartTime = Date.now();
+                _swiping = false;
+
+                if (!card) return;
+                const id = card.getAttribute('data-id');
+                // Long press — only trigger if finger stays still
+                _lpTimer = setTimeout(() => {
+                    if (_swiping) return;
+                    // Prevent text selection on long press
+                    window.getSelection()?.removeAllRanges();
+                    const touch = e.touches[0];
+                    showArticleContextMenu({ preventDefault: () => {}, pageX: touch.pageX, pageY: touch.pageY }, id);
+                }, 600);
+            }, { passive: true });
+
+            list.addEventListener('touchmove', (e) => {
+                const dx = e.touches[0].clientX - _touchStartX;
+                const dy = e.touches[0].clientY - _touchStartY;
+                if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                    _swiping = true;
+                    clearTimeout(_lpTimer);
+                }
+            }, { passive: true });
+
+            list.addEventListener('touchend', (e) => {
+                clearTimeout(_lpTimer);
+                if (!_swipeCard || !_swiping) return;
+                const id = _swipeCard.getAttribute('data-id');
+                if (!id) return;
+                const dx = e.changedTouches[0].clientX - _touchStartX;
+                const dy = e.changedTouches[0].clientY - _touchStartY;
+                const dt = Date.now() - _touchStartTime;
+                const absDx = Math.abs(dx), absDy = Math.abs(dy);
+
+                // Must be a dominant swipe completed within 400ms
+                if (dt > 400) return;
+
+                if (absDy > absDx && dy > 50 && absDx < 40) {
+                    // Swipe DOWN — refresh current feed/filter
+                    window.showToast('Refreshing...');
+                    if (window.currentSourceFilter) {
+                        const feed = window.feeds.find(f => f.name === window.currentSourceFilter);
+                        if (feed) fetchRecentArticles(feed.url, feed.name);
+                    } else {
+                        fetchAllStaggered(window.feeds);
+                    }
+                    return;
+                }
+
+                if (absDx < 40 || absDx < absDy) return; // not a horizontal swipe
+
+                const article = window.articles.find(a => a.id === id);
+                if (!article) return;
+
+                if (dx < 0) {
+                    // Swipe LEFT — toggle Read Later
+                    article.readLater = !article.readLater;
+                    if (article.readLater) window._readLaterLinks.add(article.link);
+                    else window._readLaterLinks.delete(article.link);
+                    saveReadLaterState();
+                    article._excerptHtml = null;
+                    renderTimeline();
+                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
+                } else {
+                    // Swipe RIGHT — toggle Read/Unread
+                    article.unread = !article.unread;
+                    if (!article.unread) window._readLinks.add(article.link);
+                    else window._readLinks.delete(article.link);
+                    saveReadState();
+                    article._excerptHtml = null;
+                    renderTimeline();
+                    renderFeeds();
+                    window.showToast(article.unread ? 'Marked Unread' : 'Marked Read');
+                }
+            }, { passive: true });
+        })();
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#article-context-menu')) document.getElementById('article-context-menu').classList.add('hidden');
             if (!e.target.closest('#folder-context-menu')) document.getElementById('folder-context-menu').classList.add('hidden');
@@ -2457,7 +2551,8 @@
                     mobListPreviewSize: get('mob-list-preview-slider'), mobListTitleSize: get('mob-list-title-slider'),
                     lineHeight: get('line-height-slider'), mobLineHeight: get('mob-line-height-slider'),
                     mobFolderSize: get('mob-folder-size-slider'),
-                    feedLineHeight: get('feed-line-height-slider'), mobFeedLineHeight: get('mob-feed-line-height-slider')
+                    feedLineHeight: get('feed-line-height-slider'), mobFeedLineHeight: get('mob-feed-line-height-slider'),
+                    mobZoom: get('mob-zoom-slider')
                 }));
             } catch(e) {}
         }
@@ -2512,6 +2607,11 @@
                 window._savedArticleTitleSize = em + 'em';
             }
             if (prefs.autoRefresh) { const el = document.getElementById('pref-auto-refresh'); if (el) el.value = prefs.autoRefresh; }
+            if (prefs.mobZoom) {
+                const el = document.getElementById('mob-zoom-slider'); if (el) el.value = prefs.mobZoom;
+                const lb = document.getElementById('mob-zoom-val'); if (lb) lb.textContent = `${prefs.mobZoom}%`;
+                root.style.setProperty('--mob-zoom', prefs.mobZoom / 100);
+            }
         }
 
         // --- ARTICLE CACHE ---
