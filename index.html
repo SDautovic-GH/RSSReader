@@ -3283,19 +3283,16 @@ const ASSETS = [
     'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;600;700&family=Literata:ital,wght@0,400;0,700;1,400&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap'
 ];
-
 self.addEventListener('install', e => {
     e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})));
     self.skipWaiting();
 });
-
 self.addEventListener('activate', e => {
     e.waitUntil(caches.keys().then(keys =>
         Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     ));
     self.clients.claim();
 });
-
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
     const isAsset = ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';
@@ -3307,13 +3304,14 @@ self.addEventListener('fetch', e => {
             return res;
         }))
     );
-});
-            `;
-            const blob = new Blob([swCode], { type: 'application/javascript' });
-            const swUrl = URL.createObjectURL(blob);
-            navigator.serviceWorker.register(swUrl, { scope: '/' })
-                .then(() => console.log('RSS Reader: service worker registered'))
-                .catch(e => console.warn('RSS Reader: SW registration skipped:', e.message));
+});`;
+            // Use data URL instead of blob URL — blob protocol rejected by Safari/iOS
+            const swDataUrl = 'data:application/javascript;charset=utf-8,' + encodeURIComponent(swCode);
+            navigator.serviceWorker.register(swDataUrl, { scope: '/' })
+                .then(() => console.log('RSS Reader: SW registered'))
+                .catch(() => {
+                    // data URL also unsupported in some contexts (e.g. file://) — silently skip
+                });
         }
     </script>
 </body>
