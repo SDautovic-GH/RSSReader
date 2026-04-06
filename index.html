@@ -222,8 +222,11 @@
         body, #sidebar-pane, #timeline-pane, #viewer-pane, #reader-view,
         #mobile-tab-bar, #mobile-reader-bar, .h-12,
         .pane-transition, .smart-feed-btn, #feed-list button,
-        #article-list > div, .article-card,
         .modal-backdrop, #settings-modal > div, #login-modal > div {
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+        }
+        /* Article list items get transitions only when not scrolling, to avoid per-item cost during scroll */
+        #article-list:not(.is-scrolling) > div, #article-list:not(.is-scrolling) .article-card {
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
         }
 
@@ -493,7 +496,7 @@
             }
         }
         /* Reduce paint cost on article list re-renders */
-        #article-list > div { content-visibility: auto; contain-intrinsic-size: 0 120px; }
+        #article-list > div { content-visibility: auto; contain-intrinsic-size: auto 120px; }
 
         /* ===== ARTICLE READER TYPOGRAPHY ===== */
         .article-content p { margin-bottom: 1.25em; line-height: var(--line-height, 1.75); }
@@ -1682,6 +1685,17 @@
                 </div>
             </div>`;
         }
+
+        // Suppress CSS transitions on list items while scrolling to avoid per-item paint cost
+        (function() {
+            const list = document.getElementById('article-list');
+            let _scrollTimer = null;
+            list.addEventListener('scroll', () => {
+                list.classList.add('is-scrolling');
+                clearTimeout(_scrollTimer);
+                _scrollTimer = setTimeout(() => list.classList.remove('is-scrolling'), 150);
+            }, { passive: true });
+        })();
 
         // Event delegation for article list clicks
         document.getElementById('article-list').addEventListener('click', (e) => {
