@@ -447,6 +447,16 @@
         /* Reduce paint cost on article list re-renders */
         #article-list > div { content-visibility: auto; contain-intrinsic-size: 0 120px; }
 
+        /* ===== ARTICLE READER TYPOGRAPHY ===== */
+        .article-content p { margin-bottom: 1.25em; line-height: var(--line-height, 1.75); }
+        .article-content h1, .article-content h2 { font-size: 1.25em; font-weight: 700; margin-top: 1.75em; margin-bottom: 0.6em; color: #f1f5f9; line-height: 1.3; }
+        .article-content h3, .article-content h4 { font-size: 1.05em; font-weight: 600; margin-top: 1.4em; margin-bottom: 0.5em; color: #cbd5e1; line-height: 1.3; }
+        .article-content ul, .article-content ol { padding-left: 1.5em; margin-bottom: 1.25em; }
+        .article-content li { margin-bottom: 0.4em; line-height: var(--line-height, 1.75); }
+        .article-content blockquote { border-left: 3px solid #3b82f6; padding-left: 1em; margin: 1.5em 0; color: #94a3b8; font-style: italic; }
+        .article-content pre, .article-content code { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 0.2em 0.4em; font-size: 0.9em; font-family: 'SF Mono','Fira Code',monospace; }
+        .article-content pre { padding: 1em; overflow-x: auto; margin-bottom: 1.25em; }
+
         #article-meta { font-size: var(--desk-feed-name-size) !important; color: #60a5fa !important; }
         /* No dividers between category rows inside the card */
         #feed-list [data-category] { border: none !important; }
@@ -644,14 +654,29 @@
                 <div id="reader-view" class="absolute inset-0 overflow-y-auto p-2 md:p-4 lg:p-6 no-scrollbar" id="reader-scroll">
                     <div id="reading-progress"></div>
                     <div class="max-w-2xl mx-auto">
-                        <div id="empty-state" class="text-center py-20 text-gray-400">
-                            <svg class="w-16 h-16 mx-auto mb-4 opacity-20"><use href="#icon-newspaper"/></svg>
-                            <p class="text-sm">Select an article to read.</p>
-                            <p class="text-xs mt-1 opacity-60">Double-click the toolbar to toggle Full Screen.</p>
-                            <div class="mt-6 text-left inline-block text-xs opacity-50 space-y-1">
-                                <p><kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">↑↓</kbd> or <kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">j k</kbd> Navigate</p>
-                                <p><kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">r</kbd> Toggle read &nbsp;&nbsp;<kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">b</kbd> Save for later</p>
-                                <p><kbd class="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">o</kbd> Open in browser</p>
+                        <div id="empty-state" class="text-center py-16 text-gray-400 px-4">
+                            <div id="empty-state-welcome" class="hidden">
+                                <!-- First-run: no feeds added yet -->
+                                <div class="w-20 h-20 mx-auto mb-5 rounded-2xl bg-blue-600/20 flex items-center justify-center">
+                                    <svg class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1" fill="currentColor" stroke="none"/></svg>
+                                </div>
+                                <h2 class="text-lg font-bold text-gray-200 mb-2">Welcome to RSS Reader</h2>
+                                <p class="text-sm text-gray-500 mb-6 max-w-xs mx-auto">Your personal, ad-free news hub. Add your first feed to get started.</p>
+                                <button onclick="toggleSettings()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    Add Your First Feed
+                                </button>
+                                <p class="text-xs text-gray-600 mt-4">Or import an OPML file from Settings → Feeds</p>
+                            </div>
+                            <div id="empty-state-select">
+                                <!-- Has feeds: prompt to select article -->
+                                <svg class="w-14 h-14 mx-auto mb-4 opacity-10"><use href="#icon-newspaper"/></svg>
+                                <p class="text-sm font-medium text-gray-500">Select an article to read</p>
+                                <div class="mt-5 inline-block text-left text-xs text-gray-600 space-y-1.5">
+                                    <p><kbd class="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-400">↑↓</kbd> or <kbd class="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-400">j k</kbd> <span class="ml-1">Navigate</span></p>
+                                    <p><kbd class="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-400">r</kbd> <span class="ml-1">Toggle read</span> &nbsp;<kbd class="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-400">b</kbd> <span class="ml-1">Save for later</span></p>
+                                    <p><kbd class="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-400">o</kbd> <span class="ml-1">Open in browser</span></p>
+                                </div>
                             </div>
                         </div>
                         
@@ -1324,6 +1349,38 @@
             }
         }
 
+        // --- VIRTUAL SCROLL ---
+        const PAGE_SIZE = 40; // items per page
+        let _timelinePageEnd = PAGE_SIZE;
+        let _timelineObserver = null;
+
+        function renderTimelinePage(filtered) {
+            const listEl = document.getElementById('article-list');
+            listEl.classList.toggle('card-view', window._viewMode === 'card');
+            const slice = filtered.slice(0, _timelinePageEnd);
+            listEl.innerHTML = slice.map(a => buildArticleCard(a)).join('');
+
+            // Add sentinel for load-more if more items exist
+            if (filtered.length > _timelinePageEnd) {
+                const sentinel = document.createElement('div');
+                sentinel.id = 'list-sentinel';
+                sentinel.style.cssText = 'height:1px;margin-top:-1px;';
+                listEl.appendChild(sentinel);
+                if (_timelineObserver) _timelineObserver.disconnect();
+                _timelineObserver = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting) {
+                        _timelineObserver.disconnect();
+                        _timelinePageEnd += PAGE_SIZE;
+                        renderTimelinePage(window.currentTimeline);
+                        // Restore scroll position after re-render
+                    }
+                }, { root: listEl, threshold: 0.1 });
+                _timelineObserver.observe(sentinel);
+            } else {
+                if (_timelineObserver) { _timelineObserver.disconnect(); _timelineObserver = null; }
+            }
+        }
+
         window.renderTimeline = function() {
             const list = document.getElementById('article-list');
             if (!list) return;
@@ -1358,9 +1415,10 @@
             window.currentTimeline = filtered;
             if (!window._navigating) window._navSnapshot = filtered.slice();
 
-            const listEl = document.getElementById('article-list');
-            listEl.classList.toggle('card-view', window._viewMode === 'card');
-            listEl.innerHTML = filtered.map(a => buildArticleCard(a)).join('');
+            // Reset page on filter/sort change (not during navigation)
+            if (!window._navigating) _timelinePageEnd = PAGE_SIZE;
+
+            renderTimelinePage(filtered);
 
             const unreadCount = filtered.filter(a => a.unread).length;
             document.getElementById('timeline-count').textContent = `${unreadCount} Unread`;
@@ -1380,7 +1438,7 @@
             const selCls = selected ? 'border-l-4 border-l-blue-500' : '';
             const selStyle = selected ? 'style="background-color: rgba(23,37,84,0.45);"' : '';
             if (window._viewMode === 'card') {
-                return `<div onclick="selectArticle('${a.id}')" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+                return `<div data-id="${a.id}" data-action="select" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                     ${a.image ? `<img src="${a.image}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
                     <div class="p-3">
                         <div class="flex items-center text-[10px] text-gray-400 mb-1">
@@ -1392,7 +1450,7 @@
                     </div>
                 </div>`;
             }
-            return `<div data-id="${a.id}" onclick="selectArticle('${a.id}')" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+            return `<div data-id="${a.id}" data-action="select" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="flex items-start gap-1.5">
                     <div class="flex-shrink-0 mt-2">
                         ${a.unread ? '<span class="w-2 h-2 bg-blue-500 rounded-full block"></span>' : '<span class="w-2 h-2 rounded-full block opacity-0"></span>'}
@@ -1408,6 +1466,14 @@
                 </div>
             </div>`;
         }
+
+        // Event delegation for article list clicks
+        document.getElementById('article-list').addEventListener('click', (e) => {
+            const card = e.target.closest('[data-action="select"]');
+            if (!card) return;
+            const id = card.getAttribute('data-id');
+            if (id) selectArticle(id);
+        });
 
         window.selectArticle = function(id) {
             const article = window.articles.find(a => a.id === id);
@@ -1872,6 +1938,7 @@
             fetchRecentArticles(u, t);
             saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds([f]);
+            updateEmptyState();
         };
 
         window.removeLocalFeed = async (feedId) => {
@@ -2801,6 +2868,15 @@
         function preloadAllFavicons() {
             window.feeds.forEach(f => { if (f.favicon) preloadFavicon(f.favicon); });
         }
+
+        // --- EMPTY STATE ---
+        function updateEmptyState() {
+            const hasFeeds = window.feeds.length > 0;
+            const welcome = document.getElementById('empty-state-welcome');
+            const select = document.getElementById('empty-state-select');
+            if (welcome) welcome.classList.toggle('hidden', hasFeeds);
+            if (select) select.classList.toggle('hidden', !hasFeeds);
+        }
         let _isMobileCache = window.innerWidth <= 900;
         function isMobile() { return _isMobileCache; }
         window.addEventListener('resize', () => {
@@ -2865,6 +2941,7 @@
         }
         renderFeeds();
         renderTimeline();
+        updateEmptyState();
     </script>
 
     <!-- FIREBASE MODULE -->
