@@ -291,7 +291,7 @@
                 line-height: var(--mob-line-height) !important;
             }
             /* Mobile article list — 2px left/right padding, no text select (prevents long-press conflict) */
-            #article-list [data-id] { padding-left: 2px !important; padding-right: 2px !important; -webkit-user-select: none; user-select: none; }
+            #article-list [data-id] { padding-left: 3px !important; padding-right: 3px !important; -webkit-user-select: none; user-select: none; }
 
             /* ===== MOBILE TOP BAR SIZING ===== */
             /* Sidebar header — taller, larger icons and title */
@@ -2494,8 +2494,8 @@
                     _swiping = true;
                     clearTimeout(_lpTimer);
                 }
-                // Show swipe hint if horizontal dominant
-                if (Math.abs(dx) > Math.abs(dy) * 0.8) {
+                // Only show swipe hint if clearly horizontal (dx dominates by 2x)
+                if (Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 20) {
                     showSwipeHint(dx, dy, e.touches[0].clientX, e.touches[0].clientY, _swipeCard);
                 } else {
                     hideSwipeHint();
@@ -2512,8 +2512,9 @@
                 const dy = e.changedTouches[0].clientY - _touchStartY;
                 const absDx = Math.abs(dx), absDy = Math.abs(dy);
 
-                // Swipe DOWN — refresh
-                if (absDy > absDx && dy > 50 && absDx < 60) {
+                // Swipe DOWN to refresh — requires strong vertical intent:
+                // dy > 120px, vertical must be 3x horizontal, started near top of list
+                if (dy > 120 && absDy > absDx * 3 && _touchStartY < 180) {
                     window.showToast('Refreshing...');
                     if (window.currentSourceFilter) {
                         const feed = window.feeds.find(f => f.name === window.currentSourceFilter);
@@ -2524,14 +2525,13 @@
                     return;
                 }
 
-                // Horizontal swipe — minimum 35px, horizontal must be at least 1.2x vertical
-                if (absDx < 35 || absDx < absDy * 1.2) return;
+                // Horizontal swipe — minimum 50px, must be 2x more horizontal than vertical
+                if (absDx < 50 || absDx < absDy * 2) return;
 
                 const article = window.articles.find(a => a.id === id);
                 if (!article) return;
 
                 if (dx < 0) {
-                    // Swipe LEFT — toggle Read Later
                     article.readLater = !article.readLater;
                     if (article.readLater) window._readLaterLinks.add(article.link);
                     else window._readLaterLinks.delete(article.link);
@@ -2540,7 +2540,6 @@
                     renderTimeline();
                     window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
                 } else {
-                    // Swipe RIGHT — toggle Read/Unread
                     article.unread = !article.unread;
                     if (!article.unread) window._readLinks.add(article.link);
                     else window._readLinks.delete(article.link);
