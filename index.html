@@ -1530,19 +1530,27 @@
                     prevSelected.classList.remove('border-l-4', 'border-l-blue-500');
                     prevSelected.style.backgroundColor = '';
                 }
+                // Always invalidate dirty key so unread dot updates immediately
+                _lastTimelineKey = '';
                 const newSelected = listEl.querySelector(`[data-id="${id}"]`);
                 if (newSelected) {
                     newSelected.classList.add('border-l-4', 'border-l-blue-500');
                     newSelected.style.backgroundColor = 'rgba(23,37,84,0.45)';
-                    const dot = newSelected.querySelector('.bg-blue-500.rounded-full');
-                    if (dot) dot.classList.add('opacity-0');
-                    setTimeout(() => newSelected.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30);
+                    // Re-render just this card in place to update the unread dot
+                    const article = window.articles.find(a => a.id === id);
+                    if (article) newSelected.outerHTML = buildArticleCard(article);
+                    // Re-query after outerHTML replacement
+                    setTimeout(() => {
+                        const el = listEl.querySelector(`[data-id="${id}"]`);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 30);
                 } else {
                     renderTimeline();
                 }
             }
-            // Only re-render feeds when unread count actually changed
+            // Re-render feeds for unread count update
             renderFeeds();
+            updateBadges();
             updateActionButton();
         };
 
@@ -1738,7 +1746,11 @@
 
             // Dirty check — skip full re-render if unread counts + collapsed state haven't changed
             const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|');
-            if (renderKey === _lastFeedRenderKey) return;
+            if (renderKey === _lastFeedRenderKey) {
+                // Even if sidebar DOM is unchanged, badges may need updating
+                updateBadges();
+                return;
+            }
             _lastFeedRenderKey = renderKey;
 
             const allCats = Object.keys(groups).sort((a, b) => a.localeCompare(b));
@@ -1805,6 +1817,7 @@
                     </div>
                 `).join('');
             }
+            updateBadges();
         }
 
         window.setCategoryFilter = (cat) => { window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
