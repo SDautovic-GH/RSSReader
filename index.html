@@ -2494,19 +2494,21 @@
 
                 if (!card) return;
                 const id = card.getAttribute('data-id');
-                // Long press — only trigger if finger stays still
+                // Long press — only trigger if finger stays still for 750ms
                 _lpTimer = setTimeout(() => {
                     if (_swiping) return;
                     window.getSelection()?.removeAllRanges();
                     const touch = e.touches[0];
+                    // Haptic feedback if available
+                    if (navigator.vibrate) navigator.vibrate(30);
                     showArticleContextMenu({ preventDefault: () => {}, pageX: touch.pageX, pageY: touch.pageY }, id);
-                }, 600);
+                }, 750);
             }, { passive: true });
 
             list.addEventListener('touchmove', (e) => {
                 const dx = e.touches[0].clientX - _touchStartX;
                 const dy = e.touches[0].clientY - _touchStartY;
-                if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                if (Math.abs(dx) > 12 || Math.abs(dy) > 12) {
                     _swiping = true;
                     clearTimeout(_lpTimer);
                 }
