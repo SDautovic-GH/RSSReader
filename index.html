@@ -2341,25 +2341,31 @@
             `;
             document.body.appendChild(_swipeIndicator);
 
-            function showSwipeHint(dx, card) {
+            function showSwipeHint(dx, dy, touchX, touchY, card) {
                 if (!card) return;
-                const rect = card.getBoundingClientRect();
                 const id = card.getAttribute('data-id');
                 const article = window.articles.find(a => a.id === id);
                 if (!article) return;
 
+                // Position pill near finger — offset above thumb so it's visible
+                const pillY = Math.max(60, touchY - 50);
+
                 if (dx < -20) {
-                    // Swiping left — Read Later
-                    _swipeIndicator.style.left = '12px';
+                    // Swiping left — show pill to the right of current finger position
+                    _swipeIndicator.style.left = `${touchX + 12}px`;
                     _swipeIndicator.style.right = 'auto';
-                    _swipeIndicator.style.background = 'rgba(37,99,235,0.85)';
+                    _swipeIndicator.style.top = `${pillY}px`;
+                    _swipeIndicator.style.transform = 'none';
+                    _swipeIndicator.style.background = 'rgba(37,99,235,0.92)';
                     _swipeIndicator.textContent = article.readLater ? '🔖 Remove Later' : '🔖 Save Later';
                     _swipeIndicator.style.opacity = Math.min(1, Math.abs(dx) / 60).toString();
                 } else if (dx > 20) {
-                    // Swiping right — Mark Read/Unread
-                    _swipeIndicator.style.right = '12px';
+                    // Swiping right — show pill to the left of current finger position
+                    _swipeIndicator.style.right = `${window.innerWidth - touchX + 12}px`;
                     _swipeIndicator.style.left = 'auto';
-                    _swipeIndicator.style.background = article.unread ? 'rgba(22,163,74,0.85)' : 'rgba(100,116,139,0.85)';
+                    _swipeIndicator.style.top = `${pillY}px`;
+                    _swipeIndicator.style.transform = 'none';
+                    _swipeIndicator.style.background = article.unread ? 'rgba(22,163,74,0.92)' : 'rgba(100,116,139,0.92)';
                     _swipeIndicator.textContent = article.unread ? '✓ Mark Read' : '↩ Mark Unread';
                     _swipeIndicator.style.opacity = Math.min(1, Math.abs(dx) / 60).toString();
                 } else {
@@ -2399,7 +2405,7 @@
                 }
                 // Show swipe hint if horizontal dominant
                 if (Math.abs(dx) > Math.abs(dy) * 0.8) {
-                    showSwipeHint(dx, _swipeCard);
+                    showSwipeHint(dx, dy, e.touches[0].clientX, e.touches[0].clientY, _swipeCard);
                 } else {
                     hideSwipeHint();
                 }
