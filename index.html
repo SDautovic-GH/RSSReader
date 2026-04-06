@@ -1547,16 +1547,15 @@
         };
 
         // --- SILENT BACKGROUND FULL CONTENT EXTRACTION ---
-        // Automatically attempts to fetch full article content after RSS body is shown.
-        // Silently upgrades if successful and content is substantially longer. No error shown on failure.
         async function attemptFullContentLoad(article) {
             if (!article || !article.link || article.link === '#') return;
             const proxies = [
                 `https://api.allorigins.win/get?url=${encodeURIComponent(article.link)}`,
                 `https://corsproxy.io/?${encodeURIComponent(article.link)}`,
-                `https://thingproxy.freeboard.io/fetch/${article.link}`
+                `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(article.link)}`
             ];
             const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
+
             for (const proxyUrl of proxies) {
                 try {
                     const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
@@ -1569,31 +1568,84 @@
                         html = await res.text();
                     }
                     if (!html) continue;
+
                     const doc = new DOMParser().parseFromString(html, 'text/html');
-                    doc.querySelectorAll('script,style,nav,footer,header,aside,iframe,.ads,.sidebar,[aria-hidden="true"]').forEach(el => el.remove());
-                    let content = doc.querySelector('.ArticleBody-articleBody,.caas-body,.story-body,article,[itemprop="articleBody"],.main-content,.entry-content,.post-content,.article-body');
+
+                    // Aggressive cleanup — remove noise, ads, paywall overlays, nav
+                    doc.querySelectorAll([
+                        'script','style','nav','footer','header','aside','iframe',
+                        'figure.ad','[class*="paywall"]','[class*="subscribe"]',
+                        '[class*="newsletter"]','[class*="signup"]','[class*="overlay"]',
+                        '[class*="modal"]','[id*="paywall"]','[id*="subscribe"]',
+                        '.ads','.ad','.sidebar','.widget','.related','.comments',
+                        '[aria-hidden="true"]','[role="complementary"]','[role="banner"]',
+                        '[role="navigation"]','[role="dialog"]'
+                    ].join(',')).forEach(el => el.remove());
+
+                    // Extended content selectors — ordered by specificity
+                    const SELECTORS = [
+                        // News sites
+                        '[data-component="text-block"]',      // BBC
+                        '.article__body',                      // Guardian
+                        '.article-body-commercial-selector',   // Guardian alternate
+                        '.post-content',                       // WordPress/blogs
+                        '.entry-content',                      // WordPress
+                        '.article-content',
+                        '.article-body',
+                        '.ArticleBody-articleBody',            // Yahoo/Oath
+                        '.caas-body',                          // Yahoo News
+                        '.story-body',
+                        '.story-body-supplemental',
+                        // Substack / Medium
+                        '.available-content',
+                        '.body.markup',
+                        '.postContent',
+                        // Generic semantic
+                        'article [itemprop="articleBody"]',
+                        '[itemprop="articleBody"]',
+                        'article .content',
+                        '.main-content article',
+                        '.main-content',
+                        '.page-content',
+                        'article',
+                        'main',
+                    ];
+
+                    let content = null;
+                    for (const sel of SELECTORS) {
+                        content = doc.querySelector(sel);
+                        // Validate it has meaningful text
+                        if (content && content.textContent.trim().split(/\s+/).length > 50) break;
+                        content = null;
+                    }
+
+                    // Fallback — find the div/section with the most <p> tags
                     if (!content) {
                         let best = null, bestScore = 0;
                         doc.querySelectorAll('div,section,main').forEach(el => {
                             const score = el.querySelectorAll('p').length;
-                            if (score > bestScore) { bestScore = score; best = el; }
+                            if (score > bestScore && el.textContent.trim().length > 200) {
+                                bestScore = score; best = el;
+                            }
                         });
                         content = best;
                     }
+
                     if (!content) continue;
-                    const fullWordCount = content.innerText?.split(/\s+/).filter(Boolean).length || 0;
-                    // Only upgrade if full content is meaningfully longer than RSS excerpt
-                    if (fullWordCount > rssWordCount * 1.3 && fullWordCount > 100) {
+
+                    // Use textContent (not innerText — DOMParser docs don't support innerText)
+                    const fullWordCount = content.textContent.trim().split(/\s+/).filter(Boolean).length;
+
+                    // Upgrade if: full content has >100 words AND at least 80 more words than RSS excerpt
+                    if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
-                        // Only update if user is still reading this same article
                         if (bodyEl && window.currentArticle?.id === article.id) {
                             bodyEl.innerHTML = DOMPurify.sanitize(linkify(content.innerHTML));
-                            // Update read time estimate
                             const minutes = Math.max(1, Math.ceil(fullWordCount / 200));
                             const readTimeEl = document.getElementById('read-time');
                             if (readTimeEl) readTimeEl.textContent = `~${minutes} min read`;
                         }
-                        return; // success — stop trying proxies
+                        return;
                     }
                 } catch(e) { /* silent fail */ }
             }
