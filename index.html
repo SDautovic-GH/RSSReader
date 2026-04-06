@@ -476,6 +476,26 @@
         .article-content ul, .article-content ol { padding-left: 1.5em; margin-bottom: 1.25em; }
         .article-content li { margin-bottom: 0.4em; line-height: var(--line-height, 1.75); }
         .article-content blockquote { border-left: 3px solid #3b82f6; padding-left: 1em; margin: 1.5em 0; color: #94a3b8; font-style: italic; }
+
+        /* ===== BLUESKY EMBED STYLES ===== */
+        .bsky-quote-embed { border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 12px 14px; margin: 12px 0; background: rgba(255,255,255,0.03); }
+        .bsky-quote-header { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; flex-wrap: wrap; }
+        .bsky-quote-avatar { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
+        .bsky-quote-name { font-weight: 700; font-size: 0.88em; color: #e2e8f0; }
+        .bsky-quote-handle { font-size: 0.82em; color: #64748b; }
+        .bsky-quote-text { font-size: 0.88em; line-height: 1.55; color: #cbd5e1; margin-top: 2px; }
+        .bsky-quote-meta { font-size: 0.82em; color: #64748b; font-style: italic; }
+        .bsky-post-image { max-width: 100%; border-radius: 8px; margin: 6px 0; display: block; }
+        .bsky-images { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
+        .bsky-images-compact .bsky-post-image { max-height: 110px; width: auto; max-width: 48%; }
+        .bsky-repost-label { font-size: 0.78em; color: #64748b; margin-bottom: 4px; }
+        .bsky-external-card { display: block; border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; overflow: hidden; margin: 10px 0; text-decoration: none; color: inherit; }
+        .bsky-external-card:hover { border-color: rgba(96,165,250,0.4); }
+        .bsky-external-thumb { width: 100%; max-height: 180px; object-fit: cover; display: block; }
+        .bsky-external-info { padding: 9px 12px; }
+        .bsky-external-title { font-weight: 600; font-size: 0.88em; margin-bottom: 3px; color: #e2e8f0; }
+        .bsky-external-desc { font-size: 0.8em; color: #94a3b8; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+        .bsky-external-uri { font-size: 0.75em; color: #60a5fa; margin-top: 4px; }
         .article-content pre, .article-content code { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 0.2em 0.4em; font-size: 0.9em; font-family: 'SF Mono','Fira Code',monospace; }
         .article-content pre { padding: 1em; overflow-x: auto; margin-bottom: 1.25em; }
 
@@ -1168,7 +1188,206 @@
             return null;
         }
 
+        // ===== BLUESKY AT PROTOCOL INTEGRATION =====
+
+        function isBlueskyFeed(url) {
+            return /bsky\.app\/profile\/.+\/rss/.test(url) ||
+                   /api\.bsky\.app\/authorFeed/.test(url);
+        }
+
+        function extractBlueskyActor(url) {
+            const m = url.match(/bsky\.app\/profile\/([^/?#]+)/) ||
+                      url.match(/api\.bsky\.app\/authorFeed(?:Articles)?\/([^/?#]+)/);
+            return m ? m[1] : null;
+        }
+
+        function bskyEsc(str) {
+            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function applyBskyFacets(text, facets) {
+            if (!facets?.length) return bskyEsc(text).replace(/\n/g, '<br>');
+            const enc = new TextEncoder(), dec = new TextDecoder();
+            const bytes = enc.encode(text);
+            const sorted = [...facets].sort((a, b) => a.index.byteStart - b.index.byteStart);
+            let html = '', pos = 0;
+            for (const f of sorted) {
+                const { byteStart, byteEnd } = f.index;
+                if (byteStart < pos) continue;
+                html += bskyEsc(dec.decode(bytes.slice(pos, byteStart)));
+                const chunk = bskyEsc(dec.decode(bytes.slice(byteStart, byteEnd)));
+                const feat = f.features?.[0];
+                if (feat?.$type === 'app.bsky.richtext.facet#link') {
+                    html += `<a href="${bskyEsc(feat.uri)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`;
+                } else if (feat?.$type === 'app.bsky.richtext.facet#mention') {
+                    html += `<a href="https://bsky.app/profile/${bskyEsc(feat.did)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`;
+                } else if (feat?.$type === 'app.bsky.richtext.facet#tag') {
+                    html += `<a href="https://bsky.app/hashtag/${bskyEsc(feat.tag)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`;
+                } else {
+                    html += chunk;
+                }
+                pos = byteEnd;
+            }
+            html += bskyEsc(dec.decode(bytes.slice(pos)));
+            return html.replace(/\n/g, '<br>');
+        }
+
+        function renderBskyImages(images, compact = false) {
+            if (!images?.length) return '';
+            const cls = compact ? 'bsky-images bsky-images-compact' : 'bsky-images';
+            return `<div class="${cls}">${images.slice(0, 4).map(img =>
+                `<img src="${bskyEsc(img.thumb || img.fullsize)}" alt="${bskyEsc(img.alt || '')}" loading="lazy" class="bsky-post-image">`
+            ).join('')}</div>`;
+        }
+
+        function renderBskyExternalCard(ext) {
+            if (!ext?.uri) return '';
+            const thumb = ext.thumb ? `<img src="${bskyEsc(ext.thumb)}" class="bsky-external-thumb" loading="lazy" alt="">` : '';
+            const host = (() => { try { return new URL(ext.uri).hostname; } catch(e) { return ''; } })();
+            return `<a href="${bskyEsc(ext.uri)}" target="_blank" rel="noopener noreferrer" class="bsky-external-card">${thumb}<div class="bsky-external-info">${ext.title ? `<div class="bsky-external-title">${bskyEsc(ext.title)}</div>` : ''}${ext.description ? `<div class="bsky-external-desc">${bskyEsc(ext.description)}</div>` : ''}${host ? `<div class="bsky-external-uri">${bskyEsc(host)}</div>` : ''}</div></a>`;
+        }
+
+        function renderBskyQuote(record) {
+            if (!record) return '';
+            if (record.$type === 'app.bsky.embed.record#viewBlocked') return '<div class="bsky-quote-embed bsky-quote-meta">Blocked post</div>';
+            if (record.$type === 'app.bsky.embed.record#viewNotFound') return '<div class="bsky-quote-embed bsky-quote-meta">Post not found</div>';
+            if (record.$type === 'app.bsky.embed.record#viewDetached') return '<div class="bsky-quote-embed bsky-quote-meta">Deleted post</div>';
+            const author = record.author || {};
+            const value = record.value || {};
+            const embeds = record.embeds || [];
+            const avatarHtml = author.avatar ? `<img src="${bskyEsc(author.avatar)}" class="bsky-quote-avatar" loading="lazy" alt="">` : '';
+            const imgEmbed = embeds.find(e => e.$type === 'app.bsky.embed.images#view');
+            const extEmbed = embeds.find(e => e.$type === 'app.bsky.embed.external#view');
+            return `<div class="bsky-quote-embed"><div class="bsky-quote-header">${avatarHtml}<span class="bsky-quote-name">${bskyEsc(author.displayName || author.handle)}</span><span class="bsky-quote-handle">@${bskyEsc(author.handle)}</span></div>${value.text ? `<div class="bsky-quote-text">${applyBskyFacets(value.text, value.facets)}</div>` : ''}${imgEmbed ? renderBskyImages(imgEmbed.images, true) : ''}${extEmbed ? renderBskyExternalCard(extEmbed.external) : ''}</div>`;
+        }
+
+        function buildBlueskyPostHtml(feedItem) {
+            const { post, reason } = feedItem;
+            const record = post?.record;
+            const embed = post?.embed;
+            if (!record) return '';
+            let html = '';
+            if (reason?.$type === 'app.bsky.feed.defs#reasonRepost') {
+                html += `<p class="bsky-repost-label">↻ Reposted</p>`;
+            }
+            html += `<p>${applyBskyFacets(record.text || '', record.facets)}</p>`;
+            if (embed?.$type === 'app.bsky.embed.images#view') {
+                html += renderBskyImages(embed.images);
+            }
+            if (embed?.$type === 'app.bsky.embed.external#view') {
+                html += renderBskyExternalCard(embed.external);
+            }
+            if (embed?.$type === 'app.bsky.embed.record#view') {
+                html += renderBskyQuote(embed.record);
+            }
+            if (embed?.$type === 'app.bsky.embed.recordWithMedia#view') {
+                const media = embed.media;
+                if (media?.$type === 'app.bsky.embed.images#view') html += renderBskyImages(media.images);
+                if (media?.$type === 'app.bsky.embed.external#view') html += renderBskyExternalCard(media.external);
+                if (embed.record?.record) html += renderBskyQuote(embed.record.record);
+            }
+            return html;
+        }
+
+        async function fetchBlueskyArticles(feedUrl, sourceName, maxItems, isBackground) {
+            const actor = extractBlueskyActor(feedUrl);
+            if (!actor) return false;
+            const limit = maxItems || 50;
+            const apiUrl = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(actor)}&limit=${limit}`;
+            let data = null;
+            // Try direct fetch (public.api.bsky.app has CORS enabled)
+            try {
+                const res = await fetch(apiUrl, { signal: AbortSignal.timeout(10000) });
+                if (res.ok) data = await res.json();
+            } catch(e) {}
+            // Fall back to proxies if direct fetch failed
+            if (!data) {
+                for (const proxyFn of PROXIES) {
+                    try {
+                        const proxyUrl = proxyFn(apiUrl);
+                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+                        if (!res.ok) continue;
+                        let text;
+                        if (proxyUrl.includes('allorigins')) {
+                            const json = await res.json();
+                            text = json.contents;
+                        } else {
+                            text = await res.text();
+                        }
+                        if (!text) continue;
+                        try { data = JSON.parse(text); break; } catch(e) {}
+                    } catch(e) {}
+                }
+            }
+            if (!data?.feed) return false;
+
+            window._feedHealth[feedUrl] = { lastSuccess: Date.now(), errorCount: 0 };
+            const feedObj = window.feeds.find(f => f.url === feedUrl);
+            if (feedObj && !feedObj.favicon) {
+                const cached = (() => { try { return localStorage.getItem('favicon_' + feedUrl); } catch(e) { return null; } })();
+                feedObj.favicon = cached || `https://www.google.com/s2/favicons?domain=bsky.app&sz=32`;
+                if (!cached) { try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) {} }
+            }
+
+            window.articles = window.articles.filter(a => a.source !== sourceName);
+            let newCount = 0;
+
+            for (const feedItem of data.feed) {
+                const { post, reason } = feedItem;
+                if (!post) continue;
+                const rkey = post.uri?.split('/').pop();
+                const handle = post.author?.handle;
+                if (!rkey || !handle) continue;
+                const link = `https://bsky.app/profile/${handle}/post/${rkey}`;
+                if (window.articles.some(a => a.link === link)) continue;
+                const isNew = !window._readLinks.has(link);
+                const record = post.record || {};
+                const text = record.text || '';
+                const isRepost = reason?.$type === 'app.bsky.feed.defs#reasonRepost';
+                const titleText = text.trim() || (isRepost ? '[Repost]' : '[Post]');
+                const title = titleText.length > 120 ? titleText.substring(0, 119) + '…' : titleText;
+                const body = DOMPurify.sanitize(buildBlueskyPostHtml(feedItem), { ADD_ATTR: ['loading', 'target', 'rel'] });
+                const image = (() => {
+                    const emb = post.embed;
+                    const imgs = emb?.$type === 'app.bsky.embed.images#view' ? emb.images :
+                                 emb?.$type === 'app.bsky.embed.recordWithMedia#view' && emb.media?.$type === 'app.bsky.embed.images#view' ? emb.media.images : null;
+                    return imgs?.[0]?.thumb || null;
+                })();
+                window.articles.push({
+                    id: crypto.randomUUID(),
+                    source: sourceName,
+                    title,
+                    author: post.author?.displayName || post.author?.handle || sourceName,
+                    timestamp: new Date(record.createdAt || Date.now()).toISOString(),
+                    _ts: new Date(record.createdAt || Date.now()).getTime(),
+                    excerpt: text.substring(0, 3000),
+                    _excerptHtml: null,
+                    body,
+                    link,
+                    unread: isNew,
+                    readLater: window._readLaterLinks.has(link),
+                    image
+                });
+                if (isNew && isBackground) newCount++;
+            }
+
+            if (isBackground && newCount > 0) {
+                window._newArticleCount += newCount;
+                showNewArticlesBanner(window._newArticleCount);
+            } else {
+                renderTimeline();
+                renderFeeds();
+            }
+            saveArticleCache();
+            return true;
+        }
+
         async function fetchRecentArticles(feedUrl, sourceName, maxItems = null, isBackground = false) {
+            if (isBlueskyFeed(feedUrl)) {
+                const ok = await fetchBlueskyArticles(feedUrl, sourceName, maxItems, isBackground);
+                if (ok) return;
+                // fall through to RSS on failure
+            }
             try {
                 const xmlText = await fetchWithProxyFallback(feedUrl);
                 if (!xmlText) throw new Error('All proxies failed');
