@@ -1555,11 +1555,13 @@
                 `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(article.link)}`
             ];
             const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
+            console.log(`[Extractor] Starting for: ${article.link} | RSS words: ${rssWordCount}`);
 
             for (const proxyUrl of proxies) {
                 try {
+                    const proxyName = proxyUrl.split('?')[0].split('/').slice(-1)[0] || proxyUrl.substring(0,40);
                     const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-                    if (!res.ok) continue;
+                    if (!res.ok) { console.log(`[Extractor] ${proxyName} HTTP ${res.status} — skipping`); continue; }
                     let html;
                     if (proxyUrl.includes('allorigins')) {
                         const data = await res.json();
@@ -1567,11 +1569,11 @@
                     } else {
                         html = await res.text();
                     }
-                    if (!html) continue;
+                    if (!html) { console.log(`[Extractor] ${proxyName} empty response`); continue; }
+                    console.log(`[Extractor] ${proxyName} fetched ${html.length} chars`);
 
                     const doc = new DOMParser().parseFromString(html, 'text/html');
 
-                    // Aggressive cleanup — remove noise, ads, paywall overlays, nav
                     doc.querySelectorAll([
                         'script','style','nav','footer','header','aside','iframe',
                         'figure.ad','[class*="paywall"]','[class*="subscribe"]',
@@ -1582,25 +1584,21 @@
                         '[role="navigation"]','[role="dialog"]'
                     ].join(',')).forEach(el => el.remove());
 
-                    // Extended content selectors — ordered by specificity
                     const SELECTORS = [
-                        // News sites
-                        '[data-component="text-block"]',      // BBC
-                        '.article__body',                      // Guardian
-                        '.article-body-commercial-selector',   // Guardian alternate
-                        '.post-content',                       // WordPress/blogs
-                        '.entry-content',                      // WordPress
+                        '[data-component="text-block"]',
+                        '.article__body',
+                        '.article-body-commercial-selector',
+                        '.post-content',
+                        '.entry-content',
                         '.article-content',
                         '.article-body',
-                        '.ArticleBody-articleBody',            // Yahoo/Oath
-                        '.caas-body',                          // Yahoo News
+                        '.ArticleBody-articleBody',
+                        '.caas-body',
                         '.story-body',
                         '.story-body-supplemental',
-                        // Substack / Medium
                         '.available-content',
                         '.body.markup',
                         '.postContent',
-                        // Generic semantic
                         'article [itemprop="articleBody"]',
                         '[itemprop="articleBody"]',
                         'article .content',
@@ -1612,14 +1610,13 @@
                     ];
 
                     let content = null;
+                    let matchedSelector = null;
                     for (const sel of SELECTORS) {
-                        content = doc.querySelector(sel);
-                        // Validate it has meaningful text
-                        if (content && content.textContent.trim().split(/\s+/).length > 50) break;
-                        content = null;
+                        const el = doc.querySelector(sel);
+                        const wc = el ? el.textContent.trim().split(/\s+/).filter(Boolean).length : 0;
+                        if (el && wc > 50) { content = el; matchedSelector = sel; break; }
                     }
 
-                    // Fallback — find the div/section with the most <p> tags
                     if (!content) {
                         let best = null, bestScore = 0;
                         doc.querySelectorAll('div,section,main').forEach(el => {
@@ -1629,14 +1626,14 @@
                             }
                         });
                         content = best;
+                        matchedSelector = `fallback (${bestScore} <p> tags)`;
                     }
 
-                    if (!content) continue;
+                    if (!content) { console.log(`[Extractor] No content found in ${proxyName}`); continue; }
 
-                    // Use textContent (not innerText — DOMParser docs don't support innerText)
                     const fullWordCount = content.textContent.trim().split(/\s+/).filter(Boolean).length;
+                    console.log(`[Extractor] Matched: "${matchedSelector}" | Full words: ${fullWordCount} | Threshold: ${rssWordCount + 80}`);
 
-                    // Upgrade if: full content has >100 words AND at least 80 more words than RSS excerpt
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
                         if (bodyEl && window.currentArticle?.id === article.id) {
@@ -1644,11 +1641,15 @@
                             const minutes = Math.max(1, Math.ceil(fullWordCount / 200));
                             const readTimeEl = document.getElementById('read-time');
                             if (readTimeEl) readTimeEl.textContent = `~${minutes} min read`;
+                            console.log(`[Extractor] ✓ Upgraded article body (${fullWordCount} words)`);
                         }
                         return;
+                    } else {
+                        console.log(`[Extractor] Content found but threshold not met — not upgrading`);
                     }
-                } catch(e) { /* silent fail */ }
+                } catch(e) { console.log(`[Extractor] Error: ${e.message}`); }
             }
+            console.log(`[Extractor] All proxies exhausted — showing RSS excerpt`);
         }
 
         // --- KEYBOARD NAVIGATION ---
