@@ -1945,12 +1945,7 @@
                 if (prevIndex !== currentIndex) selectArticle(window.currentTimeline[prevIndex].id);
             } else if (e.key === 'r' || e.key === 'R') {
                 if (window.currentArticle) {
-                    window.currentArticle.unread = !window.currentArticle.unread;
-                    if (!window.currentArticle.unread) window._readLinks.add(window.currentArticle.link);
-                    else window._readLinks.delete(window.currentArticle.link);
-                    saveReadState();
-                    _lastTimelineKey = '';
-                    renderTimeline(); renderFeeds();
+                    toggleUnread(window.currentArticle); saveReadState(); refreshUI();
                 }
             } else if (e.key === 'b' || e.key === 'B') {
                 if (window.currentArticle) handleReadLaterAction();
@@ -1959,6 +1954,20 @@
             }
         });
 
+        // --- SHARED STATE HELPERS ---
+        function refreshUI() { _lastTimelineKey = ''; renderTimeline(); renderFeeds(); }
+        function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
+        function toggleUnread(article) {
+            article.unread = !article.unread;
+            if (!article.unread) window._readLinks.add(article.link);
+            else window._readLinks.delete(article.link);
+        }
+        function toggleReadLater(article) {
+            article.readLater = !article.readLater;
+            if (article.readLater) window._readLaterLinks.add(article.link);
+            else window._readLaterLinks.delete(article.link);
+        }
+
         // --- MARK READ BULK ---
         window.markAboveRead = function() {
             if (!window.contextMenuArticleId || !window.currentTimeline) return;
@@ -1966,12 +1975,9 @@
             if (idx > 0) {
                 const idSet = new Set(window.currentTimeline.slice(0, idx).map(a => a.id));
                 window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
-                saveReadState();
-                _lastTimelineKey = '';
-                renderTimeline();
-                renderFeeds();
+                saveReadState(); refreshUI();
             }
-            document.getElementById('article-context-menu').classList.add('hidden');
+            hideContextMenu();
         };
 
         window.markBelowRead = function() {
@@ -1980,12 +1986,9 @@
             if (idx !== -1 && idx < window.currentTimeline.length - 1) {
                 const idSet = new Set(window.currentTimeline.slice(idx + 1).map(a => a.id));
                 window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
-                saveReadState();
-                _lastTimelineKey = '';
-                renderTimeline();
-                renderFeeds();
+                saveReadState(); refreshUI();
             }
-            document.getElementById('article-context-menu').classList.add('hidden');
+            hideContextMenu();
         };
 
         // --- SIDEBAR UI & FILTERING ---
@@ -2623,12 +2626,7 @@
         window.handleReadLaterAction = () => {
             if (!window.currentArticle) return;
             const wasReadLater = window.currentArticle.readLater;
-            window.currentArticle.readLater = !wasReadLater;
-            if (window.currentArticle.readLater) {
-                window._readLaterLinks.add(window.currentArticle.link);
-            } else {
-                window._readLaterLinks.delete(window.currentArticle.link);
-            }
+            toggleReadLater(window.currentArticle);
             saveReadLaterState();
             if (window.currentSmartFeed === 'read-later' && wasReadLater) {
                 window.showToast("Removed from Read Later");
@@ -2638,9 +2636,7 @@
             } else {
                 window.showToast(window.currentArticle.readLater ? "Saved to Read Later" : "Removed from Read Later");
             }
-            _lastTimelineKey = '';
-            renderTimeline();
-            renderFeeds();
+            refreshUI();
             updateActionButton();
         };
 
@@ -2668,28 +2664,15 @@
         window.markAllRead = () => {
             const toMark = window.currentTimeline || window.articles;
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
-            saveReadState();
-            _lastTimelineKey = '';
-            renderTimeline();
-            renderFeeds();
+            saveReadState(); refreshUI();
         };
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
-            saveReadState();
-            _lastTimelineKey = '';
-            renderTimeline();
-            renderFeeds();
-            document.getElementById('article-context-menu').classList.add('hidden');
+            saveReadState(); refreshUI(); hideContextMenu();
         };
         window.toggleUnreadManual = () => {
             if (!window.currentArticle) return;
-            window.currentArticle.unread = !window.currentArticle.unread;
-            if (!window.currentArticle.unread) window._readLinks.add(window.currentArticle.link);
-            else window._readLinks.delete(window.currentArticle.link);
-            saveReadState();
-            _lastTimelineKey = '';
-            renderTimeline();
-            renderFeeds();
+            toggleUnread(window.currentArticle); saveReadState(); refreshUI();
         };
         window.showArticleContextMenu = (e, id) => {
             e.preventDefault();
@@ -2717,28 +2700,15 @@
         window.toggleArticleUnread = (id) => {
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
-            article.unread = !article.unread;
-            if (!article.unread) window._readLinks.add(article.link);
-            else window._readLinks.delete(article.link);
-            saveReadState();
-            _lastTimelineKey = '';
-            renderTimeline();
-            renderFeeds();
-            document.getElementById('article-context-menu').classList.add('hidden');
+            toggleUnread(article); saveReadState(); refreshUI(); hideContextMenu();
         };
 
         window.toggleArticleReadLater = (id) => {
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
-            article.readLater = !article.readLater;
-            if (article.readLater) window._readLaterLinks.add(article.link);
-            else window._readLaterLinks.delete(article.link);
-            saveReadLaterState();
-            _lastTimelineKey = '';
-            renderTimeline();
-            renderFeeds();
+            toggleReadLater(article); saveReadLaterState(); refreshUI();
             window.showToast(article.readLater ? 'Saved for Later' : 'Removed from Read Later');
-            document.getElementById('article-context-menu').classList.add('hidden');
+            hideContextMenu();
         };
 
         // --- ARTICLE LIST TOUCH INTERACTIONS ---
@@ -2872,25 +2842,12 @@
                 const article = window.articles.find(a => a.id === id);
                 if (!article) return;
 
+                article._excerptHtml = null;
                 if (dx < 0) {
-                    article.readLater = !article.readLater;
-                    if (article.readLater) window._readLaterLinks.add(article.link);
-                    else window._readLaterLinks.delete(article.link);
-                    saveReadLaterState();
-                    article._excerptHtml = null;
-                    _lastTimelineKey = '';
-                    renderTimeline();
-                    renderFeeds();
+                    toggleReadLater(article); saveReadLaterState(); refreshUI();
                     window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
                 } else {
-                    article.unread = !article.unread;
-                    if (!article.unread) window._readLinks.add(article.link);
-                    else window._readLinks.delete(article.link);
-                    saveReadState();
-                    article._excerptHtml = null;
-                    _lastTimelineKey = '';
-                    renderTimeline();
-                    renderFeeds();
+                    toggleUnread(article); saveReadState(); refreshUI();
                     window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
                 }
             }, { passive: true });
@@ -2925,9 +2882,7 @@
             window.articles.forEach(a => {
                 if (a.source === window._feedContextName) { a.unread = false; window._readLinks.add(a.link); }
             });
-            saveReadState();
-            _lastTimelineKey = '';
-            renderTimeline(); renderFeeds();
+            saveReadState(); refreshUI();
             document.getElementById('feed-context-menu').classList.add('hidden');
         };
 
@@ -3026,10 +2981,7 @@
                 const sources = window.feeds.filter(f => f.category === key).map(f => f.name);
                 window.articles.forEach(a => { if (sources.includes(a.source)) { a.unread = false; window._readLinks.add(a.link); } });
             }
-            saveReadState();
-            _lastTimelineKey = '';
-            renderTimeline();
-            renderFeeds();
+            saveReadState(); refreshUI();
             document.getElementById('folder-context-menu').classList.add('hidden');
         };
 
