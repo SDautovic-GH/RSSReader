@@ -444,6 +444,9 @@
                 zoom: var(--mob-zoom, 1);
             }
         }
+        /* Reduce paint cost on article list re-renders */
+        #article-list > div { content-visibility: auto; contain-intrinsic-size: 0 120px; }
+
         #article-meta { font-size: var(--desk-feed-name-size) !important; color: #60a5fa !important; }
         /* No dividers between category rows inside the card */
         #feed-list [data-category] { border: none !important; }
@@ -1249,6 +1252,7 @@
                         if (parts.length > 2) domain = parts.slice(-2).join('.');
                         feedObj.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
                         try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) {}
+                        preloadFavicon(feedObj.favicon);
                     } catch(e) {}
                 }
 
@@ -1627,6 +1631,7 @@
         };
 
         // --- SIDEBAR UI & FILTERING ---
+        let _lastFeedRenderKey = '';
         function renderFeeds() {
             const list = document.getElementById('feed-list');
             if (!list) return;
@@ -1637,6 +1642,11 @@
                 f.unread = window.articles.filter(a => a.source === f.name && a.unread).length;
                 groups[c].push(f);
             });
+
+            // Dirty check — skip full re-render if unread counts + collapsed state haven't changed
+            const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|');
+            if (renderKey === _lastFeedRenderKey) return;
+            _lastFeedRenderKey = renderKey;
 
             const allCats = Object.keys(groups).sort((a, b) => a.localeCompare(b));
             allCats.forEach(c => { if (!window._categoryOrder.includes(c)) window._categoryOrder.push(c); });
@@ -2708,6 +2718,7 @@
                 });
                 window.accountStates.local = feeds;
                 window.feeds = feeds;
+                preloadAllFavicons();
             } catch(e) {}
         }
 
@@ -2772,7 +2783,18 @@
             });
         };
 
-        // Cache isMobile — avoid layout reflow on every call
+        // --- FAVICON PRELOAD CACHE ---
+        // Pre-loads favicons into browser image cache so <img> tags render instantly without flash
+        const _faviconImageCache = {};
+        function preloadFavicon(url) {
+            if (!url || _faviconImageCache[url]) return;
+            const img = new Image();
+            img.src = url;
+            _faviconImageCache[url] = img;
+        }
+        function preloadAllFavicons() {
+            window.feeds.forEach(f => { if (f.favicon) preloadFavicon(f.favicon); });
+        }
         let _isMobileCache = window.innerWidth <= 900;
         function isMobile() { return _isMobileCache; }
         window.addEventListener('resize', () => {
@@ -2976,6 +2998,7 @@
                     if (window._localFetchTimer) { clearTimeout(window._localFetchTimer); window._localFetchTimer = null; }
                     window.accountStates.local = dbFeeds;
                     window.feeds = dbFeeds;
+                    preloadAllFavicons();
                     restoreCategoryOrder();
                     window.renderFeeds();
                     if (_firstSnapshot) {
