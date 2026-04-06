@@ -1547,76 +1547,87 @@
         };
 
         // --- SILENT BACKGROUND FULL CONTENT EXTRACTION ---
+        // Sites that render content via JavaScript — proxies return empty shells, skip them
+        const JS_RENDERED_DOMAINS = new Set([
+            'espn.com','espn.go.com',
+            'nytimes.com','wsj.com','washingtonpost.com',
+            'bloomberg.com','ft.com','economist.com',
+            'theathletic.com','si.com','cbssports.com',
+            'nbcsports.com','foxsports.com','mlb.com','nba.com','nfl.com',
+            'axios.com','politico.com','theatlantic.com',
+            'vox.com','buzzfeed.com','huffpost.com',
+        ]);
+
         async function attemptFullContentLoad(article) {
             if (!article || !article.link || article.link === '#') return;
-            const proxies = [
-                `https://api.allorigins.win/get?url=${encodeURIComponent(article.link)}`,
-                `https://corsproxy.io/?${encodeURIComponent(article.link)}`,
-                `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(article.link)}`
-            ];
-            const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
-            console.log(`[Extractor] Starting for: ${article.link} | RSS words: ${rssWordCount}`);
 
-            for (const proxyUrl of proxies) {
+            // Skip known JS-rendered sites — proxies return empty shells
+            try {
+                const domain = new URL(article.link).hostname.replace('www.','');
+                if (JS_RENDERED_DOMAINS.has(domain)) {
+                    console.log(`[Extractor] Skipping JS-rendered site: ${domain}`);
+                    return;
+                }
+            } catch(e) { return; }
+
+            const proxies = [
+                url => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, isJson: true }),
+                url => ({ url: `https://still-shadow-1ebe.sdfyix.workers.dev/?url=${encodeURIComponent(url)}`, isJson: false }),
+                url => ({ url: `https://corsproxy.io/?${encodeURIComponent(url)}`, isJson: false }),
+                url => ({ url: `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`, isJson: false }),
+            ];
+
+            const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
+            console.log(`[Extractor] Starting: ${article.link} | RSS words: ${rssWordCount}`);
+
+            for (const proxyFn of proxies) {
+                const { url: proxyUrl, isJson } = proxyFn(article.link);
+                const proxyName = proxyUrl.split('/')[2];
                 try {
-                    const proxyName = proxyUrl.split('?')[0].split('/').slice(-1)[0] || proxyUrl.substring(0,40);
                     const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-                    if (!res.ok) { console.log(`[Extractor] ${proxyName} HTTP ${res.status} — skipping`); continue; }
-                    let html;
-                    if (proxyUrl.includes('allorigins')) {
-                        const data = await res.json();
-                        html = data.contents;
-                    } else {
-                        html = await res.text();
-                    }
-                    if (!html) { console.log(`[Extractor] ${proxyName} empty response`); continue; }
-                    console.log(`[Extractor] ${proxyName} fetched ${html.length} chars`);
+                    if (!res.ok) { console.log(`[Extractor] ${proxyName} → ${res.status}`); continue; }
+
+                    let html = isJson ? (await res.json()).contents : await res.text();
+                    if (!html || html.length < 500) { console.log(`[Extractor] ${proxyName} → empty/too short`); continue; }
+                    console.log(`[Extractor] ${proxyName} → ${html.length} chars`);
 
                     const doc = new DOMParser().parseFromString(html, 'text/html');
 
+                    // Remove noise
                     doc.querySelectorAll([
                         'script','style','nav','footer','header','aside','iframe',
-                        'figure.ad','[class*="paywall"]','[class*="subscribe"]',
-                        '[class*="newsletter"]','[class*="signup"]','[class*="overlay"]',
-                        '[class*="modal"]','[id*="paywall"]','[id*="subscribe"]',
+                        '[class*="paywall"]','[class*="subscribe"]','[class*="newsletter"]',
+                        '[class*="signup"]','[class*="overlay"]','[class*="modal"]',
+                        '[id*="paywall"]','[id*="subscribe"]',
                         '.ads','.ad','.sidebar','.widget','.related','.comments',
-                        '[aria-hidden="true"]','[role="complementary"]','[role="banner"]',
-                        '[role="navigation"]','[role="dialog"]'
+                        '[aria-hidden="true"]','[role="complementary"]',
+                        '[role="banner"]','[role="navigation"]','[role="dialog"]'
                     ].join(',')).forEach(el => el.remove());
 
+                    // Content selectors ordered by specificity
                     const SELECTORS = [
                         '[data-component="text-block"]',
-                        '.article__body',
-                        '.article-body-commercial-selector',
-                        '.post-content',
-                        '.entry-content',
-                        '.article-content',
-                        '.article-body',
-                        '.ArticleBody-articleBody',
-                        '.caas-body',
-                        '.story-body',
-                        '.story-body-supplemental',
-                        '.available-content',
-                        '.body.markup',
-                        '.postContent',
-                        'article [itemprop="articleBody"]',
+                        '.article__body','.article-body-commercial-selector',
+                        '.post-content','.entry-content',
+                        '.article-content','.article-body',
+                        '.ArticleBody-articleBody','.caas-body',
+                        '.story-body','.story-content',
+                        '.available-content','.body.markup','.postContent',
                         '[itemprop="articleBody"]',
-                        'article .content',
-                        '.main-content article',
-                        '.main-content',
-                        '.page-content',
-                        'article',
-                        'main',
+                        'article .content','.main-content article',
+                        '.main-content','.page-content',
+                        'article','main',
                     ];
 
-                    let content = null;
-                    let matchedSelector = null;
+                    let content = null, matchedSel = null;
                     for (const sel of SELECTORS) {
                         const el = doc.querySelector(sel);
-                        const wc = el ? el.textContent.trim().split(/\s+/).filter(Boolean).length : 0;
-                        if (el && wc > 50) { content = el; matchedSelector = sel; break; }
+                        if (el && el.textContent.trim().split(/\s+/).filter(Boolean).length > 50) {
+                            content = el; matchedSel = sel; break;
+                        }
                     }
 
+                    // Fallback — div with most <p> tags
                     if (!content) {
                         let best = null, bestScore = 0;
                         doc.querySelectorAll('div,section,main').forEach(el => {
@@ -1626,13 +1637,13 @@
                             }
                         });
                         content = best;
-                        matchedSelector = `fallback (${bestScore} <p> tags)`;
+                        matchedSel = `fallback (${bestScore}p)`;
                     }
 
-                    if (!content) { console.log(`[Extractor] No content found in ${proxyName}`); continue; }
+                    if (!content) { console.log(`[Extractor] ${proxyName} → no content found`); continue; }
 
                     const fullWordCount = content.textContent.trim().split(/\s+/).filter(Boolean).length;
-                    console.log(`[Extractor] Matched: "${matchedSelector}" | Full words: ${fullWordCount} | Threshold: ${rssWordCount + 80}`);
+                    console.log(`[Extractor] "${matchedSel}" → ${fullWordCount} words (need >${rssWordCount + 80})`);
 
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
@@ -1641,15 +1652,15 @@
                             const minutes = Math.max(1, Math.ceil(fullWordCount / 200));
                             const readTimeEl = document.getElementById('read-time');
                             if (readTimeEl) readTimeEl.textContent = `~${minutes} min read`;
-                            console.log(`[Extractor] ✓ Upgraded article body (${fullWordCount} words)`);
+                            console.log(`[Extractor] ✓ Upgraded to ${fullWordCount} words via ${proxyName}`);
                         }
                         return;
                     } else {
-                        console.log(`[Extractor] Content found but threshold not met — not upgrading`);
+                        console.log(`[Extractor] ${proxyName} → threshold not met, trying next proxy`);
                     }
-                } catch(e) { console.log(`[Extractor] Error: ${e.message}`); }
+                } catch(e) { console.log(`[Extractor] ${proxyName} → ${e.message}`); }
             }
-            console.log(`[Extractor] All proxies exhausted — showing RSS excerpt`);
+            console.log(`[Extractor] All proxies exhausted`);
         }
 
         // --- KEYBOARD NAVIGATION ---
