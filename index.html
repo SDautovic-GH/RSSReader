@@ -3428,18 +3428,27 @@
                 document.getElementById('sync-status').textContent = `☁ ${userEmail}`;
             });
 
+            // Real-time listener — fires on load and whenever any device updates read state
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
-            getDoc(stateRef).then(snap => {
-                if (snap.exists()) {
-                    const data = snap.data();
-                    if (data.readLinks) {
-                        window._readLinks = new Set([...window._readLinks, ...data.readLinks]);
-                        try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
-                    }
-                    if (data.readLaterLinks) {
-                        window._readLaterLinks = new Set([...window._readLaterLinks, ...data.readLaterLinks]);
-                        try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) {}
-                    }
+            onSnapshot(stateRef, (snap) => {
+                // hasPendingWrites = this is our own write echoing back; skip to avoid unnecessary re-render
+                if (snap.metadata.hasPendingWrites) return;
+                if (!snap.exists()) return;
+                const data = snap.data();
+                let changed = false;
+                if (data.readLinks) {
+                    const before = window._readLinks.size;
+                    window._readLinks = new Set([...window._readLinks, ...data.readLinks]);
+                    if (window._readLinks.size !== before) changed = true;
+                    try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
+                }
+                if (data.readLaterLinks) {
+                    const before = window._readLaterLinks.size;
+                    window._readLaterLinks = new Set([...window._readLaterLinks, ...data.readLaterLinks]);
+                    if (window._readLaterLinks.size !== before) changed = true;
+                    try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) {}
+                }
+                if (changed) {
                     window.articles.forEach(a => {
                         a.unread = !window._readLinks.has(a.link);
                         a.readLater = window._readLaterLinks.has(a.link);
@@ -3447,7 +3456,7 @@
                     window.renderTimeline();
                     window.renderFeeds();
                 }
-            }).catch(e => console.warn('Could not load remote read state:', e));
+            }, e => console.warn('Could not sync read state:', e));
 
             const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
             getDoc(uiRef).then(snap => {
