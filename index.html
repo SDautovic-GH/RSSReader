@@ -2317,6 +2317,49 @@
             let _touchStartX = 0, _touchStartY = 0, _touchStartTime = 0;
             let _swiping = false;
             let _swipeCard = null;
+            let _swipeIndicator = null;
+
+            // Create reusable swipe indicator element
+            _swipeIndicator = document.createElement('div');
+            _swipeIndicator.style.cssText = `
+                position: fixed; top: 50%; transform: translateY(-50%);
+                z-index: 200; padding: 10px 18px; border-radius: 20px;
+                font-size: 13px; font-weight: 700; color: white;
+                pointer-events: none; opacity: 0;
+                transition: opacity 0.15s ease;
+                backdrop-filter: blur(8px);
+            `;
+            document.body.appendChild(_swipeIndicator);
+
+            function showSwipeHint(dx, card) {
+                if (!card) return;
+                const rect = card.getBoundingClientRect();
+                const id = card.getAttribute('data-id');
+                const article = window.articles.find(a => a.id === id);
+                if (!article) return;
+
+                if (dx < -20) {
+                    // Swiping left — Read Later
+                    _swipeIndicator.style.left = '12px';
+                    _swipeIndicator.style.right = 'auto';
+                    _swipeIndicator.style.background = 'rgba(37,99,235,0.85)';
+                    _swipeIndicator.textContent = article.readLater ? '🔖 Remove Later' : '🔖 Save Later';
+                    _swipeIndicator.style.opacity = Math.min(1, Math.abs(dx) / 60).toString();
+                } else if (dx > 20) {
+                    // Swiping right — Mark Read/Unread
+                    _swipeIndicator.style.right = '12px';
+                    _swipeIndicator.style.left = 'auto';
+                    _swipeIndicator.style.background = article.unread ? 'rgba(22,163,74,0.85)' : 'rgba(100,116,139,0.85)';
+                    _swipeIndicator.textContent = article.unread ? '✓ Mark Read' : '↩ Mark Unread';
+                    _swipeIndicator.style.opacity = Math.min(1, Math.abs(dx) / 60).toString();
+                } else {
+                    _swipeIndicator.style.opacity = '0';
+                }
+            }
+
+            function hideSwipeHint() {
+                _swipeIndicator.style.opacity = '0';
+            }
 
             list.addEventListener('touchstart', (e) => {
                 const card = e.target.closest('[data-id]');
@@ -2331,7 +2374,6 @@
                 // Long press — only trigger if finger stays still
                 _lpTimer = setTimeout(() => {
                     if (_swiping) return;
-                    // Prevent text selection on long press
                     window.getSelection()?.removeAllRanges();
                     const touch = e.touches[0];
                     showArticleContextMenu({ preventDefault: () => {}, pageX: touch.pageX, pageY: touch.pageY }, id);
@@ -2345,23 +2387,26 @@
                     _swiping = true;
                     clearTimeout(_lpTimer);
                 }
+                // Show swipe hint if horizontal dominant
+                if (Math.abs(dx) > Math.abs(dy) * 0.8) {
+                    showSwipeHint(dx, _swipeCard);
+                } else {
+                    hideSwipeHint();
+                }
             }, { passive: true });
 
             list.addEventListener('touchend', (e) => {
                 clearTimeout(_lpTimer);
+                hideSwipeHint();
                 if (!_swipeCard || !_swiping) return;
                 const id = _swipeCard.getAttribute('data-id');
                 if (!id) return;
                 const dx = e.changedTouches[0].clientX - _touchStartX;
                 const dy = e.changedTouches[0].clientY - _touchStartY;
-                const dt = Date.now() - _touchStartTime;
                 const absDx = Math.abs(dx), absDy = Math.abs(dy);
 
-                // Must be a dominant swipe completed within 400ms
-                if (dt > 400) return;
-
-                if (absDy > absDx && dy > 50 && absDx < 40) {
-                    // Swipe DOWN — refresh current feed/filter
+                // Swipe DOWN — refresh
+                if (absDy > absDx && dy > 50 && absDx < 60) {
                     window.showToast('Refreshing...');
                     if (window.currentSourceFilter) {
                         const feed = window.feeds.find(f => f.name === window.currentSourceFilter);
@@ -2372,7 +2417,8 @@
                     return;
                 }
 
-                if (absDx < 40 || absDx < absDy) return; // not a horizontal swipe
+                // Horizontal swipe — minimum 35px, horizontal must be at least 1.2x vertical
+                if (absDx < 35 || absDx < absDy * 1.2) return;
 
                 const article = window.articles.find(a => a.id === id);
                 if (!article) return;
@@ -2395,7 +2441,7 @@
                     article._excerptHtml = null;
                     renderTimeline();
                     renderFeeds();
-                    window.showToast(article.unread ? 'Marked Unread' : 'Marked Read');
+                    window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
                 }
             }, { passive: true });
         })();
