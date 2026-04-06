@@ -2049,6 +2049,7 @@
                     fetchAllStaggered(window.feeds, null, true);
                 }, mins * 60 * 1000);
             }
+            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
         };
 
         // --- NEW ARTICLES BANNER ---
@@ -3211,6 +3212,16 @@
                         try { localStorage.setItem('newsreader_catorder', JSON.stringify(data.categoryOrder)); } catch(e) {}
                         window.renderFeeds();
                     }
+                    if (data.autoRefresh) {
+                        const sel = document.getElementById('pref-auto-refresh');
+                        if (sel) sel.value = data.autoRefresh;
+                        updateAutoRefresh(data.autoRefresh);
+                        try {
+                            const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                            prefs.autoRefresh = data.autoRefresh;
+                            localStorage.setItem('newsreader_prefs', JSON.stringify(prefs));
+                        } catch(e) {}
+                    }
                 }
             }).catch(e => console.warn('Could not load remote UI prefs:', e));
 
@@ -3231,9 +3242,11 @@
                 try {
                     const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
                     const paneWidth = document.getElementById('timeline-pane')?.style.width;
+                    const autoRefresh = document.getElementById('pref-auto-refresh')?.value || '15';
                     await setDoc(uiRef, {
                         paneWidth: paneWidth || '336px',
                         categoryOrder: window._categoryOrder,
+                        autoRefresh,
                         updatedAt: new Date().toISOString()
                     });
                 } catch(e) { console.warn('Cloud UI prefs save failed:', e); }
