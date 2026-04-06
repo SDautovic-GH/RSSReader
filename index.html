@@ -55,7 +55,33 @@
             height: auto;
             border-radius: 12px;
             margin: 1.5rem 0;
+            cursor: zoom-in;
         }
+
+        /* ===== IMAGE LIGHTBOX ===== */
+        #img-lightbox {
+            position: fixed; inset: 0; z-index: 9000;
+            background: rgba(0,0,0,0.92);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.18s ease;
+        }
+        #img-lightbox.open { opacity: 1; pointer-events: all; }
+        #img-lightbox img {
+            max-width: 100%; max-height: 100%;
+            object-fit: contain;
+            border-radius: 6px;
+            touch-action: pan-x pan-y pinch-zoom;
+            cursor: zoom-out;
+            user-select: none;
+        }
+        #img-lightbox-close {
+            position: absolute; top: 14px; right: 16px;
+            color: #fff; font-size: 28px; line-height: 1;
+            cursor: pointer; opacity: 0.75; background: none; border: none;
+            padding: 4px 8px;
+        }
+        #img-lightbox-close:hover { opacity: 1; }
 
         /* Modern sky-blue for all article links and feed name */
         .article-content a { color: #60a5fa; text-decoration: none; }
@@ -802,6 +828,12 @@
         </button>
     </nav>
 
+    <!-- IMAGE LIGHTBOX -->
+    <div id="img-lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+        <button id="img-lightbox-close" aria-label="Close">&times;</button>
+        <img id="img-lightbox-img" src="" alt="">
+    </div>
+
     <!-- LOGIN MODAL -->
     <div id="login-modal" class="fixed inset-0 z-[200] flex items-center justify-center modal-backdrop">
         <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl p-8 border border-gray-100 dark:border-gray-700">
@@ -1235,9 +1267,12 @@
         function renderBskyImages(images, compact = false) {
             if (!images?.length) return '';
             const cls = compact ? 'bsky-images bsky-images-compact' : 'bsky-images';
-            return `<div class="${cls}">${images.slice(0, 4).map(img =>
-                `<img src="${bskyEsc(img.thumb || img.fullsize)}" alt="${bskyEsc(img.alt || '')}" loading="lazy" class="bsky-post-image">`
-            ).join('')}</div>`;
+            return `<div class="${cls}">${images.slice(0, 4).map(img => {
+                const thumb = bskyEsc(img.thumb || img.fullsize);
+                const full = bskyEsc(img.fullsize || img.thumb);
+                const fullAttr = full !== thumb ? ` data-fullsize="${full}"` : '';
+                return `<img src="${thumb}"${fullAttr} alt="${bskyEsc(img.alt || '')}" loading="lazy" class="bsky-post-image">`;
+            }).join('')}</div>`;
         }
 
         function renderBskyExternalCard(ext) {
@@ -1346,7 +1381,7 @@
                 const isRepost = reason?.$type === 'app.bsky.feed.defs#reasonRepost';
                 const titleText = text.trim() || (isRepost ? '[Repost]' : '[Post]');
                 const title = titleText.length > 120 ? titleText.substring(0, 119) + '…' : titleText;
-                const body = DOMPurify.sanitize(buildBlueskyPostHtml(feedItem), { ADD_ATTR: ['loading', 'target', 'rel'] });
+                const body = DOMPurify.sanitize(buildBlueskyPostHtml(feedItem), { ADD_ATTR: ['loading', 'target', 'rel', 'data-fullsize'] });
                 const image = (() => {
                     const emb = post.embed;
                     const imgs = emb?.$type === 'app.bsky.embed.images#view' ? emb.images :
@@ -1692,7 +1727,7 @@
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.7em';
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-            document.getElementById('article-body').innerHTML = DOMPurify.sanitize(linkify(article.body));
+            document.getElementById('article-body').innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_ATTR: ['loading', 'data-fullsize'] });
 
             // Auto-attempt full content extraction silently in background
             attemptFullContentLoad(article);
@@ -2550,6 +2585,39 @@
         window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
         window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
         window.openExternal = () => { if(window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
+
+        // ===== IMAGE LIGHTBOX =====
+        (function() {
+            const lb = document.getElementById('img-lightbox');
+            const lbImg = document.getElementById('img-lightbox-img');
+            const lbClose = document.getElementById('img-lightbox-close');
+
+            function openLightbox(src) {
+                lbImg.src = src;
+                lb.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+            function closeLightbox() {
+                lb.classList.remove('open');
+                document.body.style.overflow = '';
+                lbImg.src = '';
+            }
+
+            lbClose.addEventListener('click', closeLightbox);
+            lb.addEventListener('click', (e) => { if (e.target === lb) closeLightbox(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && lb.classList.contains('open')) closeLightbox(); });
+
+            // Delegate clicks on images inside the article body
+            document.getElementById('article-body').addEventListener('click', (e) => {
+                const img = e.target.closest('img');
+                if (!img) return;
+                // Skip tiny icons (avatars, favicons)
+                if (img.naturalWidth < 60 && img.naturalWidth > 0) return;
+                if (img.classList.contains('bsky-quote-avatar')) return;
+                const src = img.dataset.fullsize || img.src;
+                if (src) openLightbox(src);
+            });
+        })();
         window.filterByCurrentSource = () => { if(window.currentArticle) setSourceFilter(window.currentArticle.source); };
         
         window.handleReadLaterAction = () => {
