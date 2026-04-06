@@ -662,7 +662,7 @@
                                 </div>
                                 <h2 class="text-lg font-bold text-gray-200 mb-2">Welcome to RSS Reader</h2>
                                 <p class="text-sm text-gray-500 mb-6 max-w-xs mx-auto">Your personal, ad-free news hub. Add your first feed to get started.</p>
-                                <button onclick="toggleSettings()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg">
+                                <button onclick="if(isMobile()){setMobilePane('sidebar');toggleSettings();}else{toggleSettings();}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                     Add Your First Feed
                                 </button>
@@ -1913,6 +1913,7 @@
                     saveLocalFeeds();
                     if (newFeeds.length > 0 && typeof window.saveFeeds === 'function') await window.saveFeeds(newFeeds);
                     fetchAllStaggered(newFeeds, 2);
+                    updateEmptyState();
                     window.showToast(`Imported ${added} feed${added !== 1 ? 's' : ''}.`);
                 } catch (err) {
                     console.error("OPML import error:", err);
@@ -1948,6 +1949,7 @@
             window.feeds = window.feeds.filter(feed => feed.url !== f.url);
             renderFeeds();
             saveLocalFeeds();
+            updateEmptyState();
             if (f.docId) window.removeFeedFromDatabase(f.docId);
         };
 
@@ -2602,6 +2604,7 @@
             saveLocalFeeds();
             renderFeeds();
             renderTimeline();
+            updateEmptyState();
             window.showToast(`Deleted "${cat}" and ${toRemove.length} feed${toRemove.length !== 1 ? 's' : ''}`);
         };
 
@@ -3084,6 +3087,7 @@
                     preloadAllFavicons();
                     restoreCategoryOrder();
                     window.renderFeeds();
+                    updateEmptyState();
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
                         fetchAllStaggered(dbFeeds);
