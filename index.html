@@ -1278,6 +1278,7 @@
                         feedObj.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
                         try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) {}
                         preloadFavicon(feedObj.favicon);
+                        updateFaviconStyles();
                     } catch(e) {}
                 }
 
@@ -1437,11 +1438,34 @@
             updateBadges();
         };
 
+        // Favicon style injection — renders favicons via CSS background-image instead of <img> tags
+        // CSS background images are cached at the browser level and never cause DOM flicker
+        const _faviconStyleEl = document.createElement('style');
+        document.head.appendChild(_faviconStyleEl);
+        const _faviconSlugCache = {};
+
+        function getFaviconSlug(sourceName) {
+            if (_faviconSlugCache[sourceName]) return _faviconSlugCache[sourceName];
+            const slug = 'fav-' + sourceName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            _faviconSlugCache[sourceName] = slug;
+            return slug;
+        }
+
+        function updateFaviconStyles() {
+            const rules = window.feeds
+                .filter(f => f.favicon)
+                .map(f => {
+                    const slug = getFaviconSlug(f.name);
+                    return `.${slug}{background-image:url('${f.favicon}');background-size:contain;background-repeat:no-repeat;background-position:center;}`;
+                }).join('');
+            _faviconStyleEl.textContent = rules;
+        }
+
         function getFavicon(sourceName) {
             const feedObj = window.feeds.find(f => f.name === sourceName);
-            return feedObj?.favicon
-                ? `<img src="${feedObj.favicon}" class="w-3 h-3 rounded-sm mr-1 inline-block" loading="eager" decoding="sync" onerror="this.style.display='none'">`
-                : '';
+            if (!feedObj?.favicon) return '';
+            const slug = getFaviconSlug(sourceName);
+            return `<span class="${slug} inline-block w-3 h-3 rounded-sm mr-1 flex-shrink-0" style="vertical-align:middle;display:inline-block;"></span>`;
         }
 
         function buildArticleCard(a) {
@@ -1766,7 +1790,7 @@
                             const isError = health && health.errorCount >= 3;
                             const isStale = health && health.lastSuccess && (Date.now() - health.lastSuccess > 7 * 86400000);
                             const healthClass = isError ? 'feed-error' : (isStale ? 'feed-stale' : '');
-                            const favicon = f.favicon ? `<img src="${f.favicon}" class="w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0" onerror="this.style.display='none'">` : '<span class="w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
+                            const favicon = f.favicon ? `<span class="${getFaviconSlug(f.name)} inline-block w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0" style="display:inline-block;background-size:contain;background-repeat:no-repeat;background-position:center;"></span>` : '<span class="w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
                             return `
                             <button draggable="true"
                                 ondragstart="handleFeedDragStart(event, '${f.id}')"
@@ -2808,6 +2832,7 @@
                 window.accountStates.local = feeds;
                 window.feeds = feeds;
                 preloadAllFavicons();
+                updateFaviconStyles();
             } catch(e) {}
         }
 
@@ -3098,6 +3123,7 @@
                     window.accountStates.local = dbFeeds;
                     window.feeds = dbFeeds;
                     preloadAllFavicons();
+                    updateFaviconStyles();
                     restoreCategoryOrder();
                     window.renderFeeds();
                     updateEmptyState();
