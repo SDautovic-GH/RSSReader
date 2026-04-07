@@ -51,11 +51,13 @@
         }
 
         .article-content img {
-            max-width: 100%;
-            height: auto;
+            max-width: 100% !important;
+            width: auto !important;
+            height: auto !important;
             border-radius: 12px;
             margin: 1.5rem 0;
             cursor: zoom-in;
+            display: block;
         }
 
         /* ===== IMAGE LIGHTBOX ===== */
@@ -65,23 +67,33 @@
             display: flex; align-items: center; justify-content: center;
             opacity: 0; pointer-events: none;
             transition: opacity 0.18s ease;
+            overflow: hidden;
         }
         #img-lightbox.open { opacity: 1; pointer-events: all; }
         #img-lightbox img {
             max-width: 100%; max-height: 100%;
             object-fit: contain;
             border-radius: 6px;
-            touch-action: pan-x pan-y pinch-zoom;
-            cursor: zoom-out;
+            touch-action: none;
+            cursor: zoom-in;
             user-select: none;
+            transform-origin: center center;
+            will-change: transform;
         }
+        #img-lightbox img.lb-zoomed { cursor: grab; border-radius: 0; }
+        #img-lightbox img.lb-zoomed:active { cursor: grabbing; }
         #img-lightbox-close {
             position: absolute; top: 14px; right: 16px;
             color: #fff; font-size: 28px; line-height: 1;
             cursor: pointer; opacity: 0.75; background: none; border: none;
-            padding: 4px 8px;
+            padding: 4px 8px; z-index: 1;
         }
         #img-lightbox-close:hover { opacity: 1; }
+        #img-lightbox-hint {
+            position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,0.4); font-size: 11px; pointer-events: none;
+            white-space: nowrap; transition: opacity 0.3s;
+        }
 
         /* Modern sky-blue for all article links and feed name */
         .article-content a { color: #60a5fa; text-decoration: none; }
@@ -840,6 +852,7 @@
     <div id="img-lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
         <button id="img-lightbox-close" aria-label="Close">&times;</button>
         <img id="img-lightbox-img" src="" alt="">
+        <span id="img-lightbox-hint">Pinch or double-tap to zoom</span>
     </div>
 
     <!-- LOGIN MODAL -->
@@ -2634,30 +2647,137 @@
 
         // ===== IMAGE LIGHTBOX =====
         (function() {
-            const lb = document.getElementById('img-lightbox');
-            const lbImg = document.getElementById('img-lightbox-img');
+            const lb      = document.getElementById('img-lightbox');
+            const lbImg   = document.getElementById('img-lightbox-img');
             const lbClose = document.getElementById('img-lightbox-close');
+            const lbHint  = document.getElementById('img-lightbox-hint');
+
+            // Transform state
+            let _scale = 1, _tx = 0, _ty = 0;
+            // Pinch state
+            let _pinchStart = null;
+            // Pan state
+            let _panStart = null;
+            // Double-tap state
+            let _lastTap = 0;
+            // Whether a touch sequence moved (to distinguish tap from pan)
+            let _touchMoved = false;
+
+            function applyTransform(animate) {
+                if (animate) lbImg.style.transition = 'transform 0.2s ease';
+                else lbImg.style.transition = 'none';
+                lbImg.style.transform = `translate(${_tx}px, ${_ty}px) scale(${_scale})`;
+                lbImg.classList.toggle('lb-zoomed', _scale > 1.05);
+            }
+
+            function resetTransform(animate) {
+                _scale = 1; _tx = 0; _ty = 0;
+                applyTransform(animate);
+            }
+
+            function clampTranslation() {
+                // When zoomed, limit pan so the image edge doesn't go past center
+                const maxTx = (lbImg.offsetWidth  * (_scale - 1)) / 2;
+                const maxTy = (lbImg.offsetHeight * (_scale - 1)) / 2;
+                _tx = Math.max(-maxTx, Math.min(maxTx, _tx));
+                _ty = Math.max(-maxTy, Math.min(maxTy, _ty));
+            }
 
             function openLightbox(src) {
                 lbImg.src = src;
+                resetTransform(false);
                 lb.classList.add('open');
                 document.body.style.overflow = 'hidden';
+                lbHint.style.opacity = '1';
+                setTimeout(() => { lbHint.style.opacity = '0'; }, 2200);
             }
+
             function closeLightbox() {
                 lb.classList.remove('open');
                 document.body.style.overflow = '';
-                lbImg.src = '';
+                setTimeout(() => { lbImg.src = ''; resetTransform(false); }, 200);
             }
 
-            lbClose.addEventListener('click', closeLightbox);
-            lb.addEventListener('click', (e) => { if (e.target === lb) closeLightbox(); });
-            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && lb.classList.contains('open')) closeLightbox(); });
+            // ---- Touch: pinch + pan + double-tap ----
+            lbImg.addEventListener('touchstart', (e) => {
+                _touchMoved = false;
+                if (e.touches.length === 2) {
+                    _pinchStart = {
+                        dist:  Math.hypot(e.touches[1].clientX - e.touches[0].clientX,
+                                          e.touches[1].clientY - e.touches[0].clientY),
+                        scale: _scale,
+                        tx: _tx, ty: _ty
+                    };
+                    _panStart = null;
+                    e.preventDefault();
+                } else if (e.touches.length === 1) {
+                    const now = Date.now();
+                    if (now - _lastTap < 280) {
+                        // Double-tap: toggle fit ↔ 2.5×
+                        if (_scale > 1.05) { resetTransform(true); }
+                        else {
+                            _scale = 2.5; _tx = 0; _ty = 0;
+                            applyTransform(true);
+                        }
+                        _lastTap = 0;
+                        e.preventDefault();
+                        return;
+                    }
+                    _lastTap = now;
+                    _panStart = { x: e.touches[0].clientX - _tx, y: e.touches[0].clientY - _ty };
+                }
+            }, { passive: false });
 
-            // Delegate clicks on images inside the article body
+            lbImg.addEventListener('touchmove', (e) => {
+                _touchMoved = true;
+                if (e.touches.length === 2 && _pinchStart) {
+                    const dist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX,
+                                            e.touches[1].clientY - e.touches[0].clientY);
+                    _scale = Math.max(1, Math.min(5, _pinchStart.scale * (dist / _pinchStart.dist)));
+                    applyTransform(false);
+                    e.preventDefault();
+                } else if (e.touches.length === 1 && _scale > 1.05 && _panStart) {
+                    _tx = e.touches[0].clientX - _panStart.x;
+                    _ty = e.touches[0].clientY - _panStart.y;
+                    clampTranslation();
+                    applyTransform(false);
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            lbImg.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) _pinchStart = null;
+                if (e.touches.length === 0) {
+                    _panStart = null;
+                    // Snap back if scale ended up below 1.1
+                    if (_scale < 1.1) resetTransform(true);
+                    else clampTranslation(), applyTransform(true);
+                }
+            }, { passive: true });
+
+            // ---- Mouse wheel zoom (desktop) ----
+            lb.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                _scale = Math.max(1, Math.min(5, _scale * (e.deltaY < 0 ? 1.15 : 0.87)));
+                if (_scale <= 1.05) resetTransform(true);
+                else { clampTranslation(); applyTransform(false); }
+            }, { passive: false });
+
+            // ---- Close handlers ----
+            lbClose.addEventListener('click', closeLightbox);
+            // Backdrop tap closes only when not zoomed
+            lb.addEventListener('click', (e) => {
+                if (e.target === lb && _scale <= 1.05) closeLightbox();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (!lb.classList.contains('open')) return;
+                if (e.key === 'Escape') closeLightbox();
+            });
+
+            // ---- Open from article images ----
             document.getElementById('article-body').addEventListener('click', (e) => {
                 const img = e.target.closest('img');
                 if (!img) return;
-                // Skip tiny icons (avatars, favicons)
                 if (img.naturalWidth < 60 && img.naturalWidth > 0) return;
                 if (img.classList.contains('bsky-quote-avatar')) return;
                 const src = img.dataset.fullsize || img.src;
