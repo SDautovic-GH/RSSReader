@@ -1576,6 +1576,9 @@
         let _timelinePageEnd = PAGE_SIZE;
         let _timelineObserver = null;
         let _lastTimelineKey = '';
+        // Articles shown in the current list session — kept visible even after being marked read,
+        // so the list doesn't jump. Cleared only on explicit refresh (swipe-down / mark-all-read).
+        window._pinnedArticleIds = new Set();
 
         function renderTimelinePage(filtered) {
             const listEl = document.getElementById('article-list');
@@ -1590,29 +1593,29 @@
             if (renderKey !== _lastTimelineKey) {
                 _lastTimelineKey = renderKey;
 
-                // Scroll anchor — remember the first visible card so we can restore position after innerHTML replacement
-                let anchorId = null, anchorOffset = 0;
+                // Scroll anchor — record all visible cards before re-render so we can restore position
+                // even if the first visible card disappears (e.g. just-read item removed from unread filter)
+                const anchorCandidates = [];
                 if (listEl.scrollTop > 0) {
                     const listTop = listEl.getBoundingClientRect().top;
                     for (const card of listEl.querySelectorAll('[data-id]')) {
                         const top = card.getBoundingClientRect().top - listTop;
-                        if (top >= -1) { // first card at or just above viewport top
-                            anchorId = card.getAttribute('data-id');
-                            anchorOffset = top; // how far below the list top it sits
-                            break;
+                        if (top >= -1) {
+                            anchorCandidates.push({ id: card.getAttribute('data-id'), offset: top });
+                            if (anchorCandidates.length >= 5) break; // keep a few fallbacks
                         }
                     }
                 }
 
+                // Pin all articles in this render so they stay visible even after being marked read
+                slice.forEach(a => window._pinnedArticleIds.add(a.id));
+
                 listEl.innerHTML = slice.map(a => buildArticleCard(a)).join('');
 
-                // Restore scroll position to the same card
-                if (anchorId) {
-                    const el = listEl.querySelector(`[data-id="${anchorId}"]`);
-                    if (el) {
-                        // scrollIntoView would overshoot; manually set scrollTop to match pre-render offset
-                        listEl.scrollTop = el.offsetTop - anchorOffset;
-                    }
+                // Restore scroll — try each candidate until one is still in the new list
+                for (const { id, offset } of anchorCandidates) {
+                    const el = listEl.querySelector(`[data-id="${id}"]`);
+                    if (el) { listEl.scrollTop = el.offsetTop - offset; break; }
                 }
 
                 // Add sentinel for load-more if more items exist
@@ -1647,12 +1650,12 @@
             let filtered = window.articles;
 
             if (window.currentSmartFeed === 'all') {
-                filtered = filtered.filter(a => a.unread || a.id === window.currentArticle?.id);
+                filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
             } else if (window.currentSmartFeed === 'today') {
                 const dayAgo = new Date(Date.now() - 86400000);
-                filtered = filtered.filter(a => new Date(a.timestamp) > dayAgo || a.id === window.currentArticle?.id);
+                filtered = filtered.filter(a => new Date(a.timestamp) > dayAgo || window._pinnedArticleIds.has(a.id));
             } else if (window.currentSmartFeed === 'read-later') {
-                filtered = filtered.filter(a => a.readLater || a.id === window.currentArticle?.id);
+                filtered = filtered.filter(a => a.readLater || window._pinnedArticleIds.has(a.id));
             }
 
             if (window.currentCategoryFilter) {
@@ -1865,8 +1868,6 @@
                     prevSelected.classList.remove('border-l-4', 'border-l-blue-500');
                     prevSelected.style.backgroundColor = '';
                 }
-                // Always invalidate dirty key so unread dot updates immediately
-                _lastTimelineKey = '';
                 const newSelected = listEl.querySelector(`[data-id="${id}"]`);
                 if (newSelected) {
                     newSelected.classList.add('border-l-4', 'border-l-blue-500');
@@ -1880,7 +1881,7 @@
                         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }, 30);
                 } else {
-                    renderTimeline();
+                    renderTimeline(true);
                 }
             }
             // Re-render feeds for unread count update
@@ -2164,8 +2165,8 @@
             updateBadges();
         }
 
-        window.setCategoryFilter = (cat) => { window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
-        window.setSourceFilter = (source) => { window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
+        window.setCategoryFilter = (cat) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
+        window.setSourceFilter = (source) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
         window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
 
         // --- DRAG & DROP ---
@@ -2360,6 +2361,7 @@
 
         // --- UI ACTIONS ---
         window.setSmartFeed = (type) => {
+            window._pinnedArticleIds.clear();
             window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
             document.getElementById('feed-btn-' + type).classList.add('active-item');
@@ -2404,7 +2406,7 @@
         window.dismissNewArticlesBanner = () => {
             document.getElementById('new-articles-banner')?.classList.add('hidden');
             window._newArticleCount = 0;
-            renderTimeline();
+            renderTimeline(true);
             renderFeeds();
         };
 
@@ -2856,8 +2858,7 @@
             const toMark = window.currentTimeline || window.articles;
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
             saveReadState();
-            // Clear the view immediately, then fetch fresh content foreground
-            // (list is now empty so progressive render won't cause jumps)
+            window._pinnedArticleIds.clear();
             window._newArticleCount = 0;
             document.getElementById('new-articles-banner')?.classList.add('hidden');
             refreshUI();
@@ -3024,7 +3025,7 @@
                 // Swipe DOWN to refresh — requires strong vertical intent:
                 // dy > 120px, vertical must be 3x horizontal, started near top of list
                 if (dy > 120 && absDy > absDx * 3 && _touchStartY < 180) {
-                    // Show any already-accumulated new articles immediately, then fetch fresh silently
+                    window._pinnedArticleIds.clear();
                     window._newArticleCount = 0;
                     document.getElementById('new-articles-banner')?.classList.add('hidden');
                     renderTimeline();
@@ -3418,7 +3419,7 @@
 
         document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
 
-        setInterval(() => { if (!document.hidden) renderTimeline(true); }, 60000);
+        setInterval(() => { /* badge/count refresh only — no DOM rebuild */ renderFeeds(); updateBadges?.(); }, 60000);
 
         window.articles = [];
         
@@ -3644,7 +3645,7 @@
                         a.unread = !window._readLinks.has(a.link);
                         a.readLater = window._readLaterLinks.has(a.link);
                     });
-                    window.renderTimeline();
+                    window.renderTimeline(true);
                     window.renderFeeds();
                 }
             }, e => console.warn('Could not sync read state:', e));
