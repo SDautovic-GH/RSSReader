@@ -1442,6 +1442,20 @@
             return true;
         }
 
+        // Fix lazy-loaded images in feed HTML (data-src, data-lazy-src, srcset-only)
+        function fixLazyImages(html) {
+            return html
+                .replace(/<img([^>]*?)data-lazy-src=(["'])([^"']+)\2([^>]*?)>/gi, (m, pre, q, src, post) => {
+                    // Already has src? just remove data-lazy-src
+                    if (/\bsrc\s*=/i.test(pre + post)) return `<img${pre}src=${q}${src}${q}${post}>`.replace(/data-lazy-src=(["'])[^"']*\1/gi, '');
+                    return `<img${pre}src=${q}${src}${q}${post}>`;
+                })
+                .replace(/<img([^>]*?)data-src=(["'])([^"']+)\2([^>]*?)>/gi, (m, pre, q, src, post) => {
+                    if (/\bsrc\s*=/i.test(pre + post)) return `<img${pre}src=${q}${src}${q}${post}>`.replace(/\bdata-src=(["'])[^"']*\1/gi, '');
+                    return `<img${pre}src=${q}${src}${q}${post}>`;
+                });
+        }
+
         async function fetchRecentArticles(feedUrl, sourceName, maxItems = null, isBackground = false) {
             if (isBlueskyFeed(feedUrl)) {
                 const ok = await fetchBlueskyArticles(feedUrl, sourceName, maxItems, isBackground);
@@ -1531,7 +1545,7 @@
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
                         excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
                         _excerptHtml: null, // lazily cached on first render
-                        body: DOMPurify.sanitize(rawBody),
+                        body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] }),
                         link,
                         unread: isNew,
                         readLater: window._readLaterLinks.has(link),
@@ -1540,11 +1554,13 @@
                     if (isNew && isBackground) newCount++;
                 });
 
-                if (isBackground && newCount > 0) {
-                    window._newArticleCount += newCount;
-                    showNewArticlesBanner(window._newArticleCount);
+                if (isBackground) {
+                    if (newCount > 0) {
+                        window._newArticleCount += newCount;
+                        showNewArticlesBanner(window._newArticleCount);
+                    }
                 } else {
-                    renderTimeline();
+                    renderTimeline(true);
                     renderFeeds();
                 }
                 saveArticleCache();
@@ -1787,7 +1803,12 @@
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.7em';
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-            document.getElementById('article-body').innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_ATTR: ['loading', 'data-fullsize'] });
+            const bodyEl = document.getElementById('article-body');
+            bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] });
+            // Fix any remaining lazy-loaded images that survived sanitization
+            bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
+            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
+            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
 
             // Auto-attempt full content extraction silently in background
             attemptFullContentLoad(article);
@@ -1970,7 +1991,10 @@
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
                         if (bodyEl && window.currentArticle?.id === article.id) {
-                            bodyEl.innerHTML = DOMPurify.sanitize(linkify(content.innerHTML));
+                            bodyEl.innerHTML = DOMPurify.sanitize(linkify(fixLazyImages(content.innerHTML)), { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] });
+                            bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
+                            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
+                            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
                             const minutes = Math.max(1, Math.ceil(fullWordCount / 200));
                             const readTimeEl = document.getElementById('read-time');
                             if (readTimeEl) readTimeEl.textContent = `~${minutes} min read`;
