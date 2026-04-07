@@ -1428,9 +1428,12 @@
                 if (isNew && isBackground) newCount++;
             }
 
-            if (isBackground && newCount > 0) {
-                window._newArticleCount += newCount;
-                showNewArticlesBanner(window._newArticleCount);
+            if (isBackground) {
+                // Silent — never interrupt reading; accumulate and show banner only if new items
+                if (newCount > 0) {
+                    window._newArticleCount += newCount;
+                    showNewArticlesBanner(window._newArticleCount);
+                }
             } else {
                 renderTimeline(true);
                 renderFeeds();
@@ -2828,7 +2831,14 @@
         window.markAllRead = () => {
             const toMark = window.currentTimeline || window.articles;
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
-            saveReadState(); refreshUI();
+            saveReadState();
+            // Clear the view immediately, then fetch fresh content foreground
+            // (list is now empty so progressive render won't cause jumps)
+            window._newArticleCount = 0;
+            document.getElementById('new-articles-banner')?.classList.add('hidden');
+            refreshUI();
+            window.showToast('Marked all read — fetching new items...');
+            fetchAllStaggered(window.feeds);
         };
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
@@ -2990,12 +3000,17 @@
                 // Swipe DOWN to refresh — requires strong vertical intent:
                 // dy > 120px, vertical must be 3x horizontal, started near top of list
                 if (dy > 120 && absDy > absDx * 3 && _touchStartY < 180) {
-                    window.showToast('Refreshing...');
+                    // Show any already-accumulated new articles immediately, then fetch fresh silently
+                    window._newArticleCount = 0;
+                    document.getElementById('new-articles-banner')?.classList.add('hidden');
+                    renderTimeline();
+                    renderFeeds();
+                    window.showToast('Updated');
                     if (window.currentSourceFilter) {
                         const feed = window.feeds.find(f => f.name === window.currentSourceFilter);
-                        if (feed) fetchRecentArticles(feed.url, feed.name);
+                        if (feed) fetchRecentArticles(feed.url, feed.name, null, true);
                     } else {
-                        fetchAllStaggered(window.feeds);
+                        fetchAllStaggered(window.feeds, null, true);
                     }
                     return;
                 }
@@ -3420,7 +3435,7 @@
         window._localFetchTimer = null;
         if (window.feeds.length > 0) {
             window._localFetchTimer = setTimeout(() => {
-                if (window.feeds.length > 0) fetchAllStaggered(window.feeds);
+                if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
             }, 4000);
         }
         renderFeeds();
@@ -3574,7 +3589,7 @@
                     updateEmptyState();
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
-                        fetchAllStaggered(dbFeeds);
+                        fetchAllStaggered(dbFeeds, null, true);
                     }
                 }
                 document.getElementById('sync-status').textContent = `☁ ${userEmail}`;
