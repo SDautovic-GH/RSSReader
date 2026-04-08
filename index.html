@@ -1527,7 +1527,18 @@
                     if (!link || window.articles.some(a => a.link === link)) return;
                     const isNew = !window._readLinks.has(link);
                     const rawBody = getText(item, 'content\\:encoded', 'content', 'description', 'summary');
-                    const pubDate = getText(item, 'pubDate', 'published', 'updated', 'dc\\:date');
+                    const pubDate = (() => {
+                        const raw = getText(item, 'pubDate', 'published', 'updated', 'dc\\:date');
+                        if (!raw) return raw;
+                        // Named timezone abbreviations are non-standard and parsed as UTC by most browsers.
+                        // Replace with numeric offsets so Date() is accurate.
+                        return raw
+                            .replace(/\bEDT\b/, '-0400').replace(/\bEST\b/, '-0500')
+                            .replace(/\bCDT\b/, '-0500').replace(/\bCST\b/, '-0600')
+                            .replace(/\bMDT\b/, '-0600').replace(/\bMST\b/, '-0700')
+                            .replace(/\bPDT\b/, '-0700').replace(/\bPST\b/, '-0800')
+                            .replace(/\bGMT\b/, '+0000').replace(/\bUTC\b/, '+0000');
+                    })();
                     const image = (() => {
                         const enc = item.querySelector('enclosure[type^="image"]');
                         if (enc) return enc.getAttribute('url');
