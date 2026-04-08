@@ -1986,7 +1986,11 @@
                         '[id*="paywall"]','[id*="subscribe"]',
                         '.ads','.ad','.sidebar','.widget','.related','.comments',
                         '[aria-hidden="true"]','[role="complementary"]',
-                        '[role="banner"]','[role="navigation"]','[role="dialog"]'
+                        '[role="banner"]','[role="navigation"]','[role="dialog"]',
+                        '[class*="lede"]','[class*="hero"]','[class*="featured-image"]',
+                        '[class*="author"]','[class*="byline"]','[class*="profile"]',
+                        '[class*="related"]','[class*="recommendation"]','[class*="more-stories"]',
+                        '[class*="sticky-nav"]','[class*="breadcrumb"]','[class*="tag"]'
                     ].join(',')).forEach(el => el.remove());
 
                     // Content selectors ordered by specificity
@@ -2033,21 +2037,10 @@
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
                         if (bodyEl && window.currentArticle?.id === article.id) {
-                            // Remove all images/figures that appear before the first real paragraph —
-                            // these are always hero/lead images that cause jarring size jumps.
-                            const firstP = content.querySelector('p');
-                            if (firstP) {
-                                content.querySelectorAll('img, figure, picture').forEach(el => {
-                                    if (firstP.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING) {
-                                        el.closest('figure, picture, div:not([class*="body"]):not([class*="article"])') || el;
-                                        el.closest('figure, picture') ? el.closest('figure, picture').remove() : el.remove();
-                                    }
-                                });
-                            } else {
-                                // No paragraphs at all — remove the very first image only
-                                const firstImg = content.querySelector('figure, picture, img');
-                                if (firstImg) firstImg.remove();
-                            }
+                            // Always remove the first image/figure — it's the hero and causes a jarring
+                            // size jump. Remaining inline images within article text are kept.
+                            const firstMedia = content.querySelector('figure, picture, img');
+                            if (firstMedia) (firstMedia.closest('figure, picture') || firstMedia).remove();
                             bodyEl.innerHTML = DOMPurify.sanitize(linkify(fixLazyImages(content.innerHTML)), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
                             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
