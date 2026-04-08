@@ -1029,7 +1029,7 @@
                                 <span class="settings-item-label">Folder Size</span>
                                 <span class="text-xs font-bold text-blue-500" id="shared-folder-val">1.0em</span>
                             </div>
-                            <input type="range" min="4" max="20" value="10" id="shared-folder-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateSharedSize('folder', this.value)">
+                            <input type="range" min="12" max="28" value="20" id="shared-folder-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFolderSize(this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
@@ -2656,7 +2656,7 @@
             feedName:     { props: ['--desk-feed-name-size','--mob-feed-name-size','--list-source-size'], label: 'shared-feed-name-val', rerender: 'feeds' },
             listTitle:    { props: ['--list-title-em-size','--mob-list-title-size'],                      label: 'shared-list-title-val', rerender: 'timeline' },
             preview:      { props: ['--list-preview-font-size','--mob-list-preview-size'],               label: 'shared-preview-val',    rerender: 'timeline' },
-            folder:       { props: ['--category-font-size','--mob-folder-size','--feed-line-height','--mob-feed-line-height'], label: 'shared-folder-val', rerender: 'feeds' },
+            folder:       { props: ['--category-font-size','--mob-folder-size'], label: 'shared-folder-val', rerender: 'feeds' },
             body:         { props: ['--view-font-size','--mob-body-size'],                               label: 'shared-body-val',       rerender: null },
             articleTitle: { props: ['--mob-article-title-size'],                                         label: 'shared-article-title-val', rerender: null },
             meta:         { props: ['--article-meta-size','--mob-author-size'],                          label: 'shared-meta-val',       rerender: null },
@@ -2680,6 +2680,17 @@
             if (lb) lb.textContent = display;
             if (cfg.rerender === 'timeline') renderTimeline();
             if (cfg.rerender === 'feeds') renderFeeds();
+            saveTypographyPrefs();
+        };
+
+        window.updateFolderSize = (v) => {
+            const val = parseFloat((v / 20).toFixed(2));
+            const display = `${val}em`;
+            const root = document.documentElement;
+            ['--category-font-size','--mob-folder-size'].forEach(p => root.style.setProperty(p, display));
+            const lb = document.getElementById('shared-folder-val');
+            if (lb) lb.textContent = display;
+            renderFeeds();
             saveTypographyPrefs();
         };
 
@@ -3261,7 +3272,7 @@
                 { key: migrate('sharedFeedName',     ['deskFeedNameSize','mobFeedNameSize']),  id: 'shared-feed-name-slider',     label: 'shared-feed-name-val',     fn: v => updateSharedSize('feedName', v) },
                 { key: migrate('sharedListTitle',    ['listTitleEmSize','mobListTitleSize']),   id: 'shared-list-title-slider',    label: 'shared-list-title-val',    fn: v => updateSharedSize('listTitle', v) },
                 { key: migrate('sharedPreview',      ['listPreviewSize','mobListPreviewSize']), id: 'shared-preview-slider',       label: 'shared-preview-val',       fn: v => updateSharedSize('preview', v) },
-                { key: migrate('sharedFolder',       ['categorySize','mobFolderSize']),         id: 'shared-folder-slider',        label: 'shared-folder-val',        fn: v => updateSharedSize('folder', v) },
+                { key: migrate('sharedFolder',       ['categorySize','mobFolderSize']),         id: 'shared-folder-slider',        label: 'shared-folder-val',        fn: v => updateFolderSize(v) },
                 { key: migrate('sharedBody',         ['viewSize','mobBodySize']),               id: 'shared-body-slider',          label: 'shared-body-val',          fn: v => updateSharedSize('body', v) },
                 { key: migrate('sharedArticleTitle', ['articleTitleSize','mobArticleTitleSize']),id:'shared-article-title-slider', label: 'shared-article-title-val', fn: v => updateSharedSize('articleTitle', v) },
                 { key: migrate('sharedMeta',         ['articleMetaSize','mobAuthorSize']),      id: 'shared-meta-slider',          label: 'shared-meta-val',          fn: v => updateSharedSize('meta', v) },
