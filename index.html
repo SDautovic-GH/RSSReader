@@ -59,6 +59,24 @@
             cursor: zoom-in;
             display: block;
         }
+        .article-content video,
+        .article-content audio {
+            max-width: 100% !important;
+            width: 100% !important;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            display: block;
+            background: #000;
+        }
+        .article-content iframe {
+            max-width: 100% !important;
+            width: 100% !important;
+            aspect-ratio: 16/9;
+            border: none;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            display: block;
+        }
 
         /* ===== IMAGE LIGHTBOX ===== */
         #img-lightbox {
@@ -1508,6 +1526,20 @@
                     }
                     return '';
                 };
+                // For body fields: preserve HTML markup (CDATA or encoded HTML inside description/content)
+                const getHtml = (el, ...tags) => {
+                    for (const tag of tags) {
+                        const node = el.querySelector(tag);
+                        if (!node) continue;
+                        // CDATA sections are exposed as textContent (the browser already decoded them)
+                        // but innerHTML gives us the live DOM which may have re-encoded entities.
+                        // Use textContent when it contains HTML tags (CDATA), innerHTML otherwise.
+                        const raw = node.textContent || '';
+                        if (/<[a-z]/i.test(raw)) return raw; // CDATA with HTML
+                        if (node.innerHTML?.trim()) return node.innerHTML; // encoded HTML entities
+                    }
+                    return '';
+                };
 
                 const getLink = (el) => {
                     const atomLink = el.querySelector('link[rel="alternate"], link:not([rel])');
@@ -1526,7 +1558,7 @@
                     const link = getLink(item);
                     if (!link || window.articles.some(a => a.link === link)) return;
                     const isNew = !window._readLinks.has(link);
-                    const rawBody = getText(item, 'content\\:encoded', 'content', 'description', 'summary');
+                    const rawBody = getHtml(item, 'content\\:encoded', 'content', 'description', 'summary');
                     const pubDate = (() => {
                         const raw = getText(item, 'pubDate', 'published', 'updated', 'dc\\:date');
                         if (!raw) return raw;
@@ -1818,7 +1850,7 @@
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
-            bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] });
+            bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
             // Fix any remaining lazy-loaded images that survived sanitization
             bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
@@ -2003,7 +2035,7 @@
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
                         if (bodyEl && window.currentArticle?.id === article.id) {
-                            bodyEl.innerHTML = DOMPurify.sanitize(linkify(fixLazyImages(content.innerHTML)), { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] });
+                            bodyEl.innerHTML = DOMPurify.sanitize(linkify(fixLazyImages(content.innerHTML)), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
                             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
                             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
