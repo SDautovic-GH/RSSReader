@@ -2033,16 +2033,20 @@
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
                         if (bodyEl && window.currentArticle?.id === article.id) {
-                            // Remove hero/lead image — it's always the first <img> or <figure> and
-                            // causes a jarring size jump when the extracted content loads.
-                            const firstImg = content.querySelector('img, figure');
-                            if (firstImg) {
-                                const parent = firstImg.closest('figure, picture') || firstImg;
-                                // Only remove if it appears before any paragraph text
-                                const firstP = content.querySelector('p');
-                                if (!firstP || parent.compareDocumentPosition(firstP) & Node.DOCUMENT_POSITION_FOLLOWING) {
-                                    parent.remove();
-                                }
+                            // Remove all images/figures that appear before the first real paragraph —
+                            // these are always hero/lead images that cause jarring size jumps.
+                            const firstP = content.querySelector('p');
+                            if (firstP) {
+                                content.querySelectorAll('img, figure, picture').forEach(el => {
+                                    if (firstP.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING) {
+                                        el.closest('figure, picture, div:not([class*="body"]):not([class*="article"])') || el;
+                                        el.closest('figure, picture') ? el.closest('figure, picture').remove() : el.remove();
+                                    }
+                                });
+                            } else {
+                                // No paragraphs at all — remove the very first image only
+                                const firstImg = content.querySelector('figure, picture, img');
+                                if (firstImg) firstImg.remove();
                             }
                             bodyEl.innerHTML = DOMPurify.sanitize(linkify(fixLazyImages(content.innerHTML)), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
