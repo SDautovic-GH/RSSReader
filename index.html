@@ -1029,6 +1029,13 @@
                             </div>
                             <input type="range" min="4" max="20" value="10" id="shared-folder-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateSharedSize('folder', this.value)">
                         </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="settings-item-label">Feed Row Spacing</span>
+                                <span class="text-xs font-bold text-blue-500" id="feed-spacing-val">0.5rem</span>
+                            </div>
+                            <input type="range" min="0" max="20" value="5" id="feed-spacing-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateFeedSpacing(this.value)">
+                        </div>
                     </div>
                 </div>
 
@@ -2659,11 +2666,6 @@
             const display = cfg.noEm ? val.toString() : `${val}em`;
             const root = document.documentElement;
             cfg.props.forEach(p => root.style.setProperty(p, display));
-            // Scale feed row padding with folder size (0.4em at min, 0.75em at max)
-            if (key === 'folder') {
-                const padding = Math.max(0.2, val * 0.55) + 'rem';
-                root.style.setProperty('--feed-row-padding', padding);
-            }
             // Also keep article title font-size in sync on the live element
             if (key === 'articleTitle') {
                 window._savedArticleTitleSize = display;
@@ -2674,6 +2676,14 @@
             if (lb) lb.textContent = display;
             if (cfg.rerender === 'timeline') renderTimeline();
             if (cfg.rerender === 'feeds') renderFeeds();
+            saveTypographyPrefs();
+        };
+
+        window.updateFeedSpacing = (v) => {
+            const rem = (v / 10).toFixed(1) + 'rem';
+            document.documentElement.style.setProperty('--feed-row-padding', rem);
+            const lb = document.getElementById('feed-spacing-val');
+            if (lb) lb.textContent = rem;
             saveTypographyPrefs();
         };
 
@@ -3216,6 +3226,7 @@
                     sharedListTitle:    get('shared-list-title-slider'),
                     sharedPreview:      get('shared-preview-slider'),
                     sharedFolder:       get('shared-folder-slider'),
+                    feedSpacing:        get('feed-spacing-slider'),
                     sharedBody:         get('shared-body-slider'),
                     sharedArticleTitle: get('shared-article-title-slider'),
                     sharedMeta:         get('shared-meta-slider'),
@@ -3251,6 +3262,7 @@
                 { key: migrate('sharedArticleTitle', ['articleTitleSize','mobArticleTitleSize']),id:'shared-article-title-slider', label: 'shared-article-title-val', fn: v => updateSharedSize('articleTitle', v) },
                 { key: migrate('sharedMeta',         ['articleMetaSize','mobAuthorSize']),      id: 'shared-meta-slider',          label: 'shared-meta-val',          fn: v => updateSharedSize('meta', v) },
                 { key: migrate('sharedLineHeight',   ['lineHeight','mobLineHeight']),           id: 'shared-line-height-slider',   label: 'shared-line-height-val',   fn: v => updateSharedSize('lineHeight', v) },
+                { key: prefs.feedSpacing,                                                       id: 'feed-spacing-slider',         label: 'feed-spacing-val',         fn: v => updateFeedSpacing(v) },
             ];
             shared.forEach(({ key, id, fn }) => {
                 if (!key) return;
