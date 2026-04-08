@@ -336,10 +336,10 @@
             /* Mobile sidebar — consistent font size for smart feeds AND category folders */
             /* Reset smart feeds card container so mob-folder-size em values don't compound against it */
             #smart-feeds-card { font-size: 1rem !important; }
-            #sidebar-pane .smart-feed-btn { font-size: var(--mob-folder-size) !important; padding-top: 0.6rem !important; padding-bottom: 0.6rem !important; line-height: var(--mob-feed-line-height) !important; }
+            #sidebar-pane .smart-feed-btn { font-size: var(--mob-folder-size) !important; line-height: var(--mob-feed-line-height) !important; }
             #sidebar-pane .dynamic-category-text { font-size: var(--mob-folder-size) !important; line-height: var(--mob-feed-line-height) !important; }
             /* Category folder buttons match smart feed font size (removed * 0.85 scaling) */
-            #sidebar-pane #feed-list button { font-size: var(--mob-folder-size) !important; padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; line-height: var(--mob-feed-line-height) !important; }
+            #sidebar-pane #feed-list button { font-size: var(--mob-folder-size) !important; line-height: var(--mob-feed-line-height) !important; }
             /* Article list source name and date size */
             #article-list .list-source-label { font-size: var(--mob-list-source-size) !important; }
             #article-list .list-date-label { font-size: var(--mob-list-date-size) !important; }
@@ -573,6 +573,17 @@
         #feed-list [data-category]:last-child { border-bottom: none !important; }
         #feed-list, #sidebar-pane .smart-feed-btn, #sidebar-pane .dynamic-category-text {
             line-height: var(--feed-line-height) !important;
+        }
+        /* Feed row padding scales with folder size slider */
+        #sidebar-pane .smart-feed-btn,
+        #sidebar-pane #feed-list [data-category] > div,
+        #sidebar-pane #feed-list button {
+            padding-top: var(--feed-row-padding, 0.6rem) !important;
+            padding-bottom: var(--feed-row-padding, 0.6rem) !important;
+        }
+        #sidebar-pane #feed-list button button { /* chevron+name inner buttons */
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
         }
         .settings-section-label {
             font-size: 11px; font-weight: 700; text-transform: uppercase;
@@ -2648,6 +2659,11 @@
             const display = cfg.noEm ? val.toString() : `${val}em`;
             const root = document.documentElement;
             cfg.props.forEach(p => root.style.setProperty(p, display));
+            // Scale feed row padding with folder size (0.4em at min, 0.75em at max)
+            if (key === 'folder') {
+                const padding = Math.max(0.2, val * 0.55) + 'rem';
+                root.style.setProperty('--feed-row-padding', padding);
+            }
             // Also keep article title font-size in sync on the live element
             if (key === 'articleTitle') {
                 window._savedArticleTitleSize = display;
@@ -3486,6 +3502,20 @@
         renderFeeds();
         renderTimeline();
         updateEmptyState();
+
+        // Refresh feeds when app returns to foreground after being backgrounded
+        let _hiddenAt = 0;
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                _hiddenAt = Date.now();
+            } else {
+                // Only refresh if hidden for more than 5 minutes
+                if (_hiddenAt && Date.now() - _hiddenAt > 5 * 60 * 1000) {
+                    if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
+                }
+                _hiddenAt = 0;
+            }
+        });
     </script>
 
     <!-- FIREBASE MODULE -->
