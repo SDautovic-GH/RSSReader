@@ -54,6 +54,8 @@
             max-width: 100% !important;
             width: 100% !important;
             height: auto !important;
+            max-height: 420px;
+            object-fit: cover;
             border-radius: 12px;
             margin: 1.5rem 0;
             cursor: zoom-in;
@@ -290,10 +292,6 @@
         .feed-stale::after { background: #f59e0b; }
         .feed-error::after { background: #ef4444; }
 
-        /* New articles banner */
-        #new-articles-banner {
-            transition: transform 0.3s ease, opacity 0.3s ease !important;
-        }
 
         /* Card view */
         #article-list.card-view .article-card {
@@ -685,8 +683,6 @@
             <div class="p-4 border-t border-gray-200 dark:border-gray-700 text-[10px] text-gray-400 flex justify-between items-center">
                 <span id="sync-status" class="cursor-pointer hover:text-blue-500" onclick="showAccountInfo()" title="Account info">Local Only</span>
                 <div class="flex space-x-3">
-                    <button onclick="exportReadState()" class="hover:text-blue-500 font-bold uppercase outline-none" title="Export read/saved state">Read State</button>
-                    <button onclick="exportSubscriptions()" class="hover:text-blue-500 font-bold uppercase outline-none" title="Export feed list as OPML">OPML</button>
                     <button id="signout-btn" onclick="handleSignOut()" class="hidden hover:text-red-500 font-bold uppercase outline-none" title="Sign out">Sign Out</button>
                 </div>
             </div>
@@ -710,10 +706,6 @@
 
         <!-- PANE 3: Viewer -->
         <main id="viewer-pane" class="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
-            <!-- New Articles Banner -->
-            <div id="new-articles-banner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-30 bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg cursor-pointer select-none" onclick="dismissNewArticlesBanner()">
-                ↑ New articles available — click to refresh
-            </div>
             <div class="h-12 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 bg-gray-50 dark:bg-gray-800 z-10" ondblclick="toggleFullScreenManual()" title="Double-click to toggle Full Screen">
                 <div class="flex space-x-3 items-center">
                     <button id="exit-fullscreen-btn" onclick="toggleFullScreen(false)" class="hidden text-blue-500 font-bold text-[10px] border border-blue-500 px-2 py-1 rounded hover:bg-blue-500 hover:text-white transition-all mr-2">
@@ -932,6 +924,7 @@
             <div id="settings-panel-feeds" class="p-6 overflow-y-auto flex-1 space-y-6 no-scrollbar">
                 <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg">
                     <div class="flex space-x-2 mb-4">
+                        <button onclick="exportSubscriptions()" class="flex-1 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-xs font-semibold hover:bg-gray-50">Export OPML</button>
                         <button onclick="document.getElementById('opml-import').click()" class="flex-1 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-xs font-semibold hover:bg-gray-50">Import OPML</button>
                         <input type="file" id="opml-import" class="hidden" accept=".opml,.xml" onchange="importSubscriptions(event)">
                     </div>
@@ -1137,7 +1130,7 @@
         window.currentTimeline = [];
         window.contextMenuArticleId = null;
         window._autoRefreshTimer = null;
-        window._newArticleCount = 0;
+        
         window._feedHealth = {};
         window._viewMode = 'list';
         window._ttsActive = false;
@@ -1454,8 +1447,8 @@
             if (isBackground) {
                 // Silent — never interrupt reading; accumulate and show banner only if new items
                 if (newCount > 0) {
-                    window._newArticleCount += newCount;
-                    showNewArticlesBanner(window._newArticleCount);
+                    
+                    
                 }
             } else {
                 renderTimeline(true);
@@ -1604,8 +1597,8 @@
 
                 if (isBackground) {
                     if (newCount > 0) {
-                        window._newArticleCount += newCount;
-                        showNewArticlesBanner(window._newArticleCount);
+                        
+                        
                     }
                 } else {
                     renderTimeline(true);
@@ -2040,6 +2033,17 @@
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
                         if (bodyEl && window.currentArticle?.id === article.id) {
+                            // Remove hero/lead image — it's always the first <img> or <figure> and
+                            // causes a jarring size jump when the extracted content loads.
+                            const firstImg = content.querySelector('img, figure');
+                            if (firstImg) {
+                                const parent = firstImg.closest('figure, picture') || firstImg;
+                                // Only remove if it appears before any paragraph text
+                                const firstP = content.querySelector('p');
+                                if (!firstP || parent.compareDocumentPosition(firstP) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                                    parent.remove();
+                                }
+                            }
                             bodyEl.innerHTML = DOMPurify.sanitize(linkify(fixLazyImages(content.innerHTML)), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
                             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
@@ -2442,30 +2446,15 @@
             const mins = parseInt(minutes);
             if (mins > 0) {
                 window._autoRefreshTimer = setInterval(() => {
-                    window._newArticleCount = 0;
+                    
                     fetchAllStaggered(window.feeds, null, true);
                 }, mins * 60 * 1000);
             }
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
         };
 
-        // --- NEW ARTICLES BANNER ---
-        function showNewArticlesBanner(count) {
-            const banner = document.getElementById('new-articles-banner');
-            if (!banner) return;
-            banner.textContent = `↑ ${count} new article${count !== 1 ? 's' : ''} — click to refresh view`;
-            // Only show when on the article list, not while reading an article
-            if (!isMobile() || window._mobilePane === 'timeline') {
-                banner.classList.remove('hidden');
-            }
-        }
-
-        window.dismissNewArticlesBanner = () => {
-            document.getElementById('new-articles-banner')?.classList.add('hidden');
-            window._newArticleCount = 0;
-            renderTimeline(true);
-            renderFeeds();
-        };
+        function showNewArticlesBanner() { /* removed */ }
+        window.dismissNewArticlesBanner = () => {};
 
         // --- NAVIGATE PREV/NEXT ---
         window._navSnapshot = [];
@@ -2916,8 +2905,8 @@
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
             saveReadState();
             window._pinnedArticleIds.clear();
-            window._newArticleCount = 0;
-            document.getElementById('new-articles-banner')?.classList.add('hidden');
+            
+            
             refreshUI();
             window.showToast('Marked all read — fetching new items...');
             fetchAllStaggered(window.feeds);
@@ -3057,8 +3046,8 @@
                 // dy > 120px, vertical must be 3x horizontal, started near top of list
                 if (dy > 120 && absDy > absDx * 3 && _touchStartY < 180) {
                     window._pinnedArticleIds.clear();
-                    window._newArticleCount = 0;
-                    document.getElementById('new-articles-banner')?.classList.add('hidden');
+                    
+                    
                     renderTimeline();
                     renderFeeds();
                     window.showToast('Updated');
@@ -3178,19 +3167,6 @@
         document.getElementById('feed-list').addEventListener('touchend', () => clearTimeout(_catLongPressTimer));
         document.getElementById('feed-list').addEventListener('touchmove', () => clearTimeout(_catLongPressTimer), { passive: true });
 
-        // --- EXPORT READ STATE ---
-        window.exportReadState = () => {
-            const data = {
-                exported: new Date().toISOString(),
-                readLinks: Array.from(window._readLinks),
-                readLaterLinks: Array.from(window._readLaterLinks)
-            };
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-            a.download = 'newsreader_state.json';
-            a.click();
-            window.showToast(`Exported ${data.readLinks.length} read + ${data.readLaterLinks.length} saved`);
-        };
 
         window.showFolderContextMenu = (e, type, key) => {
             e.preventDefault();
@@ -3413,7 +3389,6 @@
                 btn.classList.toggle('text-blue-600', key === pane);
                 btn.classList.toggle('text-gray-400', key !== pane);
             });
-            const banner = document.getElementById('new-articles-banner');
             if (pane === 'timeline') {
                 const listEl = document.getElementById('article-list');
                 if (listEl) {
@@ -3425,11 +3400,7 @@
                         listEl.scrollTop = 0;
                     }
                 }
-                // Restore banner if there are pending new articles
-                if (banner && window._newArticleCount > 0) banner.classList.remove('hidden');
             } else {
-                // Hide banner when leaving the article list
-                if (banner) banner.classList.add('hidden');
             }
         };
 
