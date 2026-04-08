@@ -2449,7 +2449,10 @@
             const banner = document.getElementById('new-articles-banner');
             if (!banner) return;
             banner.textContent = `↑ ${count} new article${count !== 1 ? 's' : ''} — click to refresh view`;
-            banner.classList.remove('hidden');
+            // Only show when on the article list, not while reading an article
+            if (!isMobile() || window._mobilePane === 'timeline') {
+                banner.classList.remove('hidden');
+            }
         }
 
         window.dismissNewArticlesBanner = () => {
@@ -2969,52 +2972,26 @@
             let _swipeCard = null;
             let _swipeIndicator = null;
 
-            // Create reusable swipe indicator element
-            _swipeIndicator = document.createElement('div');
-            _swipeIndicator.style.cssText = `
-                position: fixed; top: 50%; transform: translateY(-50%);
-                z-index: 200; padding: 10px 18px; border-radius: 20px;
-                font-size: 13px; font-weight: 700; color: white;
-                pointer-events: none; opacity: 0;
-                transition: opacity 0.15s ease;
-                backdrop-filter: blur(8px);
-            `;
-            document.body.appendChild(_swipeIndicator);
-
             function showSwipeHint(dx, dy, touchX, touchY, card) {
                 if (!card) return;
                 const id = card.getAttribute('data-id');
                 const article = window.articles.find(a => a.id === id);
                 if (!article) return;
-
-                // Position pill near finger — offset above thumb so it's visible
-                const pillY = Math.max(60, touchY - 50);
-
+                const progress = Math.min(1, (Math.abs(dx) - 20) / 60);
                 if (dx < -20) {
-                    // Swiping left — show pill to the right of current finger position
-                    _swipeIndicator.style.left = `${touchX + 12}px`;
-                    _swipeIndicator.style.right = 'auto';
-                    _swipeIndicator.style.top = `${pillY}px`;
-                    _swipeIndicator.style.transform = 'none';
-                    _swipeIndicator.style.background = 'rgba(37,99,235,0.92)';
-                    _swipeIndicator.textContent = article.readLater ? '🔖 Remove Later' : '🔖 Save Later';
-                    _swipeIndicator.style.opacity = Math.min(1, Math.abs(dx) / 60).toString();
+                    // Swipe left → Save for Later: blue tint on left half
+                    card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.35}) 50%, transparent 50%)`;
                 } else if (dx > 20) {
-                    // Swiping right — show pill to the left of current finger position
-                    _swipeIndicator.style.right = `${window.innerWidth - touchX + 12}px`;
-                    _swipeIndicator.style.left = 'auto';
-                    _swipeIndicator.style.top = `${pillY}px`;
-                    _swipeIndicator.style.transform = 'none';
-                    _swipeIndicator.style.background = article.unread ? 'rgba(22,163,74,0.92)' : 'rgba(100,116,139,0.92)';
-                    _swipeIndicator.textContent = article.unread ? '✓ Mark Read' : '↩ Mark Unread';
-                    _swipeIndicator.style.opacity = Math.min(1, Math.abs(dx) / 60).toString();
+                    // Swipe right → Mark Read/Unread: green/grey tint on right half
+                    const col = article.unread ? `rgba(22,163,74,${progress * 0.35})` : `rgba(100,116,139,${progress * 0.35})`;
+                    card.style.background = `linear-gradient(to left, ${col} 0%, ${col} 50%, transparent 50%)`;
                 } else {
-                    _swipeIndicator.style.opacity = '0';
+                    card.style.background = '';
                 }
             }
 
             function hideSwipeHint() {
-                _swipeIndicator.style.opacity = '0';
+                if (_swipeCard) _swipeCard.style.background = '';
             }
 
             list.addEventListener('touchstart', (e) => {
@@ -3431,11 +3408,11 @@
                 btn.classList.toggle('text-blue-600', key === pane);
                 btn.classList.toggle('text-gray-400', key !== pane);
             });
+            const banner = document.getElementById('new-articles-banner');
             if (pane === 'timeline') {
                 const listEl = document.getElementById('article-list');
                 if (listEl) {
                     if (window.currentArticle) {
-                        // Scroll the current article into view so user returns to their place
                         const el = listEl.querySelector(`[data-id="${window.currentArticle.id}"]`);
                         if (el) { el.scrollIntoView({ block: 'center' }); }
                         else { listEl.scrollTop = 0; }
@@ -3443,6 +3420,11 @@
                         listEl.scrollTop = 0;
                     }
                 }
+                // Restore banner if there are pending new articles
+                if (banner && window._newArticleCount > 0) banner.classList.remove('hidden');
+            } else {
+                // Hide banner when leaving the article list
+                if (banner) banner.classList.add('hidden');
             }
         };
 
@@ -3473,7 +3455,7 @@
             _isMobileCache = window.innerWidth <= 900;
         }, { passive: true });
 
-        if (isMobile()) setMobilePane('timeline');
+        if (isMobile()) setMobilePane('sidebar');
 
         window.addEventListener('resize', () => {
             if (!_isMobileCache) return; // desktop — nothing to do
