@@ -2167,7 +2167,7 @@
             list.innerHTML = sortedEntries.map(([cat, feeds]) => {
                 const total = feeds.reduce((sum, f) => sum + (f.unread || 0), 0);
                 if (total === 0 && !window._showEmptyCategories) return '';
-                if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = true;
+                if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = false;
                 const isCollapsed = window.collapsedCategories[cat];
                 const formattedCat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
 
@@ -2179,20 +2179,20 @@
                          ondragover="handleCategoryDragOver(event, '${cat}')"
                          ondragleave="handleCategoryDragLeave(event)"
                          ondrop="handleCategoryOrFeedDrop(event, '${cat}')">
-                        <button onclick="setCategoryFilter('${cat}')" oncontextmenu="showFolderContextMenu(event, 'category', '${cat}')" class="w-full px-4 py-3 text-gray-400 flex items-center justify-between hover:bg-white/5 outline-none dynamic-category-text">
-                            <div class="flex items-center">
-                                <span class="mr-2">
-                                    ${isCollapsed ? 
-                                        `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2v8z"></path></svg>` : 
-                                        `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9l-2-2H5a2 2 0 00-2 2v8z"></path></svg>`
-                                    }
-                                </span> 
+                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${cat}')" class="w-full px-4 py-3 text-gray-400 flex items-center justify-between hover:bg-white/5 dynamic-category-text">
+                            <button onclick="toggleCategory('${cat}')" class="flex items-center gap-2 outline-none flex-shrink-0 mr-2 opacity-60 hover:opacity-100 transition-opacity">
+                                ${isCollapsed ?
+                                    `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>` :
+                                    `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`
+                                }
+                            </button>
+                            <button onclick="setCategoryFilter('${cat}')" class="flex-1 text-left outline-none truncate">
                                 <span>${formattedCat}</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
+                            </button>
+                            <div class="flex items-center space-x-2 flex-shrink-0">
                                 ${total > 0 ? `<span class="mob-unread-count text-blue-500 dark:text-blue-400">${total}</span>` : ''}
                             </div>
-                        </button>
+                        </div>
                         ${!isCollapsed ? feeds.map(f => {
                             const health = window._feedHealth[f.url];
                             const isError = health && health.errorCount >= 3;
