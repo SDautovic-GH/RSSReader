@@ -3294,14 +3294,19 @@
                 if (!stored) return;
                 const cache = JSON.parse(stored);
                 if (!Array.isArray(cache) || cache.length === 0) return;
-                cache.forEach(a => {
+                const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000; // drop anything older than 48h
+                const fresh = cache.filter(a => {
+                    const ts = a._ts || new Date(a.timestamp).getTime();
+                    return ts >= cutoff || a.readLater; // always keep read-later items
+                });
+                fresh.forEach(a => {
                     a.unread = !window._readLinks.has(a.link);
                     a.readLater = window._readLaterLinks.has(a.link);
                     a._ts = a._ts || new Date(a.timestamp).getTime();
-                    a._excerptHtml = null; // will be lazily rebuilt on first render
+                    a._excerptHtml = null;
                     a.body = '';
                 });
-                window.articles = cache;
+                window.articles = fresh;
             } catch(e) {}
         }
 
