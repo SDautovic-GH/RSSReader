@@ -1951,6 +1951,7 @@
 
         async function attemptFullContentLoad(article) {
             if (!article || !article.link || article.link === '#') return;
+            if (article._fullBodyLoaded) return;
 
             try {
                 const domain = new URL(article.link).hostname.replace('www.','');
@@ -1961,108 +1962,138 @@
             } catch(e) { return; }
 
             const proxies = [
-                url => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, isJson: true }),
                 url => ({ url: `https://still-shadow-1ebe.sdfyix.workers.dev/?url=${encodeURIComponent(url)}`, isJson: false }),
                 url => ({ url: `https://corsproxy.io/?${encodeURIComponent(url)}`, isJson: false }),
-                url => ({ url: `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`, isJson: false }),
+                url => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, isJson: true }),
             ];
 
             const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
             console.log(`[Extractor] Starting: ${article.link} | RSS words: ${rssWordCount}`);
 
-            for (const proxyFn of proxies) {
+            const PROXY_TIMEOUT = 5000;
+
+            const fetchHtml = async (proxyFn) => {
                 const { url: proxyUrl, isJson } = proxyFn(article.link);
                 const proxyName = proxyUrl.split('/')[2];
-                try {
-                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-                    if (!res.ok) { console.log(`[Extractor] ${proxyName} → ${res.status}`); continue; }
+                const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(PROXY_TIMEOUT) });
+                if (!res.ok) throw new Error(`${proxyName} HTTP ${res.status}`);
+                const html = isJson ? (await res.json()).contents : await res.text();
+                if (!html || html.length < 500) throw new Error(`${proxyName} empty`);
+                return { html, proxyName };
+            };
 
-                    let html = isJson ? (await res.json()).contents : await res.text();
-                    if (!html || html.length < 500) { console.log(`[Extractor] ${proxyName} → empty/too short`); continue; }
-                    console.log(`[Extractor] ${proxyName} → ${html.length} chars`);
+            const extractContent = (html, proxyName) => {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                doc.querySelectorAll([
+                    'script','style','nav','footer','header','aside','iframe',
+                    '[class*="paywall"]','[class*="subscribe"]','[class*="newsletter"]',
+                    '[class*="signup"]','[class*="overlay"]','[class*="modal"]',
+                    '[id*="paywall"]','[id*="subscribe"]',
+                    '.ads','.ad','.sidebar','.widget','.related','.comments',
+                    '[aria-hidden="true"]','[role="complementary"]',
+                    '[role="banner"]','[role="navigation"]','[role="dialog"]',
+                    '[class*="related"]','[class*="recommendation"]','[class*="more-stories"]',
+                    '[class*="sticky-nav"]','[class*="breadcrumb"]'
+                ].join(',')).forEach(el => el.remove());
 
-                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                const SELECTORS = [
+                    '[data-component="text-block"]',
+                    '.article__body','.article-body-commercial-selector',
+                    '.post-content','.entry-content',
+                    '.article-content','.article-body',
+                    '.articleBody','.article_body',
+                    '.ArticleBody-articleBody','.caas-body',
+                    '.story-body','.story-content',
+                    '.StoryBodyCompanionColumn','[name="articleBody"]',
+                    '.wsj-snippet-body',
+                    '.available-content','.body.markup','.postContent',
+                    '[itemprop="articleBody"]',
+                    'article .content','.main-content article',
+                    '.main-content','.page-content',
+                    'article','main',
+                ];
 
-                    doc.querySelectorAll([
-                        'script','style','nav','footer','header','aside','iframe',
-                        '[class*="paywall"]','[class*="subscribe"]','[class*="newsletter"]',
-                        '[class*="signup"]','[class*="overlay"]','[class*="modal"]',
-                        '[id*="paywall"]','[id*="subscribe"]',
-                        '.ads','.ad','.sidebar','.widget','.related','.comments',
-                        '[aria-hidden="true"]','[role="complementary"]',
-                        '[role="banner"]','[role="navigation"]','[role="dialog"]',
-                        '[class*="related"]','[class*="recommendation"]','[class*="more-stories"]',
-                        '[class*="sticky-nav"]','[class*="breadcrumb"]'
-                    ].join(',')).forEach(el => el.remove());
-
-                    const SELECTORS = [
-                        '[data-component="text-block"]',
-                        '.article__body','.article-body-commercial-selector',
-                        '.post-content','.entry-content',
-                        '.article-content','.article-body',
-                        '.articleBody','.article_body',
-                        '.ArticleBody-articleBody','.caas-body',
-                        '.story-body','.story-content',
-                        '.StoryBodyCompanionColumn','[name="articleBody"]',
-                        '.wsj-snippet-body',
-                        '.available-content','.body.markup','.postContent',
-                        '[itemprop="articleBody"]',
-                        'article .content','.main-content article',
-                        '.main-content','.page-content',
-                        'article','main',
-                    ];
-
-                    let content = null, matchedSel = null;
-                    for (const sel of SELECTORS) {
-                        const el = doc.querySelector(sel);
-                        if (el && el.textContent.trim().split(/\s+/).filter(Boolean).length > 50) {
-                            content = el; matchedSel = sel; break;
+                let content = null, matchedSel = null;
+                for (const sel of SELECTORS) {
+                    const el = doc.querySelector(sel);
+                    if (el && el.textContent.trim().split(/\s+/).filter(Boolean).length > 50) {
+                        content = el; matchedSel = sel; break;
+                    }
+                }
+                if (!content) {
+                    let best = null, bestScore = 0;
+                    doc.querySelectorAll('div,section,main').forEach(el => {
+                        const score = el.querySelectorAll('p').length;
+                        if (score > bestScore && el.textContent.trim().length > 200) {
+                            bestScore = score; best = el;
                         }
+                    });
+                    content = best;
+                    matchedSel = `fallback (${bestScore}p)`;
+                }
+                return { content, matchedSel };
+            };
+
+            const applyContent = (content, fullWordCount, proxyName) => {
+                const bodyEl = document.getElementById('article-body');
+                if (!bodyEl || window.currentArticle?.id !== article.id) return false;
+                const allChildren = Array.from(content.childNodes);
+                for (const node of allChildren) {
+                    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) break;
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        const tag = node.tagName?.toLowerCase();
+                        if (tag === 'p' || tag === 'h1' || tag === 'h2' || tag === 'h3') break;
+                        if (tag === 'figure' || tag === 'picture' || tag === 'img' ||
+                            node.querySelector('img')) { node.remove(); break; }
                     }
+                }
+                const sanitized = DOMPurify.sanitize(linkify(fixLazyImages(content.innerHTML)), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+                bodyEl.innerHTML = sanitized;
+                bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
+                bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
+                bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
+                article.body = sanitized;
+                article._fullBodyLoaded = true;
+                const minutes = Math.max(1, Math.ceil(fullWordCount / 200));
+                const readTimeEl = document.getElementById('read-time');
+                if (readTimeEl) readTimeEl.textContent = `~${minutes} min read`;
+                console.log(`[Extractor] ✓ Upgraded to ${fullWordCount} words via ${proxyName}`);
+                return true;
+            };
 
-                    if (!content) {
-                        let best = null, bestScore = 0;
-                        doc.querySelectorAll('div,section,main').forEach(el => {
-                            const score = el.querySelectorAll('p').length;
-                            if (score > bestScore && el.textContent.trim().length > 200) {
-                                bestScore = score; best = el;
-                            }
-                        });
-                        content = best;
-                        matchedSel = `fallback (${bestScore}p)`;
-                    }
+            // Race the first two proxies; fall back sequentially if both fail
+            let winner = null;
+            try {
+                winner = await Promise.any([fetchHtml(proxies[0]), fetchHtml(proxies[1])]);
+            } catch(e) { /* both fast proxies failed, try remaining */ }
 
-                    if (!content) { console.log(`[Extractor] ${proxyName} → no content found`); continue; }
-
+            if (winner) {
+                const { content, matchedSel } = extractContent(winner.html, winner.proxyName);
+                if (content) {
                     const fullWordCount = content.textContent.trim().split(/\s+/).filter(Boolean).length;
-                    console.log(`[Extractor] "${matchedSel}" → ${fullWordCount} words (need >${rssWordCount + 80})`);
-
+                    console.log(`[Extractor] "${matchedSel}" → ${fullWordCount} words via ${winner.proxyName}`);
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
-                        const bodyEl = document.getElementById('article-body');
-                        if (bodyEl && window.currentArticle?.id === article.id) {
-                            const allChildren = Array.from(content.childNodes);
-                            for (const node of allChildren) {
-                                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) break;
-                                if (node.nodeType === Node.ELEMENT_NODE) {
-                                    const tag = node.tagName?.toLowerCase();
-                                    if (tag === 'p' || tag === 'h1' || tag === 'h2' || tag === 'h3') break;
-                                    if (tag === 'figure' || tag === 'picture' || tag === 'img' ||
-                                        node.querySelector('img')) { node.remove(); break; }
-                                }
-                            }
-                            bodyEl.innerHTML = DOMPurify.sanitize(linkify(fixLazyImages(content.innerHTML)), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
-                            bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
-                            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
-                            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
-                            const minutes = Math.max(1, Math.ceil(fullWordCount / 200));
-                            const readTimeEl = document.getElementById('read-time');
-                            if (readTimeEl) readTimeEl.textContent = `~${minutes} min read`;
-                            console.log(`[Extractor] ✓ Upgraded to ${fullWordCount} words via ${proxyName}`);
-                        }
+                        applyContent(content, fullWordCount, winner.proxyName);
                         return;
-                    } else {
-                        console.log(`[Extractor] ${proxyName} → threshold not met, trying next proxy`);
                     }
+                }
+                console.log(`[Extractor] Fast proxies: threshold not met, trying fallback`);
+            }
+
+            for (const proxyFn of proxies.slice(2)) {
+                const proxyUrl = proxyFn(article.link).url;
+                const proxyName = proxyUrl.split('/')[2];
+                try {
+                    const { html, proxyName: pn } = await fetchHtml(proxyFn);
+                    const { content, matchedSel } = extractContent(html, pn);
+                    if (!content) { console.log(`[Extractor] ${pn} → no content`); continue; }
+                    const fullWordCount = content.textContent.trim().split(/\s+/).filter(Boolean).length;
+                    console.log(`[Extractor] "${matchedSel}" → ${fullWordCount} words via ${pn}`);
+                    if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
+                        applyContent(content, fullWordCount, pn);
+                        return;
+                    }
+                    console.log(`[Extractor] ${pn} → threshold not met`);
                 } catch(e) { console.log(`[Extractor] ${proxyName} → ${e.message}`); }
             }
             console.log(`[Extractor] All proxies exhausted`);
