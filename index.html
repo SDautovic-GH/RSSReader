@@ -1546,15 +1546,25 @@
                     for (const tag of tags) {
                         const node = el.querySelector(tag);
                         if (!node) continue;
-                        const raw = node.textContent || '';
-                        if (!raw.trim()) continue;
-                        if (/<[a-z]/i.test(raw)) return raw; // CDATA with HTML
-                        if (node.innerHTML?.trim()) return node.innerHTML; // encoded HTML entities
-                        return raw; // plain text CDATA
+                        
+                        const text = node.textContent || '';
+                        if (!text.trim()) continue;
+                        
+                        // 1. If textContent already contains HTML tags (CDATA w/ HTML or escaped HTML)
+                        if (/<[a-z]/i.test(text)) return text; 
+                        
+                        let html = node.innerHTML || '';
+                        // 2. Strip CDATA wrappers that innerHTML might leave behind on XML documents
+                        html = html.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1').trim();
+                        
+                        // 3. If stripping revealed actual XML/HTML child nodes, return the HTML
+                        if (/<[a-z]/i.test(html)) return html; 
+                        
+                        // 4. Otherwise, safely fall back to the plain text content
+                        return text;
                     }
                     return '';
                 };
-
                 const getLink = (el) => {
                     const atomLink = el.querySelector('link[rel="alternate"], link:not([rel])');
                     if (atomLink) return atomLink.getAttribute('href') || atomLink.textContent.trim();
