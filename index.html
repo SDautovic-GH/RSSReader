@@ -277,6 +277,40 @@
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
         }
 
+        /* Keyboard shortcut kbd chip */
+        .kbd {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 1.6em; padding: 0.1em 0.4em;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 5px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.78em;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+
+        /* Skeleton loading shimmer */
+        @keyframes shimmer {
+            0% { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+        }
+        .skeleton-card {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .skeleton-line {
+            border-radius: 4px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 75%);
+            background-size: 800px 100%;
+            animation: shimmer 1.4s infinite linear;
+        }
+        .dark .skeleton-line {
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%);
+            background-size: 800px 100%;
+            animation: shimmer 1.4s infinite linear;
+        }
+
         /* Reading progress bar */
         #reading-progress {
             position: absolute;
@@ -753,8 +787,8 @@
 
                     <div class="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
 
-                    <!-- Read time estimate -->
-                    <span id="read-time" class="hidden text-[10px] text-gray-400 font-medium"></span>
+                    <!-- Read time / progress estimate -->
+                    <span id="read-time" class="hidden text-[10px] text-gray-400 font-medium tabular-nums"></span>
                 </div>
                 
                 <div class="flex items-center space-x-3">
@@ -1127,6 +1161,28 @@
             <div class="flex justify-end space-x-3">
                 <button onclick="closeAddFeedModal()" class="px-5 py-2 text-sm text-gray-500">Cancel</button>
                 <button onclick="submitManualFeed()" class="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Add Feed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KEYBOARD SHORTCUT CHEATSHEET -->
+    <div id="shortcuts-modal" class="hidden fixed inset-0 z-[300] flex items-center justify-center" onclick="if(event.target===this)closeShortcuts()">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div class="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-sm font-bold text-white uppercase tracking-widest">Keyboard Shortcuts</h2>
+                <button onclick="closeShortcuts()" class="text-gray-500 hover:text-white transition-colors text-lg leading-none">✕</button>
+            </div>
+            <div class="space-y-1 text-sm">
+                <div class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Navigation</div>
+                <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Next article</span><span class="flex gap-1"><kbd class="kbd">j</kbd><kbd class="kbd">↓</kbd></span></div>
+                <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Previous article</span><span class="flex gap-1"><kbd class="kbd">k</kbd><kbd class="kbd">↑</kbd></span></div>
+                <div class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-4 mb-2">Article</div>
+                <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Toggle read/unread</span><kbd class="kbd">r</kbd></div>
+                <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Save / remove read later</span><kbd class="kbd">b</kbd></div>
+                <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Open in browser</span><kbd class="kbd">o</kbd></div>
+                <div class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-4 mb-2">App</div>
+                <div class="flex justify-between py-1.5"><span class="text-gray-300">Show this cheatsheet</span><kbd class="kbd">?</kbd></div>
             </div>
         </div>
     </div>
@@ -1642,6 +1698,23 @@
             }
         }
 
+        // --- SKELETON LOADING ---
+        function showSkeletons(count = 8) {
+            const listEl = document.getElementById('article-list');
+            if (!listEl || listEl.querySelector('[data-id]')) return; // real cards already present
+            const heights = [14, 10, 10, 14, 10, 14, 10, 10];
+            listEl.innerHTML = Array.from({ length: count }, (_, i) => `
+                <div class="skeleton-card" aria-hidden="true">
+                    <div class="skeleton-line mb-2" style="height:9px;width:35%"></div>
+                    <div class="skeleton-line mb-1.5" style="height:${heights[i % heights.length]}px;width:95%"></div>
+                    <div class="skeleton-line" style="height:${heights[(i+1) % heights.length]}px;width:${70 + (i % 3) * 8}%"></div>
+                </div>`).join('');
+        }
+        function hideSkeletons() {
+            const listEl = document.getElementById('article-list');
+            if (listEl) listEl.querySelectorAll('.skeleton-card').forEach(el => el.remove());
+        }
+
         // --- VIRTUAL SCROLL & OPTIMIZED DOM RENDER ---
         const PAGE_SIZE = 40;
         let _timelinePageEnd = PAGE_SIZE;
@@ -1660,6 +1733,7 @@
 
             if (renderKey !== _lastTimelineKey) {
                 _lastTimelineKey = renderKey;
+                hideSkeletons();
 
                 const anchorCandidates = [];
                 if (listEl.scrollTop > 0) {
@@ -1887,9 +1961,9 @@
             attemptFullContentLoad(article);
 
             const wordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
-            const minutes = Math.max(1, Math.ceil(wordCount / 200));
+            window._articleTotalMinutes = Math.max(1, Math.ceil(wordCount / 200));
             const readTimeEl = document.getElementById('read-time');
-            if (readTimeEl) { readTimeEl.textContent = `~${minutes} min read`; readTimeEl.classList.remove('hidden'); }
+            if (readTimeEl) { readTimeEl.textContent = `~${window._articleTotalMinutes} min read`; readTimeEl.classList.remove('hidden'); }
 
             const idx = window.currentTimeline.findIndex(a => a.id === id);
             const prevBtn = document.getElementById('prev-article-btn');
@@ -2080,9 +2154,9 @@
                             });
                             article.body = sanitized;
                             article._fullBodyLoaded = true;
-                            const minutes = Math.max(1, Math.ceil(fullWordCount / 200));
+                            window._articleTotalMinutes = Math.max(1, Math.ceil(fullWordCount / 200));
                             const readTimeEl = document.getElementById('read-time');
-                            if (readTimeEl) readTimeEl.textContent = `~${minutes} min read`;
+                            if (readTimeEl) readTimeEl.textContent = `~${window._articleTotalMinutes} min read`;
                             console.log(`[Extractor] ✓ Upgraded to ${fullWordCount} words via ${proxyName}`);
                         }
                         return;
@@ -2134,8 +2208,15 @@
                 if (window.currentArticle) handleReadLaterAction();
             } else if (e.key === 'o' || e.key === 'O') {
                 openExternal();
+            } else if (e.key === '?') {
+                e.preventDefault();
+                openShortcuts();
             }
         });
+
+        window.openShortcuts = () => { document.getElementById('shortcuts-modal').classList.remove('hidden'); };
+        window.closeShortcuts = () => { document.getElementById('shortcuts-modal').classList.add('hidden'); };
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeShortcuts(); });
 
         // --- SHARED STATE HELPERS ---
         function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); }
@@ -2587,13 +2668,24 @@
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
-        // --- READING PROGRESS BAR ---
+        // --- READING PROGRESS BAR + LIVE COUNTER ---
         document.getElementById('reader-view')?.addEventListener('scroll', function() {
             const bar = document.getElementById('reading-progress');
             if (!bar || !window.currentArticle) return;
             const { scrollTop, scrollHeight, clientHeight } = this;
-            const progress = scrollHeight <= clientHeight ? 100 : (scrollTop / (scrollHeight - clientHeight)) * 100;
-            bar.style.width = `${Math.min(100, progress)}%`;
+            const pct = scrollHeight <= clientHeight ? 100 : (scrollTop / (scrollHeight - clientHeight)) * 100;
+            const clamped = Math.min(100, Math.max(0, pct));
+            bar.style.width = `${clamped}%`;
+
+            const readTimeEl = document.getElementById('read-time');
+            if (readTimeEl && window._articleTotalMinutes) {
+                const remaining = Math.max(1, Math.ceil(window._articleTotalMinutes * (1 - clamped / 100)));
+                readTimeEl.textContent = clamped < 5
+                    ? `~${window._articleTotalMinutes} min read`
+                    : clamped >= 97
+                        ? `Done · ${window._articleTotalMinutes} min`
+                        : `${Math.round(clamped)}% · ~${remaining} min left`;
+            }
         });
 
         // --- SWIPE GESTURES ---
@@ -3513,6 +3605,9 @@
             }, 4000);
         }
         renderFeeds();
+        if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
+            showSkeletons();
+        }
         renderTimeline();
         updateEmptyState();
 
