@@ -1415,7 +1415,7 @@
                     } catch(e) { console.warn('Proxy fetch failed:', e.message); }
                 }
             }
-            if (!data?.feed) return false;
+            if (!data?.feed?.length) return false;
 
             window._feedHealth[feedUrl] = { lastSuccess: Date.now(), errorCount: 0 };
             const feedObj = window.feeds.find(f => f.url === feedUrl);
@@ -1470,6 +1470,8 @@
             if (!isBackground) {
                 renderTimeline(true);
                 renderFeeds();
+            } else if (window.currentSourceFilter === sourceName) {
+                renderTimeline(true);
             }
             saveArticleCache();
             return true;
@@ -3254,7 +3256,9 @@
         // --- ARTICLE CACHE ---
         function saveArticleCache() {
             try {
-                const cache = window.articles.slice(-500).map(a => ({
+                const cache = window.articles
+                    .slice().sort((a, b) => (b._ts || 0) - (a._ts || 0)).slice(0, 500)
+                    .map(a => ({
                     id: a.id, source: a.source, title: a.title, author: a.author,
                     timestamp: a.timestamp, excerpt: a.excerpt, link: a.link,
                     unread: a.unread, readLater: a.readLater, image: a.image
