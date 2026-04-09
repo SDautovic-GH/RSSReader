@@ -1865,12 +1865,7 @@
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
-            const bodyText = (article.body || '').replace(/<[^>]+>/g, '').trim();
-            if (bodyText.length < 30 && article.link && article.link !== '#') {
-                bodyEl.innerHTML = `<p style="color:#64748b;font-style:italic;">Full content not available in feed. <a href="${DOMPurify.sanitize(article.link)}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Read on the web →</a></p>`;
-            } else {
-                bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
-            }
+            bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
             bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
@@ -1954,10 +1949,6 @@
             'nbcsports.com','foxsports.com','mlb.com','nba.com','nfl.com',
             'axios.com','politico.com','theatlantic.com',
             'vox.com','buzzfeed.com','huffpost.com',
-            // Substack: free newsletters have full content in RSS; paid are paywalled — proxies fail both
-            'substack.com',
-            // ESPN: JS-rendered, RSS body is already full content
-            'espn.com','espn.go.com',
         ]);
 
         async function attemptFullContentLoad(article) {
@@ -1980,12 +1971,6 @@
 
             const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
             console.log(`[Extractor] Starting: ${article.link} | RSS words: ${rssWordCount}`);
-
-            // RSS body is already substantial — skip proxy extraction to avoid unnecessary requests
-            if (rssWordCount >= 400) {
-                console.log(`[Extractor] Skipping — RSS already has ${rssWordCount} words`);
-                return;
-            }
 
             for (const proxyFn of proxies) {
                 const { url: proxyUrl, isJson } = proxyFn(article.link);
