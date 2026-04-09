@@ -1870,19 +1870,6 @@
             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
 
-            // If RSS body is a stub (< 50 words), append a "read full article" prompt.
-            // attemptFullContentLoad will overwrite bodyEl.innerHTML if it finds more content,
-            // which naturally removes this stub — so it's only visible when extraction also fails.
-            const rssBodyWords = bodyEl.textContent.trim().split(/\s+/).filter(Boolean).length;
-            if (rssBodyWords < 50 && article.link && article.link !== '#') {
-                const stubEl = document.createElement('p');
-                stubEl.id = '_rss-stub-notice';
-                stubEl.style.cssText = 'margin-top:1.2em;color:#94a3b8;font-style:italic;font-size:0.9em;';
-                stubEl.innerHTML = (rssBodyWords === 0 ? 'Full content is not available in the RSS feed.' : 'Content may be truncated in the RSS feed.')
-                    + ` <a href="${DOMPurify.sanitize(article.link)}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;text-decoration:underline;">Read full article →</a>`;
-                bodyEl.appendChild(stubEl);
-            }
-
             attemptFullContentLoad(article);
 
             const wordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
@@ -2089,6 +2076,20 @@
                 } catch(e) { console.log(`[Extractor] ${proxyName} → ${e.message}`); }
             }
             console.log(`[Extractor] All proxies exhausted`);
+            // Only show stub for RSS feeds (not Bluesky — Bluesky posts are complete by design)
+            if (!isBlueskyFeed(article.feedUrl)) {
+                const bodyEl = document.getElementById('article-body');
+                if (bodyEl && window.currentArticle?.id === article.id) {
+                    const words = bodyEl.textContent.trim().split(/\s+/).filter(Boolean).length;
+                    if (words < 50 && article.link && article.link !== '#') {
+                        const stubEl = document.createElement('p');
+                        stubEl.style.cssText = 'margin-top:1.2em;color:#94a3b8;font-style:italic;font-size:0.9em;';
+                        stubEl.innerHTML = (words === 0 ? 'Full content is not available in the RSS feed.' : 'Content may be truncated in the RSS feed.')
+                            + ` <a href="${DOMPurify.sanitize(article.link)}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;text-decoration:underline;">Read full article →</a>`;
+                        bodyEl.appendChild(stubEl);
+                    }
+                }
+            }
         }
 
         // --- KEYBOARD NAVIGATION ---
