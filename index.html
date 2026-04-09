@@ -277,6 +277,18 @@
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
         }
 
+        /* Respect OS-level reduced-motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            #reading-progress { transition: none !important; }
+            .skeleton-line { animation: none !important; background: rgba(255,255,255,0.07) !important; }
+            #article-content { animation: none !important; }
+        }
+
         /* Keyboard shortcut kbd chip */
         .kbd {
             display: inline-flex; align-items: center; justify-content: center;
@@ -445,25 +457,25 @@
         body.mob-fullscreen #mob-fs-exit { display: flex; }
         /* ===== DEEP DARK THEME ===== */
         /* Desktop — 2-3 shades darker than current */
-        .dark body { background: #0a0a0f !important; }
-        .dark #app-container { background: #0a0a0f; }
+        .dark body { background: #13131a !important; }
+        .dark #app-container { background: #13131a; }
         .dark #sidebar-pane {
-            background: #0f0f17 !important;
+            background: #18181f !important;
             border-color: rgba(255,255,255,0.06) !important;
         }
         .dark #sidebar-pane .p-4,
         .dark #sidebar-pane > div:first-child {
-            background: #0f0f17 !important;
+            background: #18181f !important;
             border-color: rgba(255,255,255,0.06) !important;
         }
         .dark #timeline-pane {
-            background: #0d0d14 !important;
+            background: #15151c !important;
             border-color: rgba(255,255,255,0.06) !important;
         }
-        .dark #viewer-pane { background: #0a0a0f !important; }
-        .dark .h-12.border-b { background: #0f0f17 !important; border-color: rgba(255,255,255,0.06) !important; }
+        .dark #viewer-pane { background: #13131a !important; }
+        .dark .h-12.border-b { background: #18181f !important; border-color: rgba(255,255,255,0.06) !important; }
         .dark .px-4.py-2.border-b { border-color: rgba(255,255,255,0.06) !important; }
-        .dark .p-4.border-t { background: #0f0f17 !important; border-color: rgba(255,255,255,0.06) !important; }
+        .dark .p-4.border-t { background: #18181f !important; border-color: rgba(255,255,255,0.06) !important; }
         .dark #resizer { border-color: rgba(255,255,255,0.05) !important; }
 
         /* Article list cards — darker, subtle separator */
@@ -539,7 +551,7 @@
 
             /* Bottom tab bar — glass */
             .dark #mobile-tab-bar {
-                background: rgba(10,10,15,0.85) !important;
+                background: rgba(19,19,26,0.88) !important;
                 border-color: rgba(255,255,255,0.08) !important;
                 backdrop-filter: blur(20px) !important;
                 -webkit-backdrop-filter: blur(20px) !important;
@@ -547,7 +559,7 @@
 
             /* Mobile reader action bar — glass */
             .dark #mobile-reader-bar {
-                background: rgba(10,10,15,0.85) !important;
+                background: rgba(19,19,26,0.88) !important;
                 border-color: rgba(255,255,255,0.08) !important;
                 backdrop-filter: blur(20px) !important;
                 -webkit-backdrop-filter: blur(20px) !important;
@@ -1717,24 +1729,40 @@
 
         // --- VIRTUAL SCROLL & OPTIMIZED DOM RENDER ---
         const PAGE_SIZE = 40;
+        const MAX_PAGES = 3; // max pages kept in DOM at once (~120 cards)
+        let _timelinePageStart = 0; // index into filtered array where DOM window begins
         let _timelinePageEnd = PAGE_SIZE;
         let _timelineObserver = null;
+        let _timelineTopObserver = null;
         let _lastTimelineKey = '';
         window._pinnedArticleIds = new Set();
+
+        function _buildFragment(articles) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = articles.map(a => buildArticleCard(a)).join('');
+            const frag = document.createDocumentFragment();
+            while (tempDiv.firstChild) frag.appendChild(tempDiv.firstChild);
+            return frag;
+        }
+
+        function _disconnectSentinels() {
+            if (_timelineObserver) { _timelineObserver.disconnect(); _timelineObserver = null; }
+            if (_timelineTopObserver) { _timelineTopObserver.disconnect(); _timelineTopObserver = null; }
+        }
 
         function renderTimelinePage(filtered) {
             const listEl = document.getElementById('article-list');
             listEl.classList.toggle('card-view', window._viewMode === 'card');
-            const slice = filtered.slice(0, _timelinePageEnd);
+            const slice = filtered.slice(_timelinePageStart, _timelinePageEnd);
 
-            // Key on article IDs + page only. Read/selected state is patched in-place
-            // by selectArticle, so we don't need full rebuilds on every state change.
-            const renderKey = slice.map(a => a.id).join('|') + `|page:${_timelinePageEnd}`;
+            // Key on window bounds + IDs. State changes are patched in-place by selectArticle.
+            const renderKey = `${_timelinePageStart}:${_timelinePageEnd}|` + slice.map(a => a.id).join('|');
 
             if (renderKey !== _lastTimelineKey) {
                 _lastTimelineKey = renderKey;
                 hideSkeletons();
 
+                // Capture scroll anchor before touching the DOM
                 const anchorCandidates = [];
                 if (listEl.scrollTop > 0) {
                     const listTop = listEl.getBoundingClientRect().top;
@@ -1742,47 +1770,67 @@
                         const top = card.getBoundingClientRect().top - listTop;
                         if (top >= -1) {
                             anchorCandidates.push({ id: card.getAttribute('data-id'), offset: top });
-                            if (anchorCandidates.length >= 5) break; 
+                            if (anchorCandidates.length >= 5) break;
                         }
                     }
                 }
 
                 slice.forEach(a => window._pinnedArticleIds.add(a.id));
 
-                // OPTIMIZED DOM RENDERING: Using a DocumentFragment
-                // This prevents layout thrashing by painting the new elements all at once
                 listEl.innerHTML = '';
-                const fragment = document.createDocumentFragment();
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = slice.map(a => buildArticleCard(a)).join('');
-                
-                while (tempDiv.firstChild) {
-                    fragment.appendChild(tempDiv.firstChild);
-                }
-                listEl.appendChild(fragment);
+                _disconnectSentinels();
 
-                // Restore scroll 
+                // Top spacer — represents recycled items above the window
+                if (_timelinePageStart > 0) {
+                    const topSpacer = document.createElement('div');
+                    topSpacer.id = 'list-top-spacer';
+                    topSpacer.style.cssText = `height:${_timelinePageStart * 88}px;`; // ~88px avg card height
+                    listEl.appendChild(topSpacer);
+
+                    // Top sentinel: when visible, slide window up one page
+                    const topSentinel = document.createElement('div');
+                    topSentinel.id = 'list-top-sentinel';
+                    topSentinel.style.cssText = 'height:1px;';
+                    listEl.appendChild(topSentinel);
+                    _timelineTopObserver = new IntersectionObserver((entries) => {
+                        if (entries[0].isIntersecting) {
+                            _disconnectSentinels();
+                            _timelinePageStart = Math.max(0, _timelinePageStart - PAGE_SIZE);
+                            _timelinePageEnd = _timelinePageStart + MAX_PAGES * PAGE_SIZE;
+                            _lastTimelineKey = '';
+                            renderTimelinePage(window.currentTimeline);
+                        }
+                    }, { root: listEl, threshold: 0 });
+                    _timelineTopObserver.observe(topSentinel);
+                }
+
+                listEl.appendChild(_buildFragment(slice));
+
+                // Restore scroll anchor
                 for (const { id, offset } of anchorCandidates) {
                     const el = listEl.querySelector(`[data-id="${id}"]`);
                     if (el) { listEl.scrollTop = el.offsetTop - offset; break; }
                 }
 
+                // Bottom sentinel: when visible, slide window down one page
                 if (filtered.length > _timelinePageEnd) {
                     const sentinel = document.createElement('div');
                     sentinel.id = 'list-sentinel';
                     sentinel.style.cssText = 'height:1px;margin-top:-1px;';
                     listEl.appendChild(sentinel);
-                    if (_timelineObserver) _timelineObserver.disconnect();
                     _timelineObserver = new IntersectionObserver((entries) => {
                         if (entries[0].isIntersecting) {
-                            _timelineObserver.disconnect();
+                            _disconnectSentinels();
                             _timelinePageEnd += PAGE_SIZE;
+                            // Recycle from top once we exceed MAX_PAGES
+                            if (_timelinePageEnd - _timelinePageStart > MAX_PAGES * PAGE_SIZE) {
+                                _timelinePageStart += PAGE_SIZE;
+                            }
+                            _lastTimelineKey = '';
                             renderTimelinePage(window.currentTimeline);
                         }
                     }, { root: listEl, threshold: 0.1 });
                     _timelineObserver.observe(sentinel);
-                } else {
-                    if (_timelineObserver) { _timelineObserver.disconnect(); _timelineObserver = null; }
                 }
             }
         }
@@ -1822,7 +1870,10 @@
             if (!window._navigating) window._navSnapshot = filtered.slice();
 
             if (!window._navigating) {
-                if (!preserveLayout) _timelinePageEnd = PAGE_SIZE;
+                if (!preserveLayout) {
+                    _timelinePageStart = 0;
+                    _timelinePageEnd = PAGE_SIZE;
+                }
                 _lastTimelineKey = '';
             }
 
