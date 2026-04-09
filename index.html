@@ -207,23 +207,23 @@
             --list-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --view-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --mob-feed-name-size: 1.0em;
-            --mob-article-title-size: 1.0em;
-            --mob-body-size: 1.2em;
+            --mob-article-title-size: 1.3em;
+            --mob-body-size: 1.0em;
             --mob-author-size: 1.1em;
             --list-title-em-size: 1.0em;
             --mob-list-preview-size: 1.0em;
             --mob-list-title-size: 1.0em;
-            --line-height: 1.3;
-            --mob-line-height: 1.4;
-            --feed-line-height: 1.0;
-            --mob-feed-line-height: 1.0;
-            --mob-folder-size: 1.2em;
+            --line-height: 1.6;
+            --mob-line-height: 1.6;
+            --feed-line-height: 1.6;
+            --mob-feed-line-height: 1.6;
+            --mob-folder-size: 1.0em;
             --mob-list-source-size: 1.0em;
             --mob-list-date-size: 1.0em;
             --list-source-size: 1.0em;
             --desk-feed-name-size: 1.0em;
             --article-meta-size: 1.1em;
-            --mob-zoom: 1;
+            --mob-zoom: 1.05;
         }
 
         .dynamic-list-title { 
@@ -1062,9 +1062,9 @@
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Title Size</span>
-                                <span class="text-xs font-bold text-blue-500" id="shared-article-title-val">1.0em</span>
+                                <span class="text-xs font-bold text-blue-500" id="shared-article-title-val">1.3em</span>
                             </div>
-                            <input type="range" min="4" max="22" value="10" id="shared-article-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateSharedSize('articleTitle', this.value)">
+                            <input type="range" min="4" max="22" value="13" id="shared-article-title-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateSharedSize('articleTitle', this.value)">
                         </div>
                         <div>
                             <div class="flex justify-between mb-2">
@@ -1076,9 +1076,9 @@
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Line Height</span>
-                                <span class="text-xs font-bold text-blue-500" id="shared-line-height-val">1.3</span>
+                                <span class="text-xs font-bold text-blue-500" id="shared-line-height-val">1.6</span>
                             </div>
-                            <input type="range" min="8" max="24" value="13" id="shared-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateSharedSize('lineHeight', this.value)">
+                            <input type="range" min="8" max="24" value="16" id="shared-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateSharedSize('lineHeight', this.value)">
                         </div>
                     </div>
                 </div>
@@ -1090,9 +1090,9 @@
                         <div>
                             <div class="flex justify-between mb-2">
                                 <span class="settings-item-label">Article Zoom</span>
-                                <span class="text-xs font-bold text-blue-500" id="mob-zoom-val">100%</span>
+                                <span class="text-xs font-bold text-blue-500" id="mob-zoom-val">105%</span>
                             </div>
-                            <input type="range" min="80" max="130" value="100" id="mob-zoom-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobZoom(this.value)">
+                            <input type="range" min="80" max="130" value="105" id="mob-zoom-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobZoom(this.value)">
                         </div>
                     </div>
                 </div>
@@ -1415,7 +1415,7 @@
                     } catch(e) { console.warn('Proxy fetch failed:', e.message); }
                 }
             }
-            if (!data?.feed) return false;
+            if (!data?.feed?.length) return false;
 
             window._feedHealth[feedUrl] = { lastSuccess: Date.now(), errorCount: 0 };
             const feedObj = window.feeds.find(f => f.url === feedUrl);
@@ -1425,7 +1425,7 @@
                 if (!cached) { try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); } }
             }
 
-            window.articles = window.articles.filter(a => a.source !== sourceName);
+            window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
             let newCount = 0;
 
             for (const feedItem of data.feed) {
@@ -1452,6 +1452,7 @@
                 window.articles.push({
                     id: crypto.randomUUID(),
                     source: sourceName,
+                    feedUrl,
                     title,
                     author: post.author?.displayName || post.author?.handle || sourceName,
                     timestamp: new Date(record.createdAt || Date.now()).toISOString(),
@@ -1470,6 +1471,8 @@
             if (!isBackground) {
                 renderTimeline(true);
                 renderFeeds();
+            } else if (window.currentSourceFilter === sourceName) {
+                renderTimeline(true);
             }
             saveArticleCache();
             return true;
@@ -1570,9 +1573,9 @@
                 const items = maxItems ? entries.slice(0, maxItems) : entries.slice(0, 20);
                 let newCount = 0;
 
-                window.articles = window.articles.filter(a => a.source !== sourceName);
+                window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
                 // Invalidate excerpt cache for any re-fetched articles
-                window.articles.forEach(a => { if (a.source === sourceName) a._excerptHtml = null; });
+                window.articles.forEach(a => { if (a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName) a._excerptHtml = null; });
 
                 items.forEach(item => {
                     const link = getLink(item);
@@ -1600,6 +1603,7 @@
                     window.articles.push({
                         id: crypto.randomUUID(),
                         source: sourceName,
+                        feedUrl,
                         title: getText(item, 'title'),
                         author: getText(item, 'author name', 'author', 'dc\\:creator') || sourceName,
                         timestamp: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
@@ -1857,7 +1861,7 @@
             if (sourceLabelEl) sourceLabelEl.textContent = article.source;
             const titleEl = document.getElementById('article-title');
             titleEl.textContent = article.title;
-            titleEl.style.fontSize = window._savedArticleTitleSize || '1.7em';
+            titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
@@ -1865,6 +1869,19 @@
             bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
+
+            // If RSS body is a stub (< 50 words), append a "read full article" prompt.
+            // attemptFullContentLoad will overwrite bodyEl.innerHTML if it finds more content,
+            // which naturally removes this stub — so it's only visible when extraction also fails.
+            const rssBodyWords = bodyEl.textContent.trim().split(/\s+/).filter(Boolean).length;
+            if (rssBodyWords < 50 && article.link && article.link !== '#') {
+                const stubEl = document.createElement('p');
+                stubEl.id = '_rss-stub-notice';
+                stubEl.style.cssText = 'margin-top:1.2em;color:#94a3b8;font-style:italic;font-size:0.9em;';
+                stubEl.innerHTML = (rssBodyWords === 0 ? 'Full content is not available in the RSS feed.' : 'Content may be truncated in the RSS feed.')
+                    + ` <a href="${DOMPurify.sanitize(article.link)}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;text-decoration:underline;">Read full article →</a>`;
+                bodyEl.appendChild(stubEl);
+            }
 
             attemptFullContentLoad(article);
 
@@ -1949,6 +1966,7 @@
 
         async function attemptFullContentLoad(article) {
             if (!article || !article.link || article.link === '#') return;
+            if (article._fullBodyLoaded) return;
 
             try {
                 const domain = new URL(article.link).hostname.replace('www.','');
@@ -1959,10 +1977,9 @@
             } catch(e) { return; }
 
             const proxies = [
-                url => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, isJson: true }),
                 url => ({ url: `https://still-shadow-1ebe.sdfyix.workers.dev/?url=${encodeURIComponent(url)}`, isJson: false }),
                 url => ({ url: `https://corsproxy.io/?${encodeURIComponent(url)}`, isJson: false }),
-                url => ({ url: `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`, isJson: false }),
+                url => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, isJson: true }),
             ];
 
             const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
@@ -1972,12 +1989,16 @@
                 const { url: proxyUrl, isJson } = proxyFn(article.link);
                 const proxyName = proxyUrl.split('/')[2];
                 try {
-                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
                     if (!res.ok) { console.log(`[Extractor] ${proxyName} → ${res.status}`); continue; }
 
                     let html = isJson ? (await res.json()).contents : await res.text();
                     if (!html || html.length < 500) { console.log(`[Extractor] ${proxyName} → empty/too short`); continue; }
                     console.log(`[Extractor] ${proxyName} → ${html.length} chars`);
+
+                    // Yield to event queue before heavy DOM parsing so clicks aren't blocked
+                    await new Promise(r => setTimeout(r, 0));
+                    if (window.currentArticle?.id !== article.id) return;
 
                     const doc = new DOMParser().parseFromString(html, 'text/html');
 
@@ -2048,10 +2069,14 @@
                                         node.querySelector('img')) { node.remove(); break; }
                                 }
                             }
-                            bodyEl.innerHTML = DOMPurify.sanitize(linkify(fixLazyImages(content.innerHTML)), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+                            // Skip linkify — extracted HTML already has proper <a> tags
+                            const sanitized = DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+                            bodyEl.innerHTML = sanitized;
                             bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
                             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
                             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
+                            article.body = sanitized;
+                            article._fullBodyLoaded = true;
                             const minutes = Math.max(1, Math.ceil(fullWordCount / 200));
                             const readTimeEl = document.getElementById('read-time');
                             if (readTimeEl) readTimeEl.textContent = `~${minutes} min read`;
@@ -2147,7 +2172,7 @@
             window.feeds.forEach(f => {
                 const c = f.category || 'Uncategorized';
                 if (!groups[c]) groups[c] = [];
-                f.unread = window.articles.filter(a => a.source === f.name && a.unread).length;
+                f.unread = window.articles.filter(a => (a.feedUrl ? a.feedUrl === f.url : a.source === f.name) && a.unread).length;
                 groups[c].push(f);
             });
 
@@ -3121,7 +3146,7 @@
             toRemove.forEach(f => {
                 window.accountStates.local = window.accountStates.local.filter(x => x.id !== f.id);
                 window.feeds = window.feeds.filter(x => x.url !== f.url);
-                window.articles = window.articles.filter(a => a.source !== f.name);
+                window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== f.url : a.source !== f.name);
                 if (f.docId && typeof window.removeFeedFromDatabase === 'function') window.removeFeedFromDatabase(f.docId);
             });
             window._categoryOrder = window._categoryOrder.filter(c => c !== cat);
@@ -3254,7 +3279,9 @@
         // --- ARTICLE CACHE ---
         function saveArticleCache() {
             try {
-                const cache = window.articles.slice(-500).map(a => ({
+                const cache = window.articles
+                    .slice().sort((a, b) => (b._ts || 0) - (a._ts || 0)).slice(0, 500)
+                    .map(a => ({
                     id: a.id, source: a.source, title: a.title, author: a.author,
                     timestamp: a.timestamp, excerpt: a.excerpt, link: a.link,
                     unread: a.unread, readLater: a.readLater, image: a.image
