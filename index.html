@@ -556,13 +556,13 @@
         .bsky-quote-header { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; flex-wrap: wrap; }
         .bsky-quote-avatar { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
         .bsky-quote-name { font-weight: 700; font-size: 0.88em; color: #e2e8f0; }
-        .bsky-quote-handle { font-size: 0.82em; color: #64748b; }
+        .bsky-quote-handle { font-size: 0.82em; color: #94a3b8; }
         .bsky-quote-text { font-size: 0.88em; line-height: 1.55; color: #cbd5e1; margin-top: 2px; }
-        .bsky-quote-meta { font-size: 0.82em; color: #64748b; font-style: italic; }
+        .bsky-quote-meta { font-size: 0.82em; color: #94a3b8; font-style: italic; }
         .bsky-post-image { max-width: 100%; border-radius: 8px; margin: 6px 0; display: block; }
         .bsky-images { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
         .bsky-images-compact .bsky-post-image { max-height: 110px; width: auto; max-width: 48%; }
-        .bsky-repost-label { font-size: 0.78em; color: #64748b; margin-bottom: 4px; }
+        .bsky-repost-label { font-size: 0.78em; color: #94a3b8; margin-bottom: 4px; }
         .bsky-external-card { display: block; border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; overflow: hidden; margin: 10px 0; text-decoration: none; color: inherit; }
         .bsky-external-card:hover { border-color: rgba(96,165,250,0.4); }
         .bsky-external-thumb { width: 100%; max-height: 180px; object-fit: cover; display: block; }
@@ -1588,6 +1588,7 @@
                     const link = getLink(item);
                     if (!link || window.articles.some(a => a.link === link)) return;
                     const isNew = !window._readLinks.has(link);
+                    const cachedBody = window._bodyCache?.[link];
                     const rawBody = getHtml(item, 'content\\:encoded', 'content', 'description', 'summary');
                     const pubDate = (() => {
                         const raw = getText(item, 'pubDate', 'published', 'updated', 'dc\\:date');
@@ -1607,7 +1608,7 @@
                         const imgMatch = rawBody.match(/<img[^>]+src=["']([^"']+)["']/i);
                         return imgMatch ? imgMatch[1] : null;
                     })();
-                    window.articles.push({
+                    const art = {
                         id: crypto.randomUUID(),
                         source: sourceName,
                         feedUrl,
@@ -1616,13 +1617,16 @@
                         timestamp: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
                         excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
-                        _excerptHtml: null, // lazily cached on first render
+                        _excerptHtml: null,
                         body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] }),
                         link,
                         unread: isNew,
                         readLater: window._readLaterLinks.has(link),
                         image
-                    });
+                    };
+                    // Carry over previously extracted full body (survives feed re-fetch)
+                    if (cachedBody) { art.body = cachedBody; art._fullBodyLoaded = true; }
+                    window.articles.push(art);
                     if (isNew && isBackground) newCount++;
                 });
 
@@ -1650,9 +1654,9 @@
             listEl.classList.toggle('card-view', window._viewMode === 'card');
             const slice = filtered.slice(0, _timelinePageEnd);
 
-            const renderKey = slice.map(a =>
-                `${a.id}:${a.unread?1:0}:${a.readLater?1:0}:${window.currentArticle?.id === a.id?1:0}`
-            ).join('|') + `|page:${_timelinePageEnd}`;
+            // Key on article IDs + page only. Read/selected state is patched in-place
+            // by selectArticle, so we don't need full rebuilds on every state change.
+            const renderKey = slice.map(a => a.id).join('|') + `|page:${_timelinePageEnd}`;
 
             if (renderKey !== _lastTimelineKey) {
                 _lastTimelineKey = renderKey;
@@ -1926,7 +1930,6 @@
             if (isMobile()) setMobilePane('viewer');
 
             const listEl = document.getElementById('article-list');
-            _lastTimelineKey = ''; 
             if (listEl) {
                 const prevSelected = listEl.querySelector('.border-l-blue-500');
                 if (prevSelected) {
@@ -3296,9 +3299,12 @@
                 const cache = window.articles
                     .slice().sort((a, b) => (b._ts || 0) - (a._ts || 0)).slice(0, 500)
                     .map(a => ({
-                    id: a.id, source: a.source, title: a.title, author: a.author,
-                    timestamp: a.timestamp, excerpt: a.excerpt, link: a.link,
-                    unread: a.unread, readLater: a.readLater, image: a.image
+                    id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
+                    timestamp: a.timestamp, _ts: a._ts, excerpt: a.excerpt, link: a.link,
+                    unread: a.unread, readLater: a.readLater, image: a.image,
+                    // Only persist body when fully extracted via proxy (not raw RSS stubs)
+                    body: a._fullBodyLoaded ? (a.body || '').slice(0, 50000) : '',
+                    _fullBodyLoaded: !!a._fullBodyLoaded
                 }));
                 localStorage.setItem('newsreader_articles', JSON.stringify(cache));
             } catch(e) { console.warn('Storage error:', e.message); }
@@ -3315,12 +3321,15 @@
                     const ts = a._ts || new Date(a.timestamp).getTime();
                     return ts >= cutoff || a.readLater; 
                 });
+                // Build link→body lookup so extracted bodies survive feed re-fetches
+                window._bodyCache = {};
                 fresh.forEach(a => {
                     a.unread = !window._readLinks.has(a.link);
                     a.readLater = window._readLaterLinks.has(a.link);
                     a._ts = a._ts || new Date(a.timestamp).getTime();
                     a._excerptHtml = null;
-                    a.body = '';
+                    if (a._fullBodyLoaded && a.link) window._bodyCache[a.link] = a.body;
+                    if (!a.body) a.body = '';
                 });
                 window.articles = fresh;
             } catch(e) { console.warn('Storage error:', e.message); }
