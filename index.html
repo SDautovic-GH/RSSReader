@@ -29,6 +29,8 @@
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%232563eb'/%3E%3Cpath d='M36 100a72 72 0 0 1 72 72' stroke='white' stroke-width='22' stroke-linecap='round' fill='none'/%3E%3Cpath d='M36 43a130 130 0 0 1 130 130' stroke='white' stroke-width='22' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='40' cy='158' r='18' fill='white'/%3E%3C/svg%3E">
 
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' rx='6' fill='%232563eb'/%3E%3Cpath d='M4 11a9 9 0 0 1 9 9'/%3E%3Cpath d='M4 4a16 16 0 0 1 16 16'/%3E%3Ccircle cx='5' cy='19' r='1' fill='white' stroke='none'/%3E%3C/svg%3E">
+    
+    <!-- Using Tailwind CDN for single-file portability, as requested. -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
     <script>
@@ -1236,7 +1238,7 @@
             if (isResizing) {
                 isResizing = false;
                 document.body.classList.remove('resizing');
-                try { localStorage.setItem('newsreader_pane_width', timelinePane.style.width); } catch(e) {}
+                try { localStorage.setItem('newsreader_pane_width', timelinePane.style.width); } catch(e) { console.warn('Storage error:', e.message); }
                 if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             }
         });
@@ -1245,7 +1247,7 @@
         try {
             const w = localStorage.getItem('newsreader_pane_width');
             if (w) timelinePane.style.width = w;
-        } catch(e) {}
+        } catch(e) { console.warn('Storage error:', e.message); }
 
         // --- FETCH & ARTICLE LOGIC ---
         const PROXIES = [
@@ -1393,7 +1395,7 @@
             try {
                 const res = await fetch(apiUrl, { signal: AbortSignal.timeout(10000) });
                 if (res.ok) data = await res.json();
-            } catch(e) {}
+            } catch(e) { console.warn('Direct fetch failed:', e.message); }
             // Fall back to proxies if direct fetch failed
             if (!data) {
                 for (const proxyFn of PROXIES) {
@@ -1409,8 +1411,8 @@
                             text = await res.text();
                         }
                         if (!text) continue;
-                        try { data = JSON.parse(text); break; } catch(e) {}
-                    } catch(e) {}
+                        try { data = JSON.parse(text); break; } catch(e) { console.warn('JSON parse failed:', e.message); }
+                    } catch(e) { console.warn('Proxy fetch failed:', e.message); }
                 }
             }
             if (!data?.feed) return false;
@@ -1420,7 +1422,7 @@
             if (feedObj && !feedObj.favicon) {
                 const cached = (() => { try { return localStorage.getItem('favicon_' + feedUrl); } catch(e) { return null; } })();
                 feedObj.favicon = cached || `https://www.google.com/s2/favicons?domain=bsky.app&sz=32`;
-                if (!cached) { try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) {} }
+                if (!cached) { try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); } }
             }
 
             window.articles = window.articles.filter(a => a.source !== sourceName);
@@ -1465,13 +1467,7 @@
                 if (isNew && isBackground) newCount++;
             }
 
-            if (isBackground) {
-                // Silent — never interrupt reading; accumulate and show banner only if new items
-                if (newCount > 0) {
-                    
-                    
-                }
-            } else {
+            if (!isBackground) {
                 renderTimeline(true);
                 renderFeeds();
             }
@@ -1527,15 +1523,15 @@
                         const linkEl = xml.querySelector('channel > link:not([rel]), feed > link[rel="alternate"], channel > link');
                         const siteUrl = linkEl?.textContent?.trim() || linkEl?.getAttribute('href') || '';
                         let domain;
-                        try { domain = new URL(siteUrl).hostname; } catch(e) {}
+                        try { domain = new URL(siteUrl).hostname; } catch(e) { console.warn('URL parse failed:', e.message); }
                         if (!domain) domain = new URL(feedUrl).hostname;
                         const parts = domain.split('.');
                         if (parts.length > 2) domain = parts.slice(-2).join('.');
                         feedObj.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-                        try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) {}
+                        try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); }
                         preloadFavicon(feedObj.favicon);
                         updateFaviconStyles();
-                    } catch(e) {}
+                    } catch(e) { console.warn('Favicon fetch failed:', e.message); }
                 }
 
                 const getText = (el, ...tags) => {
@@ -1550,14 +1546,11 @@
                     for (const tag of tags) {
                         const node = el.querySelector(tag);
                         if (!node) continue;
-                        // CDATA sections are exposed as textContent (the browser already decoded them)
-                        // but innerHTML gives us the live DOM which may have re-encoded entities.
-                        // Use textContent when it contains HTML tags (CDATA), innerHTML otherwise.
                         const raw = node.textContent || '';
                         if (!raw.trim()) continue;
                         if (/<[a-z]/i.test(raw)) return raw; // CDATA with HTML
                         if (node.innerHTML?.trim()) return node.innerHTML; // encoded HTML entities
-                        return raw; // plain text CDATA (ESPN, etc.)
+                        return raw; // plain text CDATA
                     }
                     return '';
                 };
@@ -1583,8 +1576,6 @@
                     const pubDate = (() => {
                         const raw = getText(item, 'pubDate', 'published', 'updated', 'dc\\:date');
                         if (!raw) return raw;
-                        // Named timezone abbreviations are non-standard and parsed as UTC by most browsers.
-                        // Replace with numeric offsets so Date() is accurate.
                         return raw
                             .replace(/\bEDT\b/, '-0400').replace(/\bEST\b/, '-0500')
                             .replace(/\bCDT\b/, '-0500').replace(/\bCST\b/, '-0600')
@@ -1618,12 +1609,7 @@
                     if (isNew && isBackground) newCount++;
                 });
 
-                if (isBackground) {
-                    if (newCount > 0) {
-                        
-                        
-                    }
-                } else {
+                if (!isBackground) {
                     renderTimeline(true);
                     renderFeeds();
                 }
@@ -1635,13 +1621,11 @@
             }
         }
 
-        // --- VIRTUAL SCROLL ---
+        // --- VIRTUAL SCROLL & OPTIMIZED DOM RENDER ---
         const PAGE_SIZE = 40;
         let _timelinePageEnd = PAGE_SIZE;
         let _timelineObserver = null;
         let _lastTimelineKey = '';
-        // Articles shown in the current list session — kept visible even after being marked read,
-        // so the list doesn't jump. Cleared only on explicit refresh (swipe-down / mark-all-read).
         window._pinnedArticleIds = new Set();
 
         function renderTimelinePage(filtered) {
@@ -1649,7 +1633,6 @@
             listEl.classList.toggle('card-view', window._viewMode === 'card');
             const slice = filtered.slice(0, _timelinePageEnd);
 
-            // Dirty check — build a lightweight key from article ids + selected + unread state
             const renderKey = slice.map(a =>
                 `${a.id}:${a.unread?1:0}:${a.readLater?1:0}:${window.currentArticle?.id === a.id?1:0}`
             ).join('|') + `|page:${_timelinePageEnd}`;
@@ -1657,8 +1640,6 @@
             if (renderKey !== _lastTimelineKey) {
                 _lastTimelineKey = renderKey;
 
-                // Scroll anchor — record all visible cards before re-render so we can restore position
-                // even if the first visible card disappears (e.g. just-read item removed from unread filter)
                 const anchorCandidates = [];
                 if (listEl.scrollTop > 0) {
                     const listTop = listEl.getBoundingClientRect().top;
@@ -1666,23 +1647,31 @@
                         const top = card.getBoundingClientRect().top - listTop;
                         if (top >= -1) {
                             anchorCandidates.push({ id: card.getAttribute('data-id'), offset: top });
-                            if (anchorCandidates.length >= 5) break; // keep a few fallbacks
+                            if (anchorCandidates.length >= 5) break; 
                         }
                     }
                 }
 
-                // Pin all articles in this render so they stay visible even after being marked read
                 slice.forEach(a => window._pinnedArticleIds.add(a.id));
 
-                listEl.innerHTML = slice.map(a => buildArticleCard(a)).join('');
+                // OPTIMIZED DOM RENDERING: Using a DocumentFragment
+                // This prevents layout thrashing by painting the new elements all at once
+                listEl.innerHTML = '';
+                const fragment = document.createDocumentFragment();
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = slice.map(a => buildArticleCard(a)).join('');
+                
+                while (tempDiv.firstChild) {
+                    fragment.appendChild(tempDiv.firstChild);
+                }
+                listEl.appendChild(fragment);
 
-                // Restore scroll — try each candidate until one is still in the new list
+                // Restore scroll 
                 for (const { id, offset } of anchorCandidates) {
                     const el = listEl.querySelector(`[data-id="${id}"]`);
                     if (el) { listEl.scrollTop = el.offsetTop - offset; break; }
                 }
 
-                // Add sentinel for load-more if more items exist
                 if (filtered.length > _timelinePageEnd) {
                     const sentinel = document.createElement('div');
                     sentinel.id = 'list-sentinel';
@@ -1737,7 +1726,6 @@
             window.currentTimeline = filtered;
             if (!window._navigating) window._navSnapshot = filtered.slice();
 
-            // Reset page on explicit filter/sort change; preserve when new content arrives mid-read
             if (!window._navigating) {
                 if (!preserveLayout) _timelinePageEnd = PAGE_SIZE;
                 _lastTimelineKey = '';
@@ -1750,8 +1738,6 @@
             updateBadges();
         };
 
-        // Favicon style injection — renders favicons via CSS background-image instead of <img> tags
-        // CSS background images are cached at the browser level and never cause DOM flicker
         const _faviconStyleEl = document.createElement('style');
         document.head.appendChild(_faviconStyleEl);
         const _faviconSlugCache = {};
@@ -1815,7 +1801,6 @@
             </div>`;
         }
 
-        // Suppress CSS transitions on list items while scrolling to avoid per-item paint cost
         (function() {
             const list = document.getElementById('article-list');
             let _scrollTimer = null;
@@ -1826,7 +1811,6 @@
             }, { passive: true });
         })();
 
-        // Event delegation for article list clicks
         document.getElementById('article-list').addEventListener('click', (e) => {
             const card = e.target.closest('[data-action="select"]');
             if (!card) return;
@@ -1854,7 +1838,7 @@
                     try {
                         const domain = new URL(article.link).hostname;
                         faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-                    } catch(e) {}
+                    } catch(e) { console.warn('Favicon URL parse failed', e.message); }
                 }
                 if (faviconUrl) {
                     faviconEl.src = faviconUrl;
@@ -1872,12 +1856,10 @@
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
-            // Fix any remaining lazy-loaded images that survived sanitization
             bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
             bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('onerror')) img.onerror = () => { img.style.display = 'none'; }; });
 
-            // Auto-attempt full content extraction silently in background
             attemptFullContentLoad(article);
 
             const wordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
@@ -1923,9 +1905,8 @@
 
             if (isMobile()) setMobilePane('viewer');
 
-            // Targeted list update — only swap CSS on prev/new selected cards instead of full re-render
             const listEl = document.getElementById('article-list');
-            _lastTimelineKey = ''; // invalidate dirty key so next renderTimeline reflects new selection
+            _lastTimelineKey = ''; 
             if (listEl) {
                 const prevSelected = listEl.querySelector('.border-l-blue-500');
                 if (prevSelected) {
@@ -1936,10 +1917,8 @@
                 if (newSelected) {
                     newSelected.classList.add('border-l-4', 'border-l-blue-500');
                     newSelected.style.backgroundColor = 'rgba(23,37,84,0.45)';
-                    // Re-render just this card in place to update the unread dot
                     const article = window.articles.find(a => a.id === id);
                     if (article) newSelected.outerHTML = buildArticleCard(article);
-                    // Re-query after outerHTML replacement
                     setTimeout(() => {
                         const el = listEl.querySelector(`[data-id="${id}"]`);
                         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1948,14 +1927,11 @@
                     renderTimeline(true);
                 }
             }
-            // Re-render feeds for unread count update
             renderFeeds();
             updateBadges();
             updateActionButton();
         };
 
-        // --- SILENT BACKGROUND FULL CONTENT EXTRACTION ---
-        // Sites that render content via JavaScript — proxies return empty shells, skip them
         const JS_RENDERED_DOMAINS = new Set([
             'espn.com','espn.go.com',
             'nytimes.com','wsj.com','washingtonpost.com',
@@ -1969,7 +1945,6 @@
         async function attemptFullContentLoad(article) {
             if (!article || !article.link || article.link === '#') return;
 
-            // Skip known JS-rendered sites — proxies return empty shells
             try {
                 const domain = new URL(article.link).hostname.replace('www.','');
                 if (JS_RENDERED_DOMAINS.has(domain)) {
@@ -2001,7 +1976,6 @@
 
                     const doc = new DOMParser().parseFromString(html, 'text/html');
 
-                    // Remove noise
                     doc.querySelectorAll([
                         'script','style','nav','footer','header','aside','iframe',
                         '[class*="paywall"]','[class*="subscribe"]','[class*="newsletter"]',
@@ -2014,7 +1988,6 @@
                         '[class*="sticky-nav"]','[class*="breadcrumb"]'
                     ].join(',')).forEach(el => el.remove());
 
-                    // Content selectors ordered by specificity
                     const SELECTORS = [
                         '[data-component="text-block"]',
                         '.article__body','.article-body-commercial-selector',
@@ -2037,7 +2010,6 @@
                         }
                     }
 
-                    // Fallback — div with most <p> tags
                     if (!content) {
                         let best = null, bestScore = 0;
                         doc.querySelectorAll('div,section,main').forEach(el => {
@@ -2058,8 +2030,6 @@
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
                         if (bodyEl && window.currentArticle?.id === article.id) {
-                            // Remove only the leading hero image — the one before any article text.
-                            // Inline images within paragraphs are preserved.
                             const allChildren = Array.from(content.childNodes);
                             for (const node of allChildren) {
                                 if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) break;
@@ -2173,10 +2143,8 @@
                 groups[c].push(f);
             });
 
-            // Dirty check — skip full re-render if unread counts + collapsed state haven't changed
             const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|');
             if (renderKey === _lastFeedRenderKey) {
-                // Even if sidebar DOM is unchanged, badges may need updating
                 updateBadges();
                 return;
             }
@@ -2322,13 +2290,13 @@
         };
 
         function saveCategoryOrder() {
-            try { localStorage.setItem('newsreader_catorder', JSON.stringify(window._categoryOrder)); } catch(e) {}
+            try { localStorage.setItem('newsreader_catorder', JSON.stringify(window._categoryOrder)); } catch(e) { console.warn('Storage error:', e.message); }
         }
         function restoreCategoryOrder() {
             try {
                 const stored = localStorage.getItem('newsreader_catorder');
                 if (stored) window._categoryOrder = JSON.parse(stored);
-            } catch(e) {}
+            } catch(e) { console.warn('Storage error:', e.message); }
         }
 
         function updateBadges() {
@@ -2472,7 +2440,6 @@
             const mins = parseInt(minutes);
             if (mins > 0) {
                 window._autoRefreshTimer = setInterval(() => {
-                    
                     fetchAllStaggered(window.feeds, null, true);
                 }, mins * 60 * 1000);
             }
@@ -2542,7 +2509,7 @@
             window._viewMode = window._viewMode === 'list' ? 'card' : 'list';
             document.getElementById('view-density-toggle').textContent = window._viewMode === 'card' ? 'CARD' : 'LIST';
             renderTimeline();
-            try { localStorage.setItem('newsreader_viewmode', window._viewMode); } catch(e) {}
+            try { localStorage.setItem('newsreader_viewmode', window._viewMode); } catch(e) { console.warn('Storage error:', e.message); }
         };
 
         window.toggleShowEmptyCategories = () => {
@@ -2555,19 +2522,19 @@
                     : 'text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400';
             }
             renderFeeds();
-            try { localStorage.setItem('newsreader_showemptycats', window._showEmptyCategories ? '1' : '0'); } catch(e) {}
+            try { localStorage.setItem('newsreader_showemptycats', window._showEmptyCategories ? '1' : '0'); } catch(e) { console.warn('Storage error:', e.message); }
         };
 
         // --- READ LATER PERSISTENCE ---
         function saveReadLaterState() {
-            try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) {}
+            try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) { console.warn('Storage error:', e.message); }
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
         }
         function restoreReadLaterState() {
             try {
                 const stored = localStorage.getItem('newsreader_readlater');
                 if (stored) window._readLaterLinks = new Set(JSON.parse(stored));
-            } catch(e) {}
+            } catch(e) { console.warn('Storage error:', e.message); }
         }
 
         // --- READING PROGRESS BAR ---
@@ -2656,7 +2623,6 @@
         }
         
         // --- TYPOGRAPHY HANDLERS ---
-        // Each shared slider writes to both desktop and mobile CSS variables simultaneously
         const SHARED_SIZE_MAP = {
             feedName:     { props: ['--desk-feed-name-size','--mob-feed-name-size','--list-source-size'], label: 'shared-feed-name-val', rerender: 'feeds' },
             listTitle:    { props: ['--list-title-em-size','--mob-list-title-size'],                      label: 'shared-list-title-val', rerender: 'timeline' },
@@ -2675,7 +2641,6 @@
             const display = cfg.noEm ? val.toString() : `${val}em`;
             const root = document.documentElement;
             cfg.props.forEach(p => root.style.setProperty(p, display));
-            // Also keep article title font-size in sync on the live element
             if (key === 'articleTitle') {
                 window._savedArticleTitleSize = display;
                 const el = document.getElementById('article-title');
@@ -2715,7 +2680,6 @@
             saveTypographyPrefs();
         };
 
-        // Updated font handler — 'both' applies to list and view fonts simultaneously
         window.updateFontFamily = (t, f) => {
             loadActiveFont(f);
             if (t === 'both') {
@@ -2727,28 +2691,24 @@
             renderTimeline();
             saveTypographyPrefs();
         };
-        // --- DYNAMIC FONT LOADER (Fix 4) ---
-        // Maps CSS font-family values to Google Fonts query strings
         const FONT_MAP = {
             "'Inter', sans-serif":                           'Inter:wght@400;500;600;700',
             "'Roboto', sans-serif":                          'Roboto:wght@400;500;700',
             "'Merriweather', serif":                         'Merriweather:ital,wght@0,400;0,700;1,400',
             "'Atkinson Hyperlegible', sans-serif":           'Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400',
-            // System fonts — no Google Fonts load needed
             "-apple-system, BlinkMacSystemFont, sans-serif": null,
             "Georgia, serif":                                null,
         };
         const _loadedFonts = new Set();
         function loadActiveFont(fontValue) {
             const query = FONT_MAP[fontValue];
-            if (!query || _loadedFonts.has(query)) return; // system font or already loaded
+            if (!query || _loadedFonts.has(query)) return; 
             _loadedFonts.add(query);
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = `https://fonts.googleapis.com/css2?family=${query}&display=swap`;
             document.head.appendChild(link);
         }
-        // updateFontFamily defined above in TYPOGRAPHY HANDLERS block
 
         window.updateMobZoom = (v) => {
             const pct = parseInt(v);
@@ -2769,15 +2729,10 @@
             const lbClose = document.getElementById('img-lightbox-close');
             const lbHint  = document.getElementById('img-lightbox-hint');
 
-            // Transform state
             let _scale = 1, _tx = 0, _ty = 0;
-            // Pinch state
             let _pinchStart = null;
-            // Pan state
             let _panStart = null;
-            // Double-tap state
             let _lastTap = 0;
-            // Whether a touch sequence moved (to distinguish tap from pan)
             let _touchMoved = false;
 
             function applyTransform(animate) {
@@ -2793,7 +2748,6 @@
             }
 
             function clampTranslation() {
-                // When zoomed, limit pan so the image edge doesn't go past center
                 const maxTx = (lbImg.offsetWidth  * (_scale - 1)) / 2;
                 const maxTy = (lbImg.offsetHeight * (_scale - 1)) / 2;
                 _tx = Math.max(-maxTx, Math.min(maxTx, _tx));
@@ -2815,7 +2769,6 @@
                 setTimeout(() => { lbImg.src = ''; resetTransform(false); }, 200);
             }
 
-            // ---- Touch: pinch + pan + double-tap ----
             lbImg.addEventListener('touchstart', (e) => {
                 _touchMoved = false;
                 if (e.touches.length === 2) {
@@ -2830,7 +2783,6 @@
                 } else if (e.touches.length === 1) {
                     const now = Date.now();
                     if (now - _lastTap < 280) {
-                        // Double-tap: toggle fit ↔ 2.5×
                         if (_scale > 1.05) { resetTransform(true); }
                         else {
                             _scale = 2.5; _tx = 0; _ty = 0;
@@ -2866,13 +2818,11 @@
                 if (e.touches.length < 2) _pinchStart = null;
                 if (e.touches.length === 0) {
                     _panStart = null;
-                    // Snap back if scale ended up below 1.1
                     if (_scale < 1.1) resetTransform(true);
                     else clampTranslation(), applyTransform(true);
                 }
             }, { passive: true });
 
-            // ---- Mouse wheel zoom (desktop) ----
             lb.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 _scale = Math.max(1, Math.min(5, _scale * (e.deltaY < 0 ? 1.15 : 0.87)));
@@ -2880,9 +2830,7 @@
                 else { clampTranslation(); applyTransform(false); }
             }, { passive: false });
 
-            // ---- Close handlers ----
             lbClose.addEventListener('click', closeLightbox);
-            // Backdrop tap closes only when not zoomed
             lb.addEventListener('click', (e) => {
                 if (e.target === lb && _scale <= 1.05) closeLightbox();
             });
@@ -2891,7 +2839,6 @@
                 if (e.key === 'Escape') closeLightbox();
             });
 
-            // ---- Open from article images ----
             document.getElementById('article-body').addEventListener('click', (e) => {
                 const img = e.target.closest('img');
                 if (!img) return;
@@ -2947,7 +2894,6 @@
             saveReadState();
             window._pinnedArticleIds.clear();
             
-            
             refreshUI();
             window.showToast('Marked all read — fetching new items...');
             fetchAllStaggered(window.feeds);
@@ -2982,7 +2928,6 @@
             menu.style.left = `${x}px`;
         };
 
-        // Proper read/unread toggle (replaces one-way markArticleRead)
         window.toggleArticleUnread = (id) => {
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
@@ -2998,14 +2943,12 @@
         };
 
         // --- ARTICLE LIST TOUCH INTERACTIONS ---
-        // Handles long-press (context menu), swipe left (read later), swipe right (mark read), swipe down (refresh feed)
         (function() {
             const list = document.getElementById('article-list');
             let _lpTimer = null;
             let _touchStartX = 0, _touchStartY = 0, _touchStartTime = 0;
             let _swiping = false;
             let _swipeCard = null;
-            let _swipeIndicator = null;
 
             function showSwipeHint(dx, dy, touchX, touchY, card) {
                 if (!card) return;
@@ -3014,10 +2957,8 @@
                 if (!article) return;
                 const progress = Math.min(1, (Math.abs(dx) - 20) / 60);
                 if (dx < -20) {
-                    // Swipe left → Save for Later: blue tint on left half
                     card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.35}) 50%, transparent 50%)`;
                 } else if (dx > 20) {
-                    // Swipe right → Mark Read/Unread: green/grey tint on right half
                     const col = article.unread ? `rgba(22,163,74,${progress * 0.35})` : `rgba(100,116,139,${progress * 0.35})`;
                     card.style.background = `linear-gradient(to left, ${col} 0%, ${col} 50%, transparent 50%)`;
                 } else {
@@ -3039,7 +2980,6 @@
 
                 if (!card) return;
                 const id = card.getAttribute('data-id');
-                // Long press — 750ms hold with no movement
                 _lpTimer = setTimeout(() => {
                     if (_swiping) return;
                     window.getSelection()?.removeAllRanges();
@@ -3052,12 +2992,10 @@
             list.addEventListener('touchmove', (e) => {
                 const dx = e.touches[0].clientX - _touchStartX;
                 const dy = e.touches[0].clientY - _touchStartY;
-                // Cancel long press immediately on any meaningful movement
                 if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
                     _swiping = true;
                     clearTimeout(_lpTimer);
                 }
-                // Only show swipe hint if clearly horizontal (dx dominates by 2x)
                 if (Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 20) {
                     showSwipeHint(dx, dy, e.touches[0].clientX, e.touches[0].clientY, _swipeCard);
                 } else {
@@ -3071,9 +3009,8 @@
 
                 const dt = Date.now() - _touchStartTime;
 
-                // If finger lifted in under 600ms it's a tap — never trigger long press actions
                 if (dt < 600) {
-                    if (!_swiping) return; // let the click event handle selection
+                    if (!_swiping) return; 
                 }
 
                 if (!_swipeCard || !_swiping) return;
@@ -3083,12 +3020,8 @@
                 const dy = e.changedTouches[0].clientY - _touchStartY;
                 const absDx = Math.abs(dx), absDy = Math.abs(dy);
 
-                // Swipe DOWN to refresh — requires strong vertical intent:
-                // dy > 120px, vertical must be 3x horizontal, started near top of list
                 if (dy > 120 && absDy > absDx * 3 && _touchStartY < 180) {
                     window._pinnedArticleIds.clear();
-                    
-                    
                     renderTimeline();
                     renderFeeds();
                     window.showToast('Updated');
@@ -3101,7 +3034,6 @@
                     return;
                 }
 
-                // Horizontal swipe — minimum 50px, must be 2x more horizontal than vertical
                 if (absDx < 50 || absDx < absDy * 2) return;
 
                 const article = window.articles.find(a => a.id === id);
@@ -3194,7 +3126,6 @@
             window.showToast(`Deleted "${cat}" and ${toRemove.length} feed${toRemove.length !== 1 ? 's' : ''}`);
         };
 
-        // Long-press on category folders (mobile)
         let _catLongPressTimer = null;
         document.getElementById('feed-list').addEventListener('touchstart', (e) => {
             const catDiv = e.target.closest('[data-category]');
@@ -3257,16 +3188,15 @@
                     autoRefresh:        get('pref-auto-refresh'),
                     mobZoom:            get('mob-zoom-slider'),
                 }));
-            } catch(e) {}
+            } catch(e) { console.warn('Storage error:', e.message); }
         }
 
         function restoreTypographyPrefs() {
             let prefs;
-            try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')); } catch(e) {}
+            try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')); } catch(e) { return; }
             if (!prefs) return;
             const root = document.documentElement;
 
-            // Migrate from old per-platform keys if they exist
             const migrate = (newKey, oldKeys) => {
                 if (prefs[newKey]) return prefs[newKey];
                 for (const k of oldKeys) { if (prefs[k]) return prefs[k]; }
@@ -3296,7 +3226,6 @@
                 root.style.setProperty('--list-preview-lines', prefs.previewLines);
             }
 
-            // Font — unified selector, migrate from old listFont/viewFont
             const font = prefs.font || prefs.listFont || prefs.viewFont;
             if (font) {
                 const el = document.getElementById('font-family-select');
@@ -3324,7 +3253,7 @@
                     unread: a.unread, readLater: a.readLater, image: a.image
                 }));
                 localStorage.setItem('newsreader_articles', JSON.stringify(cache));
-            } catch(e) {}
+            } catch(e) { console.warn('Storage error:', e.message); }
         }
 
         function restoreArticleCache() {
@@ -3333,10 +3262,10 @@
                 if (!stored) return;
                 const cache = JSON.parse(stored);
                 if (!Array.isArray(cache) || cache.length === 0) return;
-                const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000; // drop anything older than 48h
+                const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000; 
                 const fresh = cache.filter(a => {
                     const ts = a._ts || new Date(a.timestamp).getTime();
-                    return ts >= cutoff || a.readLater; // always keep read-later items
+                    return ts >= cutoff || a.readLater; 
                 });
                 fresh.forEach(a => {
                     a.unread = !window._readLinks.has(a.link);
@@ -3346,12 +3275,12 @@
                     a.body = '';
                 });
                 window.articles = fresh;
-            } catch(e) {}
+            } catch(e) { console.warn('Storage error:', e.message); }
         }
 
         // --- FEED PERSISTENCE ---
         function saveLocalFeeds() {
-            try { localStorage.setItem('newsreader_feeds', JSON.stringify(window.accountStates.local)); } catch(e) {}
+            try { localStorage.setItem('newsreader_feeds', JSON.stringify(window.accountStates.local)); } catch(e) { console.warn('Storage error:', e.message); }
         }
 
         function restoreLocalFeeds() {
@@ -3360,7 +3289,6 @@
                 if (!stored) return;
                 const feeds = JSON.parse(stored);
                 if (!Array.isArray(feeds) || feeds.length === 0) return;
-                // Restore cached favicons
                 feeds.forEach(f => {
                     if (!f.favicon) {
                         try { f.favicon = localStorage.getItem('favicon_' + f.url) || undefined; } catch(e) {}
@@ -3370,11 +3298,10 @@
                 window.feeds = feeds;
                 preloadAllFavicons();
                 updateFaviconStyles();
-            } catch(e) {}
+            } catch(e) { console.warn('Storage error:', e.message); }
         }
 
         // --- READ STATE PERSISTENCE ---
-        // Debounced — localStorage writes are synchronous, batching avoids blocking main thread on every tap
         let _saveReadStateTimer = null;
         function saveReadState() {
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
@@ -3385,7 +3312,7 @@
                     const existing = getStoredReadLinks();
                     const merged = Array.from(new Set([...existing, ...readLinks]));
                     localStorage.setItem('newsreader_read', JSON.stringify(merged.slice(-5000)));
-                } catch(e) {}
+                } catch(e) { console.warn('Storage error:', e.message); }
             }, 2000);
         }
 
@@ -3443,12 +3370,10 @@
                         listEl.scrollTop = 0;
                     }
                 }
-            } else {
             }
         };
 
         // --- FAVICON PRELOAD CACHE ---
-        // Pre-loads favicons into browser image cache so <img> tags render instantly without flash
         const _faviconImageCache = {};
         function preloadFavicon(url) {
             if (!url || _faviconImageCache[url]) return;
@@ -3477,7 +3402,7 @@
         if (isMobile()) setMobilePane('sidebar');
 
         window.addEventListener('resize', () => {
-            if (!_isMobileCache) return; // desktop — nothing to do
+            if (!_isMobileCache) return; 
             if (!document.getElementById('timeline-pane').classList.contains('mobile-active') &&
                 !document.getElementById('sidebar-pane').classList.contains('mobile-active') &&
                 !document.getElementById('viewer-pane').classList.contains('mobile-active')) {
@@ -3487,16 +3412,15 @@
 
         document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
 
-        setInterval(() => { /* badge/count refresh only — no DOM rebuild */ renderFeeds(); updateBadges?.(); }, 60000);
+        setInterval(() => { renderFeeds(); updateBadges?.(); }, 60000);
 
         window.articles = [];
         
         restoreReadLaterState();
         restoreTypographyPrefs();
-        // Load Inter by default — restoreTypographyPrefs loads saved fonts if set
         loadActiveFont("'Inter', sans-serif");
         restoreLocalFeeds();
-        updateFaviconStyles(); // inject CSS rules before first render so favicons show immediately
+        updateFaviconStyles(); 
         restoreCategoryOrder();
         restoreArticleCache();
         if (window.articles.length === 0) {
@@ -3535,13 +3459,11 @@
         renderTimeline();
         updateEmptyState();
 
-        // Refresh feeds when app returns to foreground after being backgrounded
         let _hiddenAt = 0;
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 _hiddenAt = Date.now();
             } else {
-                // Only refresh if hidden for more than 5 minutes
                 if (_hiddenAt && Date.now() - _hiddenAt > 5 * 60 * 1000) {
                     if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
                 }
@@ -3568,7 +3490,6 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        // Persist auth session in localStorage so it survives PWA restarts and iOS Safari evictions
         setPersistence(auth, browserLocalPersistence).catch(() => {});
         const APP_ID = 'rss-reader-fyi';
         let userId = null;
@@ -3702,10 +3623,8 @@
                 document.getElementById('sync-status').textContent = `☁ ${userEmail}`;
             });
 
-            // Real-time listener — fires on load and whenever any device updates read state
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
             onSnapshot(stateRef, (snap) => {
-                // hasPendingWrites = this is our own write echoing back; skip to avoid unnecessary re-render
                 if (snap.metadata.hasPendingWrites) return;
                 if (!snap.exists()) return;
                 const data = snap.data();
@@ -3809,7 +3728,7 @@
         };
     </script>
 
-    <!-- PWA Service Worker -->
+    <!-- PWA Service Worker (FIXED for modern Safari/Chrome support) -->
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
@@ -3841,13 +3760,16 @@ self.addEventListener('fetch', e => {
         }))
     );
 });`;
-            // Use data URL instead of blob URL — blob protocol rejected by Safari/iOS
-            const swDataUrl = 'data:application/javascript;charset=utf-8,' + encodeURIComponent(swCode);
-            navigator.serviceWorker.register(swDataUrl, { scope: '/' })
-                .then(() => console.log('RSS Reader: SW registered'))
-                .catch(() => {
-                    // data URL also unsupported in some contexts (e.g. file://) — silently skip
-                });
+            try {
+                // FIXED: Blob object URL prevents the security errors caused by Data URIs
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swUrl, { scope: '/' })
+                    .then(() => console.log('RSS Reader: SW registered successfully via Blob'))
+                    .catch(err => console.warn('RSS Reader: SW registration blocked/failed:', err));
+            } catch (err) {
+                console.warn('RSS Reader: Failed to create Service Worker Blob:', err);
+            }
         }
     </script>
 </body>
