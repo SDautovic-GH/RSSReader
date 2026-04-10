@@ -195,6 +195,13 @@ try {
         Write-Host "Updated RSSReader .gitignore."
     }
 
+    # Abort any in-progress merge before checkout (avoids "needs merge" index error)
+    $mergeHead = Join-Path $RepoPath ".git\MERGE_HEAD"
+    if (Test-Path $mergeHead) {
+        Write-Host "Unresolved merge detected - aborting before checkout."
+        & git merge --abort 2>$null
+    }
+
     Invoke-GitChecked -Arguments @("checkout", $MainBranch) -ActionDescription "Checkout $MainBranch"
 
     # Restore any tracked files that are missing from disk before staging
