@@ -3301,10 +3301,14 @@
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
             saveReadState();
             window._pinnedArticleIds.clear();
-            
             refreshUI();
-            window.showToast('Marked all read — fetching new items...');
-            fetchAllStaggered(window.feeds);
+            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
+            if (isSmartFeedWithFetch) {
+                window.showToast('Marked all read — fetching new items...');
+                fetchAllStaggered(window.feeds);
+            } else {
+                window.showToast('Marked all read');
+            }
         };
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
