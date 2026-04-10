@@ -2124,19 +2124,15 @@
             }, { passive: true });
         })();
 
-        // ===== PULL-TO-REFRESH (full-screen, feeds pane active) =====
+        // ===== PULL-TO-REFRESH (feeds pane active — whole screen) =====
         (function() {
             const indicator = document.getElementById('ptr-indicator');
             const label = document.getElementById('ptr-label');
-            const THRESHOLD = 150;
+            const THRESHOLD = 130;
             let _pt = null;
 
             document.addEventListener('touchstart', (e) => {
-                if (!isMobile() || window._mobilePane !== 'sidebar') return;
-                // Only activate when the feeds scrollable area is at the top
-                const sidebar = document.getElementById('sidebar-pane');
-                const scrollable = sidebar ? sidebar.querySelector('.overflow-y-auto') : null;
-                if (scrollable && scrollable.scrollTop > 4) return;
+                if (!isMobile() || window._mobilePane !== 'sidebar' || _pt?.loading) return;
                 const touch = e.touches[0];
                 _pt = { startY: touch.clientY, startX: touch.clientX, active: false, loading: false };
             }, { passive: true });
@@ -2146,25 +2142,22 @@
                 const touch = e.touches[0];
                 const dy = touch.clientY - _pt.startY;
                 const dx = touch.clientX - _pt.startX;
-                // Must be downward and more vertical than horizontal
-                if (dy < 12 || Math.abs(dx) > dy * 0.6) { _pt = null; return; }
+                if (dy < 8 || Math.abs(dx) > dy) { _pt = null; return; }
                 _pt.active = true;
-                // Visual: indicator slides in gently, caps at ~56px travel
-                const offset = Math.min(dy * 0.12, 56);
+                const offset = Math.min(dy * 0.14, 56);
                 indicator.style.top = (offset - 56) + 'px';
                 indicator.classList.add('ptr-visible');
                 indicator.classList.toggle('ptr-ready', dy >= THRESHOLD);
                 label.textContent = dy >= THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
             }, { passive: true });
 
-            document.addEventListener('touchend', () => {
-                if (!_pt || !_pt.active) { _pt = null; return; }
+            const reset = () => {
+                if (!_pt) return;
                 const wasReady = indicator.classList.contains('ptr-ready');
                 indicator.style.top = '-56px';
                 indicator.classList.remove('ptr-visible', 'ptr-ready');
                 label.textContent = 'Pull to refresh';
                 _pt = null;
-
                 if (wasReady) {
                     indicator.style.top = '0px';
                     indicator.classList.add('ptr-visible', 'ptr-loading');
@@ -2175,7 +2168,9 @@
                         indicator.classList.remove('ptr-visible', 'ptr-loading');
                     });
                 }
-            }, { passive: true });
+            };
+            document.addEventListener('touchend', reset, { passive: true });
+            document.addEventListener('touchcancel', reset, { passive: true });
         })();
 
         window.selectArticle = function(id) {
