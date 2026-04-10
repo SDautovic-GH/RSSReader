@@ -2480,10 +2480,10 @@
             bodyEl.querySelectorAll('img').forEach(img => {
                 if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
                 if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
-                img.onerror = () => {
+
+                const collapse = () => {
                     img.setAttribute('data-broken', '1');
-                    img.style.display = 'none';
-                    // Collapse the parent wrapper if it has no other visible content
+                    img.style.cssText += ';display:none!important;margin:0!important;padding:0!important;';
                     const parent = img.parentElement;
                     if (parent && parent !== bodyEl) {
                         const hasOther = Array.from(parent.childNodes).some(n =>
@@ -2494,7 +2494,24 @@
                         if (!hasOther) parent.style.cssText += ';display:none!important;margin:0!important;padding:0!important;';
                     }
                 };
-                if (img.complete && img.naturalWidth === 0 && img.src) img.onerror();
+                img.onerror = collapse;
+
+                if (img.complete) {
+                    // Already settled — collapse if broken
+                    if (!img.naturalWidth || !img.naturalHeight) collapse();
+                } else {
+                    // Hide until load confirms real content, preventing blank gap during fetch
+                    img.style.cssText += ';max-height:0!important;margin:0!important;overflow:hidden;';
+                    img.onload = () => {
+                        if (img.naturalWidth > 1 && img.naturalHeight > 1) {
+                            img.style.maxHeight = '';
+                            img.style.margin = '';
+                            img.style.overflow = '';
+                        } else {
+                            collapse();
+                        }
+                    };
+                }
             });
         }
         function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); }
