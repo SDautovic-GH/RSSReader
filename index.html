@@ -54,10 +54,9 @@
 
         .article-content img {
             max-width: 100% !important;
-            width: 100% !important;
             height: auto !important;
             max-height: 420px;
-            object-fit: cover;
+            object-fit: contain;
             border-radius: 12px;
             margin: 1.5rem 0;
             cursor: zoom-in;
@@ -587,7 +586,7 @@
             }
         }
         /* Reduce paint cost on article list re-renders */
-        #article-list > div { content-visibility: auto; contain-intrinsic-size: auto 120px; }
+        #article-list > div { contain: style layout; }
 
         /* ===== ARTICLE READER TYPOGRAPHY ===== */
         .article-content p { margin-bottom: 1.25em; line-height: var(--line-height, 1.75); }
@@ -1976,7 +1975,7 @@
             const selCls = selected ? 'border-l-4 border-l-blue-500' : '';
             const selStyle = selected ? 'style="background-color: rgba(23,37,84,0.45);"' : '';
             if (window._viewMode === 'card') {
-                return `<div data-id="${a.id}" data-action="select" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+                return `<div data-id="${a.id}" onclick="selectArticle('${a.id}')" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                     <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                     <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
                     ${a.image ? `<img src="${a.image}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
@@ -1990,7 +1989,7 @@
                     </div>
                 </div>`;
             }
-            return `<div data-id="${a.id}" data-action="select" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+            return `<div data-id="${a.id}" onclick="selectArticle('${a.id}')" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
                 <div class="flex items-start gap-1.5">
@@ -2018,13 +2017,6 @@
                 _scrollTimer = setTimeout(() => list.classList.remove('is-scrolling'), 150);
             }, { passive: true });
         })();
-
-        document.getElementById('article-list').addEventListener('click', (e) => {
-            const card = e.target.closest('[data-action="select"]');
-            if (!card) return;
-            const id = card.getAttribute('data-id');
-            if (id) selectArticle(id);
-        });
 
         // ===== ARTICLE LIST SWIPE GESTURES =====
         (function() {
@@ -2078,6 +2070,10 @@
                 }
             }, { passive: true });
 
+            list.addEventListener('touchcancel', () => {
+                if (_t) { _t.card.style.background = ''; _t = null; }
+            }, { passive: true });
+
             list.addEventListener('touchend', (e) => {
                 if (!_t) return;
                 const t = _t;
@@ -2121,20 +2117,15 @@
             }, { passive: true });
         })();
 
-        // ===== PULL-TO-REFRESH (full-screen, feeds pane active) =====
+        // ===== PULL-TO-REFRESH (feeds pane active — whole screen) =====
         (function() {
             const indicator = document.getElementById('ptr-indicator');
             const label = document.getElementById('ptr-label');
-            // ~480px = 5 CSS inches (1 CSS inch = 96px)
-            const THRESHOLD = 480;
+            const THRESHOLD = 130;
             let _pt = null;
 
             document.addEventListener('touchstart', (e) => {
-                if (!isMobile() || window._mobilePane !== 'sidebar') return;
-                // Only activate when the feeds scrollable area is at the top
-                const sidebar = document.getElementById('sidebar-pane');
-                const scrollable = sidebar ? sidebar.querySelector('.overflow-y-auto') : null;
-                if (scrollable && scrollable.scrollTop > 4) return;
+                if (!isMobile() || window._mobilePane !== 'sidebar' || _pt?.loading) return;
                 const touch = e.touches[0];
                 _pt = { startY: touch.clientY, startX: touch.clientX, active: false, loading: false };
             }, { passive: true });
@@ -2144,25 +2135,22 @@
                 const touch = e.touches[0];
                 const dy = touch.clientY - _pt.startY;
                 const dx = touch.clientX - _pt.startX;
-                // Must be downward and more vertical than horizontal
-                if (dy < 12 || Math.abs(dx) > dy * 0.6) { _pt = null; return; }
+                if (dy < 8 || Math.abs(dx) > dy) { _pt = null; return; }
                 _pt.active = true;
-                // Visual: indicator slides in gently, caps at ~56px travel
-                const offset = Math.min(dy * 0.12, 56);
+                const offset = Math.min(dy * 0.14, 56);
                 indicator.style.top = (offset - 56) + 'px';
                 indicator.classList.add('ptr-visible');
                 indicator.classList.toggle('ptr-ready', dy >= THRESHOLD);
                 label.textContent = dy >= THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
             }, { passive: true });
 
-            document.addEventListener('touchend', () => {
-                if (!_pt || !_pt.active) { _pt = null; return; }
+            const reset = () => {
+                if (!_pt) return;
                 const wasReady = indicator.classList.contains('ptr-ready');
                 indicator.style.top = '-56px';
                 indicator.classList.remove('ptr-visible', 'ptr-ready');
                 label.textContent = 'Pull to refresh';
                 _pt = null;
-
                 if (wasReady) {
                     indicator.style.top = '0px';
                     indicator.classList.add('ptr-visible', 'ptr-loading');
@@ -2173,7 +2161,9 @@
                         indicator.classList.remove('ptr-visible', 'ptr-loading');
                     });
                 }
-            }, { passive: true });
+            };
+            document.addEventListener('touchend', reset, { passive: true });
+            document.addEventListener('touchcancel', reset, { passive: true });
         })();
 
         window.selectArticle = function(id) {
@@ -2214,12 +2204,7 @@
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
-            bodyEl.querySelectorAll('img').forEach(img => {
-                if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
-                if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
-                img.onerror = () => { img.setAttribute('data-broken','1'); const fig = img.closest('figure,picture'); if (fig) fig.style.display='none'; };
-                if (img.complete && img.naturalWidth === 0 && img.src) img.onerror();
-            });
+            initBodyImages(bodyEl);
 
             attemptFullContentLoad(article);
 
@@ -2277,12 +2262,10 @@
                 if (newSelected) {
                     newSelected.classList.add('border-l-4', 'border-l-blue-500');
                     newSelected.style.backgroundColor = 'rgba(23,37,84,0.45)';
-                    const article = window.articles.find(a => a.id === id);
-                    if (article) newSelected.outerHTML = buildArticleCard(article);
-                    setTimeout(() => {
-                        const el = listEl.querySelector(`[data-id="${id}"]`);
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    }, 30);
+                    // Update unread dot in-place — no outerHTML replacement, no smooth scroll
+                    const dot = newSelected.querySelector('.bg-blue-500.rounded-full');
+                    if (dot) { dot.classList.remove('bg-blue-500'); dot.classList.add('opacity-0'); }
+                    newSelected.scrollIntoView({ block: 'nearest' });
                 } else {
                     renderTimeline(true);
                 }
@@ -2410,12 +2393,7 @@
                             // Skip linkify — extracted HTML already has proper <a> tags
                             const sanitized = DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.innerHTML = sanitized;
-                            bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
-                            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
-                            bodyEl.querySelectorAll('img').forEach(img => {
-                                img.onerror = () => { img.setAttribute('data-broken','1'); const fig = img.closest('figure,picture'); if (fig) fig.style.display='none'; };
-                                if (img.complete && img.naturalWidth === 0 && img.src) img.onerror();
-                            });
+                            initBodyImages(bodyEl);
                             article.body = sanitized;
                             article._fullBodyLoaded = true;
                             window._articleTotalMinutes = Math.max(1, Math.ceil(fullWordCount / 200));
@@ -2484,6 +2462,57 @@
         window.closeShortcuts = () => { document.getElementById('shortcuts-modal').classList.add('hidden'); };
 
         // --- SHARED STATE HELPERS ---
+        function initBodyImages(bodyEl) {
+            bodyEl.querySelectorAll('img').forEach(img => {
+                if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
+                if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
+
+                const collapse = () => {
+                    img.setAttribute('data-broken', '1');
+                    img.style.setProperty('display', 'none', 'important');
+                    // Walk ancestors up to bodyEl, hiding wrappers that have nothing else visible
+                    let el = img.parentElement;
+                    while (el && el !== bodyEl) {
+                        const hasVisible = Array.from(el.childNodes).some(n => {
+                            if (n.nodeType === Node.TEXT_NODE) return n.textContent.trim() !== '';
+                            if (n.nodeType !== Node.ELEMENT_NODE) return false;
+                            const tag = n.tagName.toLowerCase();
+                            if (tag === 'figcaption') return false;
+                            if (n.hasAttribute('data-broken')) return false;
+                            if (n.style.getPropertyValue('display') === 'none') return false;
+                            return true;
+                        });
+                        if (!hasVisible) {
+                            el.style.setProperty('display', 'none', 'important');
+                            el.style.setProperty('margin', '0', 'important');
+                            el.style.setProperty('padding', '0', 'important');
+                            el = el.parentElement;
+                        } else {
+                            break;
+                        }
+                    }
+                };
+                img.onerror = collapse;
+
+                if (img.complete) {
+                    if (!img.naturalWidth || !img.naturalHeight) collapse();
+                } else {
+                    // Reserve no space while loading — prevents gap if image fails or is tiny
+                    img.style.setProperty('max-height', '0', 'important');
+                    img.style.setProperty('margin', '0', 'important');
+                    img.style.setProperty('overflow', 'hidden', 'important');
+                    img.onload = () => {
+                        if (img.naturalWidth > 1 && img.naturalHeight > 1) {
+                            img.style.removeProperty('max-height');
+                            img.style.removeProperty('margin');
+                            img.style.removeProperty('overflow');
+                        } else {
+                            collapse();
+                        }
+                    };
+                }
+            });
+        }
         function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); }
         function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
         function toggleUnread(article) {
@@ -3388,6 +3417,12 @@
                 }
             }, { passive: true });
 
+            list.addEventListener('touchcancel', () => {
+                clearTimeout(_lpTimer);
+                _swiping = false;
+                _swipeCard = null;
+            }, { passive: true });
+
             list.addEventListener('touchend', (e) => {
                 clearTimeout(_lpTimer);
 
@@ -3396,7 +3431,7 @@
                 const dy = e.changedTouches[0].clientY - _touchStartY;
                 const absDx = Math.abs(dx), absDy = Math.abs(dy);
 
-                if (dy > 120 && absDy > absDx * 3 && _touchStartY < 180) {
+                if (dy > 120 && absDy > absDx * 3 && list.scrollTop <= 4) {
                     window._pinnedArticleIds.clear();
                     renderTimeline();
                     renderFeeds();
@@ -3997,21 +4032,26 @@
 
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
             onSnapshot(stateRef, (snap) => {
-                if (snap.metadata.hasPendingWrites) return;
+                // Skip our own writes (both the pending write and the server echo)
+                if (snap.metadata.hasPendingWrites || snap.metadata.fromCache) return;
                 if (!snap.exists()) return;
                 const data = snap.data();
                 let changed = false;
                 if (data.readLinks) {
-                    const before = window._readLinks.size;
-                    window._readLinks = new Set([...window._readLinks, ...data.readLinks]);
-                    if (window._readLinks.size !== before) changed = true;
-                    try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
+                    const incoming = data.readLinks.filter(l => !window._readLinks.has(l));
+                    if (incoming.length > 0) {
+                        incoming.forEach(l => window._readLinks.add(l));
+                        changed = true;
+                        try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
+                    }
                 }
                 if (data.readLaterLinks) {
-                    const before = window._readLaterLinks.size;
-                    window._readLaterLinks = new Set([...window._readLaterLinks, ...data.readLaterLinks]);
-                    if (window._readLaterLinks.size !== before) changed = true;
-                    try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) {}
+                    const newSet = new Set(data.readLaterLinks);
+                    if (newSet.size !== window._readLaterLinks.size || data.readLaterLinks.some(l => !window._readLaterLinks.has(l))) {
+                        window._readLaterLinks = newSet;
+                        changed = true;
+                        try { localStorage.setItem('newsreader_readlater', JSON.stringify(data.readLaterLinks)); } catch(e) {}
+                    }
                 }
                 if (changed) {
                     window.articles.forEach(a => {
