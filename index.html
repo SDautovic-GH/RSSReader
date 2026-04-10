@@ -2216,12 +2216,7 @@
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
-            bodyEl.querySelectorAll('img').forEach(img => {
-                if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
-                if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
-                img.onerror = () => { img.setAttribute('data-broken','1'); const fig = img.closest('figure,picture'); if (fig) fig.style.display='none'; };
-                if (img.complete && img.naturalWidth === 0 && img.src) img.onerror();
-            });
+            initBodyImages(bodyEl);
 
             attemptFullContentLoad(article);
 
@@ -2412,12 +2407,7 @@
                             // Skip linkify — extracted HTML already has proper <a> tags
                             const sanitized = DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.innerHTML = sanitized;
-                            bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
-                            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
-                            bodyEl.querySelectorAll('img').forEach(img => {
-                                img.onerror = () => { img.setAttribute('data-broken','1'); const fig = img.closest('figure,picture'); if (fig) fig.style.display='none'; };
-                                if (img.complete && img.naturalWidth === 0 && img.src) img.onerror();
-                            });
+                            initBodyImages(bodyEl);
                             article.body = sanitized;
                             article._fullBodyLoaded = true;
                             window._articleTotalMinutes = Math.max(1, Math.ceil(fullWordCount / 200));
@@ -2486,6 +2476,27 @@
         window.closeShortcuts = () => { document.getElementById('shortcuts-modal').classList.add('hidden'); };
 
         // --- SHARED STATE HELPERS ---
+        function initBodyImages(bodyEl) {
+            bodyEl.querySelectorAll('img').forEach(img => {
+                if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
+                if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
+                img.onerror = () => {
+                    img.setAttribute('data-broken', '1');
+                    img.style.display = 'none';
+                    // Collapse the parent wrapper if it has no other visible content
+                    const parent = img.parentElement;
+                    if (parent && parent !== bodyEl) {
+                        const hasOther = Array.from(parent.childNodes).some(n =>
+                            n !== img &&
+                            (n.nodeType === Node.TEXT_NODE ? n.textContent.trim() :
+                             n.nodeType === Node.ELEMENT_NODE && n.tagName.toLowerCase() !== 'figcaption' && n.style.display !== 'none')
+                        );
+                        if (!hasOther) parent.style.cssText += ';display:none!important;margin:0!important;padding:0!important;';
+                    }
+                };
+                if (img.complete && img.naturalWidth === 0 && img.src) img.onerror();
+            });
+        }
         function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); }
         function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
         function toggleUnread(article) {
