@@ -302,35 +302,6 @@
             line-height: 1.6;
         }
 
-        /* Pull-to-refresh indicator on sidebar (mobile only) */
-        @media (min-width: 901px) { #ptr-indicator { display: none !important; } }
-        #ptr-indicator {
-            position: absolute; top: 0; left: 0; right: 0;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            height: 0; overflow: hidden;
-            background: #18181f;
-            color: #60a5fa; font-size: 0.75em; font-weight: 600;
-            transition: height 0.15s ease;
-            z-index: 10;
-        }
-        #ptr-indicator svg { width: 16px; height: 16px; transition: transform 0.2s ease; }
-        #ptr-indicator.ptr-ready svg { transform: rotate(180deg); }
-        #ptr-indicator.ptr-spinning svg { animation: ptr-spin 0.7s linear infinite; }
-        @keyframes ptr-spin { to { transform: rotate(360deg); } }
-
-        /* Swipe-to-action reveal overlays */
-        #article-list [data-id] { position: relative; overflow: hidden; }
-        .swipe-reveal {
-            position: absolute; top: 0; height: 100%; width: 50%;
-            display: flex; align-items: center; justify-content: center;
-            gap: 6px; opacity: 0; pointer-events: none;
-            font-size: 0.72em; font-weight: 700; letter-spacing: 0.07em;
-            text-transform: uppercase; color: #fff;
-            transition: opacity 0.08s linear;
-        }
-        .swipe-reveal-left  { left: 0;  background: #15803d; } /* green — Mark Read   */
-        .swipe-reveal-right { right: 0; background: #b45309; } /* amber — Save Later  */
-
         /* Skeleton loading shimmer */
         @keyframes shimmer {
             0% { background-position: -400px 0; }
@@ -690,6 +661,57 @@
         .settings-item label, .settings-item .settings-item-label {
             font-size: 13px; font-weight: 600; color: #e2e8f0;
         }
+
+        /* ===== SWIPE GESTURES ===== */
+        [data-id] { position: relative; overflow: hidden; }
+        .swipe-hint {
+            position: absolute; top: 0; bottom: 0;
+            display: flex; align-items: center;
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.08s ease;
+            z-index: 2; white-space: nowrap;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+        }
+        .swipe-hint-left {
+            left: 0; right: 50%;
+            background: linear-gradient(to right, rgba(37,99,235,0.55) 0%, rgba(37,99,235,0.18) 100%);
+            color: #93c5fd;
+            justify-content: flex-start; padding-left: 16px;
+        }
+        .swipe-hint-right {
+            left: 50%; right: 0;
+            background: linear-gradient(to left, rgba(22,163,74,0.55) 0%, rgba(22,163,74,0.18) 100%);
+            color: #86efac;
+            justify-content: flex-end; padding-right: 16px;
+        }
+
+        /* ===== PULL-TO-REFRESH ===== */
+        #ptr-indicator {
+            position: absolute; top: -56px; left: 0; right: 0;
+            height: 56px; display: flex; align-items: center; justify-content: center;
+            color: #60a5fa; font-size: 12px; font-weight: 600;
+            transition: top 0.15s ease, opacity 0.15s ease;
+            opacity: 0; z-index: 10; pointer-events: none;
+            gap: 8px;
+        }
+        #ptr-indicator.ptr-visible {
+            opacity: 1;
+        }
+        #ptr-indicator.ptr-ready {
+            color: #34d399;
+        }
+        #ptr-spinner {
+            width: 20px; height: 20px;
+            border: 2px solid rgba(96,165,250,0.3);
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+        }
+        #ptr-indicator.ptr-loading #ptr-spinner {
+            animation: ptr-spin 0.7s linear infinite;
+        }
+        @keyframes ptr-spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
@@ -742,10 +764,9 @@
         
         <!-- PANE 1: Sidebar -->
         <aside id="sidebar-pane" class="w-64 flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col" style="position:relative;">
-            <div id="ptr-indicator" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 5v14M5 12l7 7 7-7"/>
-                </svg>
+            <!-- Pull-to-refresh indicator -->
+            <div id="ptr-indicator">
+                <div id="ptr-spinner"></div>
                 <span id="ptr-label">Pull to refresh</span>
             </div>
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -1954,8 +1975,8 @@
             const selStyle = selected ? 'style="background-color: rgba(23,37,84,0.45);"' : '';
             if (window._viewMode === 'card') {
                 return `<div data-id="${a.id}" data-action="select" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
-                    <div class="swipe-reveal swipe-reveal-left" aria-hidden="true">✓ Mark Read</div>
-                    <div class="swipe-reveal swipe-reveal-right" aria-hidden="true">🔖 Save Later</div>
+                    <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
+                    <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
                     ${a.image ? `<img src="${a.image}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
                     <div class="p-3">
                         <div class="flex items-center text-[10px] text-gray-400 mb-1">
@@ -1968,8 +1989,8 @@
                 </div>`;
             }
             return `<div data-id="${a.id}" data-action="select" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
-                <div class="swipe-reveal swipe-reveal-left" aria-hidden="true">✓ Mark Read</div>
-                <div class="swipe-reveal swipe-reveal-right" aria-hidden="true">🔖 Save Later</div>
+                <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
+                <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
                 <div class="flex items-start gap-1.5">
                     <div class="flex-shrink-0 mt-2">
                         ${a.unread ? '<span class="w-2 h-2 bg-blue-500 rounded-full block"></span>' : '<span class="w-2 h-2 rounded-full block opacity-0"></span>'}
@@ -2002,6 +2023,159 @@
             const id = card.getAttribute('data-id');
             if (id) selectArticle(id);
         });
+
+        // ===== ARTICLE LIST SWIPE GESTURES =====
+        (function() {
+            const list = document.getElementById('article-list');
+            const SWIPE_THRESHOLD = 60;  // px to trigger action
+            const SWIPE_RATIO = 2.0;     // horizontal must be 2x vertical
+            let _t = null; // active touch card
+
+            list.addEventListener('touchstart', (e) => {
+                const card = e.target.closest('[data-id]');
+                if (!card) return;
+                const touch = e.touches[0];
+                _t = { card, startX: touch.clientX, startY: touch.clientY, moved: false, cancelled: false };
+            }, { passive: true });
+
+            list.addEventListener('touchmove', (e) => {
+                if (!_t || _t.cancelled) return;
+                const touch = e.touches[0];
+                const dx = touch.clientX - _t.startX;
+                const dy = touch.clientY - _t.startY;
+
+                // Cancel if primarily vertical (scrolling)
+                if (!_t.moved && Math.abs(dy) > Math.abs(dx)) { _t.cancelled = true; return; }
+                // Cancel if not sufficiently horizontal
+                if (Math.abs(dx) < 8 && Math.abs(dy) > 4) { _t.cancelled = true; return; }
+
+                _t.moved = true;
+                const absDx = Math.abs(dx);
+
+                // Show appropriate hint overlay
+                const leftHint = _t.card.querySelector('.swipe-hint-left');
+                const rightHint = _t.card.querySelector('.swipe-hint-right');
+                if (!leftHint || !rightHint) return;
+
+                if (dx < -8) {
+                    // Swiping left → Mark Read
+                    const progress = Math.min(1, absDx / SWIPE_THRESHOLD);
+                    leftHint.style.opacity = progress * 0.9;
+                    rightHint.style.opacity = 0;
+                    _t.card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.08}) 50%, transparent 100%)`;
+                } else if (dx > 8) {
+                    // Swiping right → Save for Later
+                    const progress = Math.min(1, absDx / SWIPE_THRESHOLD);
+                    rightHint.style.opacity = progress * 0.9;
+                    leftHint.style.opacity = 0;
+                    _t.card.style.background = `linear-gradient(to left, rgba(22,163,74,${progress * 0.35}) 0%, rgba(22,163,74,${progress * 0.08}) 50%, transparent 100%)`;
+                } else {
+                    leftHint.style.opacity = 0;
+                    rightHint.style.opacity = 0;
+                    _t.card.style.background = '';
+                }
+            }, { passive: true });
+
+            list.addEventListener('touchend', (e) => {
+                if (!_t) return;
+                const t = _t;
+                _t = null;
+
+                // Reset visuals
+                const leftHint = t.card.querySelector('.swipe-hint-left');
+                const rightHint = t.card.querySelector('.swipe-hint-right');
+                if (leftHint) leftHint.style.opacity = 0;
+                if (rightHint) rightHint.style.opacity = 0;
+                t.card.style.background = '';
+
+                if (t.cancelled || !t.moved) return;
+
+                const touch = e.changedTouches[0];
+                const dx = touch.clientX - t.startX;
+                const dy = touch.clientY - t.startY;
+
+                // Must be sufficiently horizontal
+                if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+                if (Math.abs(dy) > Math.abs(dx) / SWIPE_RATIO) return;
+
+                const id = t.card.getAttribute('data-id');
+                if (!id) return;
+                const article = window.articles.find(a => a.id === id);
+                if (!article) return;
+
+                if (dx < 0) {
+                    // Left swipe → Mark Read
+                    article.unread = false;
+                    window._readLinks.add(article.link);
+                    saveReadState();
+                    window._pinnedArticleIds.delete(id);
+                    refreshUI();
+                    window.showToast('Marked as read');
+                } else {
+                    // Right swipe → Save for Later
+                    article.readLater = true;
+                    window._readLaterLinks.add(article.link);
+                    saveReadLaterState();
+                    refreshUI();
+                    window.showToast('Saved for later');
+                }
+            }, { passive: true });
+        })();
+
+        // ===== PULL-TO-REFRESH (Feeds sidebar) =====
+        (function() {
+            const sidebar = document.getElementById('sidebar-pane');
+            const indicator = document.getElementById('ptr-indicator');
+            const label = document.getElementById('ptr-label');
+            const THRESHOLD = 72;
+            let _pt = null;
+
+            sidebar.addEventListener('touchstart', (e) => {
+                if (!isMobile()) return;
+                // Only activate when scrollable area is at the top
+                const scrollable = sidebar.querySelector('.overflow-y-auto');
+                if (scrollable && scrollable.scrollTop > 4) return;
+                const touch = e.touches[0];
+                _pt = { startY: touch.clientY, startX: touch.clientX, active: false, loading: false };
+            }, { passive: true });
+
+            sidebar.addEventListener('touchmove', (e) => {
+                if (!_pt || _pt.loading) return;
+                const touch = e.touches[0];
+                const dy = touch.clientY - _pt.startY;
+                const dx = touch.clientX - _pt.startX;
+                // Must be downward and more vertical than horizontal
+                if (dy < 8 || Math.abs(dx) > dy) { _pt = null; return; }
+                _pt.active = true;
+                const progress = Math.min(1, dy / THRESHOLD);
+                const offset = Math.min(dy * 0.4, THRESHOLD * 0.8);
+                indicator.style.top = (offset - 56) + 'px';
+                indicator.classList.add('ptr-visible');
+                indicator.classList.toggle('ptr-ready', dy >= THRESHOLD);
+                label.textContent = dy >= THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
+            }, { passive: true });
+
+            sidebar.addEventListener('touchend', () => {
+                if (!_pt || !_pt.active) { _pt = null; return; }
+                const wasReady = indicator.classList.contains('ptr-ready');
+                _pt.loading = wasReady;
+                indicator.style.top = '-56px';
+                indicator.classList.remove('ptr-visible', 'ptr-ready');
+                label.textContent = 'Pull to refresh';
+                _pt = null;
+
+                if (wasReady) {
+                    indicator.style.top = '0px';
+                    indicator.classList.add('ptr-visible', 'ptr-loading');
+                    label.textContent = 'Refreshing...';
+                    window.showToast('Refreshing feeds...');
+                    fetchAllStaggered(window.feeds).then(() => {
+                        indicator.style.top = '-56px';
+                        indicator.classList.remove('ptr-visible', 'ptr-loading');
+                    });
+                }
+            }, { passive: true });
+        })();
 
         window.selectArticle = function(id) {
             const article = window.articles.find(a => a.id === id);
@@ -3125,16 +3299,10 @@
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
             saveReadState();
             window._pinnedArticleIds.clear();
+            
             refreshUI();
-
-            // Only auto-fetch when in a smart feed (All Unread / Today).
-            // Category and source filters mark local articles only — no server refresh.
-            const inSmartFeed = !window.currentCategoryFilter && !window.currentSourceFilter
-                && (window.currentSmartFeed === 'all' || window.currentSmartFeed === 'today');
-            if (inSmartFeed) {
-                window.showToast('Marked all read — fetching new items...');
-                fetchAllStaggered(window.feeds);
-            }
+            window.showToast('Marked all read — fetching new items...');
+            fetchAllStaggered(window.feeds);
         };
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
@@ -3190,24 +3358,22 @@
 
             function showSwipeHint(dx, dy, touchX, touchY, card) {
                 if (!card) return;
-                const progress = Math.min(1, (Math.abs(dx) - 20) / 80);
-                const leftEl  = card.querySelector('.swipe-reveal-left');
-                const rightEl = card.querySelector('.swipe-reveal-right');
+                const id = card.getAttribute('data-id');
+                const article = window.articles.find(a => a.id === id);
+                if (!article) return;
+                const progress = Math.min(1, (Math.abs(dx) - 20) / 60);
                 if (dx < -20) {
-                    if (leftEl)  leftEl.style.opacity  = progress;
-                    if (rightEl) rightEl.style.opacity = 0;
+                    card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.35}) 50%, transparent 50%)`;
                 } else if (dx > 20) {
-                    if (rightEl) rightEl.style.opacity = progress;
-                    if (leftEl)  leftEl.style.opacity  = 0;
+                    const col = article.unread ? `rgba(22,163,74,${progress * 0.35})` : `rgba(100,116,139,${progress * 0.35})`;
+                    card.style.background = `linear-gradient(to left, ${col} 0%, ${col} 50%, transparent 50%)`;
                 } else {
-                    if (leftEl)  leftEl.style.opacity  = 0;
-                    if (rightEl) rightEl.style.opacity = 0;
+                    card.style.background = '';
                 }
             }
 
             function hideSwipeHint() {
-                if (!_swipeCard) return;
-                _swipeCard.querySelectorAll('.swipe-reveal').forEach(el => el.style.opacity = 0);
+                if (_swipeCard) _swipeCard.style.background = '';
             }
 
             list.addEventListener('touchstart', (e) => {
@@ -3278,22 +3444,14 @@
                 const article = window.articles.find(a => a.id === id);
                 if (!article) return;
 
-                // Flash the full reveal colour for 180ms before the list updates
-                const revealEl = dx < 0
-                    ? _swipeCard.querySelector('.swipe-reveal-left')
-                    : _swipeCard.querySelector('.swipe-reveal-right');
-                if (revealEl) revealEl.style.opacity = 1;
-
                 article._excerptHtml = null;
-                setTimeout(() => {
-                    if (dx < 0) {
-                        // Swipe left → Mark Read / Unread
-                        toggleUnread(article); saveReadState(); refreshUI();
-                    } else {
-                        // Swipe right → Save for Later / Remove
-                        toggleReadLater(article); saveReadLaterState(); refreshUI();
-                    }
-                }, 180);
+                if (dx < 0) {
+                    toggleReadLater(article); saveReadLaterState(); refreshUI();
+                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
+                } else {
+                    toggleUnread(article); saveReadState(); refreshUI();
+                    window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
+                }
             }, { passive: true });
         })();
         document.addEventListener('click', (e) => {
@@ -3385,65 +3543,6 @@
         }, { passive: true });
         document.getElementById('feed-list').addEventListener('touchend', () => clearTimeout(_catLongPressTimer));
         document.getElementById('feed-list').addEventListener('touchmove', () => clearTimeout(_catLongPressTimer), { passive: true });
-
-        // --- PULL-TO-REFRESH on sidebar (mobile only) ---
-        (function() {
-            if (!isMobile()) return;
-            const sidebar = document.getElementById('sidebar-pane');
-            const indicator = document.getElementById('ptr-indicator');
-            const label = document.getElementById('ptr-label');
-            if (!sidebar || !indicator) return;
-
-            const THRESHOLD = 72; // px of pull needed to trigger refresh
-            let startY = 0, pulling = false, triggered = false;
-
-            sidebar.addEventListener('touchstart', e => {
-                // Only activate when sidebar is scrolled to top
-                if (sidebar.scrollTop > 0) return;
-                startY = e.touches[0].clientY;
-                pulling = true;
-                triggered = false;
-            }, { passive: true });
-
-            sidebar.addEventListener('touchmove', e => {
-                if (!pulling) return;
-                const dy = e.touches[0].clientY - startY;
-                if (dy <= 0) { indicator.style.height = '0'; return; }
-
-                const clamped = Math.min(dy, THRESHOLD * 1.4);
-                indicator.style.height = Math.min(clamped * 0.55, 46) + 'px';
-
-                const ready = dy >= THRESHOLD;
-                indicator.classList.toggle('ptr-ready', ready);
-                label.textContent = ready ? 'Release to refresh' : 'Pull to refresh';
-            }, { passive: true });
-
-            sidebar.addEventListener('touchend', () => {
-                if (!pulling) return;
-                pulling = false;
-                const wasReady = indicator.classList.contains('ptr-ready');
-                indicator.style.height = '0';
-                indicator.classList.remove('ptr-ready');
-                label.textContent = 'Pull to refresh';
-
-                if (wasReady && !triggered) {
-                    triggered = true;
-                    indicator.classList.add('ptr-spinning');
-                    indicator.style.height = '40px';
-                    label.textContent = 'Refreshing…';
-                    const done = () => {
-                        indicator.classList.remove('ptr-spinning');
-                        indicator.style.height = '0';
-                        label.textContent = 'Pull to refresh';
-                    };
-                    if (window.feeds.length > 0) {
-                        fetchAllStaggered(window.feeds, null, true).then?.(done) || setTimeout(done, 2000);
-                    } else {
-                        done();
-                    }
-                }
-            }, { passive: true });
-        })();
 
 
         window.showFolderContextMenu = (e, type, key) => {
