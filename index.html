@@ -2274,12 +2274,10 @@
                 if (newSelected) {
                     newSelected.classList.add('border-l-4', 'border-l-blue-500');
                     newSelected.style.backgroundColor = 'rgba(23,37,84,0.45)';
-                    const article = window.articles.find(a => a.id === id);
-                    if (article) newSelected.outerHTML = buildArticleCard(article);
-                    setTimeout(() => {
-                        const el = listEl.querySelector(`[data-id="${id}"]`);
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    }, 30);
+                    // Update unread dot in-place — no outerHTML replacement, no smooth scroll
+                    const dot = newSelected.querySelector('.bg-blue-500.rounded-full');
+                    if (dot) { dot.classList.remove('bg-blue-500'); dot.classList.add('opacity-0'); }
+                    newSelected.scrollIntoView({ block: 'nearest' });
                 } else {
                     renderTimeline(true);
                 }
@@ -2483,30 +2481,35 @@
 
                 const collapse = () => {
                     img.setAttribute('data-broken', '1');
-                    img.style.cssText += ';display:none!important;margin:0!important;padding:0!important;';
+                    img.style.setProperty('display', 'none', 'important');
                     const parent = img.parentElement;
                     if (parent && parent !== bodyEl) {
                         const hasOther = Array.from(parent.childNodes).some(n =>
                             n !== img &&
                             (n.nodeType === Node.TEXT_NODE ? n.textContent.trim() :
-                             n.nodeType === Node.ELEMENT_NODE && n.tagName.toLowerCase() !== 'figcaption' && n.style.display !== 'none')
+                             n.nodeType === Node.ELEMENT_NODE && n.tagName.toLowerCase() !== 'figcaption')
                         );
-                        if (!hasOther) parent.style.cssText += ';display:none!important;margin:0!important;padding:0!important;';
+                        if (!hasOther) {
+                            parent.style.setProperty('display', 'none', 'important');
+                            parent.style.setProperty('margin', '0', 'important');
+                            parent.style.setProperty('padding', '0', 'important');
+                        }
                     }
                 };
                 img.onerror = collapse;
 
                 if (img.complete) {
-                    // Already settled — collapse if broken
                     if (!img.naturalWidth || !img.naturalHeight) collapse();
                 } else {
-                    // Hide until load confirms real content, preventing blank gap during fetch
-                    img.style.cssText += ';max-height:0!important;margin:0!important;overflow:hidden;';
+                    // Reserve no space while loading — prevents gap if image fails or is tiny
+                    img.style.setProperty('max-height', '0', 'important');
+                    img.style.setProperty('margin', '0', 'important');
+                    img.style.setProperty('overflow', 'hidden', 'important');
                     img.onload = () => {
                         if (img.naturalWidth > 1 && img.naturalHeight > 1) {
-                            img.style.maxHeight = '';
-                            img.style.margin = '';
-                            img.style.overflow = '';
+                            img.style.removeProperty('max-height');
+                            img.style.removeProperty('margin');
+                            img.style.removeProperty('overflow');
                         } else {
                             collapse();
                         }
