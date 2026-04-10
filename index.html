@@ -674,14 +674,16 @@
         }
         .swipe-hint-left {
             left: 0; right: 50%;
-            background: linear-gradient(to right, rgba(37,99,235,0.55) 0%, rgba(37,99,235,0.18) 100%);
-            color: #93c5fd;
+            background: linear-gradient(to right, rgba(37,99,235,0.6) 0%, rgba(37,99,235,0.15) 100%);
+            color: #ffffff;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
             justify-content: flex-start; padding-left: 16px;
         }
         .swipe-hint-right {
             left: 50%; right: 0;
-            background: linear-gradient(to left, rgba(22,163,74,0.55) 0%, rgba(22,163,74,0.18) 100%);
-            color: #86efac;
+            background: linear-gradient(to left, rgba(22,163,74,0.6) 0%, rgba(22,163,74,0.15) 100%);
+            color: #ffffff;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
             justify-content: flex-end; padding-right: 16px;
         }
 
@@ -2122,43 +2124,43 @@
             }, { passive: true });
         })();
 
-        // ===== PULL-TO-REFRESH (Feeds sidebar) =====
+        // ===== PULL-TO-REFRESH (full-screen, feeds pane active) =====
         (function() {
-            const sidebar = document.getElementById('sidebar-pane');
             const indicator = document.getElementById('ptr-indicator');
             const label = document.getElementById('ptr-label');
-            const THRESHOLD = 72;
+            // ~480px = 5 CSS inches (1 CSS inch = 96px)
+            const THRESHOLD = 480;
             let _pt = null;
 
-            sidebar.addEventListener('touchstart', (e) => {
-                if (!isMobile()) return;
-                // Only activate when scrollable area is at the top
-                const scrollable = sidebar.querySelector('.overflow-y-auto');
+            document.addEventListener('touchstart', (e) => {
+                if (!isMobile() || window._mobilePane !== 'sidebar') return;
+                // Only activate when the feeds scrollable area is at the top
+                const sidebar = document.getElementById('sidebar-pane');
+                const scrollable = sidebar ? sidebar.querySelector('.overflow-y-auto') : null;
                 if (scrollable && scrollable.scrollTop > 4) return;
                 const touch = e.touches[0];
                 _pt = { startY: touch.clientY, startX: touch.clientX, active: false, loading: false };
             }, { passive: true });
 
-            sidebar.addEventListener('touchmove', (e) => {
+            document.addEventListener('touchmove', (e) => {
                 if (!_pt || _pt.loading) return;
                 const touch = e.touches[0];
                 const dy = touch.clientY - _pt.startY;
                 const dx = touch.clientX - _pt.startX;
                 // Must be downward and more vertical than horizontal
-                if (dy < 8 || Math.abs(dx) > dy) { _pt = null; return; }
+                if (dy < 12 || Math.abs(dx) > dy * 0.6) { _pt = null; return; }
                 _pt.active = true;
-                const progress = Math.min(1, dy / THRESHOLD);
-                const offset = Math.min(dy * 0.4, THRESHOLD * 0.8);
+                // Visual: indicator slides in gently, caps at ~56px travel
+                const offset = Math.min(dy * 0.12, 56);
                 indicator.style.top = (offset - 56) + 'px';
                 indicator.classList.add('ptr-visible');
                 indicator.classList.toggle('ptr-ready', dy >= THRESHOLD);
                 label.textContent = dy >= THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
             }, { passive: true });
 
-            sidebar.addEventListener('touchend', () => {
+            document.addEventListener('touchend', () => {
                 if (!_pt || !_pt.active) { _pt = null; return; }
                 const wasReady = indicator.classList.contains('ptr-ready');
-                _pt.loading = wasReady;
                 indicator.style.top = '-56px';
                 indicator.classList.remove('ptr-visible', 'ptr-ready');
                 label.textContent = 'Pull to refresh';
