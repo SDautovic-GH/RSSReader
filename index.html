@@ -2077,6 +2077,10 @@
                 }
             }, { passive: true });
 
+            list.addEventListener('touchcancel', () => {
+                if (_t) { _t.card.style.background = ''; _t = null; }
+            }, { passive: true });
+
             list.addEventListener('touchend', (e) => {
                 if (!_t) return;
                 const t = _t;
@@ -3386,6 +3390,12 @@
                 }
             }, { passive: true });
 
+            list.addEventListener('touchcancel', () => {
+                clearTimeout(_lpTimer);
+                _swiping = false;
+                _swipeCard = null;
+            }, { passive: true });
+
             list.addEventListener('touchend', (e) => {
                 clearTimeout(_lpTimer);
 
@@ -4006,9 +4016,12 @@
                     try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
                 }
                 if (data.readLaterLinks) {
-                    window._readLaterLinks = new Set(data.readLaterLinks);
-                    changed = true;
-                    try { localStorage.setItem('newsreader_readlater', JSON.stringify(data.readLaterLinks)); } catch(e) {}
+                    const newSet = new Set(data.readLaterLinks);
+                    if (newSet.size !== window._readLaterLinks.size || data.readLaterLinks.some(l => !window._readLaterLinks.has(l))) {
+                        window._readLaterLinks = newSet;
+                        changed = true;
+                        try { localStorage.setItem('newsreader_readlater', JSON.stringify(data.readLaterLinks)); } catch(e) {}
+                    }
                 }
                 if (changed) {
                     window.articles.forEach(a => {
