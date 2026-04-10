@@ -2214,9 +2214,9 @@
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
-            bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
-            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
             bodyEl.querySelectorAll('img').forEach(img => {
+                if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
+                if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
                 img.onerror = () => { img.setAttribute('data-broken','1'); const fig = img.closest('figure,picture'); if (fig) fig.style.display='none'; };
                 if (img.complete && img.naturalWidth === 0 && img.src) img.onerror();
             });
@@ -2475,12 +2475,13 @@
             } else if (e.key === '?') {
                 e.preventDefault();
                 openShortcuts();
+            } else if (e.key === 'Escape') {
+                closeShortcuts();
             }
         });
 
         window.openShortcuts = () => { document.getElementById('shortcuts-modal').classList.remove('hidden'); };
         window.closeShortcuts = () => { document.getElementById('shortcuts-modal').classList.add('hidden'); };
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeShortcuts(); });
 
         // --- SHARED STATE HELPERS ---
         function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); }
@@ -2841,8 +2842,6 @@
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
         };
 
-        function showNewArticlesBanner() { /* removed */ }
-        window.dismissNewArticlesBanner = () => {};
 
         // --- NAVIGATE PREV/NEXT ---
         window._navSnapshot = [];
@@ -3361,25 +3360,6 @@
             let _swiping = false;
             let _swipeCard = null;
 
-            function showSwipeHint(dx, dy, touchX, touchY, card) {
-                if (!card) return;
-                const id = card.getAttribute('data-id');
-                const article = window.articles.find(a => a.id === id);
-                if (!article) return;
-                const progress = Math.min(1, (Math.abs(dx) - 20) / 60);
-                if (dx < -20) {
-                    const col = article.unread ? `rgba(22,163,74,${progress * 0.35})` : `rgba(100,116,139,${progress * 0.35})`;
-                    card.style.background = `linear-gradient(to right, ${col} 0%, ${col} 50%, transparent 50%)`;
-                } else if (dx > 20) {
-                    card.style.background = `linear-gradient(to left, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.35}) 50%, transparent 50%)`;
-                } else {
-                    card.style.background = '';
-                }
-            }
-
-            function hideSwipeHint() {
-                if (_swipeCard) _swipeCard.style.background = '';
-            }
 
             list.addEventListener('touchstart', (e) => {
                 const card = e.target.closest('[data-id]');
