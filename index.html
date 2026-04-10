@@ -2387,7 +2387,7 @@
                 groups[c].push(f);
             });
 
-            const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|');
+            const renderKey = `${window._showEmptyCategories}|` + window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|');
             if (renderKey === _lastFeedRenderKey) {
                 updateBadges();
                 return;
@@ -3149,15 +3149,8 @@
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
-
-            // Only auto-fetch when in a smart feed (All Unread / Today).
-            // Category and source filters mark local articles only — no server refresh.
-            const inSmartFeed = !window.currentCategoryFilter && !window.currentSourceFilter
-                && (window.currentSmartFeed === 'all' || window.currentSmartFeed === 'today');
-            if (inSmartFeed) {
-                window.showToast('Marked all read — fetching new items...');
-                fetchAllStaggered(window.feeds);
-            }
+            window.showToast('Marked all read — fetching new items...');
+            fetchAllStaggered(window.feeds);
         };
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
