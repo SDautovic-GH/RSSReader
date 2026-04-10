@@ -3308,6 +3308,7 @@
                 fetchAllStaggered(window.feeds);
             } else {
                 window.showToast('Marked all read');
+                if (isMobile()) setMobilePane('sidebar');
             }
         };
         window.markArticleRead = (id) => {
@@ -3369,10 +3370,10 @@
                 if (!article) return;
                 const progress = Math.min(1, (Math.abs(dx) - 20) / 60);
                 if (dx < -20) {
-                    card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.35}) 50%, transparent 50%)`;
-                } else if (dx > 20) {
                     const col = article.unread ? `rgba(22,163,74,${progress * 0.35})` : `rgba(100,116,139,${progress * 0.35})`;
-                    card.style.background = `linear-gradient(to left, ${col} 0%, ${col} 50%, transparent 50%)`;
+                    card.style.background = `linear-gradient(to right, ${col} 0%, ${col} 50%, transparent 50%)`;
+                } else if (dx > 20) {
+                    card.style.background = `linear-gradient(to left, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.35}) 50%, transparent 50%)`;
                 } else {
                     card.style.background = '';
                 }
@@ -3452,11 +3453,11 @@
 
                 article._excerptHtml = null;
                 if (dx < 0) {
-                    toggleReadLater(article); saveReadLaterState(); refreshUI();
-                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
-                } else {
                     toggleUnread(article); saveReadState(); refreshUI();
                     window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
+                } else {
+                    toggleReadLater(article); saveReadLaterState(); refreshUI();
+                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
                 }
             }, { passive: true });
         })();
