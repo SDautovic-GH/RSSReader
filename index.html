@@ -302,6 +302,19 @@
             line-height: 1.6;
         }
 
+        /* Swipe-to-action reveal overlays */
+        #article-list [data-id] { position: relative; overflow: hidden; }
+        .swipe-reveal {
+            position: absolute; top: 0; height: 100%; width: 50%;
+            display: flex; align-items: center; justify-content: center;
+            gap: 6px; opacity: 0; pointer-events: none;
+            font-size: 0.72em; font-weight: 700; letter-spacing: 0.07em;
+            text-transform: uppercase; color: #fff;
+            transition: opacity 0.08s linear;
+        }
+        .swipe-reveal-left  { left: 0;  background: #15803d; } /* green — Mark Read   */
+        .swipe-reveal-right { right: 0; background: #b45309; } /* amber — Save Later  */
+
         /* Skeleton loading shimmer */
         @keyframes shimmer {
             0% { background-position: -400px 0; }
@@ -1919,6 +1932,8 @@
             const selStyle = selected ? 'style="background-color: rgba(23,37,84,0.45);"' : '';
             if (window._viewMode === 'card') {
                 return `<div data-id="${a.id}" data-action="select" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+                    <div class="swipe-reveal swipe-reveal-left" aria-hidden="true">✓ Mark Read</div>
+                    <div class="swipe-reveal swipe-reveal-right" aria-hidden="true">🔖 Save Later</div>
                     ${a.image ? `<img src="${a.image}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
                     <div class="p-3">
                         <div class="flex items-center text-[10px] text-gray-400 mb-1">
@@ -1931,6 +1946,8 @@
                 </div>`;
             }
             return `<div data-id="${a.id}" data-action="select" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+                <div class="swipe-reveal swipe-reveal-left" aria-hidden="true">✓ Mark Read</div>
+                <div class="swipe-reveal swipe-reveal-right" aria-hidden="true">🔖 Save Later</div>
                 <div class="flex items-start gap-1.5">
                     <div class="flex-shrink-0 mt-2">
                         ${a.unread ? '<span class="w-2 h-2 bg-blue-500 rounded-full block"></span>' : '<span class="w-2 h-2 rounded-full block opacity-0"></span>'}
@@ -3145,22 +3162,24 @@
 
             function showSwipeHint(dx, dy, touchX, touchY, card) {
                 if (!card) return;
-                const id = card.getAttribute('data-id');
-                const article = window.articles.find(a => a.id === id);
-                if (!article) return;
-                const progress = Math.min(1, (Math.abs(dx) - 20) / 60);
+                const progress = Math.min(1, (Math.abs(dx) - 20) / 80);
+                const leftEl  = card.querySelector('.swipe-reveal-left');
+                const rightEl = card.querySelector('.swipe-reveal-right');
                 if (dx < -20) {
-                    card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.35}) 50%, transparent 50%)`;
+                    if (leftEl)  leftEl.style.opacity  = progress;
+                    if (rightEl) rightEl.style.opacity = 0;
                 } else if (dx > 20) {
-                    const col = article.unread ? `rgba(22,163,74,${progress * 0.35})` : `rgba(100,116,139,${progress * 0.35})`;
-                    card.style.background = `linear-gradient(to left, ${col} 0%, ${col} 50%, transparent 50%)`;
+                    if (rightEl) rightEl.style.opacity = progress;
+                    if (leftEl)  leftEl.style.opacity  = 0;
                 } else {
-                    card.style.background = '';
+                    if (leftEl)  leftEl.style.opacity  = 0;
+                    if (rightEl) rightEl.style.opacity = 0;
                 }
             }
 
             function hideSwipeHint() {
-                if (_swipeCard) _swipeCard.style.background = '';
+                if (!_swipeCard) return;
+                _swipeCard.querySelectorAll('.swipe-reveal').forEach(el => el.style.opacity = 0);
             }
 
             list.addEventListener('touchstart', (e) => {
@@ -3231,14 +3250,22 @@
                 const article = window.articles.find(a => a.id === id);
                 if (!article) return;
 
+                // Flash the full reveal colour for 180ms before the list updates
+                const revealEl = dx < 0
+                    ? _swipeCard.querySelector('.swipe-reveal-left')
+                    : _swipeCard.querySelector('.swipe-reveal-right');
+                if (revealEl) revealEl.style.opacity = 1;
+
                 article._excerptHtml = null;
-                if (dx < 0) {
-                    toggleReadLater(article); saveReadLaterState(); refreshUI();
-                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
-                } else {
-                    toggleUnread(article); saveReadState(); refreshUI();
-                    window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
-                }
+                setTimeout(() => {
+                    if (dx < 0) {
+                        // Swipe left → Mark Read / Unread
+                        toggleUnread(article); saveReadState(); refreshUI();
+                    } else {
+                        // Swipe right → Save for Later / Remove
+                        toggleReadLater(article); saveReadLaterState(); refreshUI();
+                    }
+                }, 180);
             }, { passive: true });
         })();
         document.addEventListener('click', (e) => {
