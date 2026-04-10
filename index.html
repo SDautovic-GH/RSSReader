@@ -2105,21 +2105,18 @@
                 const article = window.articles.find(a => a.id === id);
                 if (!article) return;
 
+                article._excerptHtml = null;
                 if (dx < 0) {
-                    // Left swipe → Mark Read
-                    article.unread = false;
-                    window._readLinks.add(article.link);
-                    saveReadState();
+                    // Left swipe → Toggle Read
+                    toggleUnread(article); saveReadState();
                     window._pinnedArticleIds.delete(id);
                     refreshUI();
-                    window.showToast('Marked as read');
+                    window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
                 } else {
-                    // Right swipe → Save for Later
-                    article.readLater = true;
-                    window._readLaterLinks.add(article.link);
-                    saveReadLaterState();
+                    // Right swipe → Toggle Save for Later
+                    toggleReadLater(article); saveReadLaterState();
                     refreshUI();
-                    window.showToast('Saved for later');
+                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
                 }
             }, { passive: true });
         })();
@@ -2217,9 +2214,9 @@
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
-            bodyEl.querySelectorAll('img[data-src]').forEach(img => { if (!img.src || img.src === window.location.href) img.src = img.dataset.src; });
-            bodyEl.querySelectorAll('img').forEach(img => { if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; } });
             bodyEl.querySelectorAll('img').forEach(img => {
+                if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
+                if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
                 img.onerror = () => { img.setAttribute('data-broken','1'); const fig = img.closest('figure,picture'); if (fig) fig.style.display='none'; };
                 if (img.complete && img.naturalWidth === 0 && img.src) img.onerror();
             });
@@ -2302,6 +2299,7 @@
             'nbcsports.com','foxsports.com','mlb.com','nba.com','nfl.com',
             'axios.com','politico.com','theatlantic.com',
             'vox.com','buzzfeed.com','huffpost.com',
+            'theverge.com',
         ]);
 
         async function attemptFullContentLoad(article) {
@@ -2477,12 +2475,13 @@
             } else if (e.key === '?') {
                 e.preventDefault();
                 openShortcuts();
+            } else if (e.key === 'Escape') {
+                closeShortcuts();
             }
         });
 
         window.openShortcuts = () => { document.getElementById('shortcuts-modal').classList.remove('hidden'); };
         window.closeShortcuts = () => { document.getElementById('shortcuts-modal').classList.add('hidden'); };
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeShortcuts(); });
 
         // --- SHARED STATE HELPERS ---
         function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); }
@@ -2843,8 +2842,6 @@
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
         };
 
-        function showNewArticlesBanner() { /* removed */ }
-        window.dismissNewArticlesBanner = () => {};
 
         // --- NAVIGATE PREV/NEXT ---
         window._navSnapshot = [];
@@ -3301,10 +3298,15 @@
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
             saveReadState();
             window._pinnedArticleIds.clear();
-            
             refreshUI();
-            window.showToast('Marked all read — fetching new items...');
-            fetchAllStaggered(window.feeds);
+            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
+            if (isSmartFeedWithFetch) {
+                window.showToast('Marked all read — fetching new items...');
+                fetchAllStaggered(window.feeds);
+            } else {
+                window.showToast('Marked all read');
+                if (isMobile()) setMobilePane('sidebar');
+            }
         };
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
@@ -3358,25 +3360,6 @@
             let _swiping = false;
             let _swipeCard = null;
 
-            function showSwipeHint(dx, dy, touchX, touchY, card) {
-                if (!card) return;
-                const id = card.getAttribute('data-id');
-                const article = window.articles.find(a => a.id === id);
-                if (!article) return;
-                const progress = Math.min(1, (Math.abs(dx) - 20) / 60);
-                if (dx < -20) {
-                    card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.35}) 50%, transparent 50%)`;
-                } else if (dx > 20) {
-                    const col = article.unread ? `rgba(22,163,74,${progress * 0.35})` : `rgba(100,116,139,${progress * 0.35})`;
-                    card.style.background = `linear-gradient(to left, ${col} 0%, ${col} 50%, transparent 50%)`;
-                } else {
-                    card.style.background = '';
-                }
-            }
-
-            function hideSwipeHint() {
-                if (_swipeCard) _swipeCard.style.background = '';
-            }
 
             list.addEventListener('touchstart', (e) => {
                 const card = e.target.closest('[data-id]');
@@ -3403,26 +3386,12 @@
                     _swiping = true;
                     clearTimeout(_lpTimer);
                 }
-                if (Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 20) {
-                    showSwipeHint(dx, dy, e.touches[0].clientX, e.touches[0].clientY, _swipeCard);
-                } else {
-                    hideSwipeHint();
-                }
             }, { passive: true });
 
             list.addEventListener('touchend', (e) => {
                 clearTimeout(_lpTimer);
-                hideSwipeHint();
-
-                const dt = Date.now() - _touchStartTime;
-
-                if (dt < 600) {
-                    if (!_swiping) return; 
-                }
 
                 if (!_swipeCard || !_swiping) return;
-                const id = _swipeCard.getAttribute('data-id');
-                if (!id) return;
                 const dx = e.changedTouches[0].clientX - _touchStartX;
                 const dy = e.changedTouches[0].clientY - _touchStartY;
                 const absDx = Math.abs(dx), absDy = Math.abs(dy);
@@ -3438,21 +3407,6 @@
                     } else {
                         fetchAllStaggered(window.feeds, null, true);
                     }
-                    return;
-                }
-
-                if (absDx < 50 || absDx < absDy * 2) return;
-
-                const article = window.articles.find(a => a.id === id);
-                if (!article) return;
-
-                article._excerptHtml = null;
-                if (dx < 0) {
-                    toggleReadLater(article); saveReadLaterState(); refreshUI();
-                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
-                } else {
-                    toggleUnread(article); saveReadState(); refreshUI();
-                    window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
                 }
             }, { passive: true });
         })();
