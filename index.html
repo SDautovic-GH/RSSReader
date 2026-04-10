@@ -4032,15 +4032,18 @@
 
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
             onSnapshot(stateRef, (snap) => {
-                if (snap.metadata.hasPendingWrites) return;
+                // Skip our own writes (both the pending write and the server echo)
+                if (snap.metadata.hasPendingWrites || snap.metadata.fromCache) return;
                 if (!snap.exists()) return;
                 const data = snap.data();
                 let changed = false;
                 if (data.readLinks) {
-                    const before = window._readLinks.size;
-                    window._readLinks = new Set([...window._readLinks, ...data.readLinks]);
-                    if (window._readLinks.size !== before) changed = true;
-                    try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
+                    const incoming = data.readLinks.filter(l => !window._readLinks.has(l));
+                    if (incoming.length > 0) {
+                        incoming.forEach(l => window._readLinks.add(l));
+                        changed = true;
+                        try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
+                    }
                 }
                 if (data.readLaterLinks) {
                     const newSet = new Set(data.readLaterLinks);
