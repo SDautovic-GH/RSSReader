@@ -669,21 +669,31 @@
             pointer-events: none; opacity: 0;
             transition: opacity 0.08s ease;
             z-index: 2; white-space: nowrap;
-            font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+            font-size: 15px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
         }
         .swipe-hint-left {
-            left: 0; right: 50%;
-            background: linear-gradient(to right, rgba(37,99,235,0.6) 0%, rgba(37,99,235,0.15) 100%);
-            color: #ffffff;
-            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            left: 0; right: 0;
+            background: linear-gradient(to right, rgba(37,99,235,0.75) 0%, rgba(37,99,235,0.35) 50%, rgba(37,99,235,0.1) 100%);
             justify-content: flex-start; padding-left: 16px;
         }
         .swipe-hint-right {
-            left: 50%; right: 0;
-            background: linear-gradient(to left, rgba(22,163,74,0.6) 0%, rgba(22,163,74,0.15) 100%);
-            color: #ffffff;
-            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            left: 0; right: 0;
+            background: linear-gradient(to left, rgba(22,163,74,0.75) 0%, rgba(22,163,74,0.35) 50%, rgba(22,163,74,0.1) 100%);
             justify-content: flex-end; padding-right: 16px;
+        }
+        .swipe-hint-left span {
+            background: rgba(37,99,235,0.95);
+            color: #ffffff;
+            padding: 5px 11px 5px 9px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+        }
+        .swipe-hint-right span {
+            background: rgba(22,163,74,0.95);
+            color: #ffffff;
+            padding: 5px 9px 5px 11px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.45);
         }
 
         /* ===== PULL-TO-REFRESH ===== */
@@ -1230,6 +1240,24 @@
             <div class="flex justify-end space-x-3">
                 <button onclick="closeAddFeedModal()" class="px-5 py-2 text-sm text-gray-500">Cancel</button>
                 <button onclick="submitManualFeed()" class="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Add Feed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT FEED MODAL -->
+    <div id="edit-feed-modal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop hidden p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
+            <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Edit Feed</h3>
+            <input type="hidden" id="edit-feed-id">
+            <input type="text" id="edit-feed-title" placeholder="Feed Title" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="url" id="edit-feed-url" placeholder="Feed URL" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="edit-feed-category" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"></select>
+            <div id="edit-feed-newcat-wrap" class="hidden mb-3">
+                <input type="text" id="edit-feed-newcat" placeholder="New category name" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeEditFeedModal()" class="px-5 py-2 text-sm text-gray-500">Cancel</button>
+                <button onclick="submitEditFeed()" class="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Save</button>
             </div>
         </div>
     </div>
@@ -1976,8 +2004,8 @@
             const selStyle = selected ? 'style="background-color: rgba(23,37,84,0.45);"' : '';
             if (window._viewMode === 'card') {
                 return `<div data-id="${a.id}" onclick="selectArticle('${a.id}')" oncontextmenu="showArticleContextMenu(event,'${a.id}')" ${selStyle} class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
-                    <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
-                    <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
+                    <div class="swipe-hint swipe-hint-left"><span>&#x2713; Mark Read</span></div>
+                    <div class="swipe-hint swipe-hint-right"><span>Save Later &#x2605;</span></div>
                     ${a.image ? `<img src="${a.image}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
                     <div class="p-3">
                         <div class="flex items-center text-[10px] text-gray-400 mb-1">
@@ -2056,13 +2084,13 @@
                     const progress = Math.min(1, absDx / SWIPE_THRESHOLD);
                     leftHint.style.opacity = progress * 0.9;
                     rightHint.style.opacity = 0;
-                    _t.card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.08}) 50%, transparent 100%)`;
+                    _t.card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.18}) 50%, rgba(37,99,235,${progress * 0.06}) 100%)`;
                 } else if (dx > 8) {
                     // Swiping right → Save for Later
                     const progress = Math.min(1, absDx / SWIPE_THRESHOLD);
                     rightHint.style.opacity = progress * 0.9;
                     leftHint.style.opacity = 0;
-                    _t.card.style.background = `linear-gradient(to left, rgba(22,163,74,${progress * 0.35}) 0%, rgba(22,163,74,${progress * 0.08}) 50%, transparent 100%)`;
+                    _t.card.style.background = `linear-gradient(to left, rgba(22,163,74,${progress * 0.35}) 0%, rgba(22,163,74,${progress * 0.18}) 50%, rgba(22,163,74,${progress * 0.06}) 100%)`;
                 } else {
                     leftHint.style.opacity = 0;
                     rightHint.style.opacity = 0;
@@ -2634,8 +2662,14 @@
             if (localList) {
                 localList.innerHTML = (window.accountStates.local || []).map((f) => `
                     <div class="flex justify-between items-center p-2 bg-white dark:bg-gray-800 border rounded mb-2">
-                        <span class="text-xs truncate font-medium">${f.name}</span>
-                        <button onclick="removeLocalFeed('${String(f.id)}')" class="text-red-500 text-[10px] font-bold">REMOVE</button>
+                        <div class="min-w-0 mr-2">
+                            <div class="text-xs font-medium truncate">${f.name}</div>
+                            <div class="text-[10px] text-gray-400 truncate">${f.category || 'Uncategorized'}</div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button onclick="openEditFeedModal('${String(f.id)}')" class="text-blue-500 text-[10px] font-bold">EDIT</button>
+                            <button onclick="removeLocalFeed('${String(f.id)}')" class="text-red-500 text-[10px] font-bold">REMOVE</button>
+                        </div>
                     </div>
                 `).join('');
             }
@@ -3032,6 +3066,63 @@
             document.getElementById('manual-feed-url').value = '';
             document.getElementById('manual-feed-newcat').value = '';
             document.getElementById('manual-feed-newcat-wrap').classList.add('hidden');
+        };
+
+        window.openEditFeedModal = (feedId) => {
+            const f = window.accountStates.local.find(f => String(f.id) === String(feedId));
+            if (!f) return;
+            document.getElementById('edit-feed-id').value = feedId;
+            document.getElementById('edit-feed-title').value = f.name;
+            document.getElementById('edit-feed-url').value = f.url;
+            const cats = [...new Set(window.feeds.map(x => x.category || 'Uncategorized'))].sort();
+            const sel = document.getElementById('edit-feed-category');
+            sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('') +
+                `<option value="__new__">+ New category...</option>`;
+            sel.value = cats.includes(f.category) ? f.category : (cats[0] || 'Uncategorized');
+            document.getElementById('edit-feed-newcat-wrap').classList.add('hidden');
+            sel.onchange = () => {
+                document.getElementById('edit-feed-newcat-wrap').classList.toggle('hidden', sel.value !== '__new__');
+            };
+            document.getElementById('edit-feed-modal').classList.remove('hidden');
+        };
+
+        window.closeEditFeedModal = () => {
+            document.getElementById('edit-feed-modal').classList.add('hidden');
+            document.getElementById('edit-feed-id').value = '';
+            document.getElementById('edit-feed-title').value = '';
+            document.getElementById('edit-feed-url').value = '';
+            document.getElementById('edit-feed-newcat').value = '';
+            document.getElementById('edit-feed-newcat-wrap').classList.add('hidden');
+        };
+
+        window.submitEditFeed = () => {
+            const feedId = document.getElementById('edit-feed-id').value;
+            const name = document.getElementById('edit-feed-title').value.trim();
+            const url = document.getElementById('edit-feed-url').value.trim();
+            if (!name || !url) return;
+            const sel = document.getElementById('edit-feed-category');
+            const cat = sel.value === '__new__'
+                ? (document.getElementById('edit-feed-newcat').value.trim() || 'Uncategorized')
+                : (sel.value || 'Uncategorized');
+            const localFeed = window.accountStates.local.find(f => String(f.id) === String(feedId));
+            if (!localFeed) return;
+            const oldUrl = localFeed.url;
+            const oldName = localFeed.name;
+            localFeed.name = name;
+            localFeed.url = url;
+            localFeed.category = cat;
+            const feed = window.feeds.find(f => f.url === oldUrl || f.id === localFeed.id);
+            if (feed) { feed.name = name; feed.url = url; feed.category = cat; }
+            window.articles.forEach(a => {
+                if (a.feedUrl === oldUrl) { a.feedUrl = url; a.source = name; }
+                else if (!a.feedUrl && a.source === oldName) { a.source = name; }
+            });
+            saveLocalFeeds();
+            if (typeof window.saveFeeds === 'function') window.saveFeeds([localFeed]);
+            renderFeeds();
+            renderTimeline();
+            closeEditFeedModal();
+            window.showToast('Feed updated');
         };
 
         // --- TOAST QUEUE ---
