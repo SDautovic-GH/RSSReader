@@ -473,6 +473,56 @@
             cursor: pointer;
         }
         body.mob-fullscreen #mob-fs-feeds { display: flex; }
+        /* Mobile fullscreen floating topbar */
+        body.mob-fullscreen #timeline-header { display: none; }
+        body.mob-fullscreen #article-list { padding-top: 72px; }
+        #mob-fs-topbar {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: rgba(30,30,40,0.85);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 9999px;
+            padding: 6px 14px;
+            gap: 10px;
+            align-items: center;
+            backdrop-filter: blur(6px);
+            white-space: nowrap;
+        }
+        #mob-fs-topbar .mob-fs-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.13);
+            font-size: 14px;
+            font-weight: 700;
+            padding: 0 6px;
+        }
+        #mob-fs-topbar .mob-fs-count.dupes {
+            background: rgba(96,165,250,0.2);
+            color: #93c5fd;
+            font-size: 12px;
+        }
+        #mob-fs-topbar .mob-fs-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.13);
+            cursor: pointer;
+            color: #fff;
+            border: none;
+            padding: 0;
+        }
         /* ===== DEEP DARK THEME ===== */
         /* Desktop — 2-3 shades darker than current */
         .dark body { background: #13131a !important; }
@@ -849,7 +899,7 @@
 
         <!-- PANE 2: Timeline -->
         <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition" style="width: 336px;">
-            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
+            <div id="timeline-header" class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center">
                     <span id="timeline-count" class="mr-2">0 Unread</span>
                     <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded">DEDUPED</span>
@@ -1002,6 +1052,14 @@
         </main>
     </div>
 
+    <!-- MOBILE FULLSCREEN FLOATING TOPBAR (article list) -->
+    <div id="mob-fs-topbar">
+        <span id="mob-fs-unread-count" class="mob-fs-count">0</span>
+        <span id="mob-fs-dupes-count" class="mob-fs-count dupes" style="display:none">0</span>
+        <button class="mob-fs-action" onclick="markAllRead()" title="Mark All Read">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </button>
+    </div>
     <!-- MOBILE FULLSCREEN EXIT BUTTON -->
     <button id="mob-fs-exit" onclick="toggleMobileFullscreen()" title="Exit fullscreen">✕</button>
     <!-- MOBILE FULLSCREEN GO-TO-FEEDS BUTTON -->
@@ -2091,6 +2149,15 @@
                     dedupBadge.classList.add('hidden');
                 }
             }
+            const mobFsDupes = document.getElementById('mob-fs-dupes-count');
+            if (mobFsDupes) {
+                if (window._dedupByTitle && dedupRemovedCount > 0) {
+                    mobFsDupes.textContent = dedupRemovedCount;
+                    mobFsDupes.style.display = '';
+                } else {
+                    mobFsDupes.style.display = 'none';
+                }
+            }
 
             window.currentTimeline = filtered;
             if (!window._navigating) window._navSnapshot = filtered.slice();
@@ -2107,6 +2174,8 @@
 
             const unreadCount = filtered.filter(a => a.unread).length;
             document.getElementById('timeline-count').textContent = `${unreadCount} Unread`;
+            const mobFsUnread = document.getElementById('mob-fs-unread-count');
+            if (mobFsUnread) mobFsUnread.textContent = unreadCount;
             updateBadges();
         };
 
@@ -3973,6 +4042,14 @@
         window._readLinks = new Set(getStoredReadLinks());
 
         // --- MOBILE FULLSCREEN ---
+        function updateMobFsTopbar() {
+            const topbar = document.getElementById('mob-fs-topbar');
+            if (!topbar) return;
+            const show = document.body.classList.contains('mob-fullscreen') && window._mobilePane === 'timeline';
+            topbar.style.display = show ? 'flex' : 'none';
+        }
+        window.updateMobFsTopbar = updateMobFsTopbar;
+
         window.toggleMobileFullscreen = () => {
             const isFS = document.body.classList.toggle('mob-fullscreen');
             const label = document.getElementById('mob-fs-label');
@@ -3982,6 +4059,7 @@
             } else if (!isFS && document.exitFullscreen) {
                 document.exitFullscreen().catch(() => {});
             }
+            updateMobFsTopbar();
         };
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement && document.body.classList.contains('mob-fullscreen')) {
@@ -3989,6 +4067,7 @@
                 const label = document.getElementById('mob-fs-label');
                 if (label) label.textContent = 'Full';
             }
+            updateMobFsTopbar();
         });
         window._mobilePane = 'timeline';
 
@@ -3996,6 +4075,7 @@
             window._mobilePane = pane;
             const feedsBtn = document.getElementById('mob-fs-feeds');
             if (feedsBtn) feedsBtn.style.display = pane === 'sidebar' ? 'none' : '';
+            updateMobFsTopbar();
             const paneMap = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
             const tabMap  = { sidebar: 'mob-tab-feeds', timeline: 'mob-tab-articles', viewer: 'mob-tab-reader' };
             Object.entries(paneMap).forEach(([key, id]) => {
