@@ -1107,6 +1107,13 @@
                             <label class="settings-item-label-sm">Show empty category folders</label>
                             <button id="show-empty-cats-toggle" onclick="toggleShowEmptyCategories()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">OFF</button>
                         </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="settings-item-label-sm">Deduplicate articles by title</label>
+                                <p class="text-[10px] text-gray-400 mt-0.5">Keeps one copy per story, favouring sources ranked by Memeorandum</p>
+                            </div>
+                            <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 ml-4 flex-shrink-0">OFF</button>
+                        </div>
                         <div>
                             <label class="settings-item-label block mb-2">Font</label>
                             <select id="font-family-select" onchange="updateFontFamily('both', this.value)" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs outline-none">
@@ -1442,6 +1449,86 @@
             }
             return null;
         }
+
+        // --- TITLE DEDUPLICATION ---
+        window._dedupByTitle = false;
+        window._memoRankMap = null;
+
+        function normTitle(t) {
+            return (t || '')
+                .toLowerCase()
+                .replace(/^(breaking|exclusive|watch|listen|opinion|analysis|update|alert|developing|report|video)\s*:?\s*/i, '')
+                .replace(/[^a-z0-9\s]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function getSourceRank(article) {
+            if (!window._memoRankMap) return 9999;
+            try {
+                const domain = new URL(article.link).hostname.replace(/^www\./, '');
+                return window._memoRankMap[domain] ?? 9999;
+            } catch { return 9999; }
+        }
+
+        async function fetchMemoRankings() {
+            const CACHE_KEY = 'newsreader_memo_ranks';
+            const CACHE_TTL = 86400000; // 24h
+            try {
+                const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+                if (cached && Date.now() - cached.ts < CACHE_TTL && Object.keys(cached.map).length > 0) {
+                    window._memoRankMap = cached.map;
+                    console.log('[Dedup] Loaded', Object.keys(cached.map).length, 'source rankings from cache');
+                    return;
+                }
+            } catch {}
+            const url = 'https://www.memeorandum.com/lb';
+            let html = null;
+            for (const proxyFn of PROXIES) {
+                try {
+                    const proxyUrl = proxyFn(url);
+                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
+                    if (!res.ok) continue;
+                    html = proxyUrl.includes('allorigins') ? (await res.json()).contents : await res.text();
+                    if (html && html.length > 500) break;
+                } catch(e) { console.warn('[Dedup] Proxy failed:', e.message); }
+            }
+            if (!html) { console.warn('[Dedup] Could not fetch Memeorandum rankings — will rank all sources equally'); return; }
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const map = {};
+            let rank = 1;
+            doc.querySelectorAll('a[href]').forEach(a => {
+                const href = a.getAttribute('href') || '';
+                if (!href.startsWith('http')) return;
+                try {
+                    const domain = new URL(href).hostname.replace(/^www\./, '');
+                    if (domain && domain !== 'memeorandum.com' && !map[domain]) {
+                        map[domain] = rank++;
+                    }
+                } catch {}
+            });
+            if (Object.keys(map).length > 0) {
+                window._memoRankMap = map;
+                try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), map })); } catch {}
+                console.log('[Dedup] Fetched', Object.keys(map).length, 'source rankings from Memeorandum');
+            }
+        }
+
+        window.toggleDedupByTitle = () => {
+            window._dedupByTitle = !window._dedupByTitle;
+            const btn = document.getElementById('dedup-title-toggle');
+            if (btn) {
+                btn.textContent = window._dedupByTitle ? 'ON' : 'OFF';
+                btn.classList.toggle('text-blue-500', window._dedupByTitle);
+                btn.classList.toggle('border-blue-500', window._dedupByTitle);
+                btn.classList.toggle('text-gray-500', !window._dedupByTitle);
+                btn.classList.toggle('border-gray-300', !window._dedupByTitle);
+                btn.classList.toggle('dark:border-gray-600', !window._dedupByTitle);
+            }
+            if (window._dedupByTitle && !window._memoRankMap) fetchMemoRankings();
+            saveTypographyPrefs();
+            renderTimeline();
+        };
 
         // ===== BLUESKY AT PROTOCOL INTEGRATION =====
 
@@ -1952,6 +2039,35 @@
                 const diff = (a._ts || new Date(a.timestamp).getTime()) - (b._ts || new Date(b.timestamp).getTime());
                 return sortOrder === 'desc' ? -diff : diff;
             });
+
+            // --- Title dedup ---
+            let dedupRemovedCount = 0;
+            if (window._dedupByTitle) {
+                const bestForTitle = new Map(); // normTitle -> best article
+                for (const art of filtered) {
+                    const nt = normTitle(art.title);
+                    if (!nt) continue;
+                    if (!bestForTitle.has(nt)) {
+                        bestForTitle.set(nt, art);
+                    } else {
+                        const existing = bestForTitle.get(nt);
+                        if (getSourceRank(art) < getSourceRank(existing)) bestForTitle.set(nt, art);
+                    }
+                }
+                const winners = new Set(bestForTitle.values());
+                const before = filtered.length;
+                filtered = filtered.filter(a => { const nt = normTitle(a.title); return !nt || winners.has(a); });
+                dedupRemovedCount = before - filtered.length;
+            }
+            const dedupBadge = document.getElementById('dedup-badge');
+            if (dedupBadge) {
+                if (window._dedupByTitle && dedupRemovedCount > 0) {
+                    dedupBadge.textContent = `−${dedupRemovedCount} DUPES`;
+                    dedupBadge.classList.remove('hidden');
+                } else {
+                    dedupBadge.classList.add('hidden');
+                }
+            }
 
             window.currentTimeline = filtered;
             if (!window._navigating) window._navSnapshot = filtered.slice();
@@ -3676,6 +3792,7 @@
                     sortOrder:          get('pref-sort-order'),
                     autoRefresh:        get('pref-auto-refresh'),
                     mobZoom:            get('mob-zoom-slider'),
+                    dedupByTitle:       window._dedupByTitle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
@@ -3730,6 +3847,16 @@
                 const el = document.getElementById('mob-zoom-slider'); if (el) el.value = prefs.mobZoom;
                 const lb = document.getElementById('mob-zoom-val'); if (lb) lb.textContent = `${prefs.mobZoom}%`;
                 root.style.setProperty('--mob-zoom', prefs.mobZoom / 100);
+            }
+            if (prefs.dedupByTitle) {
+                window._dedupByTitle = true;
+                const btn = document.getElementById('dedup-title-toggle');
+                if (btn) {
+                    btn.textContent = 'ON';
+                    btn.classList.add('text-blue-500', 'border-blue-500');
+                    btn.classList.remove('text-gray-500', 'border-gray-300', 'dark:border-gray-600');
+                }
+                fetchMemoRankings();
             }
         }
 
