@@ -1816,6 +1816,9 @@
                 if (!cached) { try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); } }
             }
 
+            // Preserve existing IDs by link so DOM onclick handlers stay valid after re-fetch
+            const _existingBskyIds = new Map();
+            window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName).forEach(a => _existingBskyIds.set(a.link, a.id));
             window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
             let newCount = 0;
 
@@ -1841,7 +1844,7 @@
                     return imgs?.[0]?.thumb || null;
                 })();
                 window.articles.push({
-                    id: crypto.randomUUID(),
+                    id: _existingBskyIds.get(link) || crypto.randomUUID(),
                     source: sourceName,
                     feedUrl,
                     title,
@@ -1964,6 +1967,9 @@
                 const items = maxItems ? entries.slice(0, maxItems) : entries.slice(0, 20);
                 let newCount = 0;
 
+                // Preserve existing IDs by link so DOM onclick handlers stay valid after re-fetch
+                const _existingIds = new Map();
+                window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName).forEach(a => _existingIds.set(a.link, a.id));
                 window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
                 // Invalidate excerpt cache for any re-fetched articles
                 window.articles.forEach(a => { if (a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName) a._excerptHtml = null; });
@@ -1993,7 +1999,7 @@
                         return imgMatch ? imgMatch[1] : null;
                     })();
                     const art = {
-                        id: crypto.randomUUID(),
+                        id: _existingIds.get(link) || crypto.randomUUID(),
                         source: sourceName,
                         feedUrl,
                         title: getText(item, 'title'),
