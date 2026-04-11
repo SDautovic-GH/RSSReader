@@ -454,6 +454,97 @@
             cursor: pointer;
         }
         body.mob-fullscreen #mob-fs-exit { display: flex; }
+        /* Fullscreen go-to-feeds button */
+        #mob-fs-feeds {
+            display: none;
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            z-index: 200;
+            background: rgba(30,30,40,0.85);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px);
+            cursor: pointer;
+        }
+        body.mob-fullscreen #mob-fs-feeds { display: flex; }
+        /* Mobile fullscreen floating topbars */
+        body.mob-fullscreen #timeline-header { display: none; }
+        body.mob-fullscreen #article-list { padding-top: 72px; }
+        #mob-fs-reader-topbar {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: rgba(30,30,40,0.85);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 9999px;
+            padding: 6px 6px 6px 14px;
+            gap: 10px;
+            align-items: center;
+            backdrop-filter: blur(6px);
+            white-space: nowrap;
+        }
+        #mob-fs-reader-topbar .mob-fs-progress-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.85);
+        }
+        #mob-fs-topbar {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: rgba(30,30,40,0.85);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 9999px;
+            padding: 6px 14px;
+            gap: 10px;
+            align-items: center;
+            backdrop-filter: blur(6px);
+            white-space: nowrap;
+        }
+        #mob-fs-topbar .mob-fs-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.13);
+            font-size: 14px;
+            font-weight: 700;
+            padding: 0 6px;
+        }
+        #mob-fs-topbar .mob-fs-count.dupes {
+            background: rgba(96,165,250,0.2);
+            color: #93c5fd;
+            font-size: 12px;
+        }
+        #mob-fs-topbar .mob-fs-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.13);
+            cursor: pointer;
+            color: #fff;
+            border: none;
+            padding: 0;
+        }
         /* ===== DEEP DARK THEME ===== */
         /* Desktop — 2-3 shades darker than current */
         .dark body { background: #13131a !important; }
@@ -783,19 +874,19 @@
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm">
-                        <svg class="w-5 h-5"><use href="#icon-rss"/></svg>
+                        <svg class="w-[22px] h-[22px]"><use href="#icon-rss"/></svg>
                     </div>
-                    <h1 class="font-bold text-sm text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
+                    <h1 class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
                 </div>
                 <div class="flex space-x-1">
                     <button id="theme-toggle" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Switch Theme">
-                        <svg id="theme-icon" class="h-5 w-5"><use href="#icon-moon"/></svg>
+                        <svg id="theme-icon" class="h-[22px] w-[22px]"><use href="#icon-moon"/></svg>
                     </button>
                     <button onclick="refreshAll()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Refresh Feeds">
-                        <svg class="h-5 w-5"><use href="#icon-refresh"/></svg>
+                        <svg class="h-[22px] w-[22px]"><use href="#icon-refresh"/></svg>
                     </button>
                     <button onclick="toggleSettings()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Settings">
-                        <svg class="h-5 w-5"><use href="#icon-settings"/></svg>
+                        <svg class="h-[22px] w-[22px]"><use href="#icon-settings"/></svg>
                     </button>
                 </div>
             </div>
@@ -830,12 +921,14 @@
 
         <!-- PANE 2: Timeline -->
         <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition" style="width: 336px;">
-            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm font-bold text-gray-400 uppercase tracking-tight">
+            <div id="timeline-header" class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center">
                     <span id="timeline-count" class="mr-2">0 Unread</span>
                     <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded">DEDUPED</span>
                 </div>
-                <button onclick="markAllRead()" class="hover:text-blue-500 text-sm font-bold">Mark All Read</button>
+                <button onclick="markAllRead()" title="Mark All Read" class="hover:text-blue-500 transition-colors">
+                    <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </button>
             </div>
             
             <div id="article-list" class="flex-1 overflow-y-auto no-scrollbar"></div>
@@ -867,7 +960,7 @@
                     <div class="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
 
                     <!-- Read time / progress estimate -->
-                    <span id="read-time" class="hidden text-[1em] text-gray-400 font-medium tabular-nums"></span>
+                    <span id="read-time" class="hidden text-[17px] text-gray-400 font-medium tabular-nums"></span>
                 </div>
                 
                 <div class="flex items-center space-x-3">
@@ -981,8 +1074,27 @@
         </main>
     </div>
 
+    <!-- MOBILE FULLSCREEN FLOATING TOPBAR (article list) -->
+    <div id="mob-fs-topbar">
+        <span id="mob-fs-unread-count" class="mob-fs-count">0</span>
+        <span id="mob-fs-dupes-count" class="mob-fs-count dupes" style="display:none">0</span>
+        <button class="mob-fs-action" onclick="markAllRead()" title="Mark All Read">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </button>
+    </div>
+    <!-- MOBILE FULLSCREEN FLOATING TOPBAR (article reader) -->
+    <div id="mob-fs-reader-topbar">
+        <span id="mob-fs-read-time" class="mob-fs-progress-text"></span>
+        <button class="mob-fs-action" onclick="openExternal()" title="Open in browser">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </button>
+    </div>
     <!-- MOBILE FULLSCREEN EXIT BUTTON -->
     <button id="mob-fs-exit" onclick="toggleMobileFullscreen()" title="Exit fullscreen">✕</button>
+    <!-- MOBILE FULLSCREEN GO-TO-FEEDS BUTTON -->
+    <button id="mob-fs-feeds" onclick="setMobilePane('sidebar');" title="Go to Feeds">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
 
     <!-- MOBILE BOTTOM TAB BAR -->
     <nav id="mobile-tab-bar" class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 h-20 flex items-center justify-around px-2 pb-safe">
@@ -1105,6 +1217,13 @@
                             <label class="settings-item-label-sm">Show empty category folders</label>
                             <button id="show-empty-cats-toggle" onclick="toggleShowEmptyCategories()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">OFF</button>
                         </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="settings-item-label-sm">Deduplicate articles by title</label>
+                                <p class="text-[10px] text-gray-400 mt-0.5">Keeps one copy per story, favouring sources ranked by Memeorandum</p>
+                            </div>
+                            <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 ml-4 flex-shrink-0">OFF</button>
+                        </div>
                         <div>
                             <label class="settings-item-label block mb-2">Font</label>
                             <select id="font-family-select" onchange="updateFontFamily('both', this.value)" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs outline-none">
@@ -1214,6 +1333,10 @@
                             </div>
                             <input type="range" min="80" max="130" value="105" id="mob-zoom-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateMobZoom(this.value)">
                         </div>
+                        <div class="flex items-center justify-between">
+                            <label class="settings-item-label-sm">Start in Fullscreen</label>
+                            <button id="default-fullscreen-toggle" onclick="toggleDefaultFullscreen()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">OFF</button>
+                        </div>
                     </div>
                 </div>
 
@@ -1285,17 +1408,17 @@
     </div>
 
     <!-- ARTICLE CONTEXT MENU -->
-    <div id="article-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-sm"></div>
+    <div id="article-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-lg"></div>
 
     <!-- FOLDER CONTEXT MENU -->
-    <div id="folder-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-sm">
+    <div id="folder-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-lg">
         <button onclick="markFolderRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
         <button onclick="renameFolderFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Rename</button>
         <button onclick="deleteFolderFromContext()" class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete Folder & Feeds</button>
     </div>
 
     <!-- FEED CONTEXT MENU -->
-    <div id="feed-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-sm">
+    <div id="feed-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-lg">
         <button onclick="refreshSingleFeed()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Refresh Feed</button>
         <button onclick="markSingleFeedRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
     </div>
@@ -1440,6 +1563,86 @@
             }
             return null;
         }
+
+        // --- TITLE DEDUPLICATION ---
+        window._dedupByTitle = false;
+        window._memoRankMap = null;
+
+        function normTitle(t) {
+            return (t || '')
+                .toLowerCase()
+                .replace(/^(breaking|exclusive|watch|listen|opinion|analysis|update|alert|developing|report|video)\s*:?\s*/i, '')
+                .replace(/[^a-z0-9\s]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function getSourceRank(article) {
+            if (!window._memoRankMap) return 9999;
+            try {
+                const domain = new URL(article.link).hostname.replace(/^www\./, '');
+                return window._memoRankMap[domain] ?? 9999;
+            } catch { return 9999; }
+        }
+
+        async function fetchMemoRankings() {
+            const CACHE_KEY = 'newsreader_memo_ranks';
+            const CACHE_TTL = 86400000; // 24h
+            try {
+                const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+                if (cached && Date.now() - cached.ts < CACHE_TTL && Object.keys(cached.map).length > 0) {
+                    window._memoRankMap = cached.map;
+                    console.log('[Dedup] Loaded', Object.keys(cached.map).length, 'source rankings from cache');
+                    return;
+                }
+            } catch {}
+            const url = 'https://www.memeorandum.com/lb';
+            let html = null;
+            for (const proxyFn of PROXIES) {
+                try {
+                    const proxyUrl = proxyFn(url);
+                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
+                    if (!res.ok) continue;
+                    html = proxyUrl.includes('allorigins') ? (await res.json()).contents : await res.text();
+                    if (html && html.length > 500) break;
+                } catch(e) { console.warn('[Dedup] Proxy failed:', e.message); }
+            }
+            if (!html) { console.warn('[Dedup] Could not fetch Memeorandum rankings — will rank all sources equally'); return; }
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const map = {};
+            let rank = 1;
+            doc.querySelectorAll('a[href]').forEach(a => {
+                const href = a.getAttribute('href') || '';
+                if (!href.startsWith('http')) return;
+                try {
+                    const domain = new URL(href).hostname.replace(/^www\./, '');
+                    if (domain && domain !== 'memeorandum.com' && !map[domain]) {
+                        map[domain] = rank++;
+                    }
+                } catch {}
+            });
+            if (Object.keys(map).length > 0) {
+                window._memoRankMap = map;
+                try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), map })); } catch {}
+                console.log('[Dedup] Fetched', Object.keys(map).length, 'source rankings from Memeorandum');
+            }
+        }
+
+        window.toggleDedupByTitle = () => {
+            window._dedupByTitle = !window._dedupByTitle;
+            const btn = document.getElementById('dedup-title-toggle');
+            if (btn) {
+                btn.textContent = window._dedupByTitle ? 'ON' : 'OFF';
+                btn.classList.toggle('text-blue-500', window._dedupByTitle);
+                btn.classList.toggle('border-blue-500', window._dedupByTitle);
+                btn.classList.toggle('text-gray-500', !window._dedupByTitle);
+                btn.classList.toggle('border-gray-300', !window._dedupByTitle);
+                btn.classList.toggle('dark:border-gray-600', !window._dedupByTitle);
+            }
+            if (window._dedupByTitle && !window._memoRankMap) fetchMemoRankings();
+            saveTypographyPrefs();
+            renderTimeline();
+        };
 
         // ===== BLUESKY AT PROTOCOL INTEGRATION =====
 
@@ -1951,6 +2154,44 @@
                 return sortOrder === 'desc' ? -diff : diff;
             });
 
+            // --- Title dedup ---
+            let dedupRemovedCount = 0;
+            if (window._dedupByTitle) {
+                const bestForTitle = new Map(); // normTitle -> best article
+                for (const art of filtered) {
+                    const nt = normTitle(art.title);
+                    if (!nt) continue;
+                    if (!bestForTitle.has(nt)) {
+                        bestForTitle.set(nt, art);
+                    } else {
+                        const existing = bestForTitle.get(nt);
+                        if (getSourceRank(art) < getSourceRank(existing)) bestForTitle.set(nt, art);
+                    }
+                }
+                const winners = new Set(bestForTitle.values());
+                const before = filtered.length;
+                filtered = filtered.filter(a => { const nt = normTitle(a.title); return !nt || winners.has(a); });
+                dedupRemovedCount = before - filtered.length;
+            }
+            const dedupBadge = document.getElementById('dedup-badge');
+            if (dedupBadge) {
+                if (window._dedupByTitle && dedupRemovedCount > 0) {
+                    dedupBadge.textContent = `−${dedupRemovedCount} DUPES`;
+                    dedupBadge.classList.remove('hidden');
+                } else {
+                    dedupBadge.classList.add('hidden');
+                }
+            }
+            const mobFsDupes = document.getElementById('mob-fs-dupes-count');
+            if (mobFsDupes) {
+                if (window._dedupByTitle && dedupRemovedCount > 0) {
+                    mobFsDupes.textContent = dedupRemovedCount;
+                    mobFsDupes.style.display = '';
+                } else {
+                    mobFsDupes.style.display = 'none';
+                }
+            }
+
             window.currentTimeline = filtered;
             if (!window._navigating) window._navSnapshot = filtered.slice();
 
@@ -1966,6 +2207,8 @@
 
             const unreadCount = filtered.filter(a => a.unread).length;
             document.getElementById('timeline-count').textContent = `${unreadCount} Unread`;
+            const mobFsUnread = document.getElementById('mob-fs-unread-count');
+            if (mobFsUnread) mobFsUnread.textContent = unreadCount;
             updateBadges();
         };
 
@@ -2240,6 +2483,8 @@
             window._articleTotalMinutes = Math.max(1, Math.ceil(wordCount / 200));
             const readTimeEl = document.getElementById('read-time');
             if (readTimeEl) { readTimeEl.textContent = `~${window._articleTotalMinutes} min read`; readTimeEl.classList.remove('hidden'); }
+            const mobFsReadTimeEl = document.getElementById('mob-fs-read-time');
+            if (mobFsReadTimeEl) mobFsReadTimeEl.textContent = `~${window._articleTotalMinutes} min read`;
 
             const idx = window.currentTimeline.findIndex(a => a.id === id);
             const prevBtn = document.getElementById('prev-article-btn');
@@ -3006,11 +3251,14 @@
             const readTimeEl = document.getElementById('read-time');
             if (readTimeEl && window._articleTotalMinutes) {
                 const remaining = Math.max(1, Math.ceil(window._articleTotalMinutes * (1 - clamped / 100)));
-                readTimeEl.textContent = clamped < 5
+                const progressText = clamped < 5
                     ? `~${window._articleTotalMinutes} min read`
                     : clamped >= 97
                         ? `Done · ${window._articleTotalMinutes} min`
                         : `${Math.round(clamped)}% · ~${remaining} min left`;
+                readTimeEl.textContent = progressText;
+                const mobFsReadTime = document.getElementById('mob-fs-read-time');
+                if (mobFsReadTime) mobFsReadTime.textContent = progressText;
             }
         });
 
@@ -3674,6 +3922,7 @@
                     sortOrder:          get('pref-sort-order'),
                     autoRefresh:        get('pref-auto-refresh'),
                     mobZoom:            get('mob-zoom-slider'),
+                    dedupByTitle:       window._dedupByTitle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
@@ -3728,6 +3977,16 @@
                 const el = document.getElementById('mob-zoom-slider'); if (el) el.value = prefs.mobZoom;
                 const lb = document.getElementById('mob-zoom-val'); if (lb) lb.textContent = `${prefs.mobZoom}%`;
                 root.style.setProperty('--mob-zoom', prefs.mobZoom / 100);
+            }
+            if (prefs.dedupByTitle) {
+                window._dedupByTitle = true;
+                const btn = document.getElementById('dedup-title-toggle');
+                if (btn) {
+                    btn.textContent = 'ON';
+                    btn.classList.add('text-blue-500', 'border-blue-500');
+                    btn.classList.remove('text-gray-500', 'border-gray-300', 'dark:border-gray-600');
+                }
+                fetchMemoRankings();
             }
         }
 
@@ -3821,6 +4080,27 @@
         window._readLinks = new Set(getStoredReadLinks());
 
         // --- MOBILE FULLSCREEN ---
+        function updateMobFsTopbar() {
+            const isFS = document.body.classList.contains('mob-fullscreen');
+            const topbar = document.getElementById('mob-fs-topbar');
+            if (topbar) topbar.style.display = (isFS && window._mobilePane === 'timeline') ? 'flex' : 'none';
+            const readerTopbar = document.getElementById('mob-fs-reader-topbar');
+            if (readerTopbar) readerTopbar.style.display = (isFS && window._mobilePane === 'viewer') ? 'flex' : 'none';
+        }
+        window.updateMobFsTopbar = updateMobFsTopbar;
+
+        window.toggleDefaultFullscreen = () => {
+            window._defaultFullscreen = !window._defaultFullscreen;
+            const btn = document.getElementById('default-fullscreen-toggle');
+            if (btn) {
+                btn.textContent = window._defaultFullscreen ? 'ON' : 'OFF';
+                btn.className = window._defaultFullscreen
+                    ? 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400';
+            }
+            try { localStorage.setItem('newsreader_defaultfullscreen', window._defaultFullscreen ? '1' : '0'); } catch(e) {}
+        };
+
         window.toggleMobileFullscreen = () => {
             const isFS = document.body.classList.toggle('mob-fullscreen');
             const label = document.getElementById('mob-fs-label');
@@ -3830,6 +4110,7 @@
             } else if (!isFS && document.exitFullscreen) {
                 document.exitFullscreen().catch(() => {});
             }
+            updateMobFsTopbar();
         };
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement && document.body.classList.contains('mob-fullscreen')) {
@@ -3837,11 +4118,15 @@
                 const label = document.getElementById('mob-fs-label');
                 if (label) label.textContent = 'Full';
             }
+            updateMobFsTopbar();
         });
         window._mobilePane = 'timeline';
 
         window.setMobilePane = (pane) => {
             window._mobilePane = pane;
+            const feedsBtn = document.getElementById('mob-fs-feeds');
+            if (feedsBtn) feedsBtn.style.display = pane === 'sidebar' ? 'none' : '';
+            updateMobFsTopbar();
             const paneMap = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
             const tabMap  = { sidebar: 'mob-tab-feeds', timeline: 'mob-tab-articles', viewer: 'mob-tab-reader' };
             Object.entries(paneMap).forEach(([key, id]) => {
@@ -3941,6 +4226,15 @@
                 const sel = document.getElementById('pref-auto-refresh');
                 if (sel) sel.value = prefs.autoRefresh;
                 updateAutoRefresh(prefs.autoRefresh);
+            }
+        } catch(e) {}
+
+        try {
+            if (isMobile() && localStorage.getItem('newsreader_defaultfullscreen') === '1') {
+                window._defaultFullscreen = true;
+                const btn = document.getElementById('default-fullscreen-toggle');
+                if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
+                toggleMobileFullscreen();
             }
         } catch(e) {}
 
