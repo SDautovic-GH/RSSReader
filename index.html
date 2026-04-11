@@ -473,6 +473,29 @@
             cursor: pointer;
         }
         body.mob-fullscreen #mob-fs-feeds { display: flex; }
+        /* Fullscreen back-to-articles button (viewer only) */
+        #mob-fs-articles {
+            display: none;
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: rgba(30,30,40,0.85);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 9999px;
+            height: 44px;
+            padding: 0 18px;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            backdrop-filter: blur(6px);
+            cursor: pointer;
+        }
         /* Mobile fullscreen floating topbars */
         body.mob-fullscreen #timeline-header { display: none; }
         body.mob-fullscreen #article-list { padding-top: 72px; }
@@ -1094,6 +1117,11 @@
     <!-- MOBILE FULLSCREEN GO-TO-FEEDS BUTTON -->
     <button id="mob-fs-feeds" onclick="setMobilePane('sidebar');" title="Go to Feeds">
         <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <!-- MOBILE FULLSCREEN BACK-TO-ARTICLES BUTTON (viewer only) -->
+    <button id="mob-fs-articles" onclick="setMobilePane('timeline');" title="Back to Article List">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Articles
     </button>
 
     <!-- MOBILE BOTTOM TAB BAR -->
@@ -4082,10 +4110,15 @@
         // --- MOBILE FULLSCREEN ---
         function updateMobFsTopbar() {
             const isFS = document.body.classList.contains('mob-fullscreen');
+            const pane = window._mobilePane;
             const topbar = document.getElementById('mob-fs-topbar');
-            if (topbar) topbar.style.display = (isFS && window._mobilePane === 'timeline') ? 'flex' : 'none';
+            if (topbar) topbar.style.display = (isFS && pane === 'timeline') ? 'flex' : 'none';
             const readerTopbar = document.getElementById('mob-fs-reader-topbar');
-            if (readerTopbar) readerTopbar.style.display = (isFS && window._mobilePane === 'viewer') ? 'flex' : 'none';
+            if (readerTopbar) readerTopbar.style.display = (isFS && pane === 'viewer') ? 'flex' : 'none';
+            const feedsBtn = document.getElementById('mob-fs-feeds');
+            if (feedsBtn) feedsBtn.style.display = (isFS && pane !== 'sidebar' && pane !== 'viewer') ? 'flex' : 'none';
+            const articlesBtn = document.getElementById('mob-fs-articles');
+            if (articlesBtn) articlesBtn.style.display = (isFS && pane === 'viewer') ? 'flex' : 'none';
         }
         window.updateMobFsTopbar = updateMobFsTopbar;
 
@@ -4124,8 +4157,6 @@
 
         window.setMobilePane = (pane) => {
             window._mobilePane = pane;
-            const feedsBtn = document.getElementById('mob-fs-feeds');
-            if (feedsBtn) feedsBtn.style.display = pane === 'sidebar' ? 'none' : '';
             updateMobFsTopbar();
             const paneMap = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
             const tabMap  = { sidebar: 'mob-tab-feeds', timeline: 'mob-tab-articles', viewer: 'mob-tab-reader' };
