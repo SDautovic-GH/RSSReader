@@ -215,7 +215,8 @@ Settings are in two tabs:
 | Article Body Size | Size of article body text |
 | Article Title Size | Size of the article title in the reader |
 | Article Metadata Size | Size of author/date metadata |
-| Line Height | Spacing between body text lines |
+| Line Height | Spacing between lines in the article body, article title, and feed names |
+| List Title & Preview Line Height | Spacing between lines in the article list titles and preview text (default 1.4, independent from body line height) |
 | Preview Lines | How many lines of preview text to show (2–15) |
 | Sort Order | Newest first or oldest first |
 | Auto-Refresh Interval | How often feeds automatically refresh |
