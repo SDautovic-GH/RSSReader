@@ -4103,7 +4103,9 @@
                 try {
                     const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
                     const existing = getStoredReadLinks();
-                    const merged = Array.from(new Set([...existing, ...readLinks]));
+                    const loadedLinks = new Set(window.articles.map(a => a.link));
+                    const preserved = existing.filter(l => !loadedLinks.has(l));
+                    const merged = Array.from(new Set([...preserved, ...readLinks]));
                     localStorage.setItem('newsreader_read', JSON.stringify(merged.slice(-5000)));
                 } catch(e) { console.warn('Storage error:', e.message); }
             }, 2000);
