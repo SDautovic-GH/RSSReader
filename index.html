@@ -134,8 +134,11 @@
         #article-title { font-weight: 600 !important; } /* font-semibold */
 
         /* Global line height for article content and list */
-        .dynamic-list-title, .dynamic-list-preview, #article-body, #article-title {
+        #article-body, #article-title {
             line-height: var(--line-height) !important;
+        }
+        .dynamic-list-preview, .dynamic-list-title {
+            line-height: var(--list-preview-line-height) !important;
         }
 
         /* Title — pure white in dark, near-black in light. Clean hierarchy like Reeder/Apple News. */
@@ -223,6 +226,7 @@
             --mob-line-height: 1.6;
             --feed-line-height: 1.6;
             --mob-feed-line-height: 1.6;
+            --list-preview-line-height: 1.4;
             --mob-folder-size: 1.0em;
             --mob-list-source-size: 1.0em;
             --mob-list-date-size: 1.0em;
@@ -402,8 +406,11 @@
             /* Use higher specificity to override global .dynamic-list-title rule */
             #article-list .dynamic-list-title { font-size: var(--mob-list-title-size) !important; }
             #article-list .dynamic-list-preview { font-size: var(--mob-list-preview-size) !important; }
-            .dynamic-list-title, .dynamic-list-preview, #article-body, #article-title {
+            #article-body, #article-title {
                 line-height: var(--mob-line-height) !important;
+            }
+            #article-list .dynamic-list-preview, #article-list .dynamic-list-title {
+                line-height: var(--list-preview-line-height) !important;
             }
             /* Mobile article list — 2px left/right padding, no text select (prevents long-press conflict) */
             #article-list [data-id] { padding-left: 3px !important; padding-right: 3px !important; -webkit-user-select: none; user-select: none; }
@@ -1342,6 +1349,13 @@
                                 <span class="text-xs font-bold text-blue-500" id="shared-line-height-val">1.6</span>
                             </div>
                             <input type="range" min="8" max="24" value="16" id="shared-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateSharedSize('lineHeight', this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="settings-item-label">List Title &amp; Preview Line Height</span>
+                                <span class="text-xs font-bold text-blue-500" id="shared-preview-line-height-val">1.4</span>
+                            </div>
+                            <input type="range" min="8" max="24" value="14" id="shared-preview-line-height-slider" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="updateSharedSize('previewLineHeight', this.value)">
                         </div>
                     </div>
                 </div>
@@ -3435,7 +3449,8 @@
             body:         { props: ['--view-font-size','--mob-body-size'],                               label: 'shared-body-val',       rerender: null },
             articleTitle: { props: ['--mob-article-title-size'],                                         label: 'shared-article-title-val', rerender: null },
             meta:         { props: ['--article-meta-size','--mob-author-size'],                          label: 'shared-meta-val',       rerender: null },
-            lineHeight:   { props: ['--line-height','--mob-line-height','--feed-line-height','--mob-feed-line-height'], label: 'shared-line-height-val', rerender: null, noEm: true },
+            lineHeight:        { props: ['--line-height','--mob-line-height','--feed-line-height','--mob-feed-line-height'], label: 'shared-line-height-val',         rerender: null,       noEm: true },
+            previewLineHeight: { props: ['--list-preview-line-height'],                                                      label: 'shared-preview-line-height-val', rerender: 'timeline', noEm: true },
         };
 
         window.updateSharedSize = (key, v) => {
@@ -3955,7 +3970,8 @@
                     sharedBody:         get('shared-body-slider'),
                     sharedArticleTitle: get('shared-article-title-slider'),
                     sharedMeta:         get('shared-meta-slider'),
-                    sharedLineHeight:   get('shared-line-height-slider'),
+                    sharedLineHeight:        get('shared-line-height-slider'),
+                    previewLineHeight:       get('shared-preview-line-height-slider'),
                     previewLines:       get('lines-slider'),
                     font:               get('font-family-select'),
                     sortOrder:          get('pref-sort-order'),
@@ -3986,7 +4002,8 @@
                 { key: migrate('sharedBody',         ['viewSize','mobBodySize']),               id: 'shared-body-slider',          label: 'shared-body-val',          fn: v => updateSharedSize('body', v) },
                 { key: migrate('sharedArticleTitle', ['articleTitleSize','mobArticleTitleSize']),id:'shared-article-title-slider', label: 'shared-article-title-val', fn: v => updateSharedSize('articleTitle', v) },
                 { key: migrate('sharedMeta',         ['articleMetaSize','mobAuthorSize']),      id: 'shared-meta-slider',          label: 'shared-meta-val',          fn: v => updateSharedSize('meta', v) },
-                { key: migrate('sharedLineHeight',   ['lineHeight','mobLineHeight']),           id: 'shared-line-height-slider',   label: 'shared-line-height-val',   fn: v => updateSharedSize('lineHeight', v) },
+                { key: migrate('sharedLineHeight',   ['lineHeight','mobLineHeight']),           id: 'shared-line-height-slider',        label: 'shared-line-height-val',         fn: v => updateSharedSize('lineHeight', v) },
+                { key: prefs.previewLineHeight,                                                  id: 'shared-preview-line-height-slider', label: 'shared-preview-line-height-val', fn: v => updateSharedSize('previewLineHeight', v) },
                 { key: prefs.feedSpacing,                                                       id: 'feed-spacing-slider',         label: 'feed-spacing-val',         fn: v => updateFeedSpacing(v) },
             ];
             shared.forEach(({ key, id, fn }) => {
