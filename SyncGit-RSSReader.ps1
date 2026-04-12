@@ -218,14 +218,30 @@ try {
     }
 
     # Commit any local changes BEFORE pulling to avoid merge conflicts
+    $needsPush = $false
     Invoke-GitChecked -Arguments @("add", "-A") -ActionDescription "Stage RSSReader changes"
     $PrePullChanges = & git status --porcelain 2>$null
     if ($PrePullChanges) {
         $TimeStamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         Invoke-GitChecked -Arguments @("commit", "-m", "Auto sync $TimeStamp") -ActionDescription "Commit RSSReader changes before pull"
+        $needsPush = $true
     }
 
-    Invoke-GitChecked -Arguments @("pull", "--no-rebase", $RemoteName, $MainBranch) -ActionDescription "Pull $MainBranch"
+    # Pull; if a merge conflict occurs, abort and retry preferring local (Xours)
+    try {
+        Invoke-GitChecked -Arguments @("pull", "--no-rebase", $RemoteName, $MainBranch) -ActionDescription "Pull $MainBranch"
+    }
+    catch {
+        if ($_.Exception.Message -match "Automatic merge failed|CONFLICT") {
+            Write-Host "Merge conflict detected - resolving by preferring local changes."
+            & git merge --abort 2>$null
+            Invoke-GitChecked -Arguments @("pull", "--no-rebase", "-Xours", $RemoteName, $MainBranch) -ActionDescription "Pull $MainBranch (Xours)"
+            $needsPush = $true
+        }
+        else {
+            throw
+        }
+    }
 
     # Check for any remaining changes after pull and commit
     $RSSChanges = & git status --porcelain 2>$null
@@ -233,6 +249,10 @@ try {
         Invoke-GitChecked -Arguments @("add", "-A") -ActionDescription "Stage post-pull changes"
         $TimeStamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         Invoke-GitChecked -Arguments @("commit", "-m", "Auto sync $TimeStamp") -ActionDescription "Commit RSSReader changes"
+        $needsPush = $true
+    }
+
+    if ($needsPush) {
         Invoke-GitChecked -Arguments @("push", $RemoteName, $MainBranch) -ActionDescription "Push RSSReader to $RemoteName"
         Write-Host "RSSReader updated on GitHub."
     }
