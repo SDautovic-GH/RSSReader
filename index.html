@@ -384,9 +384,8 @@
             /* Show mobile reader action bar, hide desktop toolbar equivalents */
             #mobile-reader-bar { display: flex !important; }
             #prev-article-btn, #next-article-btn,
-            #share-btn, #tts-btn, #read-later-action-btn,
-            #view-density-toggle,
-            #viewer-pane .h-12 button[onclick="toggleUnreadManual()"] { display: none !important; }
+            #share-btn, #tts-btn, #read-later-action-btn, #unread-action-btn,
+            #view-density-toggle { display: none !important; }
             /* Mobile sidebar — consistent font size for smart feeds AND category folders */
             #sidebar-pane .smart-feed-btn { font-size: var(--mob-folder-size) !important; line-height: var(--mob-feed-line-height) !important; }
             #sidebar-pane .dynamic-category-text { font-size: var(--mob-folder-size) !important; line-height: var(--mob-feed-line-height) !important; }
@@ -888,7 +887,7 @@
     <div id="app-container" class="flex h-screen w-full overflow-hidden">
         
         <!-- PANE 1: Sidebar -->
-        <aside id="sidebar-pane" class="w-64 flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col" style="position:relative;">
+        <aside id="sidebar-pane" class="w-72 flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col" style="position:relative;">
             <!-- Pull-to-refresh indicator -->
             <div id="ptr-indicator">
                 <div id="ptr-spinner"></div>
@@ -968,10 +967,6 @@
                         EXIT FULL SCREEN
                     </button>
                     
-                    <button onclick="toggleUnreadManual()" class="text-gray-500 hover:text-blue-600" title="Toggle Unread">
-                        <svg class="h-5 w-5"><use href="#icon-check"/></svg>
-                    </button>
-
                     <!-- Prev / Next -->
                     <button id="prev-article-btn" onclick="navigateArticle(-1)" class="hidden text-gray-500 hover:text-blue-600" title="Previous Article (↑)">
                         <svg class="h-5 w-5"><use href="#icon-chevron-up"/></svg>
@@ -999,6 +994,10 @@
                         <!-- TTS Button -->
                         <button id="tts-btn" onclick="toggleTTS()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                             LISTEN
+                        </button>
+                        <!-- Unread Toggle Button -->
+                        <button id="unread-action-btn" onclick="toggleUnreadManual()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border transition-colors">
+                            MARK READ
                         </button>
                         <!-- Dynamic Read Later Action Button -->
                         <button id="read-later-action-btn" onclick="handleReadLaterAction()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border transition-colors">
@@ -3679,11 +3678,19 @@
             const b = document.getElementById('read-later-action-btn');
             const shareBtn = document.getElementById('share-btn');
             const ttsBtn = document.getElementById('tts-btn');
+            const unreadBtn = document.getElementById('unread-action-btn');
             const hasArticle = !!window.currentArticle;
-            [b, shareBtn, ttsBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            [b, shareBtn, ttsBtn, unreadBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
             if (!hasArticle) return;
 
             const BASE = 'text-[10px] font-bold px-2 py-1 rounded-md border transition-colors cursor-pointer';
+            if (window.currentArticle.unread) {
+                unreadBtn.textContent = 'MARK READ';
+                unreadBtn.className = `${BASE} border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30`;
+            } else {
+                unreadBtn.textContent = 'MARK UNREAD';
+                unreadBtn.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
+            }
             if (window.currentSmartFeed === 'read-later') {
                 b.textContent = "REMOVE FROM READ LATER";
                 b.className = `${BASE} border-red-500 text-red-500 hover:bg-red-50`;
