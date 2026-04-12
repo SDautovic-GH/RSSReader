@@ -3725,7 +3725,18 @@
         };
 
         window.markAllRead = () => {
-            const toMark = window.currentTimeline || window.articles;
+            let toMark;
+            if (window.currentCategoryFilter) {
+                const catFeeds = window.feeds.filter(f => f.category === window.currentCategoryFilter);
+                const catSources = new Set(catFeeds.map(f => f.name));
+                const catUrls = new Set(catFeeds.map(f => f.url));
+                toMark = window.articles.filter(a => a.unread && (catSources.has(a.source) || (a.feedUrl && catUrls.has(a.feedUrl))));
+            } else if (window.currentSourceFilter) {
+                const srcFeed = window.feeds.find(f => f.name === window.currentSourceFilter);
+                toMark = window.articles.filter(a => a.unread && (a.source === window.currentSourceFilter || (srcFeed && a.feedUrl && a.feedUrl === srcFeed.url)));
+            } else {
+                toMark = window.currentTimeline || window.articles;
+            }
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
             saveReadState();
             window._pinnedArticleIds.clear();
