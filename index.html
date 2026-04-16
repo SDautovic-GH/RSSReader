@@ -1095,17 +1095,6 @@
                                 <span id="article-author" class="font-semibold"></span><span class="mx-2">•</span><span id="article-date"></span>
                             </div>
                             <div id="article-body" class="article-content dynamic-view-text text-gray-800 dark:text-gray-300 leading-relaxed space-y-4"></div>
-                            <!-- Prev / Next footer navigation (handy on mobile) -->
-                            <div id="article-nav-footer" class="hidden mt-8 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                                <button id="prev-article-footer" onclick="navigateArticle(-1)" class="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors p-3">
-                                    <svg class="w-6 h-6"><use href="#icon-chevron-up"/></svg>
-                                    <span id="prev-article-title" class="hidden md:inline max-w-[140px] truncate text-sm"></span>
-                                </button>
-                                <button id="next-article-footer" onclick="navigateArticle(1)" class="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors p-3">
-                                    <span id="next-article-title" class="hidden md:inline max-w-[140px] truncate text-sm"></span>
-                                    <svg class="w-6 h-6"><use href="#icon-chevron-down"/></svg>
-                                </button>
-                            </div>
                         </article>
                     </div>
                 </div>
@@ -1166,7 +1155,7 @@
             <button class="mob-fs-bar-btn" onclick="toggleMobileFullscreen()" title="Exit fullscreen">✕</button>
         </div>
     </div>
-    <!-- MOBILE FULLSCREEN BOTTOM BAR (article reader: articles + exit) -->
+    <!-- MOBILE FULLSCREEN BOTTOM BAR (article reader: articles + exit + prev + next) -->
     <div id="mob-fs-articles-wrap" class="mob-fs-wrap">
         <div id="mob-fs-viewer-bar">
             <button class="mob-fs-viewer-articles" onclick="setMobilePane('timeline');" title="Back to Article List">
@@ -1174,6 +1163,12 @@
                 Articles
             </button>
             <button class="mob-fs-bar-btn" onclick="toggleMobileFullscreen()" title="Exit fullscreen">✕</button>
+            <button id="mob-fs-prev-btn" class="mob-fs-bar-btn" onclick="navigateArticle(-1)" title="Previous article">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <button id="mob-fs-next-btn" class="mob-fs-bar-btn" onclick="navigateArticle(1)" title="Next article">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
         </div>
     </div>
 
@@ -2493,22 +2488,34 @@
         (function() {
             const indicator = document.getElementById('ptr-indicator');
             const label = document.getElementById('ptr-label');
-            const THRESHOLD = 130;
+            const THRESHOLD = 100;
             let _pt = null;
+            let _loading = false;
 
             document.addEventListener('touchstart', (e) => {
-                if (!isMobile() || window._mobilePane !== 'sidebar' || _pt?.loading) return;
+                if (!isMobile() || window._mobilePane !== 'sidebar' || _loading) return;
+                // Only activate when the sidebar scroll container is at the very top
+                const scrollable = document.querySelector('#sidebar-pane .overflow-y-auto');
+                if (scrollable && scrollable.scrollTop > 4) return;
                 const touch = e.touches[0];
-                _pt = { startY: touch.clientY, startX: touch.clientX, active: false, loading: false };
+                _pt = { startY: touch.clientY, startX: touch.clientX, dirLocked: false, cancelled: false };
             }, { passive: true });
 
             document.addEventListener('touchmove', (e) => {
-                if (!_pt || _pt.loading) return;
+                if (!_pt || _pt.cancelled || _loading) return;
                 const touch = e.touches[0];
                 const dy = touch.clientY - _pt.startY;
                 const dx = touch.clientX - _pt.startX;
-                if (dy < 8 || Math.abs(dx) > dy) { _pt = null; return; }
-                _pt.active = true;
+                const absDy = Math.abs(dy);
+                const absDx = Math.abs(dx);
+
+                // Wait for enough movement before locking direction — prevents premature cancel on diagonal start
+                if (!_pt.dirLocked) {
+                    if (absDy < 6 && absDx < 6) return;
+                    if (absDx > absDy || dy < 0) { _pt.cancelled = true; return; } // horizontal or upward — not PTR
+                    _pt.dirLocked = true;
+                }
+
                 const offset = Math.min(dy * 0.14, 56);
                 indicator.style.top = (offset - 56) + 'px';
                 indicator.classList.add('ptr-visible');
@@ -2518,12 +2525,13 @@
 
             const reset = () => {
                 if (!_pt) return;
-                const wasReady = indicator.classList.contains('ptr-ready');
+                const wasReady = !_pt.cancelled && indicator.classList.contains('ptr-ready');
+                _pt = null;
                 indicator.style.top = '-56px';
                 indicator.classList.remove('ptr-visible', 'ptr-ready');
                 label.textContent = 'Pull to refresh';
-                _pt = null;
-                if (wasReady) {
+                if (wasReady && !_loading) {
+                    _loading = true;
                     indicator.style.top = '0px';
                     indicator.classList.add('ptr-visible', 'ptr-loading');
                     label.textContent = 'Refreshing...';
@@ -2531,11 +2539,17 @@
                     fetchAllStaggered(window.feeds).then(() => {
                         indicator.style.top = '-56px';
                         indicator.classList.remove('ptr-visible', 'ptr-loading');
+                        _loading = false;
                     });
                 }
             };
+            const cancel = () => {
+                _pt = null;
+                indicator.style.top = '-56px';
+                indicator.classList.remove('ptr-visible', 'ptr-ready');
+            };
             document.addEventListener('touchend', reset, { passive: true });
-            document.addEventListener('touchcancel', reset, { passive: true });
+            document.addEventListener('touchcancel', cancel, { passive: true });
         })();
 
         window.selectArticle = function(id) {
@@ -2598,20 +2612,12 @@
             if (mobPrev) mobPrev.style.opacity = idx <= 0 ? '0.3' : '1';
             if (mobNext) mobNext.style.opacity = idx >= window.currentTimeline.length - 1 ? '0.3' : '1';
 
-            const navFooter = document.getElementById('article-nav-footer');
-            const prevFooter = document.getElementById('prev-article-footer');
-            const nextFooter = document.getElementById('next-article-footer');
-            const prevTitle = document.getElementById('prev-article-title');
-            const nextTitle = document.getElementById('next-article-title');
-            if (navFooter) {
-                const hasPrev = idx > 0;
-                const hasNext = idx < window.currentTimeline.length - 1;
-                navFooter.classList.toggle('hidden', !hasPrev && !hasNext);
-                if (prevFooter) prevFooter.classList.toggle('invisible', !hasPrev);
-                if (nextFooter) nextFooter.classList.toggle('invisible', !hasNext);
-                if (prevTitle && hasPrev) prevTitle.textContent = window.currentTimeline[idx - 1].title;
-                if (nextTitle && hasNext) nextTitle.textContent = window.currentTimeline[idx + 1].title;
-            }
+            const fsPrev = document.getElementById('mob-fs-prev-btn');
+            const fsNext = document.getElementById('mob-fs-next-btn');
+            const hasPrev = idx > 0;
+            const hasNext = idx < window.currentTimeline.length - 1;
+            if (fsPrev) { fsPrev.style.opacity = hasPrev ? '1' : '0.3'; fsPrev.style.pointerEvents = hasPrev ? '' : 'none'; }
+            if (fsNext) { fsNext.style.opacity = hasNext ? '1' : '0.3'; fsNext.style.pointerEvents = hasNext ? '' : 'none'; }
 
             const shareBtn = document.getElementById('share-btn');
             if (shareBtn) shareBtn.classList.remove('hidden');
