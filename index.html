@@ -604,6 +604,39 @@
             font-weight: 600;
             color: #93c5fd;
         }
+        /* ===== DESKTOP FLOATING ARTICLE NAV ===== */
+        #desk-nav-float {
+            position: absolute;
+            bottom: 24px;
+            right: 28px;
+            z-index: 20;
+            flex-direction: column;
+            gap: 5px;
+        }
+        #desk-nav-float button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.13);
+            background: rgba(22,22,30,0.62);
+            box-shadow: 0 4px 18px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.15);
+            backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-backdrop-filter: blur(24px) saturate(1.6);
+            color: rgba(255,255,255,0.88);
+            cursor: pointer;
+            transition: background 0.12s, opacity 0.12s;
+        }
+        #desk-nav-float button:hover:not(.hidden) {
+            background: rgba(59,130,246,0.65);
+            border-color: rgba(59,130,246,0.45);
+        }
+        @media (max-width: 900px) {
+            #desk-nav-float { display: none !important; }
+        }
+
         /* ===== APPLE GLASS — unified glass for all fullscreen floating pills ===== */
         #mob-fs-exit,
         #mob-fs-topbar,
@@ -1018,14 +1051,6 @@
                         EXIT FULL SCREEN
                     </button>
                     
-                    <!-- Prev / Next -->
-                    <button id="prev-article-btn" onclick="navigateArticle(-1)" class="hidden text-gray-500 hover:text-blue-600" title="Previous Article (↑)">
-                        <svg class="h-5 w-5"><use href="#icon-chevron-up"/></svg>
-                    </button>
-                    <button id="next-article-btn" onclick="navigateArticle(1)" class="hidden text-gray-500 hover:text-blue-600" title="Next Article (↓)">
-                        <svg class="h-5 w-5"><use href="#icon-chevron-down"/></svg>
-                    </button>
-
                     <div class="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
 
                     <!-- Read time / progress estimate -->
@@ -1103,6 +1128,16 @@
                         </article>
                     </div>
                 </div>
+            </div>
+
+            <!-- DESKTOP FLOATING ARTICLE NAV (prev/next at bottom-right of viewer) -->
+            <div id="desk-nav-float" style="display:none">
+                <button id="prev-article-btn" onclick="navigateArticle(-1)" title="Previous Article (↑)">
+                    <svg class="h-5 w-5"><use href="#icon-chevron-up"/></svg>
+                </button>
+                <button id="next-article-btn" onclick="navigateArticle(1)" title="Next Article (↓)">
+                    <svg class="h-5 w-5"><use href="#icon-chevron-down"/></svg>
+                </button>
             </div>
 
             <!-- Mobile Reader Action Bar (shown only on mobile, in reader pane) -->
@@ -2611,6 +2646,8 @@
             const nextBtn = document.getElementById('next-article-btn');
             if (prevBtn) prevBtn.classList.toggle('hidden', idx <= 0);
             if (nextBtn) nextBtn.classList.toggle('hidden', idx >= window.currentTimeline.length - 1);
+            const deskNav = document.getElementById('desk-nav-float');
+            if (deskNav) deskNav.style.display = isMobile() ? 'none' : 'flex';
 
             const mobPrev = document.getElementById('mob-prev-btn');
             const mobNext = document.getElementById('mob-next-btn');
@@ -2650,7 +2687,11 @@
                     // Update unread dot in-place — no outerHTML replacement, no smooth scroll
                     const dot = newSelected.querySelector('.bg-blue-500.rounded-full');
                     if (dot) { dot.classList.remove('bg-blue-500'); dot.classList.add('opacity-0'); }
-                    newSelected.scrollIntoView({ block: 'nearest' });
+                    if (isMobile()) {
+                        newSelected.scrollIntoView({ block: 'nearest' });
+                    } else {
+                        listEl.scrollTop = newSelected.offsetTop;
+                    }
                 } else {
                     renderTimeline(true);
                 }
