@@ -474,32 +474,42 @@
             justify-content: center;
             pointer-events: none;
         }
-        #mob-fs-topbar-wrap    { top: 16px; }
         #mob-fs-reader-wrap    { top: 16px; }
         #mob-fs-articles-wrap  { bottom: 16px; }
-        /* Pills: no position/transform — centered by the flex wrapper */
-        #mob-fs-articles {
+        /* Viewer bottom bar pill (articles + exit) */
+        #mob-fs-viewer-bar {
             pointer-events: auto;
             touch-action: manipulation;
+            display: inline-flex;
             background: rgba(30,30,40,0.85);
             color: #fff;
             border: 1px solid rgba(255,255,255,0.2);
             border-radius: 9999px;
-            height: 44px;
-            padding: 0 18px;
+            padding: 5px;
+            gap: 4px;
+            align-items: center;
+            backdrop-filter: blur(6px);
+        }
+        .mob-fs-viewer-articles {
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            height: 44px;
+            border-radius: 9999px;
+            padding: 0 16px;
             gap: 7px;
             font-size: 16px;
             font-weight: 600;
-            white-space: nowrap;
-            backdrop-filter: blur(6px);
+            color: #fff;
+            background: rgba(255,255,255,0.10);
+            border: none;
             cursor: pointer;
+            white-space: nowrap;
+            touch-action: manipulation;
         }
         /* Mobile fullscreen floating topbars */
         body.mob-fullscreen #timeline-header { display: none; }
-        body.mob-fullscreen #article-list { padding-top: 72px; }
+        body.mob-fullscreen #article-list { padding-top: 0; }
         #mob-fs-reader-topbar {
             pointer-events: auto;
             touch-action: manipulation;
@@ -600,6 +610,11 @@
             gap: 7px;
             font-size: 16px;
             font-weight: 700;
+        }
+        #mob-fs-bar-dupes {
+            font-size: 13px;
+            font-weight: 600;
+            color: #93c5fd;
         }
         /* ===== DEEP DARK THEME ===== */
         /* Desktop — 2-3 shades darker than current */
@@ -1126,13 +1141,6 @@
         </main>
     </div>
 
-    <!-- MOBILE FULLSCREEN FLOATING TOPBAR (article list) -->
-    <div id="mob-fs-topbar-wrap" class="mob-fs-wrap">
-        <div id="mob-fs-topbar">
-            <span id="mob-fs-unread-count" class="mob-fs-count">0</span>
-            <span id="mob-fs-dupes-count" class="mob-fs-count dupes" style="display:none">0</span>
-        </div>
-    </div>
     <!-- MOBILE FULLSCREEN FLOATING TOPBAR (article reader) -->
     <div id="mob-fs-reader-wrap" class="mob-fs-wrap">
         <div id="mob-fs-reader-topbar">
@@ -1153,16 +1161,20 @@
             <button class="mob-fs-bar-btn mob-fs-bar-mark-read" onclick="markAllRead()" title="Mark All Read">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 <span id="mob-fs-bar-unread">0</span>
+                <span id="mob-fs-bar-dupes" style="display:none">−0</span>
             </button>
             <button class="mob-fs-bar-btn" onclick="toggleMobileFullscreen()" title="Exit fullscreen">✕</button>
         </div>
     </div>
-    <!-- MOBILE FULLSCREEN BACK-TO-ARTICLES BUTTON (viewer only) -->
+    <!-- MOBILE FULLSCREEN BOTTOM BAR (article reader: articles + exit) -->
     <div id="mob-fs-articles-wrap" class="mob-fs-wrap">
-        <button id="mob-fs-articles" onclick="setMobilePane('timeline');" title="Back to Article List">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-            Articles
-        </button>
+        <div id="mob-fs-viewer-bar">
+            <button class="mob-fs-viewer-articles" onclick="setMobilePane('timeline');" title="Back to Article List">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                Articles
+            </button>
+            <button class="mob-fs-bar-btn" onclick="toggleMobileFullscreen()" title="Exit fullscreen">✕</button>
+        </div>
     </div>
 
     <!-- MOBILE BOTTOM TAB BAR -->
@@ -2271,13 +2283,13 @@
                     dedupBadge.classList.add('hidden');
                 }
             }
-            const mobFsDupes = document.getElementById('mob-fs-dupes-count');
-            if (mobFsDupes) {
+            const mobFsBarDupes = document.getElementById('mob-fs-bar-dupes');
+            if (mobFsBarDupes) {
                 if (window._dedupByTitle && dedupRemovedCount > 0) {
-                    mobFsDupes.textContent = dedupRemovedCount;
-                    mobFsDupes.style.display = '';
+                    mobFsBarDupes.textContent = `−${dedupRemovedCount}`;
+                    mobFsBarDupes.style.display = '';
                 } else {
-                    mobFsDupes.style.display = 'none';
+                    mobFsBarDupes.style.display = 'none';
                 }
             }
 
@@ -2296,8 +2308,6 @@
 
             const unreadCount = filtered.filter(a => a.unread).length;
             document.getElementById('timeline-count').textContent = `${unreadCount} Unread`;
-            const mobFsUnread = document.getElementById('mob-fs-unread-count');
-            if (mobFsUnread) mobFsUnread.textContent = unreadCount;
             const mobFsBarUnread = document.getElementById('mob-fs-bar-unread');
             if (mobFsBarUnread) mobFsBarUnread.textContent = unreadCount;
             updateBadges();
@@ -4201,16 +4211,14 @@
         function updateMobFsTopbar() {
             const isFS = document.body.classList.contains('mob-fullscreen');
             const pane = window._mobilePane;
-            const topbarWrap = document.getElementById('mob-fs-topbar-wrap');
-            if (topbarWrap) topbarWrap.style.display = (isFS && pane === 'timeline') ? 'flex' : 'none';
             const readerWrap = document.getElementById('mob-fs-reader-wrap');
             if (readerWrap) readerWrap.style.display = (isFS && pane === 'viewer') ? 'flex' : 'none';
             // Bottom bar (home + mark all read + exit) shown on timeline pane
             const bottomBar = document.getElementById('mob-fs-bottombar-wrap');
             if (bottomBar) bottomBar.style.display = (isFS && pane === 'timeline') ? 'flex' : 'none';
-            // Exit circle shown on non-timeline panes (viewer, sidebar) where bottom bar is absent
+            // Exit circle shown on sidebar pane only (viewer has exit in its bar; timeline has exit in its bar)
             const exitBtn = document.getElementById('mob-fs-exit');
-            if (exitBtn) exitBtn.style.display = (isFS && pane !== 'timeline') ? 'flex' : 'none';
+            if (exitBtn) exitBtn.style.display = (isFS && pane === 'sidebar') ? 'flex' : 'none';
             const articlesWrap = document.getElementById('mob-fs-articles-wrap');
             if (articlesWrap) articlesWrap.style.display = (isFS && pane === 'viewer') ? 'flex' : 'none';
         }
