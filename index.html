@@ -124,14 +124,14 @@
             white-space: nowrap; transition: opacity 0.3s;
         }
 
-        /* Modern sky-blue for all article links and feed name */
-        .article-content a { color: #60a5fa; text-decoration: none; }
-        .article-content a:hover { color: #93c5fd; }
+        /* GitHub blue for all article links and feed name */
+        .article-content a { color: #58a6ff; text-decoration: none; }
+        .article-content a:hover { color: #79b8ff; }
         a { text-decoration: none !important; }
 
         /* Article list title em size (desktop + mobile) */
-        .dynamic-list-title { font-size: var(--list-title-em-size) !important; font-weight: 600 !important; }
-        #article-title { font-weight: 600 !important; } /* font-semibold */
+        .dynamic-list-title { font-size: var(--list-title-em-size) !important; font-weight: 500 !important; }
+        #article-title { font-weight: 500 !important; } /* font-medium */
 
         /* Global line height for article content and list */
         #article-body, #article-title {
@@ -141,15 +141,15 @@
             line-height: var(--list-preview-line-height) !important;
         }
 
-        /* Title — pure white in dark, near-black in light. Clean hierarchy like Reeder/Apple News. */
+        /* Title — off-white in dark, near-black in light. Clean hierarchy like Reeder/Apple News. */
         .dynamic-list-title { color: #0f1923 !important; }
-        .dark .dynamic-list-title { color: #ffffff !important; }
+        .dark .dynamic-list-title { color: #e6edf3 !important; }
         #article-title { color: #0f1923 !important; }
-        .dark #article-title { color: #ffffff !important; }
-        /* Preview — clearly subordinate: cool mid-grey recedes behind the white title */
+        .dark #article-title { color: #e6edf3 !important; }
+        /* Preview — clearly subordinate: muted grey recedes behind the title */
         .dynamic-list-preview { color: #1f2937 !important; }
-        .dark .dynamic-list-preview { color: #d4dde6 !important; }
-        .dark #article-body { color: #d4dde6 !important; }
+        .dark .dynamic-list-preview { color: #8b949e !important; }
+        .dark #article-body { color: #c9d1d9 !important; }
         #article-author, #article-date { font-size: var(--article-meta-size) !important; }
 
         .line-clamp-custom {
@@ -361,7 +361,7 @@
             overflow: hidden;
         }
         .dark #article-list.card-view .article-card {
-            border-color: #374151;
+            border-color: #30363d;
         }
         #article-list.card-view .article-card-img {
             width: 100%; height: 120px;
@@ -379,14 +379,14 @@
             #viewer-pane.mobile-active {
                 display: flex !important;
                 width: 100% !important;
-                flex: 1;
-                height: calc(100vh - 80px);
+                flex: none !important;
+                height: calc(100vh - 80px - env(safe-area-inset-bottom, 0px));
+                height: calc(100dvh - 80px - env(safe-area-inset-bottom, 0px));
             }
             #resizer { display: none !important; }
             #mobile-tab-bar { display: flex !important; }
             #sidebar-pane.mobile-active { flex-direction: column; }
-            /* Show mobile reader action bar, hide desktop toolbar equivalents */
-            #mobile-reader-bar { display: flex !important; }
+            /* Hide desktop toolbar equivalents on mobile */
             #prev-article-btn, #next-article-btn,
             #share-btn, #tts-btn, #read-later-action-btn, #unread-action-btn,
             #view-density-toggle { display: none !important; }
@@ -433,12 +433,15 @@
         /* Mobile tab bar — h-20 = 80px */
         #mobile-tab-bar { display: none; }
         #mobile-reader-bar { display: none; }
+        /* Defensive: guarantee mob-fs floating elements never appear outside fullscreen */
+        body:not(.mob-fullscreen) .mob-fs-wrap { display: none !important; }
+        body:not(.mob-fullscreen) #mob-fs-exit { display: none !important; }
 
         /* Mobile fullscreen — hides all chrome */
         body.mob-fullscreen #mobile-tab-bar,
         body.mob-fullscreen #mobile-reader-bar,
         body.mob-fullscreen .h-12 { display: none !important; }
-        body.mob-fullscreen .mobile-active { height: 100vh !important; }
+        body.mob-fullscreen .mobile-active { height: 100vh !important; height: 100dvh !important; }
         body.mob-fullscreen #viewer-header,
         body.mob-fullscreen #read-time { display: none !important; }
         body.mob-fullscreen #reading-progress { display: none !important; }
@@ -474,44 +477,51 @@
             justify-content: center;
             pointer-events: none;
         }
-        #mob-fs-topbar-wrap    { top: 16px; }
         #mob-fs-reader-wrap    { top: 16px; }
         #mob-fs-articles-wrap  { bottom: 16px; }
-        /* Pills: no position/transform — centered by the flex wrapper */
-        #mob-fs-articles {
+        /* Viewer bottom bar pill (articles + exit) */
+        #mob-fs-viewer-bar {
             pointer-events: auto;
             touch-action: manipulation;
-            background: rgba(30,30,40,0.85);
+            display: inline-flex;
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
             border-radius: 9999px;
-            height: 44px;
-            padding: 0 18px;
+            padding: 4px;
+            gap: 3px;
+            align-items: center;
+        }
+        .mob-fs-viewer-articles {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 7px;
+            height: 36px;
+            border-radius: 9999px;
+            padding: 0 8px;
+            gap: 5px;
             font-size: 16px;
             font-weight: 600;
-            white-space: nowrap;
-            backdrop-filter: blur(6px);
+            color: #fff;
+            background: rgba(255,255,255,0.10);
+            border: none;
             cursor: pointer;
+            white-space: nowrap;
+            touch-action: manipulation;
         }
+        /* Viewer bar — scale exit/prev/next icons to match Articles label */
+        #mob-fs-viewer-bar .mob-fs-bar-btn { font-size: 18px; }
+        #mob-fs-viewer-bar .mob-fs-bar-btn svg { width: 18px !important; height: 18px !important; }
         /* Mobile fullscreen floating topbars */
         body.mob-fullscreen #timeline-header { display: none; }
-        body.mob-fullscreen #article-list { padding-top: 72px; }
+        body.mob-fullscreen #article-list { padding-top: 0; }
         #mob-fs-reader-topbar {
             pointer-events: auto;
             touch-action: manipulation;
-            background: rgba(30,30,40,0.85);
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
             border-radius: 9999px;
             padding: 6px 6px 6px 14px;
             gap: 10px;
             display: inline-flex;
             align-items: center;
-            backdrop-filter: blur(6px);
             white-space: nowrap;
         }
         #mob-fs-reader-topbar .mob-fs-progress-text {
@@ -523,14 +533,11 @@
             pointer-events: auto;
             touch-action: manipulation;
             display: inline-flex;
-            background: rgba(30,30,40,0.85);
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
             border-radius: 9999px;
             padding: 6px 14px;
             gap: 10px;
             align-items: center;
-            backdrop-filter: blur(6px);
             white-space: nowrap;
         }
         #mob-fs-topbar .mob-fs-count {
@@ -569,67 +576,125 @@
             pointer-events: auto;
             touch-action: manipulation;
             display: inline-flex;
-            background: rgba(30,30,40,0.85);
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
             border-radius: 9999px;
-            padding: 5px;
-            gap: 4px;
+            padding: 4px;
+            gap: 3px;
             align-items: center;
-            backdrop-filter: blur(6px);
         }
         .mob-fs-bar-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 44px;
-            height: 44px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             background: rgba(255,255,255,0.10);
             cursor: pointer;
             color: #fff;
             border: none;
             padding: 0;
-            font-size: 18px;
+            font-size: 15px;
             flex-shrink: 0;
         }
         .mob-fs-bar-mark-read {
             width: auto;
             border-radius: 9999px;
-            padding: 0 16px;
-            gap: 7px;
-            font-size: 16px;
+            padding: 0 12px;
+            gap: 6px;
+            font-size: 13px;
             font-weight: 700;
         }
+        #mob-fs-bar-dupes {
+            font-size: 13px;
+            font-weight: 600;
+            color: #93c5fd;
+        }
+        /* ===== DESKTOP FLOATING ARTICLE NAV ===== */
+        #desk-nav-float {
+            position: absolute;
+            bottom: 24px;
+            right: 28px;
+            z-index: 20;
+            flex-direction: column;
+            gap: 5px;
+        }
+        #desk-nav-float button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.13);
+            background: rgba(22,22,30,0.62);
+            box-shadow: 0 4px 18px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.15);
+            backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-backdrop-filter: blur(24px) saturate(1.6);
+            color: rgba(255,255,255,0.88);
+            cursor: pointer;
+            transition: background 0.12s, opacity 0.12s;
+        }
+        #desk-nav-float button:hover:not(.hidden) {
+            background: rgba(59,130,246,0.65);
+            border-color: rgba(59,130,246,0.45);
+        }
+        @media (max-width: 900px) {
+            #desk-nav-float { display: none !important; }
+        }
+
+        /* ===== APPLE GLASS — unified glass for all fullscreen floating pills ===== */
+        #mob-fs-exit,
+        #mob-fs-topbar,
+        #mob-fs-reader-topbar,
+        #mob-fs-bottombar,
+        #mob-fs-viewer-bar {
+            background: rgba(22,22,30,0.58);
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.16);
+            backdrop-filter: blur(28px) saturate(1.8);
+            -webkit-backdrop-filter: blur(28px) saturate(1.8);
+        }
+        /* Bottom bars get a more transparent container so dark buttons don't kill the glass effect */
+        #mob-fs-bottombar,
+        #mob-fs-viewer-bar {
+            background: rgba(22,22,30,0.38);
+        }
+        .mob-fs-bar-btn,
+        .mob-fs-viewer-articles {
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(255,255,255,0.18);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+        }
         /* ===== DEEP DARK THEME ===== */
-        /* Desktop — 2-3 shades darker than current */
-        .dark body { background: #13131a !important; }
-        .dark #app-container { background: #13131a; }
+        /* Desktop — GitHub dark palette for reading comfort */
+        .dark body { background: #0d1117 !important; }
+        .dark #app-container { background: #0d1117; }
         .dark #sidebar-pane {
-            background: #18181f !important;
-            border-color: rgba(255,255,255,0.06) !important;
+            background: #161b22 !important;
+            border-color: #30363d !important;
         }
         .dark #sidebar-pane .p-4,
         .dark #sidebar-pane > div:first-child {
-            background: #18181f !important;
-            border-color: rgba(255,255,255,0.06) !important;
+            background: #161b22 !important;
+            border-color: #30363d !important;
         }
         .dark #timeline-pane {
-            background: #15151c !important;
-            border-color: rgba(255,255,255,0.06) !important;
+            background: #0d1117 !important;
+            border-color: #30363d !important;
         }
-        .dark #viewer-pane { background: #13131a !important; }
-        .dark #viewer-pane .h-14.border-b { border-color: rgba(255,255,255,0.06) !important; }
-        .dark #timeline-pane .h-14.border-b { border-color: rgba(255,255,255,0.06) !important; }
-        .dark .p-4.border-t { background: #18181f !important; border-color: rgba(255,255,255,0.06) !important; }
-        .dark #resizer { border-color: rgba(255,255,255,0.05) !important; }
+        .dark #viewer-pane { background: #0d1117 !important; }
+        .dark #viewer-pane .h-14.border-b { border-color: #30363d !important; }
+        .dark #timeline-pane .h-14.border-b { border-color: #30363d !important; }
+        .dark .p-4.border-t { background: #161b22 !important; border-color: #30363d !important; }
+        .dark #resizer { border-color: #21262d !important; }
 
-        /* Article list cards — darker, subtle separator */
+        /* Article list cards — subtle GitHub-style separators */
         .dark #article-list > div {
-            border-color: rgba(255,255,255,0.05) !important;
+            border-color: #21262d !important;
         }
         .dark #article-list > div:hover {
-            background: rgba(96,165,250,0.06) !important;
+            background: rgba(88,166,255,0.07) !important;
         }
 
         /* ===== MOBILE APPLE GLASS THEME ===== */
@@ -737,35 +802,35 @@
 
         /* ===== ARTICLE READER TYPOGRAPHY ===== */
         .article-content p { margin-bottom: 1.25em; line-height: var(--line-height, 1.75); }
-        .article-content h1, .article-content h2 { font-size: 1.25em; font-weight: 700; margin-top: 1.75em; margin-bottom: 0.6em; color: #f1f5f9; line-height: 1.3; }
-        .article-content h3, .article-content h4 { font-size: 1.05em; font-weight: 600; margin-top: 1.4em; margin-bottom: 0.5em; color: #cbd5e1; line-height: 1.3; }
+        .article-content h1, .article-content h2 { font-size: 1.25em; font-weight: 700; margin-top: 1.75em; margin-bottom: 0.6em; color: #e6edf3; line-height: 1.3; }
+        .article-content h3, .article-content h4 { font-size: 1.05em; font-weight: 600; margin-top: 1.4em; margin-bottom: 0.5em; color: #c9d1d9; line-height: 1.3; }
         .article-content ul, .article-content ol { padding-left: 1.5em; margin-bottom: 1.25em; }
         .article-content li { margin-bottom: 0.4em; line-height: var(--line-height, 1.75); }
-        .article-content blockquote { border-left: 3px solid #3b82f6; padding-left: 1em; margin: 1.5em 0; color: #94a3b8; font-style: italic; }
+        .article-content blockquote { border-left: 3px solid #58a6ff; padding-left: 1em; margin: 1.5em 0; color: #8b949e; font-style: italic; }
 
         /* ===== BLUESKY EMBED STYLES ===== */
         .bsky-quote-embed { border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 12px 14px; margin: 12px 0; background: rgba(255,255,255,0.03); }
         .bsky-quote-header { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; flex-wrap: wrap; }
         .bsky-quote-avatar { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
-        .bsky-quote-name { font-weight: 700; font-size: 0.88em; color: #e2e8f0; }
-        .bsky-quote-handle { font-size: 0.82em; color: #94a3b8; }
-        .bsky-quote-text { font-size: 0.88em; line-height: 1.55; color: #cbd5e1; margin-top: 2px; }
-        .bsky-quote-meta { font-size: 0.82em; color: #94a3b8; font-style: italic; }
+        .bsky-quote-name { font-weight: 700; font-size: 0.88em; color: #e6edf3; }
+        .bsky-quote-handle { font-size: 0.82em; color: #8b949e; }
+        .bsky-quote-text { font-size: 0.88em; line-height: 1.55; color: #c9d1d9; margin-top: 2px; }
+        .bsky-quote-meta { font-size: 0.82em; color: #8b949e; font-style: italic; }
         .bsky-post-image { max-width: 100%; border-radius: 8px; margin: 6px 0; display: block; }
         .bsky-images { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
         .bsky-images-compact .bsky-post-image { max-height: 110px; width: auto; max-width: 48%; }
-        .bsky-repost-label { font-size: 0.78em; color: #94a3b8; margin-bottom: 4px; }
+        .bsky-repost-label { font-size: 0.78em; color: #8b949e; margin-bottom: 4px; }
         .bsky-external-card { display: block; border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; overflow: hidden; margin: 10px 0; text-decoration: none; color: inherit; }
         .bsky-external-card:hover { border-color: rgba(96,165,250,0.4); }
         .bsky-external-thumb { width: 100%; max-height: 180px; object-fit: cover; display: block; }
         .bsky-external-info { padding: 9px 12px; }
-        .bsky-external-title { font-weight: 600; font-size: 0.88em; margin-bottom: 3px; color: #e2e8f0; }
-        .bsky-external-desc { font-size: 0.8em; color: #94a3b8; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
-        .bsky-external-uri { font-size: 0.75em; color: #60a5fa; margin-top: 4px; }
+        .bsky-external-title { font-weight: 600; font-size: 0.88em; margin-bottom: 3px; color: #e6edf3; }
+        .bsky-external-desc { font-size: 0.8em; color: #8b949e; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+        .bsky-external-uri { font-size: 0.75em; color: #58a6ff; margin-top: 4px; }
         .article-content pre, .article-content code { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 0.2em 0.4em; font-size: 0.9em; font-family: 'SF Mono','Fira Code',monospace; }
         .article-content pre { padding: 1em; overflow-x: auto; margin-bottom: 1.25em; }
 
-        #article-meta { font-size: var(--desk-feed-name-size) !important; color: #60a5fa !important; }
+        #article-meta { font-size: var(--desk-feed-name-size) !important; color: #58a6ff !important; }
         /* Dividers between category folders — desktop */
         #feed-list [data-category] { border-bottom: 1px solid rgba(255,255,255,0.07) !important; }
         #feed-list [data-category]:last-child { border-bottom: none !important; }
@@ -801,11 +866,11 @@
         }
         .settings-group-label {
             font-size: 13px; font-weight: 800; text-transform: uppercase;
-            letter-spacing: 0.08em; color: #60a5fa;
+            letter-spacing: 0.08em; color: #58a6ff;
             margin-bottom: 12px; margin-top: 4px;
         }
         .settings-item label, .settings-item .settings-item-label {
-            font-size: 13px; font-weight: 600; color: #e2e8f0;
+            font-size: 13px; font-weight: 600; color: #e6edf3;
         }
 
         /* ===== SWIPE GESTURES ===== */
@@ -847,7 +912,7 @@
         #ptr-indicator {
             position: absolute; top: -56px; left: 0; right: 0;
             height: 56px; display: flex; align-items: center; justify-content: center;
-            color: #60a5fa; font-size: 12px; font-weight: 600;
+            color: #58a6ff; font-size: 12px; font-weight: 600;
             transition: top 0.15s ease, opacity 0.15s ease;
             opacity: 0; z-index: 10; pointer-events: none;
             gap: 8px;
@@ -860,8 +925,8 @@
         }
         #ptr-spinner {
             width: 20px; height: 20px;
-            border: 2px solid rgba(96,165,250,0.3);
-            border-top-color: #60a5fa;
+            border: 2px solid rgba(88,166,255,0.3);
+            border-top-color: #58a6ff;
             border-radius: 50%;
         }
         #ptr-indicator.ptr-loading #ptr-spinner {
@@ -998,14 +1063,6 @@
                         EXIT FULL SCREEN
                     </button>
                     
-                    <!-- Prev / Next -->
-                    <button id="prev-article-btn" onclick="navigateArticle(-1)" class="hidden text-gray-500 hover:text-blue-600" title="Previous Article (↑)">
-                        <svg class="h-5 w-5"><use href="#icon-chevron-up"/></svg>
-                    </button>
-                    <button id="next-article-btn" onclick="navigateArticle(1)" class="hidden text-gray-500 hover:text-blue-600" title="Next Article (↓)">
-                        <svg class="h-5 w-5"><use href="#icon-chevron-down"/></svg>
-                    </button>
-
                     <div class="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
 
                     <!-- Read time / progress estimate -->
@@ -1080,20 +1137,19 @@
                                 <span id="article-author" class="font-semibold"></span><span class="mx-2">•</span><span id="article-date"></span>
                             </div>
                             <div id="article-body" class="article-content dynamic-view-text text-gray-800 dark:text-gray-300 leading-relaxed space-y-4"></div>
-                            <!-- Prev / Next footer navigation (handy on mobile) -->
-                            <div id="article-nav-footer" class="hidden mt-8 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                                <button id="prev-article-footer" onclick="navigateArticle(-1)" class="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors p-3">
-                                    <svg class="w-6 h-6"><use href="#icon-chevron-up"/></svg>
-                                    <span id="prev-article-title" class="hidden md:inline max-w-[140px] truncate text-sm"></span>
-                                </button>
-                                <button id="next-article-footer" onclick="navigateArticle(1)" class="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors p-3">
-                                    <span id="next-article-title" class="hidden md:inline max-w-[140px] truncate text-sm"></span>
-                                    <svg class="w-6 h-6"><use href="#icon-chevron-down"/></svg>
-                                </button>
-                            </div>
                         </article>
                     </div>
                 </div>
+            </div>
+
+            <!-- DESKTOP FLOATING ARTICLE NAV (prev/next at bottom-right of viewer) -->
+            <div id="desk-nav-float" style="display:none">
+                <button id="prev-article-btn" onclick="navigateArticle(-1)" title="Previous Article (↑)">
+                    <svg class="h-5 w-5"><use href="#icon-chevron-up"/></svg>
+                </button>
+                <button id="next-article-btn" onclick="navigateArticle(1)" title="Next Article (↓)">
+                    <svg class="h-5 w-5"><use href="#icon-chevron-down"/></svg>
+                </button>
             </div>
 
             <!-- Mobile Reader Action Bar (shown only on mobile, in reader pane) -->
@@ -1126,13 +1182,6 @@
         </main>
     </div>
 
-    <!-- MOBILE FULLSCREEN FLOATING TOPBAR (article list) -->
-    <div id="mob-fs-topbar-wrap" class="mob-fs-wrap">
-        <div id="mob-fs-topbar">
-            <span id="mob-fs-unread-count" class="mob-fs-count">0</span>
-            <span id="mob-fs-dupes-count" class="mob-fs-count dupes" style="display:none">0</span>
-        </div>
-    </div>
     <!-- MOBILE FULLSCREEN FLOATING TOPBAR (article reader) -->
     <div id="mob-fs-reader-wrap" class="mob-fs-wrap">
         <div id="mob-fs-reader-topbar">
@@ -1153,16 +1202,26 @@
             <button class="mob-fs-bar-btn mob-fs-bar-mark-read" onclick="markAllRead()" title="Mark All Read">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 <span id="mob-fs-bar-unread">0</span>
+                <span id="mob-fs-bar-dupes" style="display:none">−0</span>
             </button>
             <button class="mob-fs-bar-btn" onclick="toggleMobileFullscreen()" title="Exit fullscreen">✕</button>
         </div>
     </div>
-    <!-- MOBILE FULLSCREEN BACK-TO-ARTICLES BUTTON (viewer only) -->
+    <!-- MOBILE FULLSCREEN BOTTOM BAR (article reader: articles + exit + prev + next) -->
     <div id="mob-fs-articles-wrap" class="mob-fs-wrap">
-        <button id="mob-fs-articles" onclick="setMobilePane('timeline');" title="Back to Article List">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-            Articles
-        </button>
+        <div id="mob-fs-viewer-bar">
+            <button class="mob-fs-viewer-articles" onclick="setMobilePane('timeline');" title="Back to Article List">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                Articles
+            </button>
+            <button class="mob-fs-bar-btn" onclick="toggleMobileFullscreen()" title="Exit fullscreen">✕</button>
+            <button id="mob-fs-prev-btn" class="mob-fs-bar-btn" onclick="navigateArticle(-1)" title="Previous article">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <button id="mob-fs-next-btn" class="mob-fs-bar-btn" onclick="navigateArticle(1)" title="Next article">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+        </div>
     </div>
 
     <!-- MOBILE BOTTOM TAB BAR -->
@@ -2271,13 +2330,13 @@
                     dedupBadge.classList.add('hidden');
                 }
             }
-            const mobFsDupes = document.getElementById('mob-fs-dupes-count');
-            if (mobFsDupes) {
+            const mobFsBarDupes = document.getElementById('mob-fs-bar-dupes');
+            if (mobFsBarDupes) {
                 if (window._dedupByTitle && dedupRemovedCount > 0) {
-                    mobFsDupes.textContent = dedupRemovedCount;
-                    mobFsDupes.style.display = '';
+                    mobFsBarDupes.textContent = `−${dedupRemovedCount}`;
+                    mobFsBarDupes.style.display = '';
                 } else {
-                    mobFsDupes.style.display = 'none';
+                    mobFsBarDupes.style.display = 'none';
                 }
             }
 
@@ -2296,8 +2355,6 @@
 
             const unreadCount = filtered.filter(a => a.unread).length;
             document.getElementById('timeline-count').textContent = `${unreadCount} Unread`;
-            const mobFsUnread = document.getElementById('mob-fs-unread-count');
-            if (mobFsUnread) mobFsUnread.textContent = unreadCount;
             const mobFsBarUnread = document.getElementById('mob-fs-bar-unread');
             if (mobFsBarUnread) mobFsBarUnread.textContent = unreadCount;
             updateBadges();
@@ -2483,22 +2540,34 @@
         (function() {
             const indicator = document.getElementById('ptr-indicator');
             const label = document.getElementById('ptr-label');
-            const THRESHOLD = 130;
+            const THRESHOLD = 100;
             let _pt = null;
+            let _loading = false;
 
             document.addEventListener('touchstart', (e) => {
-                if (!isMobile() || window._mobilePane !== 'sidebar' || _pt?.loading) return;
+                if (!isMobile() || window._mobilePane !== 'sidebar' || _loading) return;
+                // Only activate when the sidebar scroll container is at the very top
+                const scrollable = document.querySelector('#sidebar-pane .overflow-y-auto');
+                if (scrollable && scrollable.scrollTop > 4) return;
                 const touch = e.touches[0];
-                _pt = { startY: touch.clientY, startX: touch.clientX, active: false, loading: false };
+                _pt = { startY: touch.clientY, startX: touch.clientX, dirLocked: false, cancelled: false };
             }, { passive: true });
 
             document.addEventListener('touchmove', (e) => {
-                if (!_pt || _pt.loading) return;
+                if (!_pt || _pt.cancelled || _loading) return;
                 const touch = e.touches[0];
                 const dy = touch.clientY - _pt.startY;
                 const dx = touch.clientX - _pt.startX;
-                if (dy < 8 || Math.abs(dx) > dy) { _pt = null; return; }
-                _pt.active = true;
+                const absDy = Math.abs(dy);
+                const absDx = Math.abs(dx);
+
+                // Wait for enough movement before locking direction — prevents premature cancel on diagonal start
+                if (!_pt.dirLocked) {
+                    if (absDy < 6 && absDx < 6) return;
+                    if (absDx > absDy || dy < 0) { _pt.cancelled = true; return; } // horizontal or upward — not PTR
+                    _pt.dirLocked = true;
+                }
+
                 const offset = Math.min(dy * 0.14, 56);
                 indicator.style.top = (offset - 56) + 'px';
                 indicator.classList.add('ptr-visible');
@@ -2508,12 +2577,13 @@
 
             const reset = () => {
                 if (!_pt) return;
-                const wasReady = indicator.classList.contains('ptr-ready');
+                const wasReady = !_pt.cancelled && indicator.classList.contains('ptr-ready');
+                _pt = null;
                 indicator.style.top = '-56px';
                 indicator.classList.remove('ptr-visible', 'ptr-ready');
                 label.textContent = 'Pull to refresh';
-                _pt = null;
-                if (wasReady) {
+                if (wasReady && !_loading) {
+                    _loading = true;
                     indicator.style.top = '0px';
                     indicator.classList.add('ptr-visible', 'ptr-loading');
                     label.textContent = 'Refreshing...';
@@ -2521,11 +2591,17 @@
                     fetchAllStaggered(window.feeds).then(() => {
                         indicator.style.top = '-56px';
                         indicator.classList.remove('ptr-visible', 'ptr-loading');
+                        _loading = false;
                     });
                 }
             };
+            const cancel = () => {
+                _pt = null;
+                indicator.style.top = '-56px';
+                indicator.classList.remove('ptr-visible', 'ptr-ready');
+            };
             document.addEventListener('touchend', reset, { passive: true });
-            document.addEventListener('touchcancel', reset, { passive: true });
+            document.addEventListener('touchcancel', cancel, { passive: true });
         })();
 
         window.selectArticle = function(id) {
@@ -2582,26 +2658,20 @@
             const nextBtn = document.getElementById('next-article-btn');
             if (prevBtn) prevBtn.classList.toggle('hidden', idx <= 0);
             if (nextBtn) nextBtn.classList.toggle('hidden', idx >= window.currentTimeline.length - 1);
+            const deskNav = document.getElementById('desk-nav-float');
+            if (deskNav) deskNav.style.display = isMobile() ? 'none' : 'flex';
 
             const mobPrev = document.getElementById('mob-prev-btn');
             const mobNext = document.getElementById('mob-next-btn');
             if (mobPrev) mobPrev.style.opacity = idx <= 0 ? '0.3' : '1';
             if (mobNext) mobNext.style.opacity = idx >= window.currentTimeline.length - 1 ? '0.3' : '1';
 
-            const navFooter = document.getElementById('article-nav-footer');
-            const prevFooter = document.getElementById('prev-article-footer');
-            const nextFooter = document.getElementById('next-article-footer');
-            const prevTitle = document.getElementById('prev-article-title');
-            const nextTitle = document.getElementById('next-article-title');
-            if (navFooter) {
-                const hasPrev = idx > 0;
-                const hasNext = idx < window.currentTimeline.length - 1;
-                navFooter.classList.toggle('hidden', !hasPrev && !hasNext);
-                if (prevFooter) prevFooter.classList.toggle('invisible', !hasPrev);
-                if (nextFooter) nextFooter.classList.toggle('invisible', !hasNext);
-                if (prevTitle && hasPrev) prevTitle.textContent = window.currentTimeline[idx - 1].title;
-                if (nextTitle && hasNext) nextTitle.textContent = window.currentTimeline[idx + 1].title;
-            }
+            const fsPrev = document.getElementById('mob-fs-prev-btn');
+            const fsNext = document.getElementById('mob-fs-next-btn');
+            const hasPrev = idx > 0;
+            const hasNext = idx < window.currentTimeline.length - 1;
+            if (fsPrev) { fsPrev.style.opacity = hasPrev ? '1' : '0.3'; fsPrev.style.pointerEvents = hasPrev ? '' : 'none'; }
+            if (fsNext) { fsNext.style.opacity = hasNext ? '1' : '0.3'; fsNext.style.pointerEvents = hasNext ? '' : 'none'; }
 
             const shareBtn = document.getElementById('share-btn');
             if (shareBtn) shareBtn.classList.remove('hidden');
@@ -2629,7 +2699,11 @@
                     // Update unread dot in-place — no outerHTML replacement, no smooth scroll
                     const dot = newSelected.querySelector('.bg-blue-500.rounded-full');
                     if (dot) { dot.classList.remove('bg-blue-500'); dot.classList.add('opacity-0'); }
-                    newSelected.scrollIntoView({ block: 'nearest' });
+                    if (isMobile()) {
+                        newSelected.scrollIntoView({ block: 'nearest' });
+                    } else {
+                        listEl.scrollTop = newSelected.offsetTop - listEl.offsetTop;
+                    }
                 } else {
                     renderTimeline(true);
                 }
@@ -2779,9 +2853,9 @@
                     const words = bodyEl.textContent.trim().split(/\s+/).filter(Boolean).length;
                     if (words < 50 && article.link && article.link !== '#') {
                         const stubEl = document.createElement('p');
-                        stubEl.style.cssText = 'margin-top:1.2em;color:#94a3b8;font-style:italic;font-size:0.9em;';
+                        stubEl.style.cssText = 'margin-top:1.2em;color:#8b949e;font-style:italic;font-size:0.9em;';
                         stubEl.innerHTML = (words === 0 ? 'Full content is not available in the RSS feed.' : 'Content may be truncated in the RSS feed.')
-                            + ` <a href="${DOMPurify.sanitize(article.link)}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;text-decoration:underline;">Read full article →</a>`;
+                            + ` <a href="${DOMPurify.sanitize(article.link)}" target="_blank" rel="noopener noreferrer" style="color:#58a6ff;text-decoration:underline;">Read full article →</a>`;
                         bodyEl.appendChild(stubEl);
                     }
                 }
@@ -4201,16 +4275,14 @@
         function updateMobFsTopbar() {
             const isFS = document.body.classList.contains('mob-fullscreen');
             const pane = window._mobilePane;
-            const topbarWrap = document.getElementById('mob-fs-topbar-wrap');
-            if (topbarWrap) topbarWrap.style.display = (isFS && pane === 'timeline') ? 'flex' : 'none';
             const readerWrap = document.getElementById('mob-fs-reader-wrap');
             if (readerWrap) readerWrap.style.display = (isFS && pane === 'viewer') ? 'flex' : 'none';
             // Bottom bar (home + mark all read + exit) shown on timeline pane
             const bottomBar = document.getElementById('mob-fs-bottombar-wrap');
             if (bottomBar) bottomBar.style.display = (isFS && pane === 'timeline') ? 'flex' : 'none';
-            // Exit circle shown on non-timeline panes (viewer, sidebar) where bottom bar is absent
+            // Exit circle shown on sidebar pane only (viewer has exit in its bar; timeline has exit in its bar)
             const exitBtn = document.getElementById('mob-fs-exit');
-            if (exitBtn) exitBtn.style.display = (isFS && pane !== 'timeline') ? 'flex' : 'none';
+            if (exitBtn) exitBtn.style.display = (isFS && pane === 'sidebar') ? 'flex' : 'none';
             const articlesWrap = document.getElementById('mob-fs-articles-wrap');
             if (articlesWrap) articlesWrap.style.display = (isFS && pane === 'viewer') ? 'flex' : 'none';
         }
