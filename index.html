@@ -476,6 +476,20 @@
             z-index: 200;
             justify-content: center;
             pointer-events: none;
+            transition: transform 0.22s ease, opacity 0.22s ease;
+        }
+        /* Auto-hide state: bars slide out of view on scroll-down in article view */
+        #mob-fs-reader-wrap.mob-fs-bar-hidden {
+            transform: translateY(-140%);
+            opacity: 0;
+        }
+        #mob-fs-articles-wrap.mob-fs-bar-hidden {
+            transform: translateY(140%);
+            opacity: 0;
+        }
+        #mob-fs-reader-wrap.mob-fs-bar-hidden *,
+        #mob-fs-articles-wrap.mob-fs-bar-hidden * {
+            pointer-events: none;
         }
         #mob-fs-reader-wrap    { top: 16px; }
         #mob-fs-articles-wrap  { bottom: 16px; }
@@ -3426,9 +3440,31 @@
 
         // --- READING PROGRESS BAR + LIVE COUNTER ---
         document.getElementById('reader-view')?.addEventListener('scroll', function() {
+            const { scrollTop, scrollHeight, clientHeight } = this;
+
+            // Auto-hide fullscreen bars in article view on scroll-down, show on scroll-up
+            if (document.body.classList.contains('mob-fullscreen') && window._mobilePane === 'viewer') {
+                const last = window._lastReaderScroll ?? 0;
+                const delta = scrollTop - last;
+                const readerWrap = document.getElementById('mob-fs-reader-wrap');
+                const articlesWrap = document.getElementById('mob-fs-articles-wrap');
+                if (scrollTop < 20) {
+                    readerWrap?.classList.remove('mob-fs-bar-hidden');
+                    articlesWrap?.classList.remove('mob-fs-bar-hidden');
+                } else if (Math.abs(delta) > 4) {
+                    if (delta > 0) {
+                        readerWrap?.classList.add('mob-fs-bar-hidden');
+                        articlesWrap?.classList.add('mob-fs-bar-hidden');
+                    } else {
+                        readerWrap?.classList.remove('mob-fs-bar-hidden');
+                        articlesWrap?.classList.remove('mob-fs-bar-hidden');
+                    }
+                }
+                window._lastReaderScroll = scrollTop;
+            }
+
             const bar = document.getElementById('reading-progress');
             if (!bar || !window.currentArticle) return;
-            const { scrollTop, scrollHeight, clientHeight } = this;
             const pct = scrollHeight <= clientHeight ? 100 : (scrollTop / (scrollHeight - clientHeight)) * 100;
             const clamped = Math.min(100, Math.max(0, pct));
             bar.style.width = `${clamped}%`;
@@ -4305,6 +4341,10 @@
             if (exitBtn) exitBtn.style.display = (isFS && pane === 'sidebar') ? 'flex' : 'none';
             const articlesWrap = document.getElementById('mob-fs-articles-wrap');
             if (articlesWrap) articlesWrap.style.display = (isFS && pane === 'viewer') ? 'flex' : 'none';
+            // Reset auto-hide so bars are visible whenever the viewer becomes active
+            readerWrap?.classList.remove('mob-fs-bar-hidden');
+            articlesWrap?.classList.remove('mob-fs-bar-hidden');
+            window._lastReaderScroll = 0;
         }
         window.updateMobFsTopbar = updateMobFsTopbar;
 
