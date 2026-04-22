@@ -2801,7 +2801,6 @@
             try {
                 const domain = new URL(article.link).hostname.replace('www.','');
                 if (JS_RENDERED_DOMAINS.has(domain)) {
-                    console.log(`[Extractor] Skipping JS-rendered site: ${domain}`);
                     return;
                 }
             } catch(e) { return; }
@@ -2813,18 +2812,16 @@
             ];
 
             const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
-            console.log(`[Extractor] Starting: ${article.link} | RSS words: ${rssWordCount}`);
 
             for (const proxyFn of proxies) {
                 const { url: proxyUrl, isJson } = proxyFn(article.link);
                 const proxyName = proxyUrl.split('/')[2];
                 try {
                     const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
-                    if (!res.ok) { console.log(`[Extractor] ${proxyName} → ${res.status}`); continue; }
+                    if (!res.ok) continue;
 
                     let html = isJson ? (await res.json()).contents : await res.text();
-                    if (!html || html.length < 500) { console.log(`[Extractor] ${proxyName} → empty/too short`); continue; }
-                    console.log(`[Extractor] ${proxyName} → ${html.length} chars`);
+                    if (!html || html.length < 500) continue;
 
                     // Yield to event queue before heavy DOM parsing so clicks aren't blocked
                     await new Promise(r => setTimeout(r, 0));
@@ -2881,10 +2878,9 @@
                         matchedSel = `fallback (${bestScore}p)`;
                     }
 
-                    if (!content) { console.log(`[Extractor] ${proxyName} → no content found`); continue; }
+                    if (!content) continue;
 
                     const fullWordCount = content.textContent.trim().split(/\s+/).filter(Boolean).length;
-                    console.log(`[Extractor] "${matchedSel}" → ${fullWordCount} words (need >${rssWordCount + 80})`);
 
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
@@ -2908,15 +2904,11 @@
                             window._articleTotalMinutes = Math.max(1, Math.ceil(fullWordCount / 200));
                             const readTimeEl = document.getElementById('read-time');
                             if (readTimeEl) readTimeEl.textContent = `~${window._articleTotalMinutes} min read`;
-                            console.log(`[Extractor] ✓ Upgraded to ${fullWordCount} words via ${proxyName}`);
                         }
                         return;
-                    } else {
-                        console.log(`[Extractor] ${proxyName} → threshold not met, trying next proxy`);
                     }
-                } catch(e) { console.log(`[Extractor] ${proxyName} → ${e.message}`); }
+                } catch(e) {}
             }
-            console.log(`[Extractor] All proxies exhausted`);
             // Only show stub for RSS feeds (not Bluesky — Bluesky posts are complete by design)
             if (!isBlueskyFeed(article.feedUrl)) {
                 const bodyEl = document.getElementById('article-body');
