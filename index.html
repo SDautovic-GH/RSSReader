@@ -2037,16 +2037,44 @@
 
         // Fix lazy-loaded images in feed HTML (data-src, data-lazy-src, srcset-only)
         function fixLazyImages(html) {
-            return html
-                .replace(/<img([^>]*?)data-lazy-src=(["'])([^"']+)\2([^>]*?)>/gi, (m, pre, q, src, post) => {
-                    // Already has src? just remove data-lazy-src
-                    if (/\bsrc\s*=/i.test(pre + post)) return `<img${pre}src=${q}${src}${q}${post}>`.replace(/data-lazy-src=(["'])[^"']*\1/gi, '');
-                    return `<img${pre}src=${q}${src}${q}${post}>`;
-                })
-                .replace(/<img([^>]*?)data-src=(["'])([^"']+)\2([^>]*?)>/gi, (m, pre, q, src, post) => {
-                    if (/\bsrc\s*=/i.test(pre + post)) return `<img${pre}src=${q}${src}${q}${post}>`.replace(/\bdata-src=(["'])[^"']*\1/gi, '');
-                    return `<img${pre}src=${q}${src}${q}${post}>`;
-                });
+            if (!html) return '';
+            return html.replace(/<img([^>]+)>/gi, (match, attrs) => {
+                const getAttr = (name) => {
+                    const regex = new RegExp(`\\b${name}=(['"])([^'"]+)\\1`, 'i');
+                    const m = attrs.match(regex);
+                    return m ? { val: m[2], q: m[1] } : null;
+                };
+
+                const lazy = getAttr('data-lazy-src') || getAttr('data-src');
+                const existingSrc = getAttr('src');
+                const srcset = getAttr('srcset');
+
+                let finalSrc = '';
+                let quote = '"';
+
+                if (lazy) {
+                    finalSrc = lazy.val;
+                    quote = lazy.q;
+                } else if (existingSrc) {
+                    finalSrc = existingSrc.val;
+                    quote = existingSrc.q;
+                } else if (srcset) {
+                    const first = srcset.val.split(',')[0].trim().split(' ')[0];
+                    if (first) {
+                        finalSrc = first;
+                        quote = srcset.q;
+                    }
+                }
+
+                if (!finalSrc) return match;
+
+                const cleanAttrs = attrs
+                    .replace(/\b(data-lazy-src|data-src|src)=(['"])[^'"]*\2/gi, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                return `<img ${cleanAttrs} src=${quote}${finalSrc}${quote}>`.replace(' >', '>');
+            });
         }
 
         async function fetchRecentArticles(feedUrl, sourceName, maxItems = null, isBackground = false) {
