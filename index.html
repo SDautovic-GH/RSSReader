@@ -4699,8 +4699,7 @@
             return map[code] || 'Something went wrong. Please try again.';
         }
 
-        function setupPersistence() {
-            if (!userId) return;
+        function syncCloudFeeds() {
             const feedsRef = collection(db, 'artifacts', APP_ID, 'users', userId, 'feeds');
 
             let _firstSnapshot = true;
@@ -4723,7 +4722,9 @@
                 }
                 document.getElementById('sync-status').textContent = `☁ ${userEmail}`;
             });
+        }
 
+        function syncCloudReadState() {
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
             onSnapshot(stateRef, (snap) => {
                 // Skip our own writes (both the pending write and the server echo)
@@ -4756,7 +4757,9 @@
                     window.renderFeeds();
                 }
             }, e => console.warn('Could not sync read state:', e));
+        }
 
+        function syncCloudUiPrefs() {
             const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
             getDoc(uiRef).then(snap => {
                 if (snap.exists()) {
@@ -4785,7 +4788,9 @@
                     }
                 }
             }).catch(e => console.warn('Could not load remote UI prefs:', e));
+        }
 
+        function setupCloudSaveFunctions() {
             window.saveReadStateCloud = async () => {
                 if (!userId) return;
                 try {
@@ -4812,6 +4817,15 @@
                     });
                 } catch(e) { console.warn('Cloud UI prefs save failed:', e); }
             };
+        }
+
+        function setupPersistence() {
+            if (!userId) return;
+
+            syncCloudFeeds();
+            syncCloudReadState();
+            syncCloudUiPrefs();
+            setupCloudSaveFunctions();
         }
 
         window.saveFeeds = async (newFeeds) => {
