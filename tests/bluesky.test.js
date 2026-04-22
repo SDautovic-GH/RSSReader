@@ -1,4 +1,5 @@
 const assert = require('assert');
+const fs = require('fs');
 
 /**
  * The function to be tested, extracted from index.html
@@ -140,7 +141,86 @@ extractBlueskyActorTestCases.forEach((tc) => {
 
 console.log(`\n📊 Test Summary: ${passed} passed, ${failed} failed.`);
 
-if (failed > 0) {
+// ---------------------------------------------------------
+// Dynamically Extract and Test bskyEsc from index.html
+// ---------------------------------------------------------
+
+const html = fs.readFileSync('index.html', 'utf8');
+const bskyEscMatch = html.match(/function bskyEsc\(str\) \{(.*?)\}/s);
+
+if (!bskyEscMatch) {
+    console.error("Could not find bskyEsc in index.html");
+    process.exit(1);
+}
+
+const bskyEsc = new Function('str', bskyEscMatch[1]);
+
+console.log('\n🧪 Running tests for bskyEsc...');
+
+let bskyEscPassed = 0;
+let bskyEscFailed = 0;
+
+const bskyEscTestCases = [
+    {
+        input: 'normal text',
+        expected: 'normal text',
+        description: 'Normal string without special characters'
+    },
+    {
+        input: 'text with & ampersand',
+        expected: 'text with &amp; ampersand',
+        description: 'String with ampersand'
+    },
+    {
+        input: 'text with < > tags',
+        expected: 'text with &lt; &gt; tags',
+        description: 'String with angle brackets'
+    },
+    {
+        input: 'text with "quotes"',
+        expected: 'text with &quot;quotes&quot;',
+        description: 'String with double quotes'
+    },
+    {
+        input: '<a href="https://example.com/?a=1&b=2">Link</a>',
+        expected: '&lt;a href=&quot;https://example.com/?a=1&amp;b=2&quot;&gt;Link&lt;/a&gt;',
+        description: 'Combined HTML characters'
+    },
+    {
+        input: null,
+        expected: '',
+        description: 'Null value'
+    },
+    {
+        input: undefined,
+        expected: '',
+        description: 'Undefined value'
+    },
+    {
+        input: '',
+        expected: '',
+        description: 'Empty string'
+    }
+];
+
+bskyEscTestCases.forEach((tc) => {
+    try {
+        const result = bskyEsc(tc.input);
+        assert.strictEqual(result, tc.expected, tc.description);
+        console.log(`✅ PASS: ${tc.description}`);
+        bskyEscPassed++;
+    } catch (err) {
+        console.error(`❌ FAIL: ${tc.description}`);
+        console.error(`   Input:    ${tc.input}`);
+        console.error(`   Expected: ${tc.expected}`);
+        console.error(`   Got:      ${err.actual}`);
+        bskyEscFailed++;
+    }
+});
+
+console.log(`\n📊 bskyEsc Test Summary: ${bskyEscPassed} passed, ${bskyEscFailed} failed.`);
+
+if (failed > 0 || bskyEscFailed > 0) {
     process.exit(1);
 } else {
     process.exit(0);
