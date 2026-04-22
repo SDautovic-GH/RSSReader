@@ -2037,44 +2037,30 @@
 
         // Fix lazy-loaded images in feed HTML (data-src, data-lazy-src, srcset-only)
         function fixLazyImages(html) {
-            if (!html) return '';
-            return html.replace(/<img([^>]+)>/gi, (match, attrs) => {
-                const getAttr = (name) => {
-                    const regex = new RegExp(`(?:^|\\s)${name}=(['"])([^'"]+)\\1`, 'i');
-                    const m = attrs.match(regex);
-                    return m ? { val: m[2], q: m[1] } : null;
-                };
-
-                const lazy = getAttr('data-lazy-src') || getAttr('data-src');
-                const existingSrc = getAttr('src');
-                const srcset = getAttr('srcset');
-
-                let finalSrc = '';
-                let quote = '"';
+            if (!html || !html.includes('<img')) return html;
+            const template = document.createElement('template');
+            template.innerHTML = html;
+            const imgs = template.content.querySelectorAll('img');
+            let changed = false;
+            imgs.forEach(img => {
+                const lazy = img.getAttribute('data-lazy-src') || img.getAttribute('data-src');
+                const srcset = img.getAttribute('srcset');
+                const currentSrc = img.getAttribute('src');
 
                 if (lazy) {
-                    finalSrc = lazy.val;
-                    quote = lazy.q;
-                } else if (existingSrc) {
-                    finalSrc = existingSrc.val;
-                    quote = existingSrc.q;
-                } else if (srcset) {
-                    const first = srcset.val.split(',')[0].trim().split(' ')[0];
+                    img.setAttribute('src', lazy);
+                    img.removeAttribute('data-lazy-src');
+                    img.removeAttribute('data-src');
+                    changed = true;
+                } else if (!currentSrc && srcset) {
+                    const first = srcset.split(',')[0].trim().split(' ')[0];
                     if (first) {
-                        finalSrc = first;
-                        quote = srcset.q;
+                        img.setAttribute('src', first);
+                        changed = true;
                     }
                 }
-
-                if (!finalSrc) return match;
-
-                const cleanAttrs = attrs
-                    .replace(/(?:^|\s)(data-lazy-src|data-src|src)=(['"])[^'"]*\2/gi, '')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-
-                return `<img ${cleanAttrs} src=${quote}${finalSrc}${quote}>`.replace(' >', '>');
             });
+            return changed ? template.innerHTML : html;
         }
 
         async function fetchRecentArticles(feedUrl, sourceName, maxItems = null, isBackground = false) {
@@ -2181,13 +2167,17 @@
                             .replace(/\bPDT\b/, '-0700').replace(/\bPST\b/, '-0800')
                             .replace(/\bGMT\b/, '+0000').replace(/\bUTC\b/, '+0000');
                     })();
+                    const fixedBody = fixLazyImages(rawBody);
                     const image = (() => {
                         const enc = item.querySelector('enclosure[type^="image"]');
                         if (enc) return enc.getAttribute('url');
                         const med = item.querySelector('media\\:thumbnail, media\\:content');
                         if (med) return med.getAttribute('url');
-                        const imgMatch = rawBody.match(/<img[^>]+src=["']([^"']+)["']/i);
-                        return imgMatch ? imgMatch[1] : null;
+
+                        const temp = document.createElement('template');
+                        temp.innerHTML = fixedBody;
+                        const firstImg = temp.content.querySelector('img');
+                        return firstImg ? firstImg.getAttribute('src') : null;
                     })();
                     const art = {
                         id: _existingIds.get(link) || crypto.randomUUID(),
@@ -2199,7 +2189,7 @@
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
                         excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
                         _excerptHtml: null,
-                        body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] }),
+                        body: DOMPurify.sanitize(fixedBody, { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] }),
                         link,
                         unread: isNew,
                         readLater: window._readLaterLinks.has(link),
@@ -2980,7 +2970,7 @@
         // --- SHARED STATE HELPERS ---
         function initBodyImages(bodyEl) {
             bodyEl.querySelectorAll('img').forEach(img => {
-                if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
+                if (!img.src || img.src === window.location.href) img.src = img.dataset.lazySrc || img.dataset.src;
                 if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
 
                 const collapse = () => {
