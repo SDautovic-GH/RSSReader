@@ -3957,6 +3957,7 @@
         };
         window.showArticleContextMenu = (e, id) => {
             e.preventDefault();
+            if (e.type === 'contextmenu' && isMobile()) return;
             window.contextMenuArticleId = id;
             const article = (window.articles || []).find(a => a.id === id);
             const idx = (window.currentTimeline || []).findIndex(a => a.id === id);
@@ -4015,13 +4016,13 @@
                     window.getSelection()?.removeAllRanges();
                     if (navigator.vibrate) navigator.vibrate(30);
                     showArticleContextMenu({ preventDefault: () => {}, clientX: _touchStartX, clientY: _touchStartY }, id);
-                }, 750);
+                }, 1000);
             }, { passive: true });
 
             list.addEventListener('touchmove', (e) => {
                 const dx = e.touches[0].clientX - _touchStartX;
                 const dy = e.touches[0].clientY - _touchStartY;
-                if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+                if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
                     _swiping = true;
                     clearTimeout(_lpTimer);
                 }
