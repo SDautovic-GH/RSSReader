@@ -2441,7 +2441,7 @@
                 .filter(f => f.favicon)
                 .map(f => {
                     const slug = getFaviconSlug(f.name);
-                    const fav = f.favicon.replace(/'/g, "\\'");
+                    const fav = f.favicon.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     return `.${slug}{background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;}`;
                 }).join('');
             _faviconStyleEl.textContent = rules;
@@ -2451,7 +2451,7 @@
             const feedObj = window.feeds.find(f => f.name === sourceName);
             if (!feedObj?.favicon) return '';
             const slug = getFaviconSlug(sourceName);
-            const fav = esc(feedObj.favicon).replace(/'/g, "\\'");
+            const fav = escJs(feedObj.favicon);
             return `<span class="${slug} inline-block w-3 h-3 rounded-sm mr-1 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;vertical-align:middle;"></span>`;
         }
 
@@ -3126,7 +3126,7 @@
                             const isError = health && health.errorCount >= 3;
                             const isStale = health && health.lastSuccess && (Date.now() - health.lastSuccess > 7 * 86400000);
                             const healthClass = isError ? 'feed-error' : (isStale ? 'feed-stale' : '');
-                            const fav = f.favicon ? esc(f.favicon).replace(/'/g, "\\'") : '';
+                            const fav = f.favicon ? escJs(f.favicon) : '';
                             const favicon = f.favicon ? `<span class="${getFaviconSlug(f.name)} inline-block w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;"></span>` : '<span class="w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
 
                             const sfName = escJs(f.name);
