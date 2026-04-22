@@ -4335,17 +4335,26 @@
             try { localStorage.setItem('newsreader_feeds', JSON.stringify(window.accountStates.local)); } catch(e) { console.warn('Storage error:', e.message); }
         }
 
+        // Initialize an in-memory map to group and cache favicon operations
+        window._globalFaviconCache = window._globalFaviconCache || {};
+
         function restoreLocalFeeds() {
             try {
                 const stored = localStorage.getItem('newsreader_feeds');
                 if (!stored) return;
                 const feeds = JSON.parse(stored);
                 if (!Array.isArray(feeds) || feeds.length === 0) return;
+
                 feeds.forEach(f => {
                     if (!f.favicon) {
-                        try { f.favicon = localStorage.getItem('favicon_' + f.url) || undefined; } catch(e) {}
+                        const key = 'favicon_' + f.url;
+                        if (window._globalFaviconCache[key] === undefined) {
+                            try { window._globalFaviconCache[key] = localStorage.getItem(key) || null; } catch(e){}
+                        }
+                        f.favicon = window._globalFaviconCache[key] || undefined;
                     }
                 });
+
                 window.accountStates.local = feeds;
                 window.feeds = feeds;
                 preloadAllFavicons();
