@@ -8,6 +8,12 @@ function isBlueskyFeed(url) {
            /api\.bsky\.app\/authorFeed/.test(url);
 }
 
+function extractBlueskyActor(url) {
+    const m = url.match(/bsky\.app\/profile\/([^/?#]+)/) ||
+              url.match(/api\.bsky\.app\/authorFeed(?:Articles)?\/([^/?#]+)/);
+    return m ? m[1] : null;
+}
+
 const testCases = [
     {
         url: 'https://bsky.app/profile/jules.bsky.social/rss',
@@ -65,6 +71,69 @@ testCases.forEach((tc) => {
     } catch (err) {
         console.error(`❌ FAIL: ${tc.description} (${tc.url})`);
         console.error(`   Expected ${tc.expected}, but got ${!tc.expected}`);
+        failed++;
+    }
+});
+
+console.log('\n🧪 Running tests for extractBlueskyActor...');
+
+const extractBlueskyActorTestCases = [
+    {
+        url: 'https://bsky.app/profile/jules.bsky.social/rss',
+        expected: 'jules.bsky.social',
+        description: 'Valid Bluesky RSS URL'
+    },
+    {
+        url: 'https://bsky.app/profile/jules.bsky.social',
+        expected: 'jules.bsky.social',
+        description: 'Valid Bluesky profile URL'
+    },
+    {
+        url: 'https://api.bsky.app/authorFeed/jules.bsky.social',
+        expected: 'jules.bsky.social',
+        description: 'Valid Bluesky API Author Feed URL'
+    },
+    {
+        url: 'https://api.bsky.app/authorFeedArticles/jules.bsky.social',
+        expected: 'jules.bsky.social',
+        description: 'Valid Bluesky API Author Feed Articles URL'
+    },
+    {
+        url: 'https://bsky.app/profile/user.name/rss?query=123',
+        expected: 'user.name',
+        description: 'URL with query string'
+    },
+    {
+        url: 'https://bsky.app/profile/user.name#hash',
+        expected: 'user.name',
+        description: 'URL with hash fragment'
+    },
+    {
+        url: 'https://example.com/rss',
+        expected: null,
+        description: 'Non-Bluesky URL'
+    },
+    {
+        url: 'malformed-url',
+        expected: null,
+        description: 'Malformed URL'
+    },
+    {
+        url: '',
+        expected: null,
+        description: 'Empty string'
+    }
+];
+
+extractBlueskyActorTestCases.forEach((tc) => {
+    try {
+        const result = extractBlueskyActor(tc.url);
+        assert.strictEqual(result, tc.expected, tc.description);
+        console.log(`✅ PASS: ${tc.description} (${tc.url})`);
+        passed++;
+    } catch (err) {
+        console.error(`❌ FAIL: ${tc.description} (${tc.url})`);
+        console.error(`   Expected ${tc.expected}, but got ${err.actual}`);
         failed++;
     }
 });
