@@ -380,8 +380,8 @@
                 display: flex !important;
                 width: 100% !important;
                 flex: none !important;
-                height: calc(100vh - 80px - env(safe-area-inset-bottom, 0px));
-                height: calc(100dvh - 80px - env(safe-area-inset-bottom, 0px));
+                height: calc(100vh - 92px - env(safe-area-inset-bottom, 0px));
+                height: calc(100dvh - 92px - env(safe-area-inset-bottom, 0px));
             }
             #resizer { display: none !important; }
             #mobile-tab-bar { display: flex !important; }
@@ -473,7 +473,7 @@
             left: 0; right: 0;
             bottom: 0;
             z-index: 50;
-            padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+            padding: 8px 18px calc(14px + env(safe-area-inset-bottom, 0px));
             background: transparent !important;
             border: none !important;
             pointer-events: none;
@@ -536,6 +536,18 @@
             background: rgba(88, 166, 255, 0.22);
             color: #58a6ff;
         }
+        /* Compact mode: labels hide, pill + search shrink */
+        body.bar-scrolled #mobile-tab-bar .tab-pill { height: 46px; padding: 5px; }
+        body.bar-scrolled #mobile-tab-bar .tab-search { width: 44px; height: 44px; }
+        body.bar-scrolled #mobile-tab-bar .tab-btn .tab-label {
+            display: none;
+        }
+        body.bar-scrolled #mobile-tab-bar .tab-btn { gap: 0; }
+        #mobile-tab-bar .tab-pill,
+        #mobile-tab-bar .tab-search,
+        #mobile-tab-bar .tab-btn {
+            transition: height 0.2s ease, width 0.2s ease, padding 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
         #mobile-tab-bar .tab-btn:active { background: rgba(255,255,255,0.06); }
         #mobile-tab-bar .tab-btn.active:active { background: rgba(59, 130, 246, 0.28); }
         #mobile-tab-bar .tab-search {
@@ -588,9 +600,9 @@
             display: none;
             position: fixed;
             left: 0; right: 0;
-            bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+            bottom: calc(96px + env(safe-area-inset-bottom, 0px));
             z-index: 49;
-            padding: 0 12px 6px;
+            padding: 0 18px 6px;
             pointer-events: none;
         }
         body.search-active #mobile-search-sheet { display: block; }
@@ -1053,12 +1065,6 @@
                 <div id="feed-list" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm"></div>
             </div>
 
-            <div class="p-4 border-t border-gray-200 dark:border-gray-700 text-[10px] text-gray-400 flex justify-between items-center">
-                <span id="sync-status" class="cursor-pointer hover:text-blue-500" onclick="showAccountInfo()" title="Account info">Local Only</span>
-                <div class="flex space-x-3">
-                    <button id="signout-btn" onclick="handleSignOut()" class="hidden hover:text-red-500 font-bold uppercase outline-none" title="Sign out">Sign Out</button>
-                </div>
-            </div>
         </aside>
 
         <!-- PANE 2: Timeline -->
@@ -1314,6 +1320,15 @@
 
             <!-- Tab: Preferences -->
             <div id="settings-panel-prefs" class="hidden p-6 overflow-y-auto flex-1 space-y-8 no-scrollbar">
+
+                <!-- ACCOUNT -->
+                <div>
+                    <h3 class="settings-section-label">Account</h3>
+                    <div class="flex items-center justify-between gap-3">
+                        <span id="sync-status" class="text-xs text-gray-400 truncate cursor-pointer hover:text-blue-500" onclick="showAccountInfo()" title="Account info">Local Only</span>
+                        <button id="signout-btn" onclick="handleSignOut()" class="hidden text-[10px] font-bold uppercase px-3 py-1 rounded-full border border-red-400 text-red-500 hover:bg-red-500 hover:text-white transition-colors outline-none" title="Sign out">Sign Out</button>
+                    </div>
+                </div>
 
                 <!-- REFRESH & SYNC -->
                 <div>
@@ -4379,23 +4394,37 @@
             }
         };
 
-        // --- SCROLL-DRIVEN TINT on tab bar ---
+        // --- SCROLL-DRIVEN COMPACT BAR (labels hide mid-scroll, return at top and bottom) ---
         (function() {
+            const TOP_EDGE = 4;
+            const BOTTOM_EDGE = 40;
             let ticking = false;
-            const applyScrollTint = () => {
+            const getScrollable = () => {
                 const pane = window._mobilePane;
-                let scrollable = null;
-                if (pane === 'timeline') scrollable = document.getElementById('article-list');
-                else if (pane === 'viewer') scrollable = document.getElementById('reader-view');
-                else if (pane === 'sidebar') scrollable = document.querySelector('#sidebar-pane .overflow-y-auto');
-                const top = scrollable ? scrollable.scrollTop : 0;
-                document.body.classList.toggle('bar-scrolled', top > 40);
+                if (pane === 'timeline') return document.getElementById('article-list');
+                if (pane === 'viewer') return document.getElementById('reader-view');
+                if (pane === 'sidebar') return document.querySelector('#sidebar-pane .overflow-y-auto');
+                return null;
+            };
+            const applyScrollState = () => {
+                const el = getScrollable();
+                if (!el) {
+                    document.body.classList.remove('bar-scrolled');
+                    ticking = false;
+                    return;
+                }
+                const { scrollTop, scrollHeight, clientHeight } = el;
+                const maxScroll = scrollHeight - clientHeight;
+                const atTop = scrollTop <= TOP_EDGE;
+                const atBottom = maxScroll <= 0 || (maxScroll - scrollTop) <= BOTTOM_EDGE;
+                const midScroll = !atTop && !atBottom;
+                document.body.classList.toggle('bar-scrolled', midScroll);
                 ticking = false;
             };
             const onScroll = () => {
                 if (ticking) return;
                 ticking = true;
-                requestAnimationFrame(applyScrollTint);
+                requestAnimationFrame(applyScrollState);
             };
             ['article-list', 'reader-view'].forEach(id => {
                 const el = document.getElementById(id);
