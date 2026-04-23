@@ -435,6 +435,8 @@
             /* Viewer toolbar hidden on mobile — reading progress lives in the Reader tab */
             #viewer-header { display: none !important; }
             #reading-progress { display: none !important; }
+            /* Articles list topbar hidden on mobile — unread count lives in the Reader tab */
+            #timeline-header { display: none !important; }
         }
         /* Mobile tab bar — h-20 = 80px */
         #mobile-tab-bar { display: none; }
@@ -2387,6 +2389,7 @@
             const unreadCount = filtered.filter(a => a.unread).length;
             document.getElementById('timeline-count').textContent = `${unreadCount} Unread`;
             updateBadges();
+            if (typeof updateReaderTabMode === 'function') updateReaderTabMode();
         };
 
         const _faviconStyleEl = document.createElement('style');
@@ -4365,7 +4368,8 @@
             if (!btn || !label) return;
             btn.classList.remove('reader-progress');
             if (window._mobilePane === 'timeline') {
-                label.textContent = '✓ Read';
+                const n = (window.currentTimeline || window.articles || []).filter(a => a.unread).length;
+                label.textContent = n > 0 ? `✓ ${n} Unread` : '✓ Read';
             } else if (window._mobilePane === 'viewer') {
                 label.textContent = '✓ Read';
                 btn.classList.add('reader-progress');
