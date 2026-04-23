@@ -1033,7 +1033,7 @@
                 <div id="ptr-spinner"></div>
                 <span id="ptr-label">Pull to refresh</span>
             </div>
-            <div class="px-4 h-20 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm">
                         <svg class="w-[22px] h-[22px]"><use href="#icon-rss"/></svg>
@@ -1221,7 +1221,7 @@
         <div class="tab-pill">
             <button id="mob-tab-feeds" type="button" class="tab-btn" onclick="setMobilePane('sidebar')">
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5"/></svg>
-                <span class="tab-label">Feeds</span>
+                <span class="tab-label">Home</span>
             </button>
             <button id="mob-tab-articles" type="button" class="tab-btn" onclick="if(window._mobilePane==='timeline'){document.getElementById('article-list').scrollTop=0;}else{setMobilePane('timeline');}">
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
@@ -2623,14 +2623,11 @@
                 label.textContent = 'Pull to refresh';
                 if (wasReady && !_loading) {
                     _loading = true;
-                    indicator.style.top = '0px';
-                    indicator.classList.add('ptr-visible', 'ptr-loading');
-                    label.textContent = 'Refreshing...';
-                    window.showToast('Refreshing feeds...');
+                    window.showToast('Refreshing feeds...', false, true);
                     fetchAllStaggered(window.feeds).then(() => {
-                        indicator.style.top = '-56px';
-                        indicator.classList.remove('ptr-visible', 'ptr-loading');
                         _loading = false;
+                        window.hideToast();
+                        window.showToast('Feeds refreshed');
                     });
                 }
             };
@@ -3327,15 +3324,20 @@
         };
 
         async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 150) {
+            const promises = [];
             for (let i = 0; i < feeds.length; i++) {
-                fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground);
+                promises.push(fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground));
                 if (i < feeds.length - 1) await new Promise(r => setTimeout(r, delayMs));
             }
+            await Promise.allSettled(promises);
         }
 
         window.refreshAll = () => {
-            window.showToast("Refreshing feeds...");
-            fetchAllStaggered(window.feeds);
+            window.showToast("Refreshing feeds...", false, true);
+            fetchAllStaggered(window.feeds).then(() => {
+                window.hideToast();
+                window.showToast("Feeds refreshed");
+            });
         };
 
         // --- AUTO REFRESH ---
@@ -3668,14 +3670,25 @@
         // --- TOAST QUEUE ---
         window._toastQueue = [];
         window._toastBusy = false;
-        window.showToast = (msg, isError = false) => {
-            window._toastQueue.push({ msg, isError });
+        window._toastSticky = false;
+        window.showToast = (msg, isError = false, sticky = false) => {
+            window._toastQueue.push({ msg, isError, sticky });
             if (!window._toastBusy) processToastQueue();
         };
+        window.hideToast = () => {
+            const toast = document.getElementById('toast-notification');
+            if (toast) {
+                toast.style.opacity = '0';
+                toast.style.pointerEvents = 'none';
+            }
+            window._toastSticky = false;
+            setTimeout(() => { window._toastBusy = false; processToastQueue(); }, 350);
+        };
         function processToastQueue() {
+            if (window._toastSticky) return;
             if (window._toastQueue.length === 0) { window._toastBusy = false; return; }
             window._toastBusy = true;
-            const { msg, isError } = window._toastQueue.shift();
+            const { msg, isError, sticky } = window._toastQueue.shift();
             const toast = document.getElementById('toast-notification');
             if (!toast) { processToastQueue(); return; }
             toast.textContent = msg;
@@ -3683,6 +3696,10 @@
             toast.style.top = '16px';
             toast.style.pointerEvents = 'auto';
             toast.style.opacity = '1';
+            if (sticky) {
+                window._toastSticky = true;
+                return;
+            }
             setTimeout(() => {
                 toast.style.opacity = '0';
                 toast.style.pointerEvents = 'none';
