@@ -380,8 +380,14 @@
                 display: flex !important;
                 width: 100% !important;
                 flex: none !important;
-                height: calc(100vh - 92px - env(safe-area-inset-bottom, 0px));
-                height: calc(100dvh - 92px - env(safe-area-inset-bottom, 0px));
+                height: 100vh;
+                height: 100dvh;
+            }
+            /* Content scrolls under the floating bar — reserve enough padding so last items clear the pill */
+            #article-list,
+            #reader-view,
+            #sidebar-pane .overflow-y-auto {
+                padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
             }
             #resizer { display: none !important; }
             #mobile-tab-bar { display: flex !important; }
@@ -1025,7 +1031,7 @@
                 <div id="ptr-spinner"></div>
                 <span id="ptr-label">Pull to refresh</span>
             </div>
-            <div class="px-4 h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div class="px-4 h-20 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm">
                         <svg class="w-[22px] h-[22px]"><use href="#icon-rss"/></svg>
@@ -1033,9 +1039,6 @@
                     <h1 class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
                 </div>
                 <div class="flex space-x-1">
-                    <button id="theme-toggle" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Switch Theme">
-                        <svg id="theme-icon" class="h-[22px] w-[22px]"><use href="#icon-moon"/></svg>
-                    </button>
                     <button onclick="refreshAll()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Refresh Feeds">
                         <svg class="h-[22px] w-[22px]"><use href="#icon-refresh"/></svg>
                     </button>
@@ -1327,6 +1330,18 @@
                     <div class="flex items-center justify-between gap-3">
                         <span id="sync-status" class="text-xs text-gray-400 truncate cursor-pointer hover:text-blue-500" onclick="showAccountInfo()" title="Account info">Local Only</span>
                         <button id="signout-btn" onclick="handleSignOut()" class="hidden text-[10px] font-bold uppercase px-3 py-1 rounded-full border border-red-400 text-red-500 hover:bg-red-500 hover:text-white transition-colors outline-none" title="Sign out">Sign Out</button>
+                    </div>
+                </div>
+
+                <!-- APPEARANCE -->
+                <div>
+                    <h3 class="settings-section-label">Appearance</h3>
+                    <div class="flex items-center justify-between">
+                        <label class="settings-item-label">Theme</label>
+                        <button id="theme-toggle" onclick="toggleTheme()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 flex items-center gap-1.5" title="Switch Theme">
+                            <svg id="theme-icon" class="w-3.5 h-3.5"><use href="#icon-moon"/></svg>
+                            <span id="theme-label">DARK</span>
+                        </button>
                     </div>
                 </div>
 
@@ -3473,6 +3488,25 @@
         })();
 
         window.toggleSettings = () => document.getElementById('settings-modal').classList.toggle('hidden');
+
+        window.applyTheme = (mode) => {
+            const isDark = mode === 'dark';
+            document.documentElement.classList.toggle('dark', isDark);
+            const icon = document.getElementById('theme-icon');
+            const label = document.getElementById('theme-label');
+            if (icon) icon.innerHTML = `<use href="#icon-${isDark ? 'moon' : 'sun'}"/>`;
+            if (label) label.textContent = isDark ? 'DARK' : 'LIGHT';
+        };
+        window.toggleTheme = () => {
+            const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+            try { localStorage.setItem('newsreader_theme', next); } catch(e) {}
+            applyTheme(next);
+        };
+        (function() {
+            let saved;
+            try { saved = localStorage.getItem('newsreader_theme'); } catch(e) {}
+            applyTheme(saved === 'light' ? 'light' : 'dark');
+        })();
         window.switchSettingsTab = (tab) => {
             ['feeds','prefs'].forEach(t => {
                 const panel = document.getElementById(`settings-panel-${t}`);
