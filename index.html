@@ -4390,13 +4390,33 @@
                 return;
             }
             if (pane === 'viewer') {
-                if (window.currentArticle) {
-                    window.currentArticle.unread = false;
-                    window._readLinks.add(window.currentArticle.link);
+                const current = window.currentArticle;
+                if (current) {
+                    current.unread = false;
+                    window._readLinks.add(current.link);
                     saveReadState();
-                    refreshUI?.();
                 }
-                setMobilePane('timeline');
+                const nav = (window._navSnapshot && window._navSnapshot.length) ? window._navSnapshot : (window.currentTimeline || []);
+                const currentId = current?.id;
+                const startIdx = currentId ? nav.findIndex(a => a.id === currentId) : -1;
+                let nextUnread = null;
+                for (let i = startIdx + 1; i < nav.length; i++) {
+                    if (nav[i].unread) { nextUnread = nav[i]; break; }
+                }
+                if (!nextUnread) {
+                    for (let i = 0; i < startIdx; i++) {
+                        if (nav[i].unread) { nextUnread = nav[i]; break; }
+                    }
+                }
+                refreshUI?.();
+                if (nextUnread) {
+                    window._navigating = true;
+                    selectArticle(nextUnread.id);
+                    window._navigating = false;
+                } else {
+                    setMobilePane('timeline');
+                    window.showToast?.('All caught up');
+                }
                 return;
             }
             if (window.currentArticle) setMobilePane('viewer');
