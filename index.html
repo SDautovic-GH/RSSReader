@@ -1160,13 +1160,15 @@
                         </div>
 
                         <article id="article-content" class="hidden animate-in fade-in duration-300">
-                            <p id="article-meta" onclick="filterByCurrentSource()" class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest mb-2 cursor-pointer hover:opacity-70 transition-opacity">
-                                <img id="article-favicon" src="" class="rounded-sm hidden" style="width:1em;height:1em;object-fit:contain;vertical-align:middle">
-                                <span id="article-source-label"></span>
-                            </p>
-                            <h1 id="article-title" onclick="openExternal()" class="font-extrabold leading-tight mb-6 dark:text-white cursor-pointer hover:opacity-80 transition-opacity" style="font-size: 1.7em;"></h1>
-                            <div class="flex items-center text-xs text-gray-500 mb-8 pb-4 border-b border-gray-100 dark:border-gray-800">
-                                <span id="article-author" class="font-semibold"></span><span class="mx-2">•</span><span id="article-date"></span>
+                            <div id="article-header-card">
+                                <p id="article-meta" onclick="filterByCurrentSource()" class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest mb-2 cursor-pointer hover:opacity-70 transition-opacity">
+                                    <img id="article-favicon" src="" class="rounded-sm hidden" style="width:1em;height:1em;object-fit:contain;vertical-align:middle">
+                                    <span id="article-source-label"></span>
+                                </p>
+                                <h1 id="article-title" onclick="openExternal()" class="font-extrabold leading-tight mb-6 dark:text-white cursor-pointer hover:opacity-80 transition-opacity" style="font-size: 1.7em;"></h1>
+                                <div class="flex items-center text-xs text-gray-500 mb-8 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                    <span id="article-author" class="font-semibold"></span><span class="mx-2">•</span><span id="article-date"></span>
+                                </div>
                             </div>
                             <div id="article-body" class="article-content dynamic-view-text text-gray-800 dark:text-gray-300 leading-relaxed space-y-4"></div>
                         </article>
@@ -3488,6 +3490,70 @@
                 if (dx < 0) navigateArticle(1);
                 else        navigateArticle(-1);
             }, { passive: true });
+        })();
+
+        // --- ARTICLE HEADER CARD: swipe left = toggle read, swipe right = save for later ---
+        (function() {
+            const card = document.getElementById('article-header-card');
+            if (!card) return;
+            const THRESHOLD = 60;
+            const RATIO = 2.0;
+            let t = null;
+
+            card.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                t = { startX: touch.clientX, startY: touch.clientY, moved: false, cancelled: false };
+            }, { passive: true });
+
+            card.addEventListener('touchmove', (e) => {
+                if (!t || t.cancelled) return;
+                const touch = e.touches[0];
+                const dx = touch.clientX - t.startX;
+                const dy = touch.clientY - t.startY;
+                if (!t.moved && Math.abs(dy) > Math.abs(dx)) { t.cancelled = true; card.style.background = ''; return; }
+                if (Math.abs(dx) < 8 && Math.abs(dy) > 4) { t.cancelled = true; return; }
+                t.moved = true;
+                const absDx = Math.abs(dx);
+                const progress = Math.min(1, absDx / THRESHOLD);
+                if (dx < -8) {
+                    card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.14}) 60%, transparent 100%)`;
+                } else if (dx > 8) {
+                    card.style.background = `linear-gradient(to left, rgba(22,163,74,${progress * 0.35}) 0%, rgba(22,163,74,${progress * 0.14}) 60%, transparent 100%)`;
+                } else {
+                    card.style.background = '';
+                }
+            }, { passive: true });
+
+            card.addEventListener('touchcancel', () => {
+                if (t) { card.style.background = ''; t = null; }
+            }, { passive: true });
+
+            card.addEventListener('touchend', (e) => {
+                if (!t) return;
+                const snap = t;
+                t = null;
+                card.style.background = '';
+                if (snap.cancelled || !snap.moved) return;
+                const touch = e.changedTouches[0];
+                const dx = touch.clientX - snap.startX;
+                const dy = touch.clientY - snap.startY;
+                if (Math.abs(dx) < THRESHOLD) return;
+                if (Math.abs(dy) > Math.abs(dx) / RATIO) return;
+
+                e.stopPropagation();
+                const article = window.currentArticle;
+                if (!article) return;
+                if (dx < 0) {
+                    toggleUnread(article); saveReadState();
+                    window._pinnedArticleIds.delete(article.id);
+                    refreshUI();
+                    window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
+                } else {
+                    toggleReadLater(article); saveReadLaterState();
+                    refreshUI();
+                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
+                }
+            });
         })();
 
         window.toggleSettings = () => document.getElementById('settings-modal').classList.toggle('hidden');
