@@ -551,6 +551,14 @@
             display: none;
         }
         body.bar-scrolled #mobile-tab-bar .tab-btn { gap: 0; }
+        /* Compact mode: heavier icon strokes since labels are hidden */
+        body.bar-scrolled #mobile-tab-bar .tab-ico,
+        body.bar-scrolled #mobile-tab-bar .tab-search svg {
+            stroke-width: 2.4;
+        }
+        body.bar-scrolled #mobile-tab-bar #mob-tab-articles .tab-ico {
+            stroke-width: 2.0;
+        }
         #mobile-tab-bar .tab-pill,
         #mobile-tab-bar .tab-search,
         #mobile-tab-bar .tab-btn {
@@ -840,6 +848,9 @@
         }
         /* Reduce paint cost on article list re-renders */
         #article-list > div { contain: style layout; }
+
+        /* Invert dark-on-transparent favicons (e.g. NYT) in dark mode */
+        .dark .favicon-invert { filter: invert(1) brightness(1.15); }
 
         /* ===== ARTICLE READER TYPOGRAPHY ===== */
         .article-content p { margin-bottom: 1.25em; line-height: var(--line-height, 1.75); }
@@ -1220,15 +1231,15 @@
     <nav id="mobile-tab-bar">
         <div class="tab-pill">
             <button id="mob-tab-feeds" type="button" class="tab-btn" onclick="setMobilePane('sidebar')">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5"/></svg>
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
                 <span class="tab-label">Home</span>
             </button>
             <button id="mob-tab-articles" type="button" class="tab-btn" onclick="if(window._mobilePane==='timeline'){document.getElementById('article-list').scrollTop=0;}else{setMobilePane('timeline');}">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2M7 16h6M7 8h6v4H7z"/></svg>
                 <span class="tab-label">Articles</span>
             </button>
             <button id="mob-tab-reader" type="button" class="tab-btn" onclick="onReaderTabClick()">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M8 10h8M8 14h5"/></svg>
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 6.5C10.5 5.5 8 5 4 5v13c4 0 6.5 0.5 8 1.5"/><path d="M12 6.5C13.5 5.5 16 5 20 5v13c-4 0-6.5 0.5-8 1.5"/><path d="M12 6.5v13"/></svg>
                 <span class="tab-progress-ring" aria-hidden="true">
                     <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="3"/><circle id="tab-progress-circle" cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="97.39" stroke-dashoffset="97.39" transform="rotate(-90 18 18)" style="transition: stroke-dashoffset 0.15s linear;"/></svg>
                     <span id="tab-progress-text" class="tab-progress-text"></span>
@@ -2098,9 +2109,17 @@
                     return '';
                 };
                 // For body fields: preserve HTML markup (CDATA or encoded HTML inside description/content)
+                // Namespaced tags (e.g. 'content\\:encoded') need getElementsByTagName — querySelector's
+                // \: escape is unreliable in XML-parsed documents and silently returns null for Substack.
                 const getHtml = (el, ...tags) => {
                     for (const tag of tags) {
-                        const node = el.querySelector(tag);
+                        let node;
+                        if (tag.includes('\\:')) {
+                            const qname = tag.replace(/\\:/g, ':');
+                            node = el.getElementsByTagName(qname)[0];
+                        } else {
+                            node = el.querySelector(tag);
+                        }
                         if (!node) continue;
 
                         // 1. If it has real HTML child elements (like Atom feeds), grab the innerHTML
@@ -2138,7 +2157,25 @@
                     if (!link || window.articles.some(a => a.link === link)) return;
                     const isNew = !window._readLinks.has(link);
                     const cachedBody = window._bodyCache?.[link];
-                    const rawBody = getHtml(item, 'content\\:encoded', 'content', 'description', 'summary');
+                    let rawBody = getHtml(item, 'content\\:encoded', 'content', 'description', 'summary');
+                    // Podcast/audio posts (e.g. Substack audio episodes) have near-empty body
+                    // but an <enclosure type="audio/*">. Render an inline player so the item is playable.
+                    const audioEnc = (() => {
+                        // getElementsByTagName + manual filter — attribute selectors on querySelector
+                        // are unreliable in XML-parsed documents (same issue as content\:encoded).
+                        const encs = item.getElementsByTagName('enclosure');
+                        for (const enc of encs) {
+                            const type = enc.getAttribute('type') || '';
+                            const url = enc.getAttribute('url');
+                            if (url && type.startsWith('audio')) return { url, type: type || 'audio/mpeg' };
+                        }
+                        return null;
+                    })();
+                    if (audioEnc && rawBody.replace(/<[^>]+>/g, '').trim().length < 50) {
+                        const safeUrl = audioEnc.url.replace(/"/g, '&quot;');
+                        const safeType = audioEnc.type.replace(/"/g, '&quot;');
+                        rawBody = `<audio controls preload="none" src="${safeUrl}" type="${safeType}" style="width:100%;margin:0.5em 0 1em;"></audio>` + rawBody;
+                    }
                     const pubDate = (() => {
                         const raw = getText(item, 'pubDate', 'published', 'updated', 'dc\\:date');
                         if (!raw) return raw;
@@ -2167,7 +2204,7 @@
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
                         excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
                         _excerptHtml: null,
-                        body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] }),
+                        body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_TAGS: ['audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'controls', 'preload', 'type'] }),
                         link,
                         unread: isNew,
                         readLater: window._readLaterLinks.has(link),
@@ -2416,12 +2453,25 @@
             _faviconStyleEl.textContent = rules;
         }
 
+        // Domains whose favicon is black/dark on transparent — inverted in dark mode
+        const DARK_FAVICON_HOSTS = [
+            /(?:^|\.)nytimes\.com$/,
+        ];
+        function faviconNeedsInvert(feedObj) {
+            if (!feedObj?.url) return false;
+            try {
+                const host = new URL(feedObj.url).hostname;
+                return DARK_FAVICON_HOSTS.some(re => re.test(host));
+            } catch(e) { return false; }
+        }
+
         function getFavicon(sourceName) {
             const feedObj = window.feeds.find(f => f.name === sourceName);
             if (!feedObj?.favicon) return '';
             const slug = getFaviconSlug(sourceName);
             const fav = escJs(feedObj.favicon);
-            return `<span class="${slug} inline-block w-3 h-3 rounded-sm mr-1 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;vertical-align:middle;"></span>`;
+            const invert = faviconNeedsInvert(feedObj) ? ' favicon-invert' : '';
+            return `<span class="${slug}${invert} inline-block w-3 h-3 rounded-sm mr-1 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;vertical-align:middle;"></span>`;
         }
 
         function buildArticleCard(a) {
@@ -2666,6 +2716,7 @@
                     faviconEl.src = faviconUrl;
                     faviconEl.classList.remove('hidden');
                     faviconEl.style.display = '';
+                    faviconEl.classList.toggle('favicon-invert', faviconNeedsInvert(feedObj));
                 } else {
                     faviconEl.classList.add('hidden');
                 }
@@ -2850,8 +2901,16 @@
                                 if (node.nodeType === Node.ELEMENT_NODE) {
                                     const tag = node.tagName?.toLowerCase();
                                     if (tag === 'p' || tag === 'h1' || tag === 'h2' || tag === 'h3') break;
-                                    if (tag === 'figure' || tag === 'picture' || tag === 'img' ||
-                                        node.querySelector('img')) { node.remove(); break; }
+                                    if (tag === 'figure' || tag === 'picture' || tag === 'img') {
+                                        node.remove(); break;
+                                    }
+                                    // Wrapper containing an image: only strip if it's image-dominant
+                                    // (a caption wrapper), not a real content container with prose.
+                                    if (node.querySelector('img')) {
+                                        const wrapperWords = node.textContent.trim().split(/\s+/).filter(Boolean).length;
+                                        if (wrapperWords < 25) { node.remove(); break; }
+                                        break;
+                                    }
                                 }
                             }
                             // Skip linkify — extracted HTML already has proper <a> tags
@@ -2873,7 +2932,8 @@
                 const bodyEl = document.getElementById('article-body');
                 if (bodyEl && window.currentArticle?.id === article.id) {
                     const words = bodyEl.textContent.trim().split(/\s+/).filter(Boolean).length;
-                    if (words < 50 && article.link && article.link !== '#') {
+                    const hasMedia = !!bodyEl.querySelector('audio, video');
+                    if (words < 50 && !hasMedia && article.link && article.link !== '#') {
                         const stubEl = document.createElement('p');
                         stubEl.style.cssText = 'margin-top:1.2em;color:#8b949e;font-style:italic;font-size:0.9em;';
                         stubEl.innerHTML = (words === 0 ? 'Full content is not available in the RSS feed.' : 'Content may be truncated in the RSS feed.')
@@ -3078,7 +3138,8 @@
                             const isStale = health && health.lastSuccess && (Date.now() - health.lastSuccess > 7 * 86400000);
                             const healthClass = isError ? 'feed-error' : (isStale ? 'feed-stale' : '');
                             const fav = f.favicon ? escJs(f.favicon) : '';
-                            const favicon = f.favicon ? `<span class="${getFaviconSlug(f.name)} inline-block w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;"></span>` : '<span class="w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
+                            const favInvert = faviconNeedsInvert(f) ? ' favicon-invert' : '';
+                            const favicon = f.favicon ? `<span class="${getFaviconSlug(f.name)}${favInvert} inline-block w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;"></span>` : '<span class="w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
 
                             const sfName = escJs(f.name);
                             const sfId   = escJs(f.id);

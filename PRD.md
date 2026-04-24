@@ -49,7 +49,8 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on b
 | OPML export | Download current subscription list as valid OPML XML |
 | Bluesky support | `@actor.bsky.social` handles resolved via public Bluesky API |
 | Favicon display | Auto-fetched and cached per feed; falls back to Google Favicons API |
-| CORS proxy chain | `corsproxy.io` → `allorigins.win` fallback for cross-origin fetches |
+| CORS proxy chain | Cloudflare Worker → `corsproxy.io` → `allorigins.win` fallback for cross-origin fetches |
+| Dark-favicon inversion | Configurable host list (e.g. nytimes.com) whose dark-on-transparent favicons are inverted in dark mode |
 | Auto-refresh | Configurable interval: Off, 5, 10, 15, 30, 60 minutes |
 | Manual refresh | Per-feed, per-category, or global refresh button |
 
@@ -69,7 +70,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on b
 | Thumbnail images | Inline article thumbnail when available |
 | Relative timestamps | "2 min ago", "3 hours ago", "Yesterday" |
 | Mark all read | Click "N UNREAD" header button or via context menu |
-| Pull-to-refresh | Swipe down ≥120px on mobile to trigger refresh |
+| Pull-to-refresh | Swipe down ≥100px on mobile to trigger refresh; unified sticky-toast indicator persists until all feeds settle |
 | Long-press context menu | Hold article card on mobile for contextual actions |
 
 ### 3.3 Article Viewer
@@ -84,6 +85,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on b
 | Image lightbox | Click image to expand to full-screen overlay |
 | Broken image suppression | Images <60px or 1×1 hidden; empty ancestor containers collapsed |
 | Responsive embeds | Videos, audio, iframes rendered full-width |
+| Podcast audio player | Items with `<enclosure type="audio/*">` and near-empty body get an inline `<audio controls>` player |
 | Linkify | Bare URLs in plain-text content converted to clickable links |
 | MARK READ / MARK UNREAD | Button in viewer header; state persists and syncs |
 | READ LATER | Toggle bookmark; article appears in Read Later smart feed |
@@ -134,7 +136,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on b
 | Requirement | Detail |
 |---|---|
 | Responsive layout | Single-pane on ≤900px; three-pane on desktop |
-| Bottom tab bar | Feeds / Articles / Reader / Fullscreen tabs |
+| Bottom tab bar | Home / Articles / Reader tabs plus Search button; icons bump stroke-width on scroll (compact mode) |
 | Mobile reader action bar | Prev, Read, All Read, Later, Share, Next — all 16px labels |
 | Fullscreen mode | Hides all chrome; floating topbar pills for navigation |
 | Article List topbar (fullscreen) | Unread count, dupes count, Mark All Read — 16px |
@@ -268,7 +270,7 @@ All state is global on `window`:
 - Native mobile apps (iOS App Store / Google Play)
 - Server-side rendering or API backend
 - Multi-user / shared feed lists
-- Podcast/video feed support (audio/video embeds render but no dedicated player)
+- Dedicated video feed support (video embeds render inline but no custom playlist/queue UI)
 - Feed discovery or recommendation engine
 - Comment threading or social features
 
