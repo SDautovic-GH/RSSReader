@@ -2858,8 +2858,16 @@
                                 if (node.nodeType === Node.ELEMENT_NODE) {
                                     const tag = node.tagName?.toLowerCase();
                                     if (tag === 'p' || tag === 'h1' || tag === 'h2' || tag === 'h3') break;
-                                    if (tag === 'figure' || tag === 'picture' || tag === 'img' ||
-                                        node.querySelector('img')) { node.remove(); break; }
+                                    if (tag === 'figure' || tag === 'picture' || tag === 'img') {
+                                        node.remove(); break;
+                                    }
+                                    // Wrapper containing an image: only strip if it's image-dominant
+                                    // (a caption wrapper), not a real content container with prose.
+                                    if (node.querySelector('img')) {
+                                        const wrapperWords = node.textContent.trim().split(/\s+/).filter(Boolean).length;
+                                        if (wrapperWords < 25) { node.remove(); break; }
+                                        break;
+                                    }
                                 }
                             }
                             // Skip linkify — extracted HTML already has proper <a> tags
