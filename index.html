@@ -2157,7 +2157,25 @@
                     if (!link || window.articles.some(a => a.link === link)) return;
                     const isNew = !window._readLinks.has(link);
                     const cachedBody = window._bodyCache?.[link];
-                    const rawBody = getHtml(item, 'content\\:encoded', 'content', 'description', 'summary');
+                    let rawBody = getHtml(item, 'content\\:encoded', 'content', 'description', 'summary');
+                    // Podcast/audio posts (e.g. Substack audio episodes) have near-empty body
+                    // but an <enclosure type="audio/*">. Render an inline player so the item is playable.
+                    const audioEnc = (() => {
+                        // getElementsByTagName + manual filter — attribute selectors on querySelector
+                        // are unreliable in XML-parsed documents (same issue as content\:encoded).
+                        const encs = item.getElementsByTagName('enclosure');
+                        for (const enc of encs) {
+                            const type = enc.getAttribute('type') || '';
+                            const url = enc.getAttribute('url');
+                            if (url && type.startsWith('audio')) return { url, type: type || 'audio/mpeg' };
+                        }
+                        return null;
+                    })();
+                    if (audioEnc && rawBody.replace(/<[^>]+>/g, '').trim().length < 50) {
+                        const safeUrl = audioEnc.url.replace(/"/g, '&quot;');
+                        const safeType = audioEnc.type.replace(/"/g, '&quot;');
+                        rawBody = `<audio controls preload="none" src="${safeUrl}" type="${safeType}" style="width:100%;margin:0.5em 0 1em;"></audio>` + rawBody;
+                    }
                     const pubDate = (() => {
                         const raw = getText(item, 'pubDate', 'published', 'updated', 'dc\\:date');
                         if (!raw) return raw;
@@ -2186,7 +2204,7 @@
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
                         excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
                         _excerptHtml: null,
-                        body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes'] }),
+                        body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_TAGS: ['audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'controls', 'preload', 'type'] }),
                         link,
                         unread: isNew,
                         readLater: window._readLaterLinks.has(link),
@@ -2914,7 +2932,8 @@
                 const bodyEl = document.getElementById('article-body');
                 if (bodyEl && window.currentArticle?.id === article.id) {
                     const words = bodyEl.textContent.trim().split(/\s+/).filter(Boolean).length;
-                    if (words < 50 && article.link && article.link !== '#') {
+                    const hasMedia = !!bodyEl.querySelector('audio, video');
+                    if (words < 50 && !hasMedia && article.link && article.link !== '#') {
                         const stubEl = document.createElement('p');
                         stubEl.style.cssText = 'margin-top:1.2em;color:#8b949e;font-style:italic;font-size:0.9em;';
                         stubEl.innerHTML = (words === 0 ? 'Full content is not available in the RSS feed.' : 'Content may be truncated in the RSS feed.')
