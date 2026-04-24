@@ -2109,9 +2109,17 @@
                     return '';
                 };
                 // For body fields: preserve HTML markup (CDATA or encoded HTML inside description/content)
+                // Namespaced tags (e.g. 'content\\:encoded') need getElementsByTagName — querySelector's
+                // \: escape is unreliable in XML-parsed documents and silently returns null for Substack.
                 const getHtml = (el, ...tags) => {
                     for (const tag of tags) {
-                        const node = el.querySelector(tag);
+                        let node;
+                        if (tag.includes('\\:')) {
+                            const qname = tag.replace(/\\:/g, ':');
+                            node = el.getElementsByTagName(qname)[0];
+                        } else {
+                            node = el.querySelector(tag);
+                        }
                         if (!node) continue;
 
                         // 1. If it has real HTML child elements (like Atom feeds), grab the innerHTML
