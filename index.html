@@ -1643,6 +1643,116 @@
         window._showEmptyCategories = false;
         window._navigating = false;
 
+        // --- STORAGE MANAGER (IndexedDB) ---
+        class StorageManager {
+            constructor(dbName = 'RSSReaderDB', storeName = 'keyval') {
+                this.dbName = dbName;
+                this.storeName = storeName;
+                this._db = null;
+            }
+
+            async _getDB() {
+                if (this._db) return this._db;
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, 1);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(this.storeName)) {
+                            db.createObjectStore(this.storeName);
+                        }
+                    };
+                    request.onsuccess = (e) => {
+                        this._db = e.target.result;
+                        resolve(this._db);
+                    };
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            }
+
+            async get(key) {
+                try {
+                    const db = await this._getDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction(this.storeName, 'readonly');
+                        const store = transaction.objectStore(this.storeName);
+                        const request = store.get(key);
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (e) {
+                    console.error('IndexedDB Get Error:', e);
+                    return null;
+                }
+            }
+
+            async set(key, value) {
+                try {
+                    const db = await this._getDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction(this.storeName, 'readwrite');
+                        const store = transaction.objectStore(this.storeName);
+                        const request = store.put(value, key);
+                        request.onsuccess = () => resolve();
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (e) {
+                    console.error('IndexedDB Set Error:', e);
+                }
+            }
+
+            async delete(key) {
+                try {
+                    const db = await this._getDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction(this.storeName, 'readwrite');
+                        const store = transaction.objectStore(this.storeName);
+                        const request = store.delete(key);
+                        request.onsuccess = () => resolve();
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (e) {
+                    console.error('IndexedDB Delete Error:', e);
+                }
+            }
+        }
+
+        window.storage = new StorageManager();
+
+        async function migrateFromLocalStorage() {
+            const keysToMigrate = [
+                'newsreader_feeds',
+                'newsreader_read',
+                'newsreader_readlater',
+                'newsreader_articles',
+                'newsreader_catorder',
+                'newsreader_prefs',
+                'newsreader_viewmode',
+                'newsreader_pane_width',
+                'newsreader_showemptycats'
+            ];
+
+            const migrationFlag = localStorage.getItem('newsreader_migrated_to_idb');
+            if (migrationFlag) return;
+
+            console.log('Starting migration to IndexedDB...');
+            for (const key of keysToMigrate) {
+                try {
+                    const value = localStorage.getItem(key);
+                    if (value !== null) {
+                        let parsedValue = value;
+                        if ((value.startsWith('[') && value.endsWith(']')) || (value.startsWith('{') && value.endsWith('}'))) {
+                            try { parsedValue = JSON.parse(value); } catch (e) {}
+                        }
+                        await window.storage.set(key, parsedValue);
+                    }
+                } catch (e) {
+                    console.warn(`Migration failed for ${key}:`, e);
+                }
+            }
+            localStorage.setItem('newsreader_migrated_to_idb', 'true');
+            console.log('Migration to IndexedDB complete.');
+        }
+
         // Helper: URL to Links — walks text nodes only, never touches attributes
         function linkify(html) {
             const tmp = document.createElement('template');
@@ -1715,11 +1825,11 @@
             const newWidth = e.clientX - sidebarWidth;
             if (newWidth >= 210 && newWidth <= 800) timelinePane.style.width = `${newWidth}px`;
         });
-        document.addEventListener('mouseup', () => {
+        document.addEventListener('mouseup', async () => {
             if (isResizing) {
                 isResizing = false;
                 document.body.classList.remove('resizing');
-                try { localStorage.setItem('newsreader_pane_width', timelinePane.style.width); } catch(e) { console.warn('Storage error:', e.message); }
+                try { await window.storage.set('newsreader_pane_width', timelinePane.style.width); } catch(e) { console.warn('Storage error:', e.message); }
                 if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             }
         });
@@ -1787,7 +1897,7 @@
             const CACHE_KEY = 'newsreader_memo_ranks';
             const CACHE_TTL = 86400000; // 24h
             try {
-                const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+                const cached = await window.storage.get(CACHE_KEY);
                 if (cached && Date.now() - cached.ts < CACHE_TTL && Object.keys(cached.map).length > 0) {
                     window._memoRankMap = cached.map;
                     console.log('[Dedup] Loaded', Object.keys(cached.map).length, 'source rankings from cache');
@@ -1821,12 +1931,12 @@
             });
             if (Object.keys(map).length > 0) {
                 window._memoRankMap = map;
-                try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), map })); } catch {}
+                try { await window.storage.set(CACHE_KEY, { ts: Date.now(), map }); } catch {}
                 console.log('[Dedup] Fetched', Object.keys(map).length, 'source rankings from Memeorandum');
             }
         }
 
-        window.toggleDedupByTitle = () => {
+        window.toggleDedupByTitle = async () => {
             window._dedupByTitle = !window._dedupByTitle;
             const btn = document.getElementById('dedup-title-toggle');
             if (btn) {
@@ -1838,7 +1948,7 @@
                 btn.classList.toggle('dark:border-gray-600', !window._dedupByTitle);
             }
             if (window._dedupByTitle && !window._memoRankMap) fetchMemoRankings();
-            saveTypographyPrefs();
+            await saveTypographyPrefs();
             renderTimeline();
         };
 
@@ -1981,9 +2091,11 @@
             window._feedHealth[feedUrl] = { lastSuccess: Date.now(), errorCount: 0 };
             const feedObj = window.feeds.find(f => f.url === feedUrl);
             if (feedObj && !feedObj.favicon) {
-                const cached = (() => { try { return localStorage.getItem('favicon_' + feedUrl); } catch(e) { return null; } })();
-                feedObj.favicon = cached || `https://www.google.com/s2/favicons?domain=bsky.app&sz=32`;
-                if (!cached) { try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); } }
+                try {
+                    const cached = await window.storage.get('favicon_' + feedUrl);
+                    feedObj.favicon = cached || `https://www.google.com/s2/favicons?domain=bsky.app&sz=32`;
+                    if (!cached) await window.storage.set('favicon_' + feedUrl, feedObj.favicon);
+                } catch(e) {}
             }
 
             // Preserve existing IDs by link so DOM onclick handlers stay valid after re-fetch
@@ -2038,7 +2150,7 @@
             } else if (window.currentSourceFilter === sourceName) {
                 renderTimeline(true);
             }
-            saveArticleCache();
+            await saveArticleCache();
             return true;
         }
 
@@ -2081,10 +2193,12 @@
                 const feedObj = window.feeds.find(f => f.url === feedUrl);
                 // Load favicon from local cache first
                 if (feedObj && !feedObj.favicon) {
-                    const cachedFavicon = (() => { try { return localStorage.getItem('favicon_' + feedUrl); } catch(e) { return null; } })();
-                    if (cachedFavicon) feedObj.favicon = cachedFavicon;
+                    try {
+                        const cached = await window.storage.get('favicon_' + feedUrl);
+                        if (cached) feedObj.favicon = cached;
+                    } catch(e) {}
                 }
-                // Fetch/refresh favicon if missing or empty-string cached value
+                // Fetch/refresh favicon if missing
                 if (feedObj && !feedObj.favicon) {
                     try {
                         const linkEl = xml.querySelector('channel > link:not([rel]), feed > link[rel="alternate"], channel > link');
@@ -2095,7 +2209,7 @@
                         const parts = domain.split('.');
                         if (parts.length > 2) domain = parts.slice(-2).join('.');
                         feedObj.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-                        try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); }
+                        try { await window.storage.set('favicon_' + feedUrl, feedObj.favicon); } catch(e) {}
                         preloadFavicon(feedObj.favicon);
                         updateFaviconStyles();
                     } catch(e) { console.warn('Favicon fetch failed:', e.message); }
@@ -2220,7 +2334,7 @@
                     renderTimeline(true);
                     renderFeeds();
                 }
-                saveArticleCache();
+                await saveArticleCache();
             } catch (e) {
                 console.warn(`Feed fetch failed [${sourceName}]:`, e.message);
                 if (!window._feedHealth[feedUrl]) window._feedHealth[feedUrl] = { lastSuccess: null, errorCount: 0 };
@@ -2612,13 +2726,13 @@
                 article._excerptHtml = null;
                 if (dx < 0) {
                     // Left swipe → Toggle Read
-                    toggleUnread(article); saveReadState();
+                    toggleUnread(article); await saveReadState();
                     window._pinnedArticleIds.delete(id);
                     refreshUI();
                     window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
                 } else {
                     // Right swipe → Toggle Save for Later
-                    toggleReadLater(article); saveReadLaterState();
+                    toggleReadLater(article); await saveReadLaterState();
                     refreshUI();
                     window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
                 }
@@ -2697,7 +2811,7 @@
             window.articles.forEach(a => { if (a.id === id) a.unread = false; });
             window.currentArticle = article;
             window._readLinks.add(article.link);
-            saveReadState();
+            await saveReadState();
 
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('article-content').classList.remove('hidden');
@@ -2964,7 +3078,7 @@
                 if (prevIndex !== currentIndex) selectArticle(window.currentTimeline[prevIndex].id);
             } else if (e.key === 'r' || e.key === 'R') {
                 if (window.currentArticle) {
-                    toggleUnread(window.currentArticle); saveReadState(); refreshUI();
+                    toggleUnread(window.currentArticle); await saveReadState(); refreshUI();
                 }
             } else if (e.key === 'b' || e.key === 'B') {
                 if (window.currentArticle) handleReadLaterAction();
@@ -3054,7 +3168,7 @@
                 const idSet = new Set(window.currentTimeline.slice(0, idx).map(a => a.id));
                 window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
                 idSet.forEach(id => window._pinnedArticleIds.delete(id));
-                saveReadState();
+                await saveReadState();
                 _lastTimelineKey = ''; renderTimeline(false); renderFeeds();
                 document.getElementById('article-list').scrollTop = 0;
             }
@@ -3068,7 +3182,7 @@
                 const idSet = new Set(window.currentTimeline.slice(idx + 1).map(a => a.id));
                 window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
                 idSet.forEach(id => window._pinnedArticleIds.delete(id));
-                saveReadState();
+                await saveReadState();
                 _lastTimelineKey = ''; renderTimeline(false); renderFeeds();
                 document.getElementById('article-list').scrollTop = 0;
             }
@@ -3222,7 +3336,7 @@
             e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
         };
 
-        window.handleCategoryOrFeedDrop = (e, targetCat) => {
+        window.handleCategoryOrFeedDrop = async (e, targetCat) => {
             e.preventDefault();
             e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
 
@@ -3235,7 +3349,7 @@
                 if (!feed || feed.category === targetCat) return;
                 feed.category = targetCat;
                 if (localFeed) localFeed.category = targetCat;
-                saveLocalFeeds();
+                await saveLocalFeeds();
                 if (typeof window.saveFeeds === 'function') window.saveFeeds([feed]);
                 renderFeeds();
                 window.showToast(`Moved to ${targetCat}`);
@@ -3246,19 +3360,19 @@
                 if (fromIdx === -1 || toIdx === -1) return;
                 order.splice(fromIdx, 1);
                 order.splice(toIdx, 0, draggedCat);
-                saveCategoryOrder();
+                await saveCategoryOrder();
                 renderFeeds();
                 if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             }
         };
 
-        function saveCategoryOrder() {
-            try { localStorage.setItem('newsreader_catorder', JSON.stringify(window._categoryOrder)); } catch(e) { console.warn('Storage error:', e.message); }
+        async function saveCategoryOrder() {
+            try { await window.storage.set('newsreader_catorder', window._categoryOrder); } catch(e) { console.warn('Storage error:', e.message); }
         }
-        function restoreCategoryOrder() {
+        async function restoreCategoryOrder() {
             try {
-                const stored = localStorage.getItem('newsreader_catorder');
-                if (stored) window._categoryOrder = JSON.parse(stored);
+                const stored = await window.storage.get('newsreader_catorder');
+                if (stored) window._categoryOrder = stored;
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
@@ -3310,7 +3424,7 @@
                         }
                     });
                     renderFeeds();
-                    saveLocalFeeds();
+                    await saveLocalFeeds();
                     if (newFeeds.length > 0 && typeof window.saveFeeds === 'function') await window.saveFeeds(newFeeds);
                     fetchAllStaggered(newFeeds, 2);
                     updateEmptyState();
@@ -3337,7 +3451,7 @@
             renderFeeds();
             closeAddFeedModal();
             fetchRecentArticles(u, t);
-            saveLocalFeeds();
+            await saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds([f]);
             updateEmptyState();
         };
@@ -3348,7 +3462,7 @@
             const f = window.accountStates.local.splice(idx, 1)[0];
             window.feeds = window.feeds.filter(feed => feed.url !== f.url);
             renderFeeds();
-            saveLocalFeeds();
+            await saveLocalFeeds();
             updateEmptyState();
             if (f.docId) window.removeFeedFromDatabase(f.docId);
         };
@@ -3404,7 +3518,7 @@
         // --- AUTO REFRESH ---
         window.updateAutoRefresh = (minutes) => {
             if (window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
-            saveTypographyPrefs();
+            await saveTypographyPrefs();
             const mins = parseInt(minutes);
             if (mins > 0) {
                 window._autoRefreshTimer = setInterval(() => {
@@ -3471,14 +3585,15 @@
         }
 
         // --- VIEW MODE ---
-        window.toggleViewMode = () => {
+        window.toggleViewMode = async () => {
             window._viewMode = window._viewMode === 'list' ? 'card' : 'list';
-            document.getElementById('view-density-toggle').textContent = window._viewMode === 'card' ? 'CARD' : 'LIST';
-            renderTimeline();
-            try { localStorage.setItem('newsreader_viewmode', window._viewMode); } catch(e) { console.warn('Storage error:', e.message); }
+            const btn = document.getElementById('view-density-toggle');
+            if (btn) btn.textContent = window._viewMode.toUpperCase();
+            try { await window.storage.set('newsreader_viewmode', window._viewMode); } catch(e) { console.warn('Storage error:', e.message); }
+            renderTimeline(true);
         };
 
-        window.toggleShowEmptyCategories = () => {
+        window.toggleShowEmptyCategories = async () => {
             window._showEmptyCategories = !window._showEmptyCategories;
             const btn = document.getElementById('show-empty-cats-toggle');
             if (btn) {
@@ -3488,18 +3603,18 @@
                     : 'text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400';
             }
             renderFeeds();
-            try { localStorage.setItem('newsreader_showemptycats', window._showEmptyCategories ? '1' : '0'); } catch(e) { console.warn('Storage error:', e.message); }
+            try { await window.storage.set('newsreader_showemptycats', window._showEmptyCategories ? '1' : '0'); } catch(e) { console.warn('Storage error:', e.message); }
         };
 
         // --- READ LATER PERSISTENCE ---
-        function saveReadLaterState() {
-            try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) { console.warn('Storage error:', e.message); }
+        async function saveReadLaterState() {
+            try { await window.storage.set('newsreader_readlater', Array.from(window._readLaterLinks)); } catch(e) { console.warn('Storage error:', e.message); }
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
         }
-        function restoreReadLaterState() {
+        async function restoreReadLaterState() {
             try {
-                const stored = localStorage.getItem('newsreader_readlater');
-                if (stored) window._readLaterLinks = new Set(JSON.parse(stored));
+                const stored = await window.storage.get('newsreader_readlater');
+                if (stored) window._readLaterLinks = new Set(stored);
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
@@ -3607,12 +3722,12 @@
                 const article = window.currentArticle;
                 if (!article) return;
                 if (dx < 0) {
-                    toggleUnread(article); saveReadState();
+                    toggleUnread(article); await saveReadState();
                     window._pinnedArticleIds.delete(article.id);
                     refreshUI();
                     window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
                 } else {
-                    toggleReadLater(article); saveReadLaterState();
+                    toggleReadLater(article); await saveReadLaterState();
                     refreshUI();
                     window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
                 }
@@ -3720,7 +3835,7 @@
                 if (a.feedUrl === oldUrl) { a.feedUrl = url; a.source = name; }
                 else if (!a.feedUrl && a.source === oldName) { a.source = name; }
             });
-            saveLocalFeeds();
+            await saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds([localFeed]);
             renderFeeds();
             renderTimeline();
@@ -3797,7 +3912,7 @@
             if (lb) lb.textContent = display;
             if (cfg.rerender === 'timeline') renderTimeline();
             if (cfg.rerender === 'feeds') renderFeeds();
-            saveTypographyPrefs();
+            await saveTypographyPrefs();
         };
 
         window.updateFolderSize = (v) => {
@@ -3808,7 +3923,7 @@
             const lb = document.getElementById('shared-folder-val');
             if (lb) lb.textContent = display;
             renderFeeds();
-            saveTypographyPrefs();
+            await saveTypographyPrefs();
         };
 
         window.updateFeedSpacing = (v) => {
@@ -3816,7 +3931,7 @@
             document.documentElement.style.setProperty('--feed-row-padding', rem);
             const lb = document.getElementById('feed-spacing-val');
             if (lb) lb.textContent = rem;
-            saveTypographyPrefs();
+            await saveTypographyPrefs();
         };
 
         window.updateLines = (v) => {
@@ -3824,7 +3939,7 @@
             const label = document.getElementById('lines-val');
             if (label) label.textContent = `${v} Lines`;
             renderTimeline();
-            saveTypographyPrefs();
+            await saveTypographyPrefs();
         };
 
         window.updateFontFamily = (t, f) => {
@@ -3836,7 +3951,7 @@
                 document.documentElement.style.setProperty(`--${t}-font-family`, f);
             }
             renderTimeline();
-            saveTypographyPrefs();
+            await saveTypographyPrefs();
         };
         const FONT_MAP = {
             "'Inter', sans-serif":                           'Inter:wght@400;500;600;700',
@@ -3862,7 +3977,7 @@
             document.documentElement.style.setProperty('--mob-zoom', pct / 100);
             const lb = document.getElementById('mob-zoom-val');
             if (lb) lb.textContent = `${pct}%`;
-            saveTypographyPrefs();
+            await saveTypographyPrefs();
         };
 
         window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
@@ -4057,7 +4172,7 @@
                 toMark = window.currentTimeline || window.articles;
             }
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
-            saveReadState();
+            await saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
             const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
@@ -4074,11 +4189,11 @@
         };
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
-            saveReadState(); refreshUI(); hideContextMenu();
+            await saveReadState(); refreshUI(); hideContextMenu();
         };
         window.toggleUnreadManual = () => {
             if (!window.currentArticle) return;
-            toggleUnread(window.currentArticle); saveReadState(); refreshUI(); updateActionButton();
+            toggleUnread(window.currentArticle); await saveReadState(); refreshUI(); updateActionButton();
         };
         window.showArticleContextMenu = (e, id) => {
             e.preventDefault();
@@ -4106,13 +4221,13 @@
         window.toggleArticleUnread = (id) => {
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
-            toggleUnread(article); saveReadState(); refreshUI(); hideContextMenu();
+            toggleUnread(article); await saveReadState(); refreshUI(); hideContextMenu();
         };
 
         window.toggleArticleReadLater = (id) => {
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
-            toggleReadLater(article); saveReadLaterState(); refreshUI();
+            toggleReadLater(article); await saveReadLaterState(); refreshUI();
             window.showToast(article.readLater ? 'Saved for Later' : 'Removed from Read Later');
             hideContextMenu();
         };
@@ -4225,7 +4340,7 @@
             window.articles.forEach(a => {
                 if (a.source === window._feedContextName) { a.unread = false; window._readLinks.add(a.link); }
             });
-            saveReadState(); refreshUI();
+            await saveReadState(); refreshUI();
             document.getElementById('feed-context-menu').classList.add('hidden');
         };
 
@@ -4240,7 +4355,7 @@
                 window.collapsedCategories[trimmed] = window.collapsedCategories[oldName];
                 delete window.collapsedCategories[oldName];
             }
-            saveLocalFeeds();
+            await saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds(window.accountStates.local);
             renderFeeds();
             window.showToast(`Renamed to "${trimmed}"`);
@@ -4265,7 +4380,7 @@
             });
             window._categoryOrder = window._categoryOrder.filter(c => c !== cat);
             delete window.collapsedCategories[cat];
-            saveLocalFeeds();
+            await saveLocalFeeds();
             renderFeeds();
             renderTimeline();
             updateEmptyState();
@@ -4310,15 +4425,15 @@
                 const sources = window.feeds.filter(f => f.category === key).map(f => f.name);
                 window.articles.forEach(a => { if (sources.includes(a.source)) { a.unread = false; window._readLinks.add(a.link); } });
             }
-            saveReadState(); refreshUI();
+            await saveReadState(); refreshUI();
             document.getElementById('folder-context-menu').classList.add('hidden');
         };
 
         // --- TYPOGRAPHY PERSISTENCE ---
-        function saveTypographyPrefs() {
+        async function saveTypographyPrefs() {
             const get = id => document.getElementById(id)?.value;
             try {
-                localStorage.setItem('newsreader_prefs', JSON.stringify({
+                await window.storage.set('newsreader_prefs', {
                     sharedFeedName:     get('shared-feed-name-slider'),
                     sharedListTitle:    get('shared-list-title-slider'),
                     sharedPreview:      get('shared-preview-slider'),
@@ -4335,13 +4450,13 @@
                     autoRefresh:        get('pref-auto-refresh'),
                     mobZoom:            get('mob-zoom-slider'),
                     dedupByTitle:       window._dedupByTitle || false,
-                }));
+                });
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
-        function restoreTypographyPrefs() {
+        async function restoreTypographyPrefs() {
             let prefs;
-            try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')); } catch(e) { return; }
+            try { prefs = await window.storage.get('newsreader_prefs'); } catch(e) { return; }
             if (!prefs) return;
             const root = document.documentElement;
 
@@ -4404,29 +4519,27 @@
         }
 
         // --- ARTICLE CACHE ---
-        function saveArticleCache() {
+        async function saveArticleCache() {
             try {
                 const cache = window.articles
-                    .slice().sort((a, b) => (b._ts || 0) - (a._ts || 0)).slice(0, 500)
+                    .slice().sort((a, b) => (b._ts || 0) - (a._ts || 0)).slice(0, 1000)
                     .map(a => ({
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
                     timestamp: a.timestamp, _ts: a._ts, excerpt: a.excerpt, link: a.link,
                     unread: a.unread, readLater: a.readLater, image: a.image,
                     // Only persist body when fully extracted via proxy (not raw RSS stubs)
-                    body: a._fullBodyLoaded ? (a.body || '').slice(0, 50000) : '',
+                    body: a._fullBodyLoaded ? a.body : '',
                     _fullBodyLoaded: !!a._fullBodyLoaded
                 }));
-                localStorage.setItem('newsreader_articles', JSON.stringify(cache));
+                await window.storage.set('newsreader_articles', cache);
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
-        function restoreArticleCache() {
+        async function restoreArticleCache() {
             try {
-                const stored = localStorage.getItem('newsreader_articles');
-                if (!stored) return;
-                const cache = JSON.parse(stored);
-                if (!Array.isArray(cache) || cache.length === 0) return;
-                const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
+                const cache = await window.storage.get('newsreader_articles');
+                if (!cache || !Array.isArray(cache) || cache.length === 0) return;
+                const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
                 const fresh = cache.filter(a => {
                     const ts = a._ts || new Date(a.timestamp).getTime();
                     return ts >= cutoff || a.readLater;
@@ -4446,35 +4559,39 @@
         }
 
         // --- FEED PERSISTENCE ---
-        function saveLocalFeeds() {
-            try { localStorage.setItem('newsreader_feeds', JSON.stringify(window.accountStates.local)); } catch(e) { console.warn('Storage error:', e.message); }
+        async function saveLocalFeeds() {
+            try { 
+                await window.storage.set('newsreader_feeds', window.accountStates.local); 
+            } catch(e) { 
+                console.warn('Storage error:', e.message); 
+            }
         }
 
         // Initialize an in-memory map to group and cache favicon operations
         window._globalFaviconCache = window._globalFaviconCache || {};
 
-        function restoreLocalFeeds() {
+        async function restoreLocalFeeds() {
             try {
-                const stored = localStorage.getItem('newsreader_feeds');
-                if (!stored) return;
-                const feeds = JSON.parse(stored);
-                if (!Array.isArray(feeds) || feeds.length === 0) return;
+                const feeds = await window.storage.get('newsreader_feeds');
+                if (!feeds || !Array.isArray(feeds) || feeds.length === 0) return;
 
-                feeds.forEach(f => {
+                // Concurrently load favicons for all feeds
+                await Promise.all(feeds.map(async f => {
                     if (!f.favicon) {
-                        const key = 'favicon_' + f.url;
-                        if (window._globalFaviconCache[key] === undefined) {
-                            try { window._globalFaviconCache[key] = localStorage.getItem(key) || null; } catch(e){}
-                        }
-                        f.favicon = window._globalFaviconCache[key] || undefined;
+                        try {
+                            const cached = await window.storage.get('favicon_' + f.url);
+                            if (cached) f.favicon = cached;
+                        } catch(e) {}
                     }
-                });
+                }));
 
                 window.accountStates.local = feeds;
                 window.feeds = feeds;
                 preloadAllFavicons();
                 updateFaviconStyles();
-            } catch(e) { console.warn('Storage error:', e.message); }
+            } catch(e) { 
+                console.warn('Restore feeds error:', e.message); 
+            }
         }
 
         // --- READ STATE PERSISTENCE ---
@@ -4482,26 +4599,29 @@
         function saveReadState() {
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
             clearTimeout(_saveReadStateTimer);
-            _saveReadStateTimer = setTimeout(() => {
+            _saveReadStateTimer = setTimeout(async () => {
                 try {
                     const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
-                    const existing = getStoredReadLinks();
+                    const existing = await restoreReadLinks();
                     const loadedLinks = new Set(window.articles.map(a => a.link));
                     const preserved = existing.filter(l => !loadedLinks.has(l));
                     const merged = Array.from(new Set([...preserved, ...readLinks]));
-                    localStorage.setItem('newsreader_read', JSON.stringify(merged.slice(-5000)));
+                    await window.storage.set('newsreader_read', merged.slice(-5000));
                 } catch(e) { console.warn('Storage error:', e.message); }
             }, 2000);
         }
 
-        function getStoredReadLinks() {
+        async function restoreReadLinks() {
             try {
-                const stored = localStorage.getItem('newsreader_read');
-                return stored ? JSON.parse(stored) : [];
+                const stored = await window.storage.get('newsreader_read');
+                return Array.isArray(stored) ? stored : [];
             } catch(e) { return []; }
         }
 
-        window._readLinks = new Set(getStoredReadLinks());
+        (async () => {
+            const links = await restoreReadLinks();
+            window._readLinks = new Set(links);
+        })();
 
         // --- MOBILE TAB BAR: active + Reader-tab mode + search + scroll tint ---
         window._mobilePane = 'timeline';
@@ -4538,7 +4658,7 @@
                 if (current) {
                     current.unread = false;
                     window._readLinks.add(current.link);
-                    saveReadState();
+                    await saveReadState();
                 }
                 const nav = (window._navSnapshot && window._navSnapshot.length) ? window._navSnapshot : (window.currentTimeline || []);
                 const currentId = current?.id;
@@ -4789,53 +4909,95 @@
 
         setInterval(() => { renderFeeds(); updateBadges?.(); }, 60000);
 
-        window.articles = [];
+        // --- APP INITIALIZATION ---
+        (async function initApp() {
+            // 1. Perform migration from localStorage if needed
+            await migrateFromLocalStorage();
 
-        restoreReadLaterState();
-        restoreTypographyPrefs();
-        loadActiveFont("'Inter', sans-serif");
-        restoreLocalFeeds();
-        updateFaviconStyles();
-        restoreCategoryOrder();
-        restoreArticleCache();
-        if (window.articles.length === 0) {
-            window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
-        }
+            // 2. Restore all persisted states from IndexedDB
+            const links = await restoreReadLinks();
+            window._readLinks = new Set(links);
+            
+            await restoreReadLaterState();
+            await restoreTypographyPrefs();
+            loadActiveFont("'Inter', sans-serif");
+            
+            await restoreLocalFeeds();
+            updateFaviconStyles();
+            await restoreCategoryOrder();
+            await restoreArticleCache();
 
-        try {
-            const vm = localStorage.getItem('newsreader_viewmode');
-            if (vm === 'card') { window._viewMode = 'card'; const btn = document.getElementById('view-density-toggle'); if (btn) btn.textContent = 'CARD'; }
-        } catch(e) {}
-
-        try {
-            if (localStorage.getItem('newsreader_showemptycats') === '1') {
-                window._showEmptyCategories = true;
-                const btn = document.getElementById('show-empty-cats-toggle');
-                if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
+            // 3. Fallback for empty state
+            if (window.articles.length === 0) {
+                window.articles = [{ 
+                    id: crypto.randomUUID(), 
+                    source: "System", 
+                    title: "Welcome to RSS Reader", 
+                    author: "News Team", 
+                    timestamp: new Date().toISOString(), 
+                    excerpt: "Import an OPML file or add a manual feed to get started.", 
+                    body: "Your high-performance personal news hub.", 
+                    link: "#", 
+                    unread: true, 
+                    readLater: false 
+                }];
             }
-        } catch(e) {}
 
-        try {
-            const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
-            if (prefs.autoRefresh) {
-                const sel = document.getElementById('pref-auto-refresh');
-                if (sel) sel.value = prefs.autoRefresh;
-                updateAutoRefresh(prefs.autoRefresh);
+            // 4. Initial UI State Setup
+            try {
+                const vm = await window.storage.get('newsreader_viewmode');
+                if (vm === 'card') { 
+                    window._viewMode = 'card'; 
+                    const btn = document.getElementById('view-density-toggle'); 
+                    if (btn) btn.textContent = 'CARD'; 
+                }
+            } catch(e) {}
+
+            try {
+                const ec = await window.storage.get('newsreader_showemptycats');
+                if (ec === '1') {
+                    window._showEmptyCategories = true;
+                    const btn = document.getElementById('show-empty-cats-toggle');
+                    if (btn) { 
+                        btn.textContent = 'ON'; 
+                        btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; 
+                    }
+                }
+            } catch(e) {}
+
+            try {
+                const pw = await window.storage.get('newsreader_pane_width');
+                if (pw) {
+                    const tp = document.getElementById('timeline-pane');
+                    if (tp) tp.style.width = pw;
+                }
+            } catch(e) {}
+
+            try {
+                const prefs = await window.storage.get('newsreader_prefs');
+                if (prefs && prefs.autoRefresh) {
+                    const sel = document.getElementById('pref-auto-refresh');
+                    if (sel) sel.value = prefs.autoRefresh;
+                    updateAutoRefresh(prefs.autoRefresh);
+                }
+            } catch(e) {}
+
+            // 5. Initial Render
+            renderFeeds();
+            if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
+                showSkeletons();
             }
-        } catch(e) {}
+            renderTimeline();
+            updateEmptyState();
 
-        window._localFetchTimer = null;
-        if (window.feeds.length > 0) {
-            window._localFetchTimer = setTimeout(() => {
-                if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
-            }, 4000);
-        }
-        renderFeeds();
-        if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
-            showSkeletons();
-        }
-        renderTimeline();
-        updateEmptyState();
+            // 6. Start Background Fetch
+            window._localFetchTimer = null;
+            if (window.feeds.length > 0) {
+                window._localFetchTimer = setTimeout(() => {
+                    if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
+                }, 4000);
+            }
+        })();
 
         let _hiddenAt = 0;
         document.addEventListener('visibilitychange', () => {
@@ -4980,7 +5142,7 @@
             const feedsRef = collection(db, 'artifacts', APP_ID, 'users', userId, 'feeds');
 
             let _firstSnapshot = true;
-            onSnapshot(feedsRef, (snap) => {
+            onSnapshot(feedsRef, async (snap) => {
                 const dbFeeds = [];
                 snap.forEach(d => dbFeeds.push({ ...d.data(), docId: d.id }));
                 if (dbFeeds.length > 0) {
@@ -4989,7 +5151,7 @@
                     window.feeds = dbFeeds;
                     preloadAllFavicons();
                     updateFaviconStyles();
-                    restoreCategoryOrder();
+                    await restoreCategoryOrder();
                     window.renderFeeds();
                     updateEmptyState();
                     if (_firstSnapshot) {
@@ -5003,7 +5165,7 @@
 
         function syncCloudReadState() {
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
-            onSnapshot(stateRef, (snap) => {
+            onSnapshot(stateRef, async (snap) => {
                 // Skip our own writes (both the pending write and the server echo)
                 if (snap.metadata.hasPendingWrites || snap.metadata.fromCache) return;
                 if (!snap.exists()) return;
@@ -5014,7 +5176,7 @@
                     if (incoming.length > 0) {
                         incoming.forEach(l => window._readLinks.add(l));
                         changed = true;
-                        try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
+                        try { await window.storage.set('newsreader_read', Array.from(window._readLinks)); } catch(e) {}
                     }
                 }
                 if (data.readLaterLinks) {
@@ -5022,7 +5184,7 @@
                     if (newSet.size !== window._readLaterLinks.size || data.readLaterLinks.some(l => !window._readLaterLinks.has(l))) {
                         window._readLaterLinks = newSet;
                         changed = true;
-                        try { localStorage.setItem('newsreader_readlater', JSON.stringify(data.readLaterLinks)); } catch(e) {}
+                        try { await window.storage.set('newsreader_readlater', data.readLaterLinks); } catch(e) {}
                     }
                 }
                 if (changed) {
@@ -5036,21 +5198,22 @@
             }, e => console.warn('Could not sync read state:', e));
         }
 
-        function syncCloudUiPrefs() {
+        async function syncCloudUiPrefs() {
             const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
-            getDoc(uiRef).then(snap => {
+            try {
+                const snap = await getDoc(uiRef);
                 if (snap.exists()) {
                     const data = snap.data();
                     if (data.paneWidth) {
                         const tp = document.getElementById('timeline-pane');
                         if (tp) {
                             tp.style.width = data.paneWidth;
-                            try { localStorage.setItem('newsreader_pane_width', data.paneWidth); } catch(e) {}
+                            try { await window.storage.set('newsreader_pane_width', data.paneWidth); } catch(e) {}
                         }
                     }
                     if (data.categoryOrder && Array.isArray(data.categoryOrder)) {
                         window._categoryOrder = data.categoryOrder;
-                        try { localStorage.setItem('newsreader_catorder', JSON.stringify(data.categoryOrder)); } catch(e) {}
+                        try { await window.storage.set('newsreader_catorder', data.categoryOrder); } catch(e) {}
                         window.renderFeeds();
                     }
                     if (data.autoRefresh) {
@@ -5058,13 +5221,15 @@
                         if (sel) sel.value = data.autoRefresh;
                         updateAutoRefresh(data.autoRefresh);
                         try {
-                            const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                            const prefs = await window.storage.get('newsreader_prefs') || {};
                             prefs.autoRefresh = data.autoRefresh;
-                            localStorage.setItem('newsreader_prefs', JSON.stringify(prefs));
+                            await window.storage.set('newsreader_prefs', prefs);
                         } catch(e) {}
                     }
                 }
-            }).catch(e => console.warn('Could not load remote UI prefs:', e));
+            } catch(e) { 
+                console.warn('Could not load remote UI prefs:', e); 
+            }
         }
 
         function setupCloudSaveFunctions() {
