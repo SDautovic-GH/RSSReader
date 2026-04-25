@@ -1,0 +1,49 @@
+✦ Here are the suggested improvements, ordered from most critical impact on Performance, Stability, and User
+  Experience to "polish" refinements.
+
+  1. Migrate Storage to IndexedDB (Performance & Stability)
+   * Why it's #1: Your PRD mentions a 5,000-link read history. localStorage is synchronous and limited to ~5MB. As
+     your history grows, every "Mark as Read" action will block the UI thread while the browser serializes and writes
+     that massive string.
+   * The Benefit: IndexedDB is asynchronous and has virtually no storage limit. This will eliminate "stutter" during
+     navigation and prevent the app from crashing when the data quota is exceeded.
+
+  2. Implement Search Functionality (Utility)
+   * Why it's #2: For your "Power Reader" persona with 100+ feeds, finding a specific article is currently impossible
+     without scrolling.
+   * The Benefit: Since all articles are already in window.articles, a client-side search is extremely fast and
+     provides immediate value for triaging content.
+
+  3. Replace Tailwind CDN with Static CSS (Performance)
+   * Why it's #3: The Tailwind CDN is meant for prototyping. It injects a ~100KB runtime script that "watches" the
+     DOM and generates styles on the fly.
+   * The Benefit: Moving to a minified, static <style> block will significantly reduce "First Contentful Paint" time
+     and lower the CPU/Memory footprint, especially on older mobile devices.
+
+  4. Fullscreen "Zen Mode" (UX/Design)
+   * Why it's #4: The primary goal of an RSS reader is reading. Currently, the sidebar and timeline take up ~50% of
+     the desktop screen even when a single article is open.
+   * The Benefit: A distraction-free mode (hiding the sidebar and timeline) with a centered text column (70-80ch
+     wide) dramatically improves focus and reading speed.
+
+  5. DOM Recycling for the Timeline (Performance)
+   * Why it's #5: Your current virtual scroll uses innerHTML = '' followed by appendChild. This forces the browser to
+     re-calculate the entire layout of the list pane on every scroll "jump."
+   * The Benefit: DOM Recycling (reusing existing card elements and just swapping the text/images) makes scrolling
+     butter-smooth, particularly in "Smart Feeds" like All Unread where the list can be long.
+
+  6. Native-Like Transitions (UX)
+   * Why it's #6: PWAs often feel "cheap" because they lack the physical cues of native apps.
+   * The Benefit: Adding 150ms slide or fade transitions when switching between the Feed list and the Reader on
+     mobile makes the app feel "installed" and premium.
+
+  7. Variable Font Integration (Design)
+   * Why it's #7: You have multiple font settings for body, title, and metadata. Loading multiple separate font files
+     increases network requests and layout shift.
+   * The Benefit: A single Variable Font file (like Inter Variable) allows you to fine-tune weights and optical sizes
+     for all UI elements with a single request, resulting in much cleaner typography.
+
+  8. Remove Redundant Sanitization (Performance)
+   * Why it's #8: You are sanitizing article HTML twice—once when fetching and once when displaying.
+   * The Benefit: It's a micro-optimization, but sanitizing once on fetch ensures the "click-to-read" interaction is
+     instantaneous, especially for long-form articles.
