@@ -77,7 +77,7 @@
 
         .dark {
             --bg-primary: #0d1117;
-            --bg-secondary: #0d1117;
+            --bg-secondary: #010409;
             --bg-tertiary: #161b22;
             --text-primary: #e6edf3;
             --text-secondary: #8b949e;
@@ -107,7 +107,7 @@
         .flex { display: flex; }
         .flex-row { flex-direction: row; }
         .flex-col { flex-direction: column; }
-        .flex-1 { flex: 1 1 0%; }
+        .flex-1 { flex: 1 1 0%; } .flex-grow { flex-grow: 1; }
         .flex-shrink-0 { flex-shrink: 0; }
         .items-center { align-items: center; }
         .items-start { align-items: flex-start; }
@@ -353,7 +353,7 @@
 
         /* Semantic Component Styles */
         .app-container { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
-        .pane { display: flex; flex-direction: column; height: 100%; background-color: var(--bg-primary); transition: background-color 0.2s; }
+        .pane { display: flex; flex-direction: column; height: 100%; min-height: 0; background-color: var(--bg-primary); transition: background-color 0.2s; }
         .pane-header { 
             height: 56px; padding: 0 1rem; 
             display: flex; flex-direction: row !important; align-items: center !important; justify-content: space-between; 
@@ -365,7 +365,7 @@
         }
         .pane-header-sm { height: 56px; }
         .sidebar { width: 328px; background-color: var(--bg-secondary); flex-shrink: 0; }
-        .timeline { width: 336px; border-right: 1px solid var(--border-color); flex-shrink: 0; }
+        .timeline { width: 336px; height: 100%; border-right: 1px solid var(--border-color); flex-shrink: 0; }
         .viewer { flex: 1; position: relative; }
 
         .pane-content { flex: 1; overflow-y: auto; padding: 0.75rem; }
@@ -606,8 +606,8 @@
 
         .article-content a { color: #58a6ff; text-decoration: underline; transition: opacity 0.2s; }
         .article-content a:hover { opacity: 0.8; }
-        .pl-12 { padding-left: 0.625rem !important; }
-        .pl-14 { padding-left: 0.625rem !important; }
+        .pl-12 { padding-left: 0.1rem !important; }
+        .pl-14 { padding-left: 0.1rem !important; }
         .article-content h1, .article-content h2 { font-size: 1.25em; font-weight: 700; margin-top: 1.75em; margin-bottom: 0.6em; color: var(--text-primary); line-height: 1.3; }
         .article-content h3, .article-content h4 { font-size: 1.05em; font-weight: 600; margin-top: 1.4em; margin-bottom: 0.5em; color: var(--text-secondary); line-height: 1.3; }
         .article-content ul, .article-content ol { padding-left: 1.5em; margin-bottom: 1.25em; }
@@ -774,7 +774,7 @@
                     <div class="icon-box" style="padding: 0.25rem;">
                         <svg class="w-5 h-5"><use href="#icon-rss"/></svg>
                     </div>
-                    <h1 class="font-bold text-[14px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
+                    <h1 class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
                 </div>
                 <div class="flex flex-row items-center space-x-1">
                     <button onclick="refreshAll()" class="btn-icon" title="Refresh Feeds">
@@ -816,7 +816,7 @@
                 </div>
             </div>
 
-            <div id="article-list" class="flex-1 overflow-y-auto"></div>
+            <div id="article-list" class="flex-grow overflow-y-auto h-0 overscroll-contain"></div>
         </section>
 
         <!-- Column Resizer -->
@@ -2534,11 +2534,6 @@
             if (!window._pinnedArticleIds) window._pinnedArticleIds = new Set();
             window._pinnedArticleIds.add(id);
             
-            // Re-render immediately to reflect pinning and move to top
-            _lastTimelineKey = ''; 
-            renderTimeline(true);
-            renderFeeds();
-
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('article-content').classList.remove('hidden');
             const faviconEl = document.getElementById('article-favicon');
@@ -2605,6 +2600,7 @@
 
             if (window._ttsActive) stopTTS();
 
+            // Perform View State Updates Last
             if (isMobile()) setMobilePane('viewer');
 
             const listEl = document.getElementById('article-list');
@@ -2617,15 +2613,15 @@
                 const newSelected = listEl.querySelector(`[data-id="${id}"]`);
                 if (newSelected) {
                     newSelected.classList.add('border-l-4', 'border-l-blue-500');
-                    // Ensure it moves to top and stays blue (deferred read logic)
                     const cardTop = newSelected.getBoundingClientRect().top;
                     const listTop = listEl.getBoundingClientRect().top;
                     const delta = cardTop - listTop;
                     if (delta !== 0) listEl.scrollTop += delta;
-                } else {
-                    renderTimeline(true);
                 }
             }
+
+            _lastTimelineKey = ''; 
+            renderTimeline(true);
             renderFeeds();
             updateBadges();
             updateActionButton();
