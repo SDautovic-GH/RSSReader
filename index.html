@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
-<hea></head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1623,10 +1623,30 @@
         };
 
         // Global State & Definitions
+        window.currentArticle = null;
+
+        // 1. Global error reporting (VERY TOP)
+        window.addEventListener('error', (e) => {
+            console.error('RSS Reader Global Error:', e.message, 'at', e.filename, ':', e.lineno);
+        });
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('RSS Reader Unhandled Promise Rejection:', e.reason);
+        });
+
+        // 2. AbortSignal.timeout polyfill (Safari < 16)
+        if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
+            AbortSignal.timeout = (ms) => {
+                const controller = new AbortController();
+                setTimeout(() => controller.abort(), ms);
+                return controller.signal;
+            };
+        }
+
+        // 3. Core State
         window.articles = [];
         window.feeds = [];
         window.accountStates = { local: [] };
-        window.currentArticle = null;
+        window._readLinks = new Set();
         window.currentSmartFeed = 'all';
         window.currentCategoryFilter = null;
         window.currentSourceFilter = null;
@@ -1643,29 +1663,43 @@
         window._showEmptyCategories = false;
         window._navigating = false;
 
-        // Helper: Reliable ID generation (fallback for older iOS/insecure contexts)
+        // 4. Helper: Reliable ID generation (fallback for older iOS/insecure contexts)
         window.generateId = () => {
-            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-                return crypto.randomUUID();
-            }
-            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-                (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
-            );
+            try {
+                if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                    return crypto.randomUUID();
+                }
+                if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+                    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                        (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+                    );
+                }
+            } catch(e) {}
+            return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2);
         };
 
-        // --- STORAGE MANAGER (IndexedDB) ---
+        // --- STORAGE MANAGER (IndexedDB with robust fallbacks) ---
         class StorageManager {
             constructor(dbName = 'RSSReaderDB', storeName = 'keyval') {
                 this.dbName = dbName;
                 this.storeName = storeName;
                 this._db = null;
-                this._isSupported = typeof indexedDB !== 'undefined';
+                this._isSupported = (typeof indexedDB !== 'undefined');
             }
 
             async _getDB() {
                 if (!this._isSupported) return null;
                 if (this._db) return this._db;
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
+                    let resolved = false;
+                    const timeout = setTimeout(() => {
+                        if (resolved) return;
+                        resolved = true;
+                        this._isSupported = false;
+                        console.warn('IDB: open timeout — falling back to LS');
+                        resolve(null);
+                    }, 3000);
+
                     try {
                         const request = indexedDB.open(this.dbName, 1);
                         request.onupgradeneeded = (e) => {
@@ -1675,44 +1709,69 @@
                             }
                         };
                         request.onsuccess = (e) => {
+                            clearTimeout(timeout);
+                            if (resolved) return;
+                            resolved = true;
                             this._db = e.target.result;
                             resolve(this._db);
                         };
-                        request.onerror = (e) => reject(e.target.error);
+                        request.onerror = () => {
+                            clearTimeout(timeout);
+                            if (resolved) return;
+                            resolved = true;
+                            this._isSupported = false;
+                            resolve(null);
+                        };
+                        request.onblocked = () => {
+                            clearTimeout(timeout);
+                            if (resolved) return;
+                            resolved = true;
+                            this._isSupported = false;
+                            resolve(null);
+                        };
                     } catch (err) {
+                        clearTimeout(timeout);
+                        if (resolved) return;
+                        resolved = true;
                         this._isSupported = false;
-                        reject(err);
+                        resolve(null);
                     }
                 });
             }
 
             async get(key) {
-                if (!this._isSupported) return localStorage.getItem(key);
+                const lsGet = (k) => {
+                    try {
+                        const val = localStorage.getItem(k);
+                        if (!val) return null;
+                        if ((val.startsWith('[') && val.endsWith(']')) || (val.startsWith('{') && val.endsWith('}'))) {
+                            try { return JSON.parse(val); } catch(e) { return val; }
+                        }
+                        return val;
+                    } catch(e) { return null; }
+                };
+
+                if (!this._isSupported) return lsGet(key);
                 try {
                     const db = await this._getDB();
-                    if (!db) return localStorage.getItem(key);
-                    return new Promise((resolve, reject) => {
-                        const transaction = db.transaction(this.storeName, 'readonly');
-                        const store = transaction.objectStore(this.storeName);
-                        const request = store.get(key);
-                        request.onsuccess = () => {
-                            const val = request.result;
-                            // If missing in IDB, check localStorage as ultimate fallback
-                            if (val === undefined || val === null) {
-                                const lsVal = localStorage.getItem(key);
-                                try { return resolve(JSON.parse(lsVal)); } catch(e) { return resolve(lsVal); }
-                            }
-                            resolve(val);
-                        };
-                        request.onerror = () => resolve(localStorage.getItem(key));
+                    if (!db) return lsGet(key);
+                    return new Promise((resolve) => {
+                        try {
+                            const transaction = db.transaction(this.storeName, 'readonly');
+                            const store = transaction.objectStore(this.storeName);
+                            const request = store.get(key);
+                            request.onsuccess = () => {
+                                const val = request.result;
+                                if (val === undefined || val === null) resolve(lsGet(key));
+                                else resolve(val);
+                            };
+                            request.onerror = () => resolve(lsGet(key));
+                        } catch(e) { resolve(lsGet(key)); }
                     });
-                } catch (e) {
-                    return localStorage.getItem(key);
-                }
+                } catch (e) { return lsGet(key); }
             }
 
             async set(key, value) {
-                // Always write to localStorage as backup for iOS durability/safety
                 try {
                     const str = (typeof value === 'object') ? JSON.stringify(value) : value;
                     localStorage.setItem(key, str);
@@ -1722,68 +1781,75 @@
                 try {
                     const db = await this._getDB();
                     if (!db) return;
-                    return new Promise((resolve, reject) => {
-                        const transaction = db.transaction(this.storeName, 'readwrite');
-                        const store = transaction.objectStore(this.storeName);
-                        const request = store.put(value, key);
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
+                    return new Promise((resolve) => {
+                        try {
+                            const transaction = db.transaction(this.storeName, 'readwrite');
+                            const store = transaction.objectStore(this.storeName);
+                            const request = store.put(value, key);
+                            request.onsuccess = () => resolve();
+                            request.onerror = () => resolve(); 
+                        } catch(e) { resolve(); }
                     });
                 } catch (e) {}
             }
 
             async delete(key) {
-                localStorage.removeItem(key);
+                try { localStorage.removeItem(key); } catch(e) {}
                 if (!this._isSupported) return;
                 try {
                     const db = await this._getDB();
                     if (!db) return;
-                    return new Promise((resolve, reject) => {
-                        const transaction = db.transaction(this.storeName, 'readwrite');
-                        const store = transaction.objectStore(this.storeName);
-                        const request = store.delete(key);
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    });
+                    const transaction = db.transaction(this.storeName, 'readwrite');
+                    transaction.objectStore(this.storeName).delete(key);
                 } catch (e) {}
             }
-        }
 
+            async keys() {
+                if (!this._isSupported) return Object.keys(localStorage);
+                try {
+                    const db = await this._getDB();
+                    if (!db) return Object.keys(localStorage);
+                    return new Promise((resolve) => {
+                        try {
+                            const transaction = db.transaction(this.storeName, 'readonly');
+                            const store = transaction.objectStore(this.storeName);
+                            const request = store.getAllKeys();
+                            request.onsuccess = () => resolve(request.result);
+                            request.onerror = () => resolve(Object.keys(localStorage));
+                        } catch(e) { resolve(Object.keys(localStorage)); }
+                    });
+                } catch (e) { return Object.keys(localStorage); }
+            }
+        }
         window.storage = new StorageManager();
 
         async function migrateFromLocalStorage() {
-            const keysToMigrate = [
-                'newsreader_feeds',
-                'newsreader_read',
-                'newsreader_readlater',
-                'newsreader_articles',
-                'newsreader_catorder',
-                'newsreader_prefs',
-                'newsreader_viewmode',
-                'newsreader_pane_width',
-                'newsreader_showemptycats'
-            ];
+            try {
+                const migrationFlag = localStorage.getItem('newsreader_migrated_to_idb');
+                if (migrationFlag) return;
 
-            const migrationFlag = localStorage.getItem('newsreader_migrated_to_idb');
-            if (migrationFlag) return;
+                const keysToMigrate = [
+                    'newsreader_feeds', 'newsreader_read', 'newsreader_readlater',
+                    'newsreader_articles', 'newsreader_catorder', 'newsreader_prefs',
+                    'newsreader_viewmode', 'newsreader_pane_width', 'newsreader_showemptycats'
+                ];
 
-            console.log('Starting migration to IndexedDB...');
-            for (const key of keysToMigrate) {
-                try {
-                    const value = localStorage.getItem(key);
-                    if (value !== null) {
-                        let parsedValue = value;
-                        if ((value.startsWith('[') && value.endsWith(']')) || (value.startsWith('{') && value.endsWith('}'))) {
-                            try { parsedValue = JSON.parse(value); } catch (e) {}
+                console.log('IDB: Migration started');
+                for (const key of keysToMigrate) {
+                    try {
+                        const value = localStorage.getItem(key);
+                        if (value !== null) {
+                            let parsedValue = value;
+                            if ((value.startsWith('[') && value.endsWith(']')) || (value.startsWith('{') && value.endsWith('}'))) {
+                                try { parsedValue = JSON.parse(value); } catch (e) {}
+                            }
+                            await window.storage.set(key, parsedValue);
                         }
-                        await window.storage.set(key, parsedValue);
-                    }
-                } catch (e) {
-                    console.warn(`Migration failed for ${key}:`, e);
+                    } catch (e) {}
                 }
-            }
-            localStorage.setItem('newsreader_migrated_to_idb', 'true');
-            console.log('Migration to IndexedDB complete.');
+                localStorage.setItem('newsreader_migrated_to_idb', 'true');
+                console.log('IDB: Migration complete');
+            } catch(e) { console.warn('IDB: Migration aborted', e.message); }
         }
 
         // Helper: URL to Links — walks text nodes only, never touches attributes
@@ -2837,7 +2903,7 @@
             document.addEventListener('touchcancel', cancel, { passive: true });
         })();
 
-        window.selectArticle = function(id) {
+        window.selectArticle = async function(id) {
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
 
@@ -3194,7 +3260,7 @@
         }
 
         // --- MARK READ BULK ---
-        window.markAboveRead = function() {
+        window.markAboveRead = async function() {
             if (!window.contextMenuArticleId || !window.currentTimeline) return;
             const idx = window.currentTimeline.findIndex(a => a.id === window.contextMenuArticleId);
             if (idx > 0) {
@@ -3549,7 +3615,7 @@
         };
 
         // --- AUTO REFRESH ---
-        window.updateAutoRefresh = (minutes) => {
+        window.updateAutoRefresh = async (minutes) => {
             if (window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
             await saveTypographyPrefs();
             const mins = parseInt(minutes);
