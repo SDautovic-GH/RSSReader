@@ -2949,16 +2949,14 @@
 
                 return `
                     <div class="mb-1" data-category="${esc(cat)}" draggable="true" ondragstart="handleCategoryDragStart(event, '${sCat}')" ondragend="handleCategoryDragEnd(event)" ondragover="handleCategoryDragOver(event, '${sCat}')" ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
-                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="smart-feed-btn dynamic-category-text" style="padding:0;">
-                            <button onclick="setCategoryFilter('${sCat}')" class="flex-1 flex items-center gap-3 px-3 py-2 text-left outline-none truncate">
-                                <span class="chevron-btn" onclick="event.stopPropagation(); toggleCategory('${sCat}')">
+                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="smart-feed-btn dynamic-category-text">
+                            <div class="flex items-center min-w-0" onclick="setCategoryFilter('${sCat}')">
+                                <span class="chevron-btn mr-2" onclick="event.stopPropagation(); toggleCategory('${sCat}')">
                                     <svg class="w-4 h-4 text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                                 </span>
-                                <span class="text-gray-300">${esc(formattedCat)}</span>
-                            </button>
-                            <div class="flex items-center pr-4">
-                                <span class="feed-badge">${total > 0 ? total : ''}</span>
+                                <span class="text-gray-300 truncate cursor-pointer">${esc(formattedCat)}</span>
                             </div>
+                            <span class="feed-badge flex-shrink-0">${total > 0 ? total : ''}</span>
                         </div>
                         <div id="cat-${esc(cat)}" class="${isCollapsed ? 'hidden' : ''} space-y-0.5 mt-0.5 px-1">
                             ${feeds.map(f => {
@@ -2968,7 +2966,7 @@
                                 return `
                                 <button draggable="true" ondragstart="handleFeedDragStart(event, '${sfId}')" ondragend="event.target.classList.remove('opacity-40')"
                                     onclick="setSourceFilter('${sfName}')" oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')" 
-                                    class="w-full flex items-center justify-between pl-8 pr-3 py-1.5 hover:bg-white/5 rounded-lg text-gray-400 transition-colors">
+                                    class="w-full flex items-center justify-between pl-14 pr-3 py-1.5 hover:bg-white/5 rounded-lg text-gray-400 transition-colors">
                                     <span class="flex items-center truncate pr-2 text-[13px]">
                                         ${favicon}<span class="truncate ${healthClass}">${esc(f.name)}</span>
                                     </span>
@@ -3898,7 +3896,10 @@
             toggleUnread(window.currentArticle); saveReadState(); refreshUI(); updateActionButton();
         };
         window.showArticleContextMenu = (e, id) => {
-            e.preventDefault();
+            if (e) {
+                if (typeof e.preventDefault === 'function') e.preventDefault();
+                if (typeof e.stopPropagation === 'function') e.stopPropagation();
+            }
             window.contextMenuArticleId = id;
             const article = (window.articles || []).find(a => a.id === id);
             const idx = (window.currentTimeline || []).findIndex(a => a.id === id);
@@ -3914,8 +3915,10 @@
             const menu = document.getElementById('article-context-menu');
             menu.innerHTML = items;
             menu.classList.remove('hidden');
-            const x = Math.min(e.clientX, window.innerWidth - 210);
-            const y = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 8);
+            
+            // Positioning: Ensure we measure AFTER showing
+            const x = Math.min(e.clientX, window.innerWidth - 220);
+            const y = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 20);
             menu.style.top = `${y}px`;
             menu.style.left = `${x}px`;
         };
