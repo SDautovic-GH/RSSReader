@@ -2114,8 +2114,6 @@
                     }
                 }
 
-                slice.forEach(a => window._pinnedArticleIds.add(a.id));
-
                 listEl.innerHTML = '';
                 _disconnectSentinels();
 
@@ -2296,7 +2294,7 @@
             const slug = getFaviconSlug(sourceName);
             const fav = escJs(feedObj.favicon);
             const invert = faviconNeedsInvert(feedObj) ? ' favicon-invert' : '';
-            return `<span class="${slug}${invert} inline-block w-3 h-3 rounded-sm mr-1 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;vertical-align:middle;"></span>`;
+            return `<span class="${slug}${invert} inline-block w-3 h-3 rounded-sm mr-3 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;vertical-align:middle;"></span>`;
         }
 
         function buildArticleCard(a) {
@@ -2324,7 +2322,7 @@
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card-list ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
-                <div class="flex items-start gap-1.5">
+                <div class="flex items-start gap-4">
                     <div class="flex-shrink-0 mt-2">
                         ${a.unread ? '<span class="bg-blue-600 rounded-full" style="width:8px;height:8px;display:block"></span>' : '<span class="rounded-full" style="width:8px;height:8px;display:block;opacity:0"></span>'}
                     </div>
@@ -2518,16 +2516,27 @@
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
 
-            // Mark as read immediately
-            article.unread = false;
+            // Deferred read logic: Mark PREVIOUS article as read when switching
+            if (window.currentArticle && window.currentArticle.id !== id) {
+                const prev = window.articles.find(a => a.id === window.currentArticle.id);
+                if (prev) {
+                    prev.unread = false;
+                    window._readLinks.add(prev.link);
+                    saveReadState();
+                }
+            }
+
             window.currentArticle = article;
-            window._readLinks.add(article.link);
+            // Note: Current article stays blue (unread) until next selection or manual toggle
             
-            // Move to top: Pin this ID for the current view session
+            // Move to top: Pin this ID
             if (!window._pinnedArticleIds) window._pinnedArticleIds = new Set();
             window._pinnedArticleIds.add(id);
             
-            saveReadState();
+            // Re-render immediately to reflect pinning and move to top
+            _lastTimelineKey = ''; 
+            renderTimeline(true);
+            renderFeeds();
 
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('article-content').classList.remove('hidden');
@@ -2607,10 +2616,7 @@
                 const newSelected = listEl.querySelector(`[data-id="${id}"]`);
                 if (newSelected) {
                     newSelected.classList.add('border-l-4', 'border-l-blue-500');
-                    newSelected.style.backgroundColor = 'rgba(23,37,84,0.45)';
-                    // Update unread dot in-place — no outerHTML replacement, no smooth scroll
-                    const dot = newSelected.querySelector('.bg-blue-500.rounded-full');
-                    if (dot) { dot.classList.remove('bg-blue-500'); dot.classList.add('opacity-0'); }
+                    // Ensure it moves to top and stays blue (deferred read logic)
                     const cardTop = newSelected.getBoundingClientRect().top;
                     const listTop = listEl.getBoundingClientRect().top;
                     const delta = cardTop - listTop;
