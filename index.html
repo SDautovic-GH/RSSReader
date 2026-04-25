@@ -397,10 +397,10 @@
         .dark .btn-icon:hover { background-color: #374151; }
         .btn-icon svg { width: 20px; height: 20px; }
 
-        .active-item { background-color: var(--accent-blue) !important; color: white !important; }
+        .active-item { background-color: #2563eb !important; color: white !important; border-radius: 0.75rem; }
         
         /* Folder styles — NO background changes */
-        .smart-feed-btn {
+        .smart-feed-btn { min-height: 48px;
             width: 100%; display: flex; align-items: center; justify-content: space-between;
             padding: 0.875rem 1.25rem 0.875rem 1rem;
             background: transparent !important; border: none; cursor: pointer;
@@ -413,7 +413,7 @@
         .smart-feed-btn:last-child { border-bottom: none; }
         .smart-feed-btn span { display: flex; align-items: center; font-weight: 500; }
 
-        .feed-badge { font-size: 13px; font-weight: 600; color: #58a6ff; }
+        .feed-badge { font-size: 13px; font-weight: 600; color: #58a6ff; } .mob-unread-blue { color: #3b82f6 !important; font-weight: 500; }
         .active-item .feed-badge { color: white; }
         .active-item span { color: var(--accent-blue); }
         #smart-feeds-card .active-item { background-color: var(--accent-blue) !important; color: white !important; border-radius: 0.75rem; }
@@ -774,7 +774,7 @@
                     <div class="icon-box" style="padding: 0.25rem;">
                         <svg class="w-5 h-5"><use href="#icon-rss"/></svg>
                     </div>
-                    <h1 class="font-bold text-[20px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
+                    <h1 class="font-bold text-[18px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
                 </div>
                 <div class="flex flex-row items-center space-x-1">
                     <button onclick="refreshAll()" class="btn-icon" title="Refresh Feeds">
@@ -788,15 +788,15 @@
 
             <div class="pane-content no-scrollbar p-3 space-y-3">
                 <div id="smart-feeds-card" class="sidebar-card">
-                    <button id="feed-btn-all" onclick="setSmartFeed('all')" oncontextmenu="showFolderContextMenu(event,'smart','all')" class="smart-feed-btn dynamic-category-text active-item">
+                    <button id="feed-btn-all" onclick="setSmartFeed('all')" oncontextmenu="showFolderContextMenu(event,'smart','all')" class="smart-feed-btn dynamic-category-text sidebar-btn-compact active-item">
                         <span><svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> All Unread</span>
                         <span id="badge-all" class="feed-badge mob-unread-count hidden" style="color:inherit;">0</span>
                     </button>
-                    <button id="feed-btn-today" onclick="setSmartFeed('today')" oncontextmenu="showFolderContextMenu(event,'smart','today')" class="smart-feed-btn dynamic-category-text">
+                    <button id="feed-btn-today" onclick="setSmartFeed('today')" oncontextmenu="showFolderContextMenu(event,'smart','today')" class="smart-feed-btn dynamic-category-text sidebar-btn-compact">
                         <span><svg class="w-4 h-4 mr-1.5"><use href="#icon-calendar"/></svg> Today</span>
                         <span id="badge-today" class="feed-badge mob-unread-count hidden">0</span>
                     </button>
-                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text">
+                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text sidebar-btn-compact">
                         <span><svg class="w-4 h-4 mr-1.5"><use href="#icon-bookmark"/></svg> Read Later</span>
                         <span id="badge-read-later" class="feed-badge mob-unread-count hidden">0</span>
                     </button>
@@ -2941,19 +2941,19 @@
                 if (total === 0 && !window._showEmptyCategories) return '';
                 if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = true;
                 const isCollapsed = window.collapsedCategories[cat];
-                const formattedCat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+                const formattedCat = cat.toUpperCase();
                 const sCat = escJs(cat);
 
                 return `
                     <div class="mb-1" data-category="${esc(cat)}" draggable="true" ondragstart="handleCategoryDragStart(event, '${sCat}')" ondragend="handleCategoryDragEnd(event)" ondragover="handleCategoryDragOver(event, '${sCat}')" ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
-                        <button onclick="setCategoryFilter('${sCat}')" oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="smart-feed-btn dynamic-category-text">
+                        <button onclick="setCategoryFilter('${sCat}')" oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="smart-feed-btn dynamic-category-text sidebar-btn-compact">
                             <span class="flex items-center min-w-0">
                                 <span class="chevron-btn mr-3" onclick="event.stopPropagation(); toggleCategory('${sCat}')">
                                     <svg class="w-4 h-4 text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                                 </span>
                                 <span class="truncate">${esc(formattedCat)}</span>
                             </span>
-                            <span class="feed-badge flex-shrink-0">${total > 0 ? total : ''}</span>
+                            <span class="feed-badge flex-shrink-0 mob-unread-blue">${total > 0 ? total : ''}</span>
                         </button>
                         <div id="cat-${esc(cat)}" class="${isCollapsed ? 'hidden' : ''} space-y-0.5 mt-0.5 px-1">
                             ${feeds.map(f => {
