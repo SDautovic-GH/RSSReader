@@ -179,6 +179,30 @@
         .transition-colors { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
         .transition-opacity { transition-property: opacity; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
 
+        .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+
+        .fixed { position: fixed; }
+        .absolute { position: absolute; }
+        .relative { position: relative; }
+        .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+        .left-1\/2 { left: 50%; }
+        .transform { --tw-translate-x: 0; --tw-translate-y: 0; transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)); }
+        .-translate-x-1\/2 { --tw-translate-x: -50%; }
+        .z-10 { z-index: 10; }
+        .z-20 { z-index: 20; }
+        .z-49 { z-index: 49; }
+        .z-50 { z-index: 50; }
+        .z-\[60\] { z-index: 60; }
+        .z-\[100\] { z-index: 100; }
+        .z-\[200\] { z-index: 200; }
+        .z-\[300\] { z-index: 300; }
+
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
         .bg-white { background-color: #ffffff; }
         .bg-gray-50 { background-color: #f9fafb; }
         .bg-gray-100 { background-color: #f3f4f6; }
@@ -1143,20 +1167,27 @@
             }
             async init() {
                 return new Promise((resolve) => {
+                    const timer = setTimeout(() => {
+                        console.warn('IndexedDB timeout, using fallback Map');
+                        resolve(false);
+                    }, 2000);
                     try {
                         const request = indexedDB.open(this.dbName, 1);
                         request.onupgradeneeded = (e) => {
                             e.target.result.createObjectStore(this.storeName);
                         };
                         request.onsuccess = (e) => {
+                            clearTimeout(timer);
                             this.db = e.target.result;
                             resolve(true);
                         };
                         request.onerror = () => {
+                            clearTimeout(timer);
                             console.warn('IndexedDB failed, using fallback Map');
                             resolve(false);
                         };
                     } catch (e) {
+                        clearTimeout(timer);
                         console.warn('IndexedDB blocked, using fallback Map');
                         resolve(false);
                     }
@@ -4050,8 +4081,6 @@
                 refreshUI();
             } catch(e) { console.warn('Restore error:', e.message); }
         }
-            } catch(e) { console.warn('Storage error:', e.message); }
-        }
 
         // --- FEED PERSISTENCE ---
         async function saveLocalFeeds() {
@@ -4447,18 +4476,33 @@
 
         setInterval(() => { renderFeeds(); updateBadges?.(); }, 60000);
 
+        // Helper: Simple UUID fallback for non-secure contexts (file://)
+        function generateId() {
+            try {
+                if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+            } catch(e) {}
+            return 'id-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+        }
+
         window.articles = [];
 
         (async () => {
-            await restoreReadLaterState();
-            await restoreTypographyPrefs();
+            console.log('App: Starting init...');
+            
+            try { await restoreReadLaterState(); console.log('App: Read later restored'); } catch(e) { console.warn('Init: Read later failed', e); }
+            try { await restoreTypographyPrefs(); console.log('App: Prefs restored'); } catch(e) { console.warn('Init: Prefs failed', e); }
+            
             loadActiveFont("'Inter', sans-serif");
-            await restoreLocalFeeds();
+            
+            try { await restoreLocalFeeds(); console.log('App: Feeds restored'); } catch(e) { console.warn('Init: Feeds failed', e); }
+            
             updateFaviconStyles();
-            await restoreCategoryOrder();
-            await restoreArticleCache();
+            
+            try { await restoreCategoryOrder(); console.log('App: Categories restored'); } catch(e) { console.warn('Init: Categories failed', e); }
+            try { await restoreArticleCache(); console.log('App: Article cache restored'); } catch(e) { console.warn('Init: Cache failed', e); }
+
             if (window.articles.length === 0) {
-                window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
+                window.articles = [{ id: generateId(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
             }
 
             try {
@@ -4490,12 +4534,18 @@
                     if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
                 }, 4000);
             }
-            renderFeeds();
-            if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
-                showSkeletons();
+            
+            try {
+                renderFeeds();
+                if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
+                    showSkeletons();
+                }
+                renderTimeline();
+                updateEmptyState();
+                console.log('App: Init complete');
+            } catch(e) {
+                console.error('App: Critical render failure', e);
             }
-            renderTimeline();
-            updateEmptyState();
         })();
 
         let _hiddenAt = 0;
