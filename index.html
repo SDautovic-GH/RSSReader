@@ -1643,51 +1643,85 @@
         window._showEmptyCategories = false;
         window._navigating = false;
 
+        // Helper: Reliable ID generation (fallback for older iOS/insecure contexts)
+        window.generateId = () => {
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                return crypto.randomUUID();
+            }
+            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+            );
+        };
+
         // --- STORAGE MANAGER (IndexedDB) ---
         class StorageManager {
             constructor(dbName = 'RSSReaderDB', storeName = 'keyval') {
                 this.dbName = dbName;
                 this.storeName = storeName;
                 this._db = null;
+                this._isSupported = typeof indexedDB !== 'undefined';
             }
 
             async _getDB() {
+                if (!this._isSupported) return null;
                 if (this._db) return this._db;
                 return new Promise((resolve, reject) => {
-                    const request = indexedDB.open(this.dbName, 1);
-                    request.onupgradeneeded = (e) => {
-                        const db = e.target.result;
-                        if (!db.objectStoreNames.contains(this.storeName)) {
-                            db.createObjectStore(this.storeName);
-                        }
-                    };
-                    request.onsuccess = (e) => {
-                        this._db = e.target.result;
-                        resolve(this._db);
-                    };
-                    request.onerror = (e) => reject(e.target.error);
+                    try {
+                        const request = indexedDB.open(this.dbName, 1);
+                        request.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains(this.storeName)) {
+                                db.createObjectStore(this.storeName);
+                            }
+                        };
+                        request.onsuccess = (e) => {
+                            this._db = e.target.result;
+                            resolve(this._db);
+                        };
+                        request.onerror = (e) => reject(e.target.error);
+                    } catch (err) {
+                        this._isSupported = false;
+                        reject(err);
+                    }
                 });
             }
 
             async get(key) {
+                if (!this._isSupported) return localStorage.getItem(key);
                 try {
                     const db = await this._getDB();
+                    if (!db) return localStorage.getItem(key);
                     return new Promise((resolve, reject) => {
                         const transaction = db.transaction(this.storeName, 'readonly');
                         const store = transaction.objectStore(this.storeName);
                         const request = store.get(key);
-                        request.onsuccess = () => resolve(request.result);
-                        request.onerror = () => reject(request.error);
+                        request.onsuccess = () => {
+                            const val = request.result;
+                            // If missing in IDB, check localStorage as ultimate fallback
+                            if (val === undefined || val === null) {
+                                const lsVal = localStorage.getItem(key);
+                                try { return resolve(JSON.parse(lsVal)); } catch(e) { return resolve(lsVal); }
+                            }
+                            resolve(val);
+                        };
+                        request.onerror = () => resolve(localStorage.getItem(key));
                     });
                 } catch (e) {
-                    console.error('IndexedDB Get Error:', e);
-                    return null;
+                    return localStorage.getItem(key);
                 }
             }
 
             async set(key, value) {
+                // Always write to localStorage as backup for iOS durability/safety
+                try {
+                    const str = (typeof value === 'object') ? JSON.stringify(value) : value;
+                    localStorage.setItem(key, str);
+                } catch(e) {}
+
+                if (!this._isSupported) return;
                 try {
                     const db = await this._getDB();
+                    if (!db) return;
                     return new Promise((resolve, reject) => {
                         const transaction = db.transaction(this.storeName, 'readwrite');
                         const store = transaction.objectStore(this.storeName);
@@ -1695,14 +1729,15 @@
                         request.onsuccess = () => resolve();
                         request.onerror = () => reject(request.error);
                     });
-                } catch (e) {
-                    console.error('IndexedDB Set Error:', e);
-                }
+                } catch (e) {}
             }
 
             async delete(key) {
+                localStorage.removeItem(key);
+                if (!this._isSupported) return;
                 try {
                     const db = await this._getDB();
+                    if (!db) return;
                     return new Promise((resolve, reject) => {
                         const transaction = db.transaction(this.storeName, 'readwrite');
                         const store = transaction.objectStore(this.storeName);
@@ -1710,9 +1745,7 @@
                         request.onsuccess = () => resolve();
                         request.onerror = () => reject(request.error);
                     });
-                } catch (e) {
-                    console.error('IndexedDB Delete Error:', e);
-                }
+                } catch (e) {}
             }
         }
 
@@ -2126,7 +2159,7 @@
                     return imgs?.[0]?.thumb || null;
                 })();
                 window.articles.push({
-                    id: _existingBskyIds.get(link) || crypto.randomUUID(),
+                    id: _existingBskyIds.get(link) || generateId(),
                     source: sourceName,
                     feedUrl,
                     title,
@@ -2309,7 +2342,7 @@
                         return imgMatch ? imgMatch[1] : null;
                     })();
                     const art = {
-                        id: _existingIds.get(link) || crypto.randomUUID(),
+                        id: _existingIds.get(link) || generateId(),
                         source: sourceName,
                         feedUrl,
                         title: getText(item, 'title'),
@@ -3416,7 +3449,7 @@
                                 : "Imported";
                             const safeCat = (cat.toLowerCase() === 'body' || cat.toLowerCase() === 'opml') ? "Imported" : cat;
                             const name = node.getAttribute("title") || node.getAttribute("text") || url;
-                            const f = { id: crypto.randomUUID(), name, url, category: safeCat, icon: '🗞️', unread: 0 };
+                            const f = { id: generateId(), name, url, category: safeCat, icon: '🗞️', unread: 0 };
                             window.accountStates.local.push(f);
                             window.feeds.push(f);
                             newFeeds.push(f);
@@ -3445,7 +3478,7 @@
             let cat = sel.value === '__new__'
                 ? (document.getElementById('manual-feed-newcat').value.trim() || 'Uncategorized')
                 : (sel.value || 'Uncategorized');
-            const f = { id: crypto.randomUUID(), name: t, url: u, category: cat, icon: '🗞️', unread: 0 };
+            const f = { id: generateId(), name: t, url: u, category: cat, icon: '🗞️', unread: 0 };
             window.accountStates.local.push(f);
             window.feeds.push(f);
             renderFeeds();
@@ -4911,93 +4944,107 @@
 
         // --- APP INITIALIZATION ---
         (async function initApp() {
-            // 1. Perform migration from localStorage if needed
-            await migrateFromLocalStorage();
-
-            // 2. Restore all persisted states from IndexedDB
-            const links = await restoreReadLinks();
-            window._readLinks = new Set(links);
-            
-            await restoreReadLaterState();
-            await restoreTypographyPrefs();
-            loadActiveFont("'Inter', sans-serif");
-            
-            await restoreLocalFeeds();
-            updateFaviconStyles();
-            await restoreCategoryOrder();
-            await restoreArticleCache();
-
-            // 3. Fallback for empty state
-            if (window.articles.length === 0) {
-                window.articles = [{ 
-                    id: crypto.randomUUID(), 
-                    source: "System", 
-                    title: "Welcome to RSS Reader", 
-                    author: "News Team", 
-                    timestamp: new Date().toISOString(), 
-                    excerpt: "Import an OPML file or add a manual feed to get started.", 
-                    body: "Your high-performance personal news hub.", 
-                    link: "#", 
-                    unread: true, 
-                    readLater: false 
-                }];
-            }
-
-            // 4. Initial UI State Setup
             try {
-                const vm = await window.storage.get('newsreader_viewmode');
-                if (vm === 'card') { 
-                    window._viewMode = 'card'; 
-                    const btn = document.getElementById('view-density-toggle'); 
-                    if (btn) btn.textContent = 'CARD'; 
+                // 1. Perform migration from localStorage if needed
+                await migrateFromLocalStorage();
+
+                // 2. Restore all persisted states from IndexedDB
+                const links = await restoreReadLinks();
+                window._readLinks = new Set(links);
+                
+                await restoreReadLaterState();
+                await restoreTypographyPrefs();
+                loadActiveFont("'Inter', sans-serif");
+                
+                await restoreLocalFeeds();
+                updateFaviconStyles();
+                await restoreCategoryOrder();
+                await restoreArticleCache();
+
+                // 3. Fallback for empty state
+                if (window.articles.length === 0) {
+                    window.articles = [{ 
+                        id: generateId(), 
+                        source: "System", 
+                        title: "Welcome to RSS Reader", 
+                        author: "News Team", 
+                        timestamp: new Date().toISOString(), 
+                        excerpt: "Import an OPML file or add a manual feed to get started.", 
+                        body: "Your high-performance personal news hub.", 
+                        link: "#", 
+                        unread: true, 
+                        readLater: false 
+                    }];
                 }
-            } catch(e) {}
 
-            try {
-                const ec = await window.storage.get('newsreader_showemptycats');
-                if (ec === '1') {
-                    window._showEmptyCategories = true;
-                    const btn = document.getElementById('show-empty-cats-toggle');
-                    if (btn) { 
-                        btn.textContent = 'ON'; 
-                        btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; 
+                // 4. Initial UI State Setup
+                try {
+                    const vm = await window.storage.get('newsreader_viewmode');
+                    if (vm === 'card') { 
+                        window._viewMode = 'card'; 
+                        const btn = document.getElementById('view-density-toggle'); 
+                        if (btn) btn.textContent = 'CARD'; 
                     }
+                } catch(e) {}
+
+                try {
+                    const ec = await window.storage.get('newsreader_showemptycats');
+                    if (ec === '1') {
+                        window._showEmptyCategories = true;
+                        const btn = document.getElementById('show-empty-cats-toggle');
+                        if (btn) { 
+                            btn.textContent = 'ON'; 
+                            btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; 
+                        }
+                    }
+                } catch(e) {}
+
+                try {
+                    const pw = await window.storage.get('newsreader_pane_width');
+                    if (pw) {
+                        const tp = document.getElementById('timeline-pane');
+                        if (tp) tp.style.width = pw;
+                    }
+                } catch(e) {}
+
+                try {
+                    const prefs = await window.storage.get('newsreader_prefs');
+                    if (prefs && prefs.autoRefresh) {
+                        const sel = document.getElementById('pref-auto-refresh');
+                        if (sel) sel.value = prefs.autoRefresh;
+                        updateAutoRefresh(prefs.autoRefresh);
+                    }
+                } catch(e) {}
+
+            } catch (err) {
+                console.error("RSS Reader: Initialization failed", err);
+                // If anything fails, we still want to try to render whatever we have
+            } finally {
+                // 5. Initial Render
+                renderFeeds();
+                if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
+                    showSkeletons();
                 }
-            } catch(e) {}
+                renderTimeline();
+                updateEmptyState();
 
-            try {
-                const pw = await window.storage.get('newsreader_pane_width');
-                if (pw) {
-                    const tp = document.getElementById('timeline-pane');
-                    if (tp) tp.style.width = pw;
+                // 6. Start Background Fetch
+                window._localFetchTimer = null;
+                if (window.feeds.length > 0) {
+                    window._localFetchTimer = setTimeout(() => {
+                        if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
+                    }, 4000);
                 }
-            } catch(e) {}
-
-            try {
-                const prefs = await window.storage.get('newsreader_prefs');
-                if (prefs && prefs.autoRefresh) {
-                    const sel = document.getElementById('pref-auto-refresh');
-                    if (sel) sel.value = prefs.autoRefresh;
-                    updateAutoRefresh(prefs.autoRefresh);
-                }
-            } catch(e) {}
-
-            // 5. Initial Render
-            renderFeeds();
-            if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
-                showSkeletons();
-            }
-            renderTimeline();
-            updateEmptyState();
-
-            // 6. Start Background Fetch
-            window._localFetchTimer = null;
-            if (window.feeds.length > 0) {
-                window._localFetchTimer = setTimeout(() => {
-                    if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
-                }, 4000);
             }
         })();
+
+        // Global error listener to catch and report anything else
+        window.addEventListener('error', (e) => {
+            console.error('RSS Reader Global Error:', e.message, 'at', e.filename, ':', e.lineno);
+        });
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('RSS Reader Unhandled Promise Rejection:', e.reason);
+        });
 
         let _hiddenAt = 0;
         document.addEventListener('visibilitychange', () => {
