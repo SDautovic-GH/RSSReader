@@ -1351,30 +1351,36 @@
                 });
             }
             async get(key, defaultVal = null) {
-                await this._initPromise;
-                if (!this.db) return this.fallback.has(key) ? this.fallback.get(key) : defaultVal;
-                return new Promise((resolve) => {
-                    try {
+                try {
+                    await this._initPromise;
+                    if (!this.db) return this.fallback.has(key) ? this.fallback.get(key) : defaultVal;
+                    return new Promise((resolve) => {
                         const tx = this.db.transaction(this.storeName, 'readonly');
                         const store = tx.objectStore(this.storeName);
                         const req = store.get(key);
                         req.onsuccess = () => resolve(req.result !== undefined ? req.result : defaultVal);
                         req.onerror = () => resolve(defaultVal);
-                    } catch (e) { resolve(defaultVal); }
-                });
+                    });
+                } catch (e) {
+                    console.error('Db.get failed for', key, e);
+                    return defaultVal;
+                }
             }
             async set(key, val) {
-                await this._initPromise;
-                if (!this.db) { this.fallback.set(key, val); return; }
-                return new Promise((resolve) => {
-                    try {
+                try {
+                    await this._initPromise;
+                    if (!this.db) { this.fallback.set(key, val); return; }
+                    return new Promise((resolve) => {
                         const tx = this.db.transaction(this.storeName, 'readwrite');
                         const store = tx.objectStore(this.storeName);
                         const req = store.put(val, key);
                         req.onsuccess = () => resolve(true);
                         req.onerror = () => resolve(false);
-                    } catch (e) { resolve(false); }
-                });
+                    });
+                } catch (e) {
+                    console.error('Db.set failed for', key, e);
+                    return false;
+                }
             }
             async delete(key) {
                 await this._initPromise;
