@@ -180,11 +180,9 @@
         .py-10 { padding-top: 2.5rem; padding-bottom: 2.5rem; }
         .py-14 { padding-top: 3.5rem; padding-bottom: 3.5rem; }
         
-        .mb-2 { margin-bottom: 0.125rem; }
-        .mb-3 { margin-bottom: 0.25rem; }
-        .mb-3.5 { margin-bottom: 0.375rem; }
         .mb-2 { margin-bottom: 0.5rem; }
         .mb-3 { margin-bottom: 0.75rem; }
+        .mb-3.5 { margin-bottom: 0.875rem; }
         .mb-4 { margin-bottom: 1rem; }
         .mb-5 { margin-bottom: 1.25rem; }
         .mb-6 { margin-bottom: 1.5rem; }
@@ -209,7 +207,6 @@
         .space-x-4 > * + * { margin-left: 1rem; }
         .space-y-1.5 > * + * { margin-top: 0.375rem; }
         .space-y-2 > * + * { margin-top: 0.5rem; }
-        .space-y-6 > * + * { margin-top: 0.75rem; }
         .space-y-4 > * + * { margin-top: 1rem; }
         .space-y-6 > * + * { margin-top: 1.5rem; }
         
@@ -218,6 +215,7 @@
         .gap-2 { gap: 0.5rem; }
         .gap-3 { gap: 0.75rem; }
         .gap-4 { gap: 0.4rem !important; }
+        .gap-5 { gap: 0.5rem; }
         
         .rounded { border-radius: 0.25rem; }
         .rounded-sm { border-radius: 0.125rem; }
@@ -2317,7 +2315,7 @@
             const slug = getFaviconSlug(sourceName);
             const fav = escJs(feedObj.favicon);
             const invert = faviconNeedsInvert(feedObj) ? ' favicon-invert' : '';
-            return `<span class="${slug}${invert} inline-block w-3 h-3 rounded-sm mr-3 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;vertical-align:middle;"></span>`;
+            return `<span class="${slug}${invert} inline-block w-3 h-3 rounded-sm flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;vertical-align:middle;"></span>`;
         }
 
         function buildArticleCard(a) {
@@ -2332,10 +2330,11 @@
                     <div class="swipe-hint swipe-hint-right"><span>Save Later &#x2605;</span></div>
                     ${a.image ? `<img src="${esc(a.image)}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
                     <div class="p-6">
-                        <div class="flex items-center text-[11px] font-extrabold uppercase tracking-[0.12em] text-gray-400 mb-4">
-                            ${a.unread ? '<span class="bg-blue-600 rounded-full mr-2" style="width:7px;height:7px;flex-shrink:0"></span>' : ''}
-                            ${favicon}<span class="truncate">${esc(a.source)}</span>
-                            <span class="ml-auto flex-shrink-0 text-gray-500">${getRelativeTime(a.timestamp)}</span>
+                        <div class="flex items-center gap-4 text-[11px] font-extrabold uppercase tracking-[0.12em] text-gray-400 mb-4">
+                            ${a.unread ? '<span class="bg-blue-600 rounded-full flex-shrink-0" style="width:8px;height:8px;"></span>' : ''}
+                            ${favicon}
+                            <span class="truncate flex-1">${esc(a.source)}</span>
+                            <span class="flex-shrink-0 text-gray-500 font-bold tracking-normal">${getRelativeTime(a.timestamp)}</span>
                         </div>
                         <h3 class="font-extrabold text-gray-900 dark:text-white leading-tight dynamic-list-title" style="font-size:1.15em;">${esc(a.title)}</h3>
                     </div>
@@ -2344,14 +2343,17 @@
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card-list ${selCls} p-6">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
-                <div class="flex items-start gap-5">
-                    <div class="flex-shrink-0 mt-1.5">
+                <div class="flex items-start gap-4">
+                    <div class="flex-shrink-0 mt-1">
                         ${a.unread ? '<span class="bg-blue-600 rounded-full" style="width:8px;height:8px;display:block"></span>' : '<span class="rounded-full" style="width:8px;height:8px;display:block;opacity:0"></span>'}
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between mb-4">
-                            <span class="list-source-label font-extrabold text-blue-500 uppercase tracking-[0.12em] text-[11px] truncate mr-4">${favicon}${esc(a.source)}</span>
-                            <span class="list-date-label text-[11px] font-bold text-gray-500 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                            <div class="flex items-center gap-4 min-w-0">
+                                ${favicon}
+                                <span class="list-source-label font-extrabold text-blue-500 uppercase tracking-[0.12em] text-[11px] truncate">${esc(a.source)}</span>
+                            </div>
+                            <span class="list-date-label text-[11px] font-bold text-gray-500 flex-shrink-0 ml-4">${getRelativeTime(a.timestamp)}</span>
                         </div>
                         <h3 class="font-extrabold text-gray-900 dark:text-white leading-snug mb-4 dynamic-list-title" style="font-size:1.2em;">${esc(a.title)}</h3>
                         <p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview" style="opacity:0.85;">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
@@ -2968,7 +2970,7 @@
                 return `
                     <div class="mb-2" data-category="${esc(cat)}" draggable="true" ondragstart="handleCategoryDragStart(event, '${sCat}')" ondragend="handleCategoryDragEnd(event)" ondragover="handleCategoryDragOver(event, '${sCat}')" ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
                         <button onclick="setCategoryFilter('${sCat}')" oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="smart-feed-btn dynamic-category-text">
-                            <span class="flex items-center min-w-0">
+                            <span class="flex items-center gap-4 min-w-0">
                                 <span class="chevron-btn mr-3" onclick="event.stopPropagation(); toggleCategory('${sCat}')">
                                     <svg class="w-4 h-4 text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                                 </span>
