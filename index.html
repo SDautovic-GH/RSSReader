@@ -2508,9 +2508,15 @@
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
 
-            window.articles.forEach(a => { if (a.id === id) a.unread = false; });
+            // Mark as read immediately
+            article.unread = false;
             window.currentArticle = article;
             window._readLinks.add(article.link);
+            
+            // Move to top: Pin this ID for the current view session
+            if (!window._pinnedArticleIds) window._pinnedArticleIds = new Set();
+            window._pinnedArticleIds.add(id);
+            
             saveReadState();
 
             document.getElementById('empty-state').classList.add('hidden');
@@ -2927,9 +2933,11 @@
 
                 return `
                     <div class="mb-1" data-category="${esc(cat)}" draggable="true" ondragstart="handleCategoryDragStart(event, '${sCat}')" ondragend="handleCategoryDragEnd(event)" ondragover="handleCategoryDragOver(event, '${sCat}')" ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
-                        <button onclick="toggleCategory('${sCat}')" oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="smart-feed-btn dynamic-category-text">
+                        <button onclick="setCategoryFilter('${sCat}')" oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="smart-feed-btn dynamic-category-text">
                             <span class="flex items-center">
-                                <svg class="w-4 h-4 mr-3 text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                <span onclick="event.stopPropagation(); toggleCategory('${sCat}')" class="p-1 hover:bg-white/10 rounded transition-colors mr-2">
+                                    <svg class="w-4 h-4 text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </span>
                                 ${esc(formattedCat)}
                             </span>
                             <span class="feed-badge">${total > 0 ? total : ''}</span>
