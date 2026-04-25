@@ -780,8 +780,8 @@
                 </div>
             </div>
 
-            <div class="pane-content no-scrollbar p-3">
-                <div class="sidebar-card" style="margin-bottom:0;">
+            <div class="pane-content no-scrollbar p-3 space-y-3">
+                <div id="smart-feeds-card" class="sidebar-card">
                     <button id="feed-btn-all" onclick="setSmartFeed('all')" oncontextmenu="showFolderContextMenu(event,'smart','all')" class="smart-feed-btn dynamic-category-text active-item">
                         <span><svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> All Unread</span>
                         <span id="badge-all" class="feed-badge mob-unread-count hidden" style="color:inherit;">0</span>
@@ -794,8 +794,9 @@
                         <span><svg class="w-4 h-4 mr-3"><use href="#icon-bookmark"/></svg> Read Later</span>
                         <span id="badge-read-later" class="feed-badge mob-unread-count hidden">0</span>
                     </button>
-                    <div id="feed-list"></div>
                 </div>
+                
+                <div id="feed-list" class="sidebar-card"></div>
             </div>
 
         </aside>
@@ -2195,6 +2196,10 @@
             }
 
             filtered.sort((a, b) => {
+                const aPinned = window._pinnedArticleIds?.has(a.id);
+                const bPinned = window._pinnedArticleIds?.has(b.id);
+                if (aPinned && !bPinned) return -1;
+                if (!aPinned && bPinned) return 1;
                 const diff = (a._ts || new Date(a.timestamp).getTime()) - (b._ts || new Date(b.timestamp).getTime());
                 return sortOrder === 'desc' ? -diff : diff;
             });
@@ -2933,15 +2938,17 @@
 
                 return `
                     <div class="mb-1" data-category="${esc(cat)}" draggable="true" ondragstart="handleCategoryDragStart(event, '${sCat}')" ondragend="handleCategoryDragEnd(event)" ondragover="handleCategoryDragOver(event, '${sCat}')" ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
-                        <button onclick="setCategoryFilter('${sCat}')" oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="smart-feed-btn dynamic-category-text">
-                            <span class="flex items-center">
-                                <span onclick="event.stopPropagation(); toggleCategory('${sCat}')" class="p-1 hover:bg-white/10 rounded transition-colors mr-2">
-                                    <svg class="w-4 h-4 text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="smart-feed-btn dynamic-category-text" style="padding:0;">
+                            <button onclick="setCategoryFilter('${sCat}')" class="flex-1 flex items-center gap-3 px-3 py-2 text-left outline-none truncate">
+                                <span class="chevron-btn" onclick="event.stopPropagation(); toggleCategory('${sCat}')">
+                                    <svg class="w-4 h-4 text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                                 </span>
-                                ${esc(formattedCat)}
-                            </span>
-                            <span class="feed-badge">${total > 0 ? total : ''}</span>
-                        </button>
+                                <span class="text-gray-300">${esc(formattedCat)}</span>
+                            </button>
+                            <div class="flex items-center pr-4">
+                                <span class="feed-badge">${total > 0 ? total : ''}</span>
+                            </div>
+                        </div>
                         <div id="cat-${esc(cat)}" class="${isCollapsed ? 'hidden' : ''} space-y-0.5 mt-0.5 px-1">
                             ${feeds.map(f => {
                                 const healthClass = window._feedHealth[f.url]?.errorCount >= 3 ? 'feed-error' : '';
