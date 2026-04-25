@@ -87,7 +87,7 @@
 
         /* Global Reset & Base Utilities */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
+        body { overscroll-behavior: none;
             font-family: var(--list-font-family, 'Inter'), sans-serif;
             background-color: var(--bg-primary);
             color: var(--text-primary);
@@ -359,7 +359,7 @@
 
         /* Semantic Component Styles */
         .app-container { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
-        .pane { display: flex; flex-direction: column; height: 100%; min-height: 0; background-color: var(--bg-primary); transition: background-color 0.2s; overflow: hidden; position: relative; }
+        .pane { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; background-color: var(--bg-primary); transition: background-color 0.2s; overflow: hidden; position: relative; }
         .pane-header { z-index: 100; 
             height: 56px; padding-left: 1.25rem; padding-right: 0.25rem; 
             display: flex; flex-direction: row !important; align-items: center !important; justify-content: space-between; 
@@ -369,12 +369,12 @@
             box-sizing: border-box;
             overflow: hidden;
         }
-        .pane-header-sm { height: 56px; }
+        .pane-header-sm { height: 56px; flex-shrink: 0; }
         .sidebar { width: 328px; background-color: var(--bg-secondary); flex-shrink: 0; }
-        .timeline { width: 336px; height: 100%; min-height: 0; border-right: none; flex-shrink: 0; }
+        .timeline { width: 336px; height: 100%; min-height: 0; min-width: 0; border-right: none; flex-shrink: 0; }
         .viewer { flex: 1; position: relative; }
 
-        .pane-content { display: flex; flex-direction: column; flex: 1 1 0%; overflow-y: auto; min-height: 0; padding: 1.25rem 1rem; } .pane-content-scroll { display: flex; flex-direction: column; flex: 1 1 0%; overflow-y: auto; min-height: 0; }
+        .pane-content { flex: 1; overflow-y: auto; padding: 1.25rem 1rem; } .pane-content-scroll { display: block; flex: 1; min-height: 0; position: relative; overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; touch-action: pan-y; overflow-y: scroll; }
 
         .sidebar-card {
             border-radius: 1rem; overflow: hidden;
@@ -501,7 +501,7 @@
         }
         .dark .badge-dedup { background-color: rgba(30, 58, 138, 0.4); color: #58a6ff; }
 
-        .article-card-list {
+        .article-card-list { position: relative; overflow: hidden;
             padding: 1.25rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             cursor: pointer; transition: background-color 0.2s;
             display: flex; flex-direction: column;
@@ -509,7 +509,7 @@
         .article-card-list:hover { background-color: rgba(255, 255, 255, 0.04); }
         .article-selected { background-color: rgba(37, 99, 235, 0.15) !important; border-left: 4px solid var(--accent-blue); }
 
-        .article-card {
+        .article-card { padding: 1.5rem; position: relative; overflow: hidden;
             display: flex; flex-direction: column;
             cursor: pointer; transition: background-color 0.2s;
         }
@@ -712,9 +712,9 @@
         @media (max-width: 900px) {
             .app-container { flex-direction: column; height: 100dvh !important; }
             #sidebar-pane, #timeline-pane, #viewer-pane, #resizer { display: none !important; }
-            #sidebar-pane.mobile-active, #timeline-pane.mobile-active, #viewer-pane.mobile-active { display: flex !important; width: 100% !important; flex: none !important; height: calc(100dvh - 84px) !important; } #viewer-header { display: none !important; }
+            #sidebar-pane.mobile-active, #timeline-pane.mobile-active, #viewer-pane.mobile-active { display: flex !important; width: 100% !important; height: calc(100dvh - 84px) !important; overflow: hidden; } #viewer-header { display: none !important; }
             #article-list, #reader-view, #sidebar-pane .pane-content { padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important; }
-            [data-id] { padding: 0 !important; -webkit-user-select: none; user-select: none; }
+            [data-id] { 
             .mobile-tab-bar { display: flex !important; }
             
             /* Modern Modal Adjustments — No Horizontal Scroll */
@@ -894,7 +894,7 @@
             </div>
 
             <div class="flex-1 relative">
-                <div id="reader-view" class="reader-view no-scrollbar" id="reader-scroll">
+                <div id="reader-view" class="reader-view no-scrollbar">
                     <div id="reading-progress"></div>
                     <div class="article-container">
                         <div id="empty-state" class="empty-state">
@@ -2156,13 +2156,13 @@
                 if (_timelinePageStart > 0) {
                     const topSpacer = document.createElement('div');
                     topSpacer.id = 'list-top-spacer';
-                    topSpacer.style.cssText = `height:${_timelinePageStart * 140}px;`; // ~88px avg card height
+                    topSpacer.style.cssText = `min-height:${_timelinePageStart * 140}px; height:${_timelinePageStart * 140}px;`; // ~88px avg card height
                     listEl.appendChild(topSpacer);
 
                     // Top sentinel: when visible, slide window up one page
                     const topSentinel = document.createElement('div');
                     topSentinel.id = 'list-top-sentinel';
-                    topSentinel.style.cssText = 'height:1px;';
+                    topSentinel.style.cssText = 'height:10px; opacity:0; pointer-events:none;';
                     listEl.appendChild(topSentinel);
                     _timelineTopObserver = new IntersectionObserver((entries) => {
                         if (entries[0].isIntersecting) {
@@ -2188,7 +2188,7 @@
                 if (filtered.length > _timelinePageEnd) {
                     const sentinel = document.createElement('div');
                     sentinel.id = 'list-sentinel';
-                    sentinel.style.cssText = 'height:1px;margin-top:-1px;';
+                    sentinel.style.cssText = 'height:10px; opacity:0; pointer-events:none;';
                     listEl.appendChild(sentinel);
                     _timelineObserver = new IntersectionObserver((entries) => {
                         if (entries[0].isIntersecting) {
@@ -2201,7 +2201,7 @@
                             _lastTimelineKey = '';
                             renderTimelinePage(window.currentTimeline);
                         }
-                    }, { root: listEl, threshold: 0.1 });
+                    }, { root: listEl, threshold: 0 });
                     _timelineObserver.observe(sentinel);
                 }
             }
@@ -2340,7 +2340,7 @@
             const saId = escJs(a.id);
 
             if (window._viewMode === 'card') {
-                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card ${selCls}">
+                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card ${selCls} p-6">
                     <div class="swipe-hint swipe-hint-left"><span>&#x2713; Mark Read</span></div>
                     <div class="swipe-hint swipe-hint-right"><span>Save Later &#x2605;</span></div>
                     ${a.image ? `<img src="${esc(a.image)}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
@@ -2355,7 +2355,7 @@
                     </div>
                 </div>`;
             }
-            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card-list ${selCls} p-6">
+            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card-list ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
                 <div class="flex items-start gap-4">
