@@ -1,6 +1,7 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
-<head>
+<hea></head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,23 +31,185 @@
 
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='24' height='24' rx='6' fill='%232563eb'/%3E%3Cpath d='M4 11a9 9 0 0 1 9 9'/%3E%3Cpath d='M4 4a16 16 0 0 1 16 16'/%3E%3Ccircle cx='5' cy='19' r='1' fill='white' stroke='none'/%3E%3C/svg%3E">
 
+    <!-- Using Tailwind CDN for single-file portability, as requested. -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <style>
+        /* Importing readability fonts */
+        /* Fonts loaded dynamically by JS based on user preference — see loadActiveFont() */
+
+        body {
+            font-family: var(--list-font-family, 'Inter'), sans-serif;
+            overflow: hidden;
+        }
+
+        .active-item {
+            background-color: #3b82f6;
+            color: white !important;
+        }
+
+        .article-content img {
+            max-width: 100% !important;
+            height: auto !important;
+            max-height: 420px;
+            object-fit: contain;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            cursor: zoom-in;
+            display: block;
+            box-sizing: border-box;
+        }
+        /* Hide broken images and collapse their space */
+        .article-content img[data-broken] {
+            display: none !important;
+        }
+        .article-content figure:has(img[data-broken]) {
+            display: none !important;
+        }
+        .article-content video,
+        .article-content audio {
+            max-width: 100% !important;
+            width: 100% !important;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            display: block;
+            background: #000;
+        }
+        .article-content iframe {
+            max-width: 100% !important;
+            width: 100% !important;
+            aspect-ratio: 16/9;
+            border: none;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            display: block;
+        }
+
+        /* ===== IMAGE LIGHTBOX ===== */
+        #img-lightbox {
+            position: fixed; inset: 0; z-index: 9000;
+            background: rgba(0,0,0,0.92);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.18s ease;
+            overflow: hidden;
+        }
+        #img-lightbox.open { opacity: 1; pointer-events: all; }
+        #img-lightbox img {
+            max-width: 100%; max-height: 100%;
+            object-fit: contain;
+            border-radius: 6px;
+            touch-action: none;
+            cursor: zoom-in;
+            user-select: none;
+            transform-origin: center center;
+            will-change: transform;
+        }
+        #img-lightbox img.lb-zoomed { cursor: grab; border-radius: 0; }
+        #img-lightbox img.lb-zoomed:active { cursor: grabbing; }
+        #img-lightbox-close {
+            position: absolute; top: 14px; right: 16px;
+            color: #fff; font-size: 28px; line-height: 1;
+            cursor: pointer; opacity: 0.75; background: none; border: none;
+            padding: 4px 8px; z-index: 1;
+        }
+        #img-lightbox-close:hover { opacity: 1; }
+        #img-lightbox-hint {
+            position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,0.4); font-size: 11px; pointer-events: none;
+            white-space: nowrap; transition: opacity 0.3s;
+        }
+
+        /* GitHub blue for all article links and feed name */
+        .article-content a { color: #58a6ff; text-decoration: none; }
+        .article-content a:hover { color: #79b8ff; }
+        a { text-decoration: none !important; }
+
+        /* Article list title em size (desktop + mobile) */
+        .dynamic-list-title { font-size: var(--list-title-em-size) !important; font-weight: 500 !important; }
+        #article-title { font-weight: 500 !important; } /* font-medium */
+
+        /* Global line height for article content and list */
+        #article-body, #article-title {
+            line-height: var(--line-height) !important;
+        }
+        .dynamic-list-preview, .dynamic-list-title {
+            line-height: var(--list-preview-line-height) !important;
+        }
+
+        /* Title — off-white in dark, near-black in light. Clean hierarchy like Reeder/Apple News. */
+        .dynamic-list-title { color: #0f1923 !important; }
+        .dark .dynamic-list-title { color: #e6edf3 !important; }
+        #article-title { color: #0f1923 !important; }
+        .dark #article-title { color: #e6edf3 !important; }
+        /* Preview — clearly subordinate: muted grey recedes behind the title */
+        .dynamic-list-preview { color: #1f2937 !important; }
+        .dark .dynamic-list-preview { color: #8b949e !important; }
+        .dark #article-body { color: #c9d1d9 !important; }
+        #article-author, #article-date { font-size: var(--article-meta-size) !important; }
+
+        .line-clamp-custom {
+            display: -webkit-box;
+            -webkit-line-clamp: var(--list-preview-lines, 5);
+            line-clamp: var(--list-preview-lines, 5);
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .pane-transition {
+            transition: background-color 0.2s;
+        }
+
+        /* Draggable Resizer Styling */
+        #resizer {
+            width: 4px;
+            cursor: col-resize;
+            background-color: transparent;
+            z-index: 50;
+            flex-shrink: 0;
+            transition: background-color 0.2s;
+        }
+        #resizer:hover, .resizing #resizer {
+            background-color: #3b82f6;
+        }
+        .resizing {
+            cursor: col-resize;
+            user-select: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+        }
+
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        #web-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
         :root {
-            /* Theme Variables */
-            --bg-primary: #ffffff;
-            --bg-secondary: #f9fafb;
-            --bg-tertiary: #f3f4f6;
-            --text-primary: #111827;
-            --text-secondary: #4b5563;
-            --text-tertiary: #9ca3af;
-            --border-color: #e5e7eb;
-            --accent-blue: #3b82f6;
-            --accent-blue-hover: #2563eb;
-            --accent-red: #ef4444;
-            --accent-green: #22c55e;
-            
-            /* Sizing & Layout Defaults */
             --list-preview-font-size: 1em;
             --view-font-size: 1em;
             --category-font-size: 1em;
@@ -72,540 +235,639 @@
             --desk-feed-name-size: 1.0em;
             --article-meta-size: 1.1em;
             --mob-zoom: 1.05;
-            --feed-row-padding: 0.3rem;
         }
 
-        .dark {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --text-tertiary: #484f58;
-            --border-color: #30363d;
+        .dynamic-list-title {
+            font-family: var(--list-font-family);
+        }
+        .dynamic-list-preview {
+            font-size: var(--list-preview-font-size);
+            font-family: var(--list-font-family);
+        }
+        .dynamic-view-text {
+            font-size: var(--view-font-size);
+            font-family: var(--view-font-family);
+        }
+        .dynamic-category-text {
+            font-size: var(--category-font-size);
+            font-weight: 400 !important;
         }
 
-        /* Global Reset & Base Utilities */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: var(--list-font-family, 'Inter'), sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            overflow: hidden;
-            transition: background-color 0.2s ease, color 0.15s ease;
+        .is-fullscreen #sidebar-pane,
+        .is-fullscreen #timeline-pane,
+        .is-fullscreen #resizer {
+            display: none;
         }
 
-        button, input, select, textarea { 
-            background: transparent; border: none; cursor: pointer; 
-            color: inherit; font-family: inherit; font-size: inherit;
-            outline: none; -webkit-tap-highlight-color: transparent;
+        .animate-pulse-fast {
+            animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        input[type="text"], input[type="email"], input[type="password"], input[type="search"], select {
-            cursor: text;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
         }
-
-        .flex { display: flex; }
-        .flex-col { flex-direction: column; }
-        .flex-1 { flex: 1 1 0%; }
-        .flex-shrink-0 { flex-shrink: 0; }
-        .items-center { align-items: center; }
-        .items-start { align-items: flex-start; }
-        .justify-between { justify-content: space-between; }
-        .justify-center { justify-content: center; }
-        .justify-end { justify-content: flex-end; }
-        .hidden { display: none !important; }
-        .block { display: block; }
-        .inline-block { display: inline-block; }
-        
-        .w-full { width: 100%; }
-        .h-screen { height: 100vh; }
-        .h-full { height: 100%; }
-        .w-px { width: 1px; }
-        .w-3 { width: 0.75rem; }
-        .w-3.5 { width: 0.875rem; }
-        .w-4 { width: 1rem; }
-        .w-5 { width: 1.25rem; }
-        .w-6 { width: 1.5rem; }
-        .w-8 { width: 2rem; }
-        .w-10 { width: 2.5rem; }
-        .w-12 { width: 3rem; }
-        .w-20 { width: 5rem; }
-        .w-48 { width: 12rem; }
-        .w-\[22px\] { width: 22px; }
-        .h-3 { height: 0.75rem; }
-        .h-3.5 { height: 0.875rem; }
-        .h-4 { height: 1rem; }
-        .h-5 { height: 1.25rem; }
-        .h-6 { height: 1.5rem; }
-        .h-8 { height: 2rem; }
-        .h-10 { height: 2.5rem; }
-        .h-12 { height: 3rem; }
-        .h-20 { height: 5rem; }
-        .h-\[22px\] { height: 22px; }
-        .max-w-xs { max-width: 20rem; }
-        .max-w-sm { max-width: 24rem; }
-        .max-w-md { max-width: 28rem; }
-        .max-w-lg { max-width: 32rem; }
-        .max-w-xl { max-width: 36rem; }
-        .max-w-2xl { max-width: 42rem; }
-        .max-w-3xl { max-width: 48rem; }
-        .max-w-4xl { max-width: 56rem; }
-        .min-w-0 { min-width: 0; }
-        
-        .p-1 { padding: 0.25rem; }
-        .p-1.5 { padding: 0.375rem; }
-        .p-2 { padding: 0.5rem; }
-        .p-2.5 { padding: 0.625rem; }
-        .p-3 { padding: 0.75rem; }
-        .p-4 { padding: 1rem; }
-        .p-5 { padding: 1.25rem; }
-        .p-6 { padding: 1.5rem; }
-        .p-8 { padding: 2rem; }
-        .px-1 { padding-left: 0.25rem; padding-right: 0.25rem; }
-        .px-1.5 { padding-left: 0.375rem; padding-right: 0.375rem; }
-        .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-        .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-        .px-4 { padding-left: 1rem; padding-right: 1rem; }
-        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
-        .py-0.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
-        .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
-        .py-1.5 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
-        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-        .py-2.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
-        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-        
-        .mb-0.5 { margin-bottom: 0.125rem; }
-        .mb-1 { margin-bottom: 0.25rem; }
-        .mb-1.5 { margin-bottom: 0.375rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-3 { margin-bottom: 0.75rem; }
-        .mb-4 { margin-bottom: 1rem; }
-        .mb-5 { margin-bottom: 1.25rem; }
-        .mb-6 { margin-bottom: 1.5rem; }
-        .mb-8 { margin-bottom: 2rem; }
-        .mt-1 { margin-top: 0.25rem; }
-        .mt-2 { margin-top: 0.5rem; }
-        .mt-3 { margin-top: 0.75rem; }
-        .mt-4 { margin-top: 1rem; }
-        .mt-6 { margin-top: 1.5rem; }
-        .mr-1 { margin-right: 0.25rem; }
-        .mr-1.5 { margin-right: 0.375rem; }
-        .mr-2 { margin-right: 0.5rem; }
-        .mr-3 { margin-right: 0.75rem; }
-        .ml-1 { margin-left: 0.25rem; }
-        .ml-2 { margin-left: 0.5rem; }
-        .ml-auto { margin-left: auto; }
-        .mx-auto { margin-left: auto; margin-right: auto; }
-        
-        .space-x-1 > * + * { margin-left: 0.25rem; }
-        .space-x-2 > * + * { margin-left: 0.5rem; }
-        .space-x-3 > * + * { margin-left: 0.75rem; }
-        .space-x-4 > * + * { margin-left: 1rem; }
-        .space-y-1.5 > * + * { margin-top: 0.375rem; }
-        .space-y-2 > * + * { margin-top: 0.5rem; }
-        .space-y-3 > * + * { margin-top: 0.75rem; }
-        .space-y-4 > * + * { margin-top: 1rem; }
-        .space-y-6 > * + * { margin-top: 1.5rem; }
-        
-        .gap-1 { gap: 0.25rem; }
-        .gap-1.5 { gap: 0.375rem; }
-        .gap-2 { gap: 0.5rem; }
-        .gap-3 { gap: 0.75rem; }
-        .gap-4 { gap: 1rem; }
-        
-        .rounded { border-radius: 0.25rem; }
-        .rounded-sm { border-radius: 0.125rem; }
-        .rounded-md { border-radius: 0.375rem; }
-        .rounded-lg { border-radius: 0.5rem; }
-        .rounded-xl { border-radius: 0.75rem; }
-        .rounded-2xl { border-radius: 1rem; }
-        .rounded-full { border-radius: 9999px; }
-        
-        .border { border: 1px solid var(--border-color); }
-        .border-b { border-bottom: 1px solid var(--border-color); }
-        .border-r { border-right: 1px solid var(--border-color); }
-        .border-t { border-top: 1px solid var(--border-color); }
-        .border-dashed { border-style: dashed; }
-        .border-gray-100 { border-color: #f3f4f6; }
-        .border-gray-200 { border-color: #e5e7eb; }
-        .border-gray-300 { border-color: #d1d5db; }
-        .border-gray-600 { border-color: #4b5563; }
-        .border-gray-700 { border-color: #374151; }
-        .border-blue-500 { border-color: #3b82f6; }
-        .border-red-400 { border-color: #f87171; }
-        .border-green-500 { border-color: #22c55e; }
-        
-        .text-xs { font-size: 0.75rem; }
-        .text-sm { font-size: 0.875rem; }
-        .text-base { font-size: 1rem; }
-        .text-lg { font-size: 1.125rem; }
-        .text-xl { font-size: 1.25rem; }
-        .text-\[10px\] { font-size: 10px; }
-        .text-\[17px\] { font-size: 17px; }
-        .text-\[9px\] { font-size: 9px; }
-        .font-bold { font-weight: 700; }
-        .font-medium { font-weight: 500; }
-        .font-semibold { font-weight: 600; }
-        .font-extrabold { font-weight: 800; }
-        .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-        .uppercase { text-transform: uppercase; }
-        .tracking-tight { letter-spacing: -0.025em; }
-        .tracking-widest { letter-spacing: 0.1em; }
-        .whitespace-nowrap { white-space: nowrap; }
-        .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .text-center { text-align: center; }
-        
-        .cursor-pointer { pointer-events: auto; cursor: pointer; }
-        .outline-none { outline: 2px solid transparent; outline-offset: 2px; }
-        .transition-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
-        .transition-colors { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
-        .transition-opacity { transition-property: opacity; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
-
-        .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
-        .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
-
-        .fixed { position: fixed; }
-        .absolute { position: absolute; }
-        .relative { position: relative; }
-        .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
-        .left-1\/2 { left: 50%; }
-        .transform { --tw-translate-x: 0; --tw-translate-y: 0; transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)); }
-        .-translate-x-1\/2 { --tw-translate-x: -50%; }
-        .z-10 { z-index: 10; }
-        .z-20 { z-index: 20; }
-        .z-49 { z-index: 49; }
-        .z-50 { z-index: 50; }
-        .z-\[60\] { z-index: 60; }
-        .z-\[100\] { z-index: 100; }
-        .z-\[200\] { z-index: 200; }
-        .z-\[300\] { z-index: 300; }
-
-        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-        .animate-in { animation: animate-in 0.2s ease-out; }
-        .zoom-in { animation: zoom-in 0.2s ease-out; }
-        @keyframes animate-in { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes zoom-in { from { transform: scale(0.95); } to { transform: scale(1); } }
-
-        .bg-white { background-color: #ffffff; }
-        .bg-gray-50 { background-color: #f9fafb; }
-        .bg-gray-100 { background-color: #f3f4f6; }
-        .bg-gray-200 { background-color: #e5e7eb; }
-        .bg-gray-300 { background-color: #d1d5db; }
-        .bg-gray-700 { background-color: #374151; }
-        .bg-gray-800 { background-color: #1f2937; }
-        .bg-blue-50 { background-color: #eff6ff; }
-        .bg-blue-100 { background-color: #dbeafe; }
-        .bg-blue-500 { background-color: #3b82f6; }
-        .bg-blue-600 { background-color: #2563eb; }
-        .bg-blue-600\/20 { background-color: rgba(37, 99, 235, 0.2); }
-        .bg-red-100 { background-color: #fee2e2; }
-        .bg-green-50 { background-color: #f0fdf4; }
-        
-        .text-white { color: #ffffff; }
-        .text-gray-200 { color: #e5e7eb; }
-        .text-gray-300 { color: #d1d5db; }
-        .text-gray-400 { color: #9ca3af; }
-        .text-gray-500 { color: #6b7280; }
-        .text-gray-600 { color: #4b5563; }
-        .text-gray-900 { color: #111827; }
-        .text-blue-400 { color: #60a5fa; }
-        .text-blue-500 { color: #3b82f6; }
-        .text-blue-600 { color: #2563eb; }
-        .text-red-500 { color: #ef4444; }
-        .text-green-500 { color: #22c55e; }
-
-        .hover\:bg-gray-50:hover { background-color: #f9fafb; }
-        .hover\:bg-gray-100:hover { background-color: #f3f4f6; }
-        .hover\:bg-gray-200:hover { background-color: #e5e7eb; }
-        .hover\:bg-blue-50:hover { background-color: #eff6ff; }
-        .hover\:bg-blue-500:hover { background-color: #3b82f6; }
-        .hover\:bg-blue-700:hover { background-color: #1d4ed8; }
-        .hover\:text-blue-500:hover { color: #3b82f6; }
-        .hover\:text-white:hover { color: #ffffff; }
-        
-        .dark .dark\:bg-gray-700 { background-color: #374151; }
-        .dark .dark\:bg-gray-800 { background-color: #1f2937; }
-        .dark .dark\:bg-gray-900 { background-color: #111827; }
-        .dark .dark\:bg-gray-900\/30 { background-color: rgba(17, 24, 39, 0.3); }
-        .dark .dark\:bg-gray-900\/50 { background-color: rgba(17, 24, 39, 0.5); }
-        .dark .dark\:bg-blue-900\/20 { background-color: rgba(30, 58, 138, 0.2); }
-        .dark .dark\:bg-blue-900\/30 { background-color: rgba(30, 58, 138, 0.3); }
-        .dark .dark\:bg-blue-900\/40 { background-color: rgba(30, 58, 138, 0.4); }
-        .dark .dark\:bg-red-900\/20 { background-color: rgba(127, 29, 29, 0.2); }
-        .dark .dark\:bg-red-900\/40 { background-color: rgba(127, 29, 29, 0.4); }
-        .dark .dark\:bg-white\/5 { background-color: rgba(255, 255, 255, 0.05); }
-        .dark .dark\:border-white\/5 { border-color: rgba(255, 255, 255, 0.05); }
-        .dark .dark\:border-white\/10 { border-color: rgba(255, 255, 255, 0.1); }
-        .dark .dark\:border-gray-600 { border-color: #4b5563; }
-        .dark .dark\:border-gray-700 { border-color: #374151; }
-        .dark .dark\:text-white { color: #ffffff; }
-        .dark .dark\:text-gray-100 { color: #f3f4f6; }
-        .dark .dark\:text-gray-300 { color: #d1d5db; }
-        .dark .dark\:text-gray-400 { color: #9ca3af; }
-        .dark .dark\:text-blue-400 { color: #60a5fa; }
-        .dark .dark\:hover\:bg-gray-700:hover { background-color: #374151; }
-
-        /* Semantic Component Styles */
-        .app-container { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
-        .pane { display: flex; flex-direction: column; height: 100%; background-color: var(--bg-primary); transition: background-color 0.2s; }
-        .pane-header { height: 74px; padding: 0 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); }
-        .pane-header-sm { height: 56px; }
-        .sidebar { width: 328px; background-color: var(--bg-secondary); flex-shrink: 0; }
-        .timeline { width: 336px; border-right: 1px solid var(--border-color); flex-shrink: 0; }
-        .viewer { flex: 1; position: relative; }
-
-        .pane-content { flex: 1; overflow-y: auto; padding: 0.75rem; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        .sidebar-card {
-            border-radius: 1rem; overflow: hidden;
-            background-color: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(4px);
-            margin-bottom: 0.75rem;
+        /* Smooth dark/light mode transition — scoped to specific elements only (avoids mobile jank from wildcard *) */
+        body, #sidebar-pane, #timeline-pane, #viewer-pane, #reader-view,
+        #mobile-tab-bar, #mobile-reader-bar, .h-12,
+        .pane-transition, .smart-feed-btn, #feed-list button,
+        .modal-backdrop, #settings-modal > div, #login-modal > div {
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+        }
+        /* Article list items get transitions only when not scrolling, to avoid per-item cost during scroll */
+        #article-list:not(.is-scrolling) > div, #article-list:not(.is-scrolling) .article-card {
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
         }
 
-        .icon-box {
-            background-color: var(--accent-blue-hover);
-            color: white; padding: 0.375rem;
-            border-radius: 0.5rem; display: flex;
-            align-items: center; justify-content: center;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        }
-        .icon-box-lg { width: 5rem; height: 5rem; margin-left: auto; margin-right: auto; margin-bottom: 1.25rem; border-radius: 1rem; background-color: rgba(37, 99, 235, 0.2); display: flex; align-items: center; justify-content: center; }
-        .icon-box-lg svg { width: 2.5rem; height: 2.5rem; color: #3b82f6; }
-
-        .btn-icon {
-            padding: 0.375rem; border-radius: 0.5rem;
-            color: #6b7280; background: transparent;
-            border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: background-color 0.2s;
-        }
-        .btn-icon:hover { background-color: #e5e7eb; }
-        .dark .btn-icon:hover { background-color: #374151; }
-        .btn-icon svg { width: 22px; height: 22px; }
-
-        .active-item { background-color: var(--accent-blue) !important; color: white !important; }
-        
-        .smart-feed-btn {
-            width: 100%; display: flex; align-items: center; justify-content: space-between;
-            padding: var(--feed-row-padding) 1rem;
-            background: transparent; border: none; cursor: pointer;
-            color: var(--text-secondary);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .smart-feed-btn:hover { background-color: rgba(255, 255, 255, 0.05); }
-        .smart-feed-btn:last-child { border-bottom: none; }
-        .smart-feed-btn span { display: flex; align-items: center; }
-
-        .feed-badge { font-weight: 700; color: #60a5fa; }
-
-        .article-container { max-width: 42rem; margin-left: auto; margin-right: auto; }
-        .reader-view { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 1rem; }
-        @media (min-width: 768px) { .reader-view { padding: 1.5rem; } }
-        @media (min-width: 1024px) { .reader-view { padding: 2rem; } }
-
-        .empty-state { text-align: center; padding-top: 4rem; padding-bottom: 4rem; color: #9ca3af; padding-left: 1rem; padding-right: 1rem; }
-        
-        .btn-primary {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            padding: 0.625rem 1.25rem; background-color: #2563eb;
-            color: white; font-weight: 700; border-radius: 0.75rem;
-            border: none; cursor: pointer; transition: background-color 0.2s;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        .btn-primary:hover { background-color: #1d4ed8; }
-
-        .btn-pill {
-            font-size: 10px; font-weight: 700; padding: 0.25rem 0.5rem;
-            border-radius: 0.375rem; border: 1px solid #d1d5db;
-            color: #6b7280; background: transparent; cursor: pointer;
-            transition: all 0.2s;
-        }
-        .dark .btn-pill { border-color: #4b5563; }
-        .btn-pill:hover { background-color: #f3f4f6; }
-        .dark .btn-pill:hover { background-color: #374151; }
-        
-        .btn-pill-blue { color: #3b82f6; border-color: #3b82f6; }
-        .btn-pill-blue:hover { background-color: #eff6ff; }
-
-        .modal-card {
-            background-color: var(--bg-primary); width: 100%; max-width: 32rem;
-            border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            border: 1px solid var(--border-color); display: flex; flex-direction: column;
-            max-height: 90vh; overflow: hidden;
+        /* Respect OS-level reduced-motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            #reading-progress { transition: none !important; }
+            .skeleton-line { animation: none !important; background: rgba(255,255,255,0.07) !important; }
+            #article-content { animation: none !important; }
         }
 
-        .input-text {
-            width: 100%; padding: 0.75rem; background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color); border-radius: 0.5rem;
-            font-size: 0.875rem; color: var(--text-primary); outline: none; transition: ring 0.2s;
+        /* Keyboard shortcut kbd chip */
+        .kbd {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 1.6em; padding: 0.1em 0.4em;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 5px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.78em;
+            color: #e2e8f0;
+            line-height: 1.6;
         }
-        .input-text:focus { box-shadow: 0 0 0 2px var(--accent-blue); }
 
-        input[type="range"] {
-            width: 100%; height: 0.375rem; background-color: #e5e7eb;
-            border-radius: 0.5rem; appearance: none; cursor: pointer;
-            accent-color: #2563eb;
+        /* Skeleton loading shimmer */
+        @keyframes shimmer {
+            0% { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
         }
-        .dark input[type="range"] { background-color: #374151; }
-
-        .toast-notification {
-            position: fixed; left: 50%; transform: translateX(-50%);
-            padding: 0.75rem 1.5rem; border-radius: 0.5rem;
-            font-weight: 700; font-size: 0.875rem; color: white;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            z-index: 300; transition: opacity 0.3s;
-            opacity: 0; pointer-events: none; top: 16px;
-            background-color: #2563eb;
+        .skeleton-card {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
-        .toast-notification.error { background-color: #ef4444; }
-
-        .badge-dedup {
-            background-color: #dbeafe; color: #2563eb;
-            font-size: 9px; padding: 0.125rem 0.375rem; border-radius: 0.25rem;
+        .skeleton-line {
+            border-radius: 4px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 75%);
+            background-size: 800px 100%;
+            animation: shimmer 1.4s infinite linear;
         }
-        .dark .badge-dedup { background-color: rgba(30, 58, 138, 0.4); color: #60a5fa; }
-
-        .article-card-list {
-            padding: 1rem; border-bottom: 1px solid var(--border-color);
-            cursor: pointer; transition: background-color 0.2s;
-            display: flex; flex-direction: column;
+        .dark .skeleton-line {
+            background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%);
+            background-size: 800px 100%;
+            animation: shimmer 1.4s infinite linear;
         }
-        .article-card-list:hover { background-color: rgba(23, 37, 84, 0.3); }
-        .article-selected { background-color: rgba(23, 37, 84, 0.45) !important; border-left: 4px solid var(--accent-blue); }
 
-        .article-card {
-            display: flex; flex-direction: column;
-            cursor: pointer; transition: background-color 0.2s;
+        /* Reading progress bar */
+        #reading-progress {
+            position: absolute;
+            top: 0; left: 0;
+            height: 3px;
+            width: 0%;
+            background: #3b82f6;
+            z-index: 20;
+            transition: width 0.1s linear !important;
+            border-radius: 0 2px 2px 0;
         }
-        .article-card:hover { background-color: rgba(23, 37, 84, 0.3); }
-        .article-card-img { width: 100%; height: 120px; object-fit: cover; }
 
-        /* Context Menu Styles */
-        .ctx-menu { background-color: var(--bg-primary); border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border: 1px solid var(--border-color); padding: 0.25rem 0; width: 12rem; font-size: 1rem; }
-        .ctx-menu-btn { width: 100%; text-align: left; padding: 0.5rem 1rem; background: transparent; border: none; cursor: pointer; color: var(--text-primary); transition: background-color 0.1s; }
-        .ctx-menu-btn:hover { background-color: var(--bg-tertiary); }
-        .ctx-menu-btn.red { color: var(--accent-red); }
-        .ctx-menu-btn.red:hover { background-color: rgba(239, 68, 68, 0.1); }
+        /* Feed health dot */
+        .feed-stale::after, .feed-error::after {
+            content: '';
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .feed-stale::after { background: #f59e0b; }
+        .feed-error::after { background: #ef4444; }
 
-        /* Mobile Tab Bar */
-        .mobile-tab-bar {
+
+        /* Card view */
+        #article-list.card-view .article-card {
+            display: flex;
+            flex-direction: column;
+            margin: 8px;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+        }
+        .dark #article-list.card-view .article-card {
+            border-color: #30363d;
+        }
+        #article-list.card-view .article-card-img {
+            width: 100%; height: 120px;
+            object-fit: cover;
+        }
+
+        /* ===== MOBILE LAYOUT ===== */
+        @media (max-width: 900px) {
+            #app-container { flex-direction: column; }
+            #sidebar-pane, #timeline-pane, #viewer-pane, #resizer {
+                display: none !important;
+            }
+            #sidebar-pane.mobile-active,
+            #timeline-pane.mobile-active,
+            #viewer-pane.mobile-active {
+                display: flex !important;
+                width: 100% !important;
+                flex: none !important;
+                height: 100vh;
+                height: 100dvh;
+            }
+            /* Content scrolls under the floating bar — reserve enough padding so last items clear the pill */
+            #article-list,
+            #reader-view,
+            #sidebar-pane .overflow-y-auto {
+                padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+            }
+            #resizer { display: none !important; }
+            #mobile-tab-bar { display: flex !important; }
+            #sidebar-pane.mobile-active { flex-direction: column; }
+            /* Hide desktop toolbar equivalents on mobile */
+            #prev-article-btn, #next-article-btn,
+            #share-btn, #tts-btn, #read-later-action-btn, #unread-action-btn,
+            #view-density-toggle { display: none !important; }
+            /* Mobile sidebar — consistent font size for smart feeds AND category folders */
+            #sidebar-pane .smart-feed-btn { font-size: var(--mob-folder-size) !important; line-height: var(--mob-feed-line-height) !important; }
+            #sidebar-pane .dynamic-category-text { font-size: var(--mob-folder-size) !important; line-height: var(--mob-feed-line-height) !important; }
+            #sidebar-pane #feed-list [data-category] > button { font-size: var(--mob-folder-size) !important; line-height: var(--mob-feed-line-height) !important; }
+            /* Article list source name and date size */
+            #article-list .list-source-label { font-size: var(--mob-list-source-size) !important; }
+            #article-list .list-date-label { font-size: var(--mob-list-date-size) !important; }
+            /* Mobile article view font scaling */
+            #article-meta { font-size: var(--mob-feed-name-size) !important; }
+            #article-list .list-source-label { font-size: var(--mob-feed-name-size) !important; }
+            #article-title { font-size: var(--mob-article-title-size) !important; }
+            #article-author, #article-date { font-size: var(--mob-author-size) !important; }
+            #article-body { font-size: var(--mob-body-size) !important; }
+            /* Use higher specificity to override global .dynamic-list-title rule */
+            #article-list .dynamic-list-title { font-size: var(--mob-list-title-size) !important; }
+            #article-list .dynamic-list-preview { font-size: var(--mob-list-preview-size) !important; }
+            #article-body, #article-title {
+                line-height: var(--mob-line-height) !important;
+            }
+            #article-list .dynamic-list-preview, #article-list .dynamic-list-title {
+                line-height: var(--list-preview-line-height) !important;
+            }
+            /* Mobile article list — 2px left/right padding, no text select (prevents long-press conflict) */
+            #article-list [data-id] { padding-left: 3px !important; padding-right: 3px !important; -webkit-user-select: none; user-select: none; }
+
+            /* ===== MOBILE TOP BAR SIZING ===== */
+            /* Sidebar header — taller, larger icons and title */
+            #sidebar-pane > div:first-child { padding: 1rem 1.25rem !important; }
+            #sidebar-pane > div:first-child svg { width: 1.5rem !important; height: 1.5rem !important; }
+            #sidebar-pane > div:first-child h1 { font-size: 1.1rem !important; }
+            #sidebar-pane > div:first-child button { padding: 0.5rem !important; }
+            #sidebar-pane > div:first-child button svg { width: 1.5rem !important; height: 1.5rem !important; }
+
+            /* Timeline header — taller with larger text and button */
+            #timeline-pane > div:first-child { padding-top: 0.875rem !important; padding-bottom: 0.875rem !important; font-size: 0.875rem !important; }
+
+            /* Viewer toolbar hidden on mobile — reading progress lives in the Reader tab */
+            #viewer-header { display: none !important; }
+            #reading-progress { display: none !important; }
+            /* Articles list topbar hidden on mobile — unread count lives in the Reader tab */
+            #timeline-header { display: none !important; }
+        }
+        /* Mobile tab bar — h-20 = 80px */
+        #mobile-tab-bar { display: none; }
+        #mobile-reader-bar { display: none; }
+        /* ===== DESKTOP FLOATING ARTICLE NAV ===== */
+        #desk-nav-float {
+            position: absolute;
+            bottom: 24px;
+            right: 28px;
+            z-index: 20;
+            flex-direction: column;
+            gap: 5px;
+        }
+        #desk-nav-float button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.13);
+            background: rgba(22,22,30,0.62);
+            box-shadow: 0 4px 18px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.15);
+            backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-backdrop-filter: blur(24px) saturate(1.6);
+            color: rgba(255,255,255,0.88);
+            cursor: pointer;
+            transition: background 0.12s, opacity 0.12s;
+        }
+        #desk-nav-float button:hover:not(.hidden) {
+            background: rgba(59,130,246,0.65);
+            border-color: rgba(59,130,246,0.45);
+        }
+        @media (max-width: 900px) {
+            #desk-nav-float { display: none !important; }
+        }
+
+        /* ===== APPLE MUSIC-STYLE MOBILE BOTTOM BAR ===== */
+        #mobile-tab-bar {
             display: none;
-            position: fixed; left: 0; right: 0; bottom: 0;
-            z-index: 50; align-items: center; justify-content: center;
-            padding: 0.5rem 1.125rem calc(0.875rem + env(safe-area-inset-bottom, 0px));
-            background: transparent !important; border: none !important;
-            pointer-events: none; gap: 0.625rem;
+            position: fixed;
+            left: 0; right: 0;
+            bottom: 0;
+            z-index: 50;
+            padding: 8px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+            background: transparent !important;
+            border: none !important;
+            pointer-events: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            height: auto !important;
         }
-        .search-sheet { display: none; }
-        .mobile-tab-bar > * { pointer-events: auto; }
-        
-        .tab-pill {
-            display: flex; align-items: stretch; gap: 2px;
-            height: 62px; padding: 6px; border-radius: 999px;
-            background: rgba(28, 28, 30, 0.72);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        #mobile-tab-bar > * { pointer-events: auto; }
+        #mobile-tab-bar .tab-pill {
+            display: flex;
+            align-items: stretch;
+            gap: 2px;
+            height: 62px;
+            padding: 6px;
+            border-radius: 999px;
+            background: rgba(28,28,30,0.72);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
             backdrop-filter: blur(40px) saturate(1.8);
             -webkit-backdrop-filter: blur(40px) saturate(1.8);
-            flex: 1 1 auto; max-width: 420px; min-width: 0;
-            transition: all 0.2s ease;
+            flex: 1 1 auto;
+            max-width: 420px;
+            min-width: 0;
+            transition: background-color 0.25s ease, border-color 0.25s ease;
         }
-        .bar-scrolled .tab-pill { height: 46px; padding: 5px; }
-
-        .tab-btn {
-            flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 3px;
-            height: 100%; padding: 0 6px; border-radius: 999px;
-            background: transparent; color: rgba(255, 255, 255, 0.82);
-            border: none; cursor: pointer; transition: all 0.18s ease;
+        #mobile-tab-bar .tab-btn {
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 100%;
+            padding: 0 6px;
+            border-radius: 999px;
+            background: transparent;
+            color: rgba(255,255,255,0.82);
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.18s ease, color 0.18s ease;
+            -webkit-tap-highlight-color: transparent;
+            font-family: inherit;
+        }
+        #mobile-tab-bar .tab-btn .tab-ico { width: 22px; height: 22px; display: block; stroke: currentColor; color: inherit; }
+        #mobile-tab-bar .tab-btn .tab-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            line-height: 1;
+            white-space: nowrap;
+            color: inherit;
+        }
+        #mobile-tab-bar .tab-btn.active {
+            background: rgba(59, 130, 246, 0.18);
+            color: #3b82f6;
+        }
+        body.bar-scrolled #mobile-tab-bar .tab-btn.active {
+            background: rgba(88, 166, 255, 0.22);
+            color: #58a6ff;
+        }
+        /* Compact mode: labels hide, pill + search shrink */
+        body.bar-scrolled #mobile-tab-bar .tab-pill { height: 46px; padding: 5px; }
+        body.bar-scrolled #mobile-tab-bar .tab-search { width: 44px; height: 44px; }
+        body.bar-scrolled #mobile-tab-bar .tab-btn .tab-label {
+            display: none;
+        }
+        body.bar-scrolled #mobile-tab-bar .tab-btn { gap: 0; }
+        /* Compact mode: heavier icon strokes since labels are hidden */
+        body.bar-scrolled #mobile-tab-bar .tab-ico,
+        body.bar-scrolled #mobile-tab-bar .tab-search svg {
+            stroke-width: 2.4;
+        }
+        body.bar-scrolled #mobile-tab-bar #mob-tab-articles .tab-ico {
+            stroke-width: 2.0;
+        }
+        #mobile-tab-bar .tab-pill,
+        #mobile-tab-bar .tab-search,
+        #mobile-tab-bar .tab-btn {
+            transition: height 0.2s ease, width 0.2s ease, padding 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+        #mobile-tab-bar .tab-btn:active { background: rgba(255,255,255,0.06); }
+        #mobile-tab-bar .tab-btn.active:active { background: rgba(59, 130, 246, 0.28); }
+        #mobile-tab-bar .tab-search {
+            flex: 0 0 auto;
+            width: 54px; height: 54px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(28,28,30,0.72);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            backdrop-filter: blur(40px) saturate(1.8);
+            -webkit-backdrop-filter: blur(40px) saturate(1.8);
+            color: rgba(255,255,255,0.88);
+            cursor: pointer;
+            padding: 0;
+            transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
             -webkit-tap-highlight-color: transparent;
         }
-        .tab-btn.active { background: rgba(59, 130, 246, 0.18); color: #3b82f6; }
-        .bar-scrolled .tab-btn { gap: 0; }
-        .bar-scrolled .tab-label { display: none; }
-        
-        .tab-ico { width: 22px; height: 22px; display: block; stroke: currentColor; color: inherit; }
-        .tab-label { font-size: 11px; font-weight: 600; letter-spacing: 0.01em; line-height: 1; white-space: nowrap; color: inherit; }
+        #mobile-tab-bar .tab-search:active { background: rgba(255,255,255,0.12); }
+        body.search-active #mobile-tab-bar .tab-search {
+            background: rgba(59, 130, 246, 0.28);
+            color: #fff;
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+        body.bar-scrolled.search-active #mobile-tab-bar .tab-search {
+            background: rgba(88, 166, 255, 0.35);
+            border-color: rgba(88, 166, 255, 0.45);
+        }
+        #mobile-tab-bar .tab-search svg { width: 22px; height: 22px; }
 
-        .tab-search {
-            flex: 0 0 auto; width: 54px; height: 54px; border-radius: 50%;
+        /* Reader tab progress ring (viewer mode) */
+        #mob-tab-reader .tab-progress-ring {
+            display: none;
+            position: relative;
+            width: 24px; height: 24px;
+        }
+        #mob-tab-reader.reader-progress .tab-ico { display: none; }
+        #mob-tab-reader.reader-progress .tab-progress-ring { display: block; }
+        #mob-tab-reader .tab-progress-ring svg { width: 24px; height: 24px; display: block; }
+        #mob-tab-reader .tab-progress-ring .tab-progress-text {
+            position: absolute; inset: 0;
             display: flex; align-items: center; justify-content: center;
-            background: rgba(28, 28, 30, 0.72);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(40px) saturate(1.8);
-            -webkit-backdrop-filter: blur(40px) saturate(1.8);
-            color: rgba(255, 255, 255, 0.88); cursor: pointer;
-            transition: all 0.18s ease; -webkit-tap-highlight-color: transparent;
+            font-size: 9px; font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: currentColor;
         }
-        .bar-scrolled .tab-search { width: 44px; height: 44px; }
-        .search-active .tab-search { background: rgba(59, 130, 246, 0.28); color: #fff; border-color: rgba(59, 130, 246, 0.4); }
 
-        /* Search Sheet */
-        .search-sheet {
-            display: none; position: fixed; left: 0; right: 0;
+        /* Search sheet above bar */
+        #mobile-search-sheet {
+            display: none;
+            position: fixed;
+            left: 0; right: 0;
             bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-            z-index: 49; padding: 0 1.125rem 0.375rem; pointer-events: none;
+            z-index: 49;
+            padding: 0 18px 6px;
+            pointer-events: none;
         }
-        .search-active .search-sheet { display: block; }
-        .search-inner {
-            pointer-events: auto; max-width: 520px; margin: 0 auto;
-            border-radius: 22px; background: rgba(28, 28, 30, 0.92);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+        body.search-active #mobile-search-sheet { display: block; }
+        #mobile-search-sheet .search-inner {
+            pointer-events: auto;
+            max-width: 520px;
+            margin: 0 auto;
+            border-radius: 22px;
+            background: rgba(28,28,30,0.92);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
             backdrop-filter: blur(40px) saturate(1.8);
             -webkit-backdrop-filter: blur(40px) saturate(1.8);
             overflow: hidden;
         }
-        .search-input-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.625rem 0.75rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-        .search-input { flex: 1; background: rgba(255, 255, 255, 0.08); border: none; color: #fff; border-radius: 12px; padding: 0.625rem 0.875rem; font-size: 15px; outline: none; min-width: 0; }
-        .search-item {
-            display: flex; flex-direction: column; padding: 0.625rem 0.875rem;
-            color: #fff; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            cursor: pointer; text-align: left; background: transparent;
-            border-left: none; border-right: none; border-top: none;
-            width: 100%; font-family: inherit;
+        #mobile-search-sheet .search-input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
-        .search-item:active { background: rgba(255, 255, 255, 0.06); }
-        .search-item-title { font-size: 14px; font-weight: 600; color: #fff; }
-        .search-item-meta { font-size: 11px; color: rgba(255, 255, 255, 0.5); margin-top: 2px; }
+        #mobile-search-sheet input {
+            flex: 1;
+            background: rgba(255,255,255,0.08);
+            border: none;
+            color: #fff;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 15px;
+            outline: none;
+            min-width: 0;
+        }
+        #mobile-search-sheet input::placeholder { color: rgba(255,255,255,0.42); }
+        #mobile-search-sheet .search-close {
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.78);
+            font-size: 14px;
+            font-weight: 600;
+            padding: 6px 8px;
+            cursor: pointer;
+        }
+        #mobile-search-sheet .search-results {
+            max-height: 46vh;
+            overflow-y: auto;
+        }
+        #mobile-search-sheet .search-section-label {
+            font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: rgba(255,255,255,0.5);
+            padding: 10px 14px 4px;
+        }
+        #mobile-search-sheet .search-item {
+            display: flex; flex-direction: column;
+            padding: 10px 14px;
+            color: #fff;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            cursor: pointer;
+            text-align: left;
+            background: transparent;
+            border-left: none;
+            border-right: none;
+            border-top: none;
+            width: 100%;
+            font-family: inherit;
+        }
+        #mobile-search-sheet .search-item:active { background: rgba(255,255,255,0.06); }
+        #mobile-search-sheet .search-item .search-item-title {
+            font-size: 14px; font-weight: 600;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2; line-clamp: 2;
+            -webkit-box-orient: vertical;
+            color: #fff;
+        }
+        #mobile-search-sheet .search-item .search-item-meta {
+            font-size: 11px; color: rgba(255,255,255,0.5);
+            margin-top: 2px;
+        }
+        #mobile-search-sheet .search-empty {
+            padding: 22px 14px;
+            text-align: center;
+            font-size: 13px;
+            color: rgba(255,255,255,0.5);
+        }
+        #mobile-search-sheet .search-smart {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px;
+        }
+        #mobile-search-sheet .search-smart-btn {
+            flex: 1;
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 12px; font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        #mobile-search-sheet .search-smart-btn:active {
+            background: rgba(255,255,255,0.12);
+        }
+        /* ===== DEEP DARK THEME ===== */
+        /* Desktop — GitHub dark palette for reading comfort */
+        .dark body { background: #0d1117 !important; }
+        .dark #app-container { background: #0d1117; }
+        .dark #sidebar-pane {
+            background: #161b22 !important;
+            border-color: #30363d !important;
+        }
+        .dark #sidebar-pane .p-4,
+        .dark #sidebar-pane > div:first-child {
+            background: #161b22 !important;
+            border-color: #30363d !important;
+        }
+        .dark #timeline-pane {
+            background: #0d1117 !important;
+            border-color: #30363d !important;
+        }
+        .dark #viewer-pane { background: #0d1117 !important; }
+        .dark #viewer-pane .h-14.border-b { border-color: #30363d !important; }
+        .dark #timeline-pane .h-14.border-b { border-color: #30363d !important; }
+        .dark .p-4.border-t { background: #161b22 !important; border-color: #30363d !important; }
+        .dark #resizer { border-color: #21262d !important; }
 
-        /* Typography overrides */
-        .dynamic-list-title { font-size: var(--list-title-em-size) !important; font-weight: 500 !important; color: var(--text-primary) !important; }
-        .dynamic-list-preview { font-size: var(--list-preview-font-size); font-family: var(--list-font-family); color: var(--text-secondary) !important; }
-        .dynamic-view-text { font-size: var(--view-font-size); font-family: var(--view-font-family); }
-        .dynamic-category-text { font-size: var(--category-font-size); font-weight: 400 !important; }
-        
-        #article-body, #article-title { line-height: var(--line-height) !important; }
-        .dynamic-list-preview, .dynamic-list-title { line-height: var(--list-preview-line-height) !important; }
-        #article-author, #article-date { font-size: var(--article-meta-size) !important; }
+        /* Article list cards — subtle GitHub-style separators */
+        .dark #article-list > div {
+            border-color: #21262d !important;
+        }
+        .dark #article-list > div:hover {
+            background: rgba(88,166,255,0.07) !important;
+        }
 
-        .line-clamp-custom { display: -webkit-box; -webkit-line-clamp: var(--list-preview-lines, 5); line-clamp: var(--list-preview-lines, 5); -webkit-box-orient: vertical; overflow: hidden; }
+        /* ===== MOBILE APPLE GLASS THEME ===== */
+        @media (max-width: 900px) {
+            .dark body { background: #000 !important; }
 
+            /* Sidebar — pure black with glass cards */
+            .dark #sidebar-pane.mobile-active {
+                background: #000 !important;
+            }
+            .dark #sidebar-pane .p-4 {
+                background: rgba(255,255,255,0.04) !important;
+                border-color: rgba(255,255,255,0.08) !important;
+            }
+
+            /* Hide thumbnail images in article list on mobile */
+            .mob-unread-count { font-size: 1em !important; }
+            /* Dividers between category folders — matches smart feed style */
+            #feed-list [data-category] { border-bottom: 1px solid rgba(255,255,255,0.07) !important; }
+            #feed-list [data-category]:last-child { border-bottom: none !important; }
+            #feed-list [data-category] button,
+            #feed-list [data-category] > * { border-top: none !important; border-bottom: none !important; }
+            .dark .smart-feed-btn {
+                background: transparent !important;
+                border-top: none !important;
+                border-left: none !important;
+                border-right: none !important;
+                border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+                border-radius: 0 !important;
+                margin-bottom: 0 !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
+            .dark .smart-feed-btn.active-item {
+                background: rgba(96,165,250,0.2) !important;
+                border-radius: 0 !important;
+            }
+
+            /* Category folders — transparent bg, keep bottom border for dividers */
+            .dark #feed-list [data-category] {
+                background: transparent !important;
+                border-top: none !important;
+                border-left: none !important;
+                border-right: none !important;
+                border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+                border-radius: 0 !important;
+                margin-bottom: 0 !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
+
+            /* Article list — black base */
+            .dark #timeline-pane.mobile-active {
+                background: #000 !important;
+            }
+            .dark #article-list > div {
+                border-color: rgba(255,255,255,0.04) !important;
+            }
+
+            /* Reader — black base */
+            .dark #viewer-pane.mobile-active {
+                background: #000 !important;
+            }
+            .dark #reader-view { background: #000 !important; }
+
+            /* Mobile reader action bar — glass */
+            .dark #mobile-reader-bar {
+                background: rgba(19,19,26,0.88) !important;
+                border-color: rgba(255,255,255,0.08) !important;
+                backdrop-filter: blur(20px) !important;
+                -webkit-backdrop-filter: blur(20px) !important;
+            }
+
+            /* Article list header bar */
+            .dark #timeline-pane .px-4.py-2 {
+                background: rgba(255,255,255,0.03) !important;
+                border-color: rgba(255,255,255,0.06) !important;
+            }
+
+            /* Viewer toolbar */
+            .dark .h-12.border-b {
+                background: rgba(10,10,15,0.9) !important;
+                border-color: rgba(255,255,255,0.06) !important;
+                backdrop-filter: blur(12px) !important;
+                -webkit-backdrop-filter: blur(12px) !important;
+            }
+        }
+
+        /* Mobile article zoom */
+        @media (max-width: 900px) {
+            #article-body, #article-title, #article-author, #article-date {
+                zoom: var(--mob-zoom, 1);
+            }
+        }
+        /* Reduce paint cost on article list re-renders */
+        #article-list > div { contain: style layout; }
+
+        /* Invert dark-on-transparent favicons (e.g. NYT) in dark mode */
+        .dark .favicon-invert { filter: invert(1) brightness(1.15); }
+
+        /* ===== ARTICLE READER TYPOGRAPHY ===== */
         .article-content p { margin-bottom: 1.25em; line-height: var(--line-height, 1.75); }
-        .article-content h1, .article-content h2 { font-size: 1.25em; font-weight: 700; margin-top: 1.75em; margin-bottom: 0.6em; color: var(--text-primary); line-height: 1.3; }
-        .article-content h3, .article-content h4 { font-size: 1.05em; font-weight: 600; margin-top: 1.4em; margin-bottom: 0.5em; color: var(--text-secondary); line-height: 1.3; }
+        .article-content h1, .article-content h2 { font-size: 1.25em; font-weight: 700; margin-top: 1.75em; margin-bottom: 0.6em; color: #e6edf3; line-height: 1.3; }
+        .article-content h3, .article-content h4 { font-size: 1.05em; font-weight: 600; margin-top: 1.4em; margin-bottom: 0.5em; color: #c9d1d9; line-height: 1.3; }
         .article-content ul, .article-content ol { padding-left: 1.5em; margin-bottom: 1.25em; }
         .article-content li { margin-bottom: 0.4em; line-height: var(--line-height, 1.75); }
         .article-content blockquote { border-left: 3px solid #58a6ff; padding-left: 1em; margin: 1.5em 0; color: #8b949e; font-style: italic; }
-        .article-content pre, .article-content code { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 0.2em 0.4em; font-size: 0.9em; font-family: 'SF Mono','Fira Code',monospace; }
-        .article-content pre { padding: 1em; overflow-x: auto; margin-bottom: 1.25em; }
 
-        /* Bluesky Embeds */
+        /* ===== BLUESKY EMBED STYLES ===== */
         .bsky-quote-embed { border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 12px 14px; margin: 12px 0; background: rgba(255,255,255,0.03); }
         .bsky-quote-header { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; flex-wrap: wrap; }
         .bsky-quote-avatar { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
-        .bsky-quote-name { font-weight: 700; font-size: 0.88em; color: var(--text-primary); }
+        .bsky-quote-name { font-weight: 700; font-size: 0.88em; color: #e6edf3; }
         .bsky-quote-handle { font-size: 0.82em; color: #8b949e; }
-        .bsky-quote-text { font-size: 0.88em; line-height: 1.55; color: var(--text-primary); margin-top: 2px; }
+        .bsky-quote-text { font-size: 0.88em; line-height: 1.55; color: #c9d1d9; margin-top: 2px; }
         .bsky-quote-meta { font-size: 0.82em; color: #8b949e; font-style: italic; }
         .bsky-post-image { max-width: 100%; border-radius: 8px; margin: 6px 0; display: block; }
         .bsky-images { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
@@ -615,83 +877,121 @@
         .bsky-external-card:hover { border-color: rgba(96,165,250,0.4); }
         .bsky-external-thumb { width: 100%; max-height: 180px; object-fit: cover; display: block; }
         .bsky-external-info { padding: 9px 12px; }
-        .bsky-external-title { font-weight: 600; font-size: 0.88em; margin-bottom: 3px; color: var(--text-primary); }
+        .bsky-external-title { font-weight: 600; font-size: 0.88em; margin-bottom: 3px; color: #e6edf3; }
         .bsky-external-desc { font-size: 0.8em; color: #8b949e; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
         .bsky-external-uri { font-size: 0.75em; color: #58a6ff; margin-top: 4px; }
+        .article-content pre, .article-content code { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 0.2em 0.4em; font-size: 0.9em; font-family: 'SF Mono','Fira Code',monospace; }
+        .article-content pre { padding: 1em; overflow-x: auto; margin-bottom: 1.25em; }
 
-        .settings-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 1px solid rgba(148,163,184,0.15); }
-        .settings-item-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-        .settings-item-label-sm { font-size: 12px; color: var(--text-secondary); }
-
-        .article-content img {
-            max-width: 100% !important;
-            height: auto !important;
-            max-height: 420px;
-            object-fit: contain;
-            border-radius: 12px;
-            margin: 1.5rem 0;
-            cursor: zoom-in;
-            display: block;
-            box-sizing: border-box;
+        #article-meta { font-size: var(--desk-feed-name-size) !important; color: #58a6ff !important; }
+        /* Dividers between category folders — desktop */
+        #feed-list [data-category] { border-bottom: 1px solid rgba(255,255,255,0.07) !important; }
+        #feed-list [data-category]:last-child { border-bottom: none !important; }
+        /* Desktop feed font size + line-height — smart feeds and category folders unified */
+        #sidebar-pane .smart-feed-btn,
+        #sidebar-pane .dynamic-category-text {
+            font-size: var(--category-font-size) !important;
+            line-height: var(--feed-line-height) !important;
         }
-        .article-content img[data-broken] { display: none !important; }
-        .article-content figure:has(img[data-broken]) { display: none !important; }
-        .article-content video, .article-content audio { max-width: 100% !important; width: 100% !important; border-radius: 12px; margin: 1.5rem 0; display: block; background: #000; }
-        .article-content iframe { max-width: 100% !important; width: 100% !important; aspect-ratio: 16/9; border: none; border-radius: 12px; margin: 1.5rem 0; display: block; }
-
-        /* Layout & Panes */
-        #resizer { width: 4px; cursor: col-resize; background-color: transparent; z-index: 50; flex-shrink: 0; transition: background-color 0.2s; }
-        #resizer:hover, .resizing #resizer { background-color: var(--accent-blue); }
-        .resizing { cursor: col-resize; user-select: none; }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
-        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
-
-        .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; }
-
-        /* Tailwind Bridge for Dark Mode */
-        .dark .dark\:text-white { color: #ffffff !important; }
-        .dark .dark\:text-gray-400 { color: #9ca3af !important; }
-
-        .kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6em; padding: 0.1em 0.4em; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 5px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78em; color: #e2e8f0; line-height: 1.6; }
-
-        /* Skeleton shimmer */
-        @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
-        .skeleton-card { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-        .skeleton-line { border-radius: 4px; background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 75%); background-size: 800px 100%; animation: shimmer 1.4s infinite linear; }
-
-        #reading-progress { position: absolute; top: 0; left: 0; height: 3px; width: 0%; background: var(--accent-blue); z-index: 20; transition: width 0.1s linear !important; border-radius: 0 2px 2px 0; }
-
-        /* Feed health dot */
-        .feed-stale::after, .feed-error::after { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
-        .feed-stale::after { background: #f59e0b; }
-        .feed-error::after { background: #ef4444; }
-
-        /* Mobile Layout Overrides */
-        @media (max-width: 900px) {
-            .app-container { flex-direction: column; }
-            #sidebar-pane, #timeline-pane, #viewer-pane, #resizer { display: none !important; }
-            #sidebar-pane.mobile-active, #timeline-pane.mobile-active, #viewer-pane.mobile-active { display: flex !important; width: 100% !important; flex: none !important; height: 100dvh; }
-            #article-list, #reader-view, #sidebar-pane .pane-content { padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important; }
-            [data-id] { padding-left: 3px !important; padding-right: 3px !important; -webkit-user-select: none; user-select: none; }
+        /* Feed name rows (direct button children of data-category) match folder size */
+        #sidebar-pane #feed-list [data-category] > button {
+            font-size: var(--category-font-size) !important;
+            line-height: var(--feed-line-height) !important;
+        }
+        /* Inner buttons inside category header div inherit — don't override them */
+        /* Feed row padding — applies to ALL feed rows on desktop and mobile */
+        .smart-feed-btn,
+        #feed-list [data-category] > div,
+        #feed-list [data-category] > button {
+            padding-top: var(--feed-row-padding, 0.3rem) !important;
+            padding-bottom: var(--feed-row-padding, 0.3rem) !important;
+        }
+        /* Inner chevron/name buttons inside category header row get no extra padding */
+        #feed-list [data-category] > div button {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        .settings-section-label {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #94a3b8;
+            margin-bottom: 14px; padding-bottom: 6px;
+            border-bottom: 1px solid rgba(148,163,184,0.15);
+        }
+        .settings-group-label {
+            font-size: 13px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #58a6ff;
+            margin-bottom: 12px; margin-top: 4px;
+        }
+        .settings-item label, .settings-item .settings-item-label {
+            font-size: 13px; font-weight: 600; color: #e6edf3;
         }
 
-        /* Swipe hints */
-        .swipe-hint { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none; opacity: 0; transition: opacity 0.08s ease; z-index: 2; white-space: nowrap; font-size: 15px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; }
-        .swipe-hint-left { left: 0; right: 0; background: linear-gradient(to right, rgba(37,99,235,0.75) 0%, rgba(37,99,235,0.35) 50%, rgba(37,99,235,0.1) 100%); justify-content: flex-start; padding-left: 16px; }
-        .swipe-hint-right { left: 0; right: 0; background: linear-gradient(to left, rgba(22,163,74,0.75) 0%, rgba(22,163,74,0.35) 50%, rgba(22,163,74,0.1) 100%); justify-content: flex-end; padding-right: 16px; }
-        .swipe-hint span { background: rgba(0,0,0,0.5); color: #fff; padding: 5px 10px; border-radius: 6px; }
+        /* ===== SWIPE GESTURES ===== */
+        [data-id] { position: relative; overflow: hidden; }
+        .swipe-hint {
+            position: absolute; top: 0; bottom: 0;
+            display: flex; align-items: center;
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.08s ease;
+            z-index: 2; white-space: nowrap;
+            font-size: 15px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+        }
+        .swipe-hint-left {
+            left: 0; right: 0;
+            background: linear-gradient(to right, rgba(37,99,235,0.75) 0%, rgba(37,99,235,0.35) 50%, rgba(37,99,235,0.1) 100%);
+            justify-content: flex-start; padding-left: 16px;
+        }
+        .swipe-hint-right {
+            left: 0; right: 0;
+            background: linear-gradient(to left, rgba(22,163,74,0.75) 0%, rgba(22,163,74,0.35) 50%, rgba(22,163,74,0.1) 100%);
+            justify-content: flex-end; padding-right: 16px;
+        }
+        .swipe-hint-left span {
+            background: rgba(37,99,235,0.95);
+            color: #ffffff;
+            padding: 5px 11px 5px 9px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+        }
+        .swipe-hint-right span {
+            background: rgba(22,163,74,0.95);
+            color: #ffffff;
+            padding: 5px 9px 5px 11px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+        }
 
-        #ptr-indicator { position: absolute; top: -56px; left: 0; right: 0; height: 56px; display: flex; align-items: center; justify-content: center; color: var(--accent-blue); font-size: 15px; font-weight: 600; transition: top 0.15s ease, opacity 0.15s ease; opacity: 0; z-index: 10; pointer-events: none; gap: 8px; }
-        #ptr-indicator.ptr-visible { opacity: 1; }
-        #ptr-spinner { width: 20px; height: 20px; border: 2px solid rgba(59,130,246,0.3); border-top-color: var(--accent-blue); border-radius: 50%; }
-        #ptr-indicator.ptr-loading #ptr-spinner { animation: ptr-spin 0.7s linear infinite; }
-        @keyframes ptr-spin { to { transform: rotate(360deg); } }
+        /* ===== PULL-TO-REFRESH ===== */
+        #ptr-indicator {
+            position: absolute; top: -56px; left: 0; right: 0;
+            height: 56px; display: flex; align-items: center; justify-content: center;
+            color: #58a6ff; font-size: 15px; font-weight: 600;
+            transition: top 0.15s ease, opacity 0.15s ease;
+            opacity: 0; z-index: 10; pointer-events: none;
+            gap: 8px;
+        }
+        #ptr-indicator.ptr-visible {
+            opacity: 1;
+        }
+        #ptr-indicator.ptr-ready {
+            color: #34d399;
+        }
+        #ptr-spinner {
+            width: 20px; height: 20px;
+            border: 2px solid rgba(88,166,255,0.3);
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+        }
+        #ptr-indicator.ptr-loading #ptr-spinner {
+            animation: ptr-spin 0.7s linear infinite;
+        }
+        @keyframes ptr-spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+
     <!-- SVG Symbol Definitions -->
     <svg xmlns="http://www.w3.org/2000/svg" class="hidden">
         <defs>
@@ -732,60 +1032,61 @@
     </svg>
 
     <!-- Global Toast Notification -->
-    <div id="toast-notification" class="toast-notification">
+    <div id="toast-notification" class="fixed left-1/2 transform -translate-x-1/2 px-4 py-2 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 opacity-0 pointer-events-none" style="top:16px">
         Notification message
     </div>
 
-    <div id="app-container" class="app-container">
+    <div id="app-container" class="flex h-screen w-full overflow-hidden">
+
         <!-- PANE 1: Sidebar -->
-        <aside id="sidebar-pane" class="pane sidebar border-r">
+        <aside id="sidebar-pane" class="w-[328px] flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col" style="position:relative;">
             <!-- Pull-to-refresh indicator -->
             <div id="ptr-indicator">
                 <div id="ptr-spinner"></div>
                 <span id="ptr-label">Pull to refresh</span>
             </div>
-            <div class="pane-header">
+            <div class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-2">
-                    <div class="icon-box">
+                    <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm">
                         <svg class="w-[22px] h-[22px]"><use href="#icon-rss"/></svg>
                     </div>
                     <h1 class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
                 </div>
-                <div class="space-x-1">
-                    <button onclick="refreshAll()" class="btn-icon" title="Refresh Feeds">
-                        <svg><use href="#icon-refresh"/></svg>
+                <div class="flex space-x-1">
+                    <button onclick="refreshAll()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Refresh Feeds">
+                        <svg class="h-[22px] w-[22px]"><use href="#icon-refresh"/></svg>
                     </button>
-                    <button onclick="toggleSettings()" class="btn-icon" title="Settings">
-                        <svg><use href="#icon-settings"/></svg>
+                    <button onclick="toggleSettings()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Settings">
+                        <svg class="h-[22px] w-[22px]"><use href="#icon-settings"/></svg>
                     </button>
                 </div>
             </div>
 
-            <div class="pane-content no-scrollbar space-y-3">
+            <div class="flex-1 overflow-y-auto p-3 no-scrollbar space-y-3">
                 <!-- Smart Feeds card -->
-                <div id="smart-feeds-card" class="sidebar-card">
-                    <button id="feed-btn-all" onclick="setSmartFeed('all')" oncontextmenu="showFolderContextMenu(event,'smart','all')" class="smart-feed-btn dynamic-category-text active-item">
-                        <span><svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> All Unread</span>
-                        <span id="badge-all" class="feed-badge mob-unread-count hidden">0</span>
+                <div id="smart-feeds-card" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
+                    <button id="feed-btn-all" onclick="setSmartFeed('all')" oncontextmenu="showFolderContextMenu(event,'smart','all')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 active-item">
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> All Unread</span>
+                        <span id="badge-all" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
                     </button>
-                    <button id="feed-btn-today" onclick="setSmartFeed('today')" oncontextmenu="showFolderContextMenu(event,'smart','today')" class="smart-feed-btn dynamic-category-text">
-                        <span><svg class="w-4 h-4 mr-3"><use href="#icon-calendar"/></svg> Today</span>
-                        <span id="badge-today" class="feed-badge mob-unread-count hidden">0</span>
+                    <button id="feed-btn-today" onclick="setSmartFeed('today')" oncontextmenu="showFolderContextMenu(event,'smart','today')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-calendar"/></svg> Today</span>
+                        <span id="badge-today" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
                     </button>
-                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text">
-                        <span><svg class="w-4 h-4 mr-3"><use href="#icon-bookmark"/></svg> Read Later</span>
-                        <span id="badge-read-later" class="feed-badge mob-unread-count hidden">0</span>
+                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-bookmark"/></svg> Read Later</span>
+                        <span id="badge-read-later" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
                     </button>
                 </div>
                 <!-- Category folders card -->
-                <div id="feed-list" class="sidebar-card"></div>
+                <div id="feed-list" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm"></div>
             </div>
 
         </aside>
 
         <!-- PANE 2: Timeline -->
-        <section id="timeline-pane" class="pane timeline">
-            <div id="timeline-header" class="pane-header pane-header-sm text-[17px] font-bold text-gray-400 uppercase tracking-tight">
+        <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition" style="width: 336px;">
+            <div id="timeline-header" class="px-4 h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center">
                     <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors">0 Unread</button>
                     <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded">DEDUPED</span>
@@ -796,12 +1097,16 @@
         </section>
 
         <!-- Column Resizer -->
-        <div id="resizer" class="border-r"></div>
+        <div id="resizer" class="border-r border-gray-200 dark:border-gray-700 hover:bg-blue-500 transition-colors"></div>
 
         <!-- PANE 3: Viewer -->
-        <main id="viewer-pane" class="pane viewer">
-            <div id="viewer-header" class="pane-header pane-header-sm z-10">
+        <main id="viewer-pane" class="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
+            <div id="viewer-header" class="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10" ondblclick="toggleFullScreenManual()" title="Double-click to toggle Full Screen">
                 <div class="flex space-x-3 items-center">
+                    <button id="exit-fullscreen-btn" onclick="toggleFullScreen(false)" class="hidden text-blue-500 font-bold text-[10px] border border-blue-500 px-2 py-1 rounded hover:bg-blue-500 hover:text-white transition-all mr-2">
+                        EXIT FULL SCREEN
+                    </button>
+
                     <div class="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
 
                     <!-- Read time / progress estimate -->
@@ -811,44 +1116,44 @@
                 <div class="flex items-center space-x-3">
                     <div class="flex space-x-2 mr-2">
                         <!-- Full Article Attempt Button -->
-                        <button id="full-article-btn" onclick="loadFullArticle()" class="hidden btn-pill btn-pill-blue">
+                        <button id="full-article-btn" onclick="loadFullArticle()" class="hidden px-2 py-1 text-[10px] font-bold text-blue-500 border border-blue-500 rounded-md hover:bg-blue-50 transition-colors">
                             FULL ARTICLE
                         </button>
                         <!-- Share Button -->
-                        <button id="share-btn" onclick="shareArticle()" class="hidden btn-pill">
+                        <button id="share-btn" onclick="shareArticle()" class="hidden px-2 py-1 text-[10px] font-bold text-gray-500 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                             SHARE
                         </button>
                         <!-- TTS Button -->
-                        <button id="tts-btn" onclick="toggleTTS()" class="hidden btn-pill">
+                        <button id="tts-btn" onclick="toggleTTS()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                             LISTEN
                         </button>
                         <!-- Unread Toggle Button -->
-                        <button id="unread-action-btn" onclick="toggleUnreadManual()" class="hidden btn-pill">
+                        <button id="unread-action-btn" onclick="toggleUnreadManual()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border transition-colors">
                             MARK READ
                         </button>
                         <!-- Dynamic Read Later Action Button -->
-                        <button id="read-later-action-btn" onclick="handleReadLaterAction()" class="hidden btn-pill">
+                        <button id="read-later-action-btn" onclick="handleReadLaterAction()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border transition-colors">
                             READ LATER
                         </button>
                     </div>
                     <!-- View mode toggle: List / Card -->
-                    <button onclick="toggleViewMode()" id="view-density-toggle" class="btn-pill" title="Toggle List/Card view">LIST</button>
+                    <button onclick="toggleViewMode()" id="view-density-toggle" class="text-[10px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md" title="Toggle List/Card view">LIST</button>
                 </div>
             </div>
 
             <div class="flex-1 relative">
-                <div id="reader-view" class="reader-view no-scrollbar" id="reader-scroll">
+                <div id="reader-view" class="absolute inset-0 overflow-y-auto overflow-x-hidden p-2 md:p-4 lg:p-6 no-scrollbar" id="reader-scroll">
                     <div id="reading-progress"></div>
-                    <div class="article-container">
-                        <div id="empty-state" class="empty-state">
+                    <div class="max-w-2xl mx-auto">
+                        <div id="empty-state" class="text-center py-16 text-gray-400 px-4">
                             <div id="empty-state-welcome" class="hidden">
                                 <!-- First-run: no feeds added yet -->
-                                <div class="icon-box-lg">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1" fill="currentColor" stroke="none"/></svg>
+                                <div class="w-20 h-20 mx-auto mb-5 rounded-2xl bg-blue-600/20 flex items-center justify-center">
+                                    <svg class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1" fill="currentColor" stroke="none"/></svg>
                                 </div>
                                 <h2 class="text-lg font-bold text-gray-200 mb-2">Welcome to RSS Reader</h2>
                                 <p class="text-sm text-gray-500 mb-6 max-w-xs mx-auto">Your personal, ad-free news hub. Add your first feed to get started.</p>
-                                <button onclick="if(isMobile()){setMobilePane('sidebar');toggleSettings();}else{toggleSettings();}" class="btn-primary">
+                                <button onclick="if(isMobile()){setMobilePane('sidebar');toggleSettings();}else{toggleSettings();}" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                     Add Your First Feed
                                 </button>
@@ -924,7 +1229,7 @@
     </div>
 
     <!-- MOBILE BOTTOM TAB BAR — Apple Music style -->
-    <nav id="mobile-tab-bar" class="mobile-tab-bar">
+    <nav id="mobile-tab-bar">
         <div class="tab-pill">
             <button id="mob-tab-feeds" type="button" class="tab-btn" onclick="setMobilePane('sidebar')">
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
@@ -948,18 +1253,18 @@
         </button>
     </nav>
     <!-- MOBILE SEARCH SHEET -->
-    <div id="mobile-search-sheet" class="search-sheet" aria-hidden="true">
+    <div id="mobile-search-sheet" aria-hidden="true">
         <div class="search-inner">
             <div class="search-input-row">
-                <input id="mobile-search-input" type="search" placeholder="Search articles…" autocomplete="off" oninput="updateSearchResults(this.value)" class="search-input">
-                <button class="search-close" type="button" onclick="closeSearchSheet()" style="background:transparent; border:none; color:rgba(255,255,255,0.78); font-size:14px; font-weight:600; padding:6px 8px; cursor:pointer;">Done</button>
+                <input id="mobile-search-input" type="search" placeholder="Search articles…" autocomplete="off" oninput="updateSearchResults(this.value)">
+                <button class="search-close" type="button" onclick="closeSearchSheet()">Done</button>
             </div>
-            <div class="search-smart" style="display:flex; align-items:center; gap:10px; padding:10px 14px;">
-                <button class="search-smart-btn" type="button" onclick="searchSmart('all')" style="flex:1; padding:8px 10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:#fff; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;">All Unread</button>
-                <button class="search-smart-btn" type="button" onclick="searchSmart('today')" style="flex:1; padding:8px 10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:#fff; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;">Today</button>
-                <button class="search-smart-btn" type="button" onclick="searchSmart('later')" style="flex:1; padding:8px 10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.06); border-radius:10px; color:#fff; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;">Read Later</button>
+            <div class="search-smart">
+                <button class="search-smart-btn" type="button" onclick="searchSmart('all')">All Unread</button>
+                <button class="search-smart-btn" type="button" onclick="searchSmart('today')">Today</button>
+                <button class="search-smart-btn" type="button" onclick="searchSmart('later')">Read Later</button>
             </div>
-            <div id="mobile-search-results" class="search-results" style="max-height:46vh; overflow-y:auto;"></div>
+            <div id="mobile-search-results" class="search-results"></div>
         </div>
     </div>
 
@@ -971,8 +1276,8 @@
     </div>
 
     <!-- LOGIN MODAL -->
-    <div id="login-modal" class="modal-backdrop z-[200]">
-        <div class="modal-card p-8" style="max-width: 24rem;">
+    <div id="login-modal" class="fixed inset-0 z-[200] flex items-center justify-center modal-backdrop">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl p-8 border border-gray-100 dark:border-gray-700">
             <div class="flex items-center justify-center space-x-3 mb-6">
                 <div class="bg-blue-600 text-white p-2 rounded-xl shadow-sm">
                     <svg class="w-6 h-6"><use href="#icon-rss"/></svg>
@@ -983,10 +1288,10 @@
 
             <div id="login-error" class="hidden mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs rounded-lg border border-red-100 dark:border-red-900/40"></div>
 
-            <input type="email" id="login-email" placeholder="Email address" class="input-text mb-3">
-            <input type="password" id="login-password" placeholder="Password" class="input-text mb-6">
+            <input type="email" id="login-email" placeholder="Email address" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="password" id="login-password" placeholder="Password" class="w-full mb-6 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
 
-            <button id="login-btn" onclick="handleSignIn()" class="btn-primary w-full py-3 mb-3 justify-center">Sign In</button>
+            <button id="login-btn" onclick="handleSignIn()" class="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all mb-3">Sign In</button>
             <button id="register-btn" onclick="handleRegister()" class="w-full py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all">Create Account</button>
 
             <p class="text-center mt-4">
@@ -998,11 +1303,11 @@
     </div>
 
     <!-- SETTINGS MODAL -->
-    <div id="settings-modal" class="modal-backdrop z-50 hidden p-4">
-        <div class="modal-card animate-in zoom-in duration-200">
+    <div id="settings-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 animate-in zoom-in duration-200 flex flex-col" style="max-height: 90vh">
 
             <!-- Header -->
-            <div class="pane-header pane-header-sm bg-gray-50 dark:bg-gray-900">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
                 <h2 class="font-bold text-lg">App Settings</h2>
                 <button onclick="toggleSettings()" class="text-gray-400 hover:text-gray-600 p-1">✕</button>
             </div>
@@ -1020,7 +1325,7 @@
             </div>
 
             <!-- Tab: Feeds -->
-            <div id="settings-panel-feeds" class="pane-content space-y-6 no-scrollbar">
+            <div id="settings-panel-feeds" class="p-6 overflow-y-auto flex-1 space-y-6 no-scrollbar">
                 <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg">
                     <div class="flex space-x-2 mb-4">
                         <button onclick="exportSubscriptions()" class="flex-1 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-xs font-semibold hover:bg-gray-50">Export OPML</button>
@@ -1033,14 +1338,14 @@
             </div>
 
             <!-- Tab: Preferences -->
-            <div id="settings-panel-prefs" class="hidden pane-content space-y-8 no-scrollbar">
+            <div id="settings-panel-prefs" class="hidden p-6 overflow-y-auto flex-1 space-y-8 no-scrollbar">
 
                 <!-- ACCOUNT -->
                 <div>
                     <h3 class="settings-section-label">Account</h3>
                     <div class="flex items-center justify-between gap-3">
                         <span id="sync-status" class="text-xs text-gray-400 truncate cursor-pointer hover:text-blue-500" onclick="showAccountInfo()" title="Account info">Local Only</span>
-                        <button id="signout-btn" onclick="handleSignOut()" class="btn-pill" style="color:#ef4444; border-color:#f87171" title="Sign out">Sign Out</button>
+                        <button id="signout-btn" onclick="handleSignOut()" class="hidden text-[10px] font-bold uppercase px-3 py-1 rounded-full border border-red-400 text-red-500 hover:bg-red-500 hover:text-white transition-colors outline-none" title="Sign out">Sign Out</button>
                     </div>
                 </div>
 
@@ -1049,7 +1354,7 @@
                     <h3 class="settings-section-label">Appearance</h3>
                     <div class="flex items-center justify-between">
                         <label class="settings-item-label">Theme</label>
-                        <button id="theme-toggle" onclick="toggleTheme()" class="btn-pill flex items-center gap-1.5" title="Switch Theme">
+                        <button id="theme-toggle" onclick="toggleTheme()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 flex items-center gap-1.5" title="Switch Theme">
                             <svg id="theme-icon" class="w-3.5 h-3.5"><use href="#icon-moon"/></svg>
                             <span id="theme-label">DARK</span>
                         </button>
@@ -1061,7 +1366,7 @@
                     <h3 class="settings-section-label">Refresh & Sync</h3>
                     <div>
                         <label class="settings-item-label block mb-2">Auto-Refresh Interval</label>
-                        <select id="pref-auto-refresh" onchange="updateAutoRefresh(this.value)" class="input-text text-xs">
+                        <select id="pref-auto-refresh" onchange="updateAutoRefresh(this.value)" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="0">Off</option>
                             <option value="15">Every 15 minutes</option>
                             <option value="30" selected>Every 30 minutes</option>
@@ -1076,25 +1381,25 @@
                     <div class="space-y-4">
                         <div>
                             <label class="settings-item-label block mb-2">Sort Order</label>
-                            <select id="pref-sort-order" onchange="renderTimeline()" class="input-text text-xs">
+                            <select id="pref-sort-order" onchange="renderTimeline()" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="asc" selected>Oldest Published First</option>
                                 <option value="desc">Newest Published First</option>
                             </select>
                         </div>
                         <div class="flex items-center justify-between">
                             <label class="settings-item-label-sm">Show empty category folders</label>
-                            <button id="show-empty-cats-toggle" onclick="toggleShowEmptyCategories()" class="btn-pill">OFF</button>
+                            <button id="show-empty-cats-toggle" onclick="toggleShowEmptyCategories()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">OFF</button>
                         </div>
                         <div class="flex items-center justify-between">
                             <div>
                                 <label class="settings-item-label-sm">Deduplicate articles by title</label>
                                 <p class="text-[10px] text-gray-400 mt-0.5">Keeps one copy per story, favouring sources ranked by Memeorandum</p>
                             </div>
-                            <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="btn-pill ml-4 flex-shrink-0">OFF</button>
+                            <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 ml-4 flex-shrink-0">OFF</button>
                         </div>
                         <div>
                             <label class="settings-item-label block mb-2">Font</label>
-                            <select id="font-family-select" onchange="updateFontFamily('both', this.value)" class="input-text text-xs">
+                            <select id="font-family-select" onchange="updateFontFamily('both', this.value)" class="w-full p-2 bg-gray-50 dark:bg-gray-900 border rounded text-xs outline-none">
                                 <option value="-apple-system, BlinkMacSystemFont, sans-serif" selected>San Francisco</option>
                                 <option value="'Inter', sans-serif">Inter</option>
                                 <option value="'Atkinson Hyperlegible', sans-serif">Atkinson Hyperlegible</option>
@@ -1222,43 +1527,43 @@
 
             <!-- Footer -->
             <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                <button onclick="toggleSettings()" class="btn-primary w-full py-3 justify-center">Done</button>
+                <button onclick="toggleSettings()" class="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold active:scale-95 transition-all">Done</button>
             </div>
         </div>
     </div>
 
     <!-- ADD FEED MODAL -->
-    <div id="add-feed-modal" class="modal-backdrop z-[60] hidden p-4">
-        <div class="modal-card p-6" style="max-width: 24rem;">
+    <div id="add-feed-modal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop hidden p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
             <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Add Manual Feed</h3>
-            <input type="text" id="manual-feed-title" placeholder="Feed Title" class="input-text mb-3">
-            <input type="url" id="manual-feed-url" placeholder="Feed URL" class="input-text mb-3">
-            <select id="manual-feed-category" class="input-text mb-3">
+            <input type="text" id="manual-feed-title" placeholder="Feed Title" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="url" id="manual-feed-url" placeholder="Feed URL" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="manual-feed-category" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             </select>
             <div id="manual-feed-newcat-wrap" class="hidden mb-3">
-                <input type="text" id="manual-feed-newcat" placeholder="New category name" class="input-text">
+                <input type="text" id="manual-feed-newcat" placeholder="New category name" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div class="flex justify-end space-x-3">
                 <button onclick="closeAddFeedModal()" class="px-5 py-2 text-sm text-gray-500">Cancel</button>
-                <button onclick="submitManualFeed()" class="btn-primary px-5 py-2">Add Feed</button>
+                <button onclick="submitManualFeed()" class="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Add Feed</button>
             </div>
         </div>
     </div>
 
     <!-- EDIT FEED MODAL -->
-    <div id="edit-feed-modal" class="modal-backdrop z-[60] hidden p-4">
-        <div class="modal-card p-6" style="max-width: 24rem;">
+    <div id="edit-feed-modal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop hidden p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
             <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Edit Feed</h3>
             <input type="hidden" id="edit-feed-id">
-            <input type="text" id="edit-feed-title" placeholder="Feed Title" class="input-text mb-3">
-            <input type="url" id="edit-feed-url" placeholder="Feed URL" class="input-text mb-3">
-            <select id="edit-feed-category" class="input-text mb-3"></select>
+            <input type="text" id="edit-feed-title" placeholder="Feed Title" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="url" id="edit-feed-url" placeholder="Feed URL" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="edit-feed-category" class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"></select>
             <div id="edit-feed-newcat-wrap" class="hidden mb-3">
-                <input type="text" id="edit-feed-newcat" placeholder="New category name" class="input-text">
+                <input type="text" id="edit-feed-newcat" placeholder="New category name" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div class="flex justify-end space-x-3">
                 <button onclick="closeEditFeedModal()" class="px-5 py-2 text-sm text-gray-500">Cancel</button>
-                <button onclick="submitEditFeed()" class="btn-primary px-5 py-2">Save</button>
+                <button onclick="submitEditFeed()" class="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Save</button>
             </div>
         </div>
     </div>
@@ -1266,7 +1571,7 @@
     <!-- KEYBOARD SHORTCUT CHEATSHEET -->
     <div id="shortcuts-modal" class="hidden fixed inset-0 z-[300] flex items-center justify-center" onclick="if(event.target===this)closeShortcuts()">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-        <div class="modal-card p-6 mx-4" style="max-width: 24rem;">
+        <div class="relative bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
             <div class="flex items-center justify-between mb-5">
                 <h2 class="text-sm font-bold text-white uppercase tracking-widest">Keyboard Shortcuts</h2>
                 <button onclick="closeShortcuts()" class="text-gray-500 hover:text-white transition-colors text-lg leading-none">✕</button>
@@ -1286,111 +1591,22 @@
     </div>
 
     <!-- ARTICLE CONTEXT MENU -->
-    <div id="article-context-menu" class="hidden fixed z-[100] ctx-menu"></div>
+    <div id="article-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-base"></div>
 
     <!-- FOLDER CONTEXT MENU -->
-    <div id="folder-context-menu" class="hidden fixed z-[100] ctx-menu">
-        <button onclick="markFolderRead()" class="ctx-menu-btn">Mark All Read</button>
-        <button onclick="renameFolderFromContext()" class="ctx-menu-btn">Rename</button>
-        <button onclick="deleteFolderFromContext()" class="ctx-menu-btn red">Delete Folder & Feeds</button>
+    <div id="folder-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-base">
+        <button onclick="markFolderRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
+        <button onclick="renameFolderFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Rename</button>
+        <button onclick="deleteFolderFromContext()" class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete Folder & Feeds</button>
     </div>
 
     <!-- FEED CONTEXT MENU -->
-    <div id="feed-context-menu" class="hidden fixed z-[100] ctx-menu">
-        <button onclick="refreshSingleFeed()" class="ctx-menu-btn">Refresh Feed</button>
-        <button onclick="markSingleFeedRead()" class="ctx-menu-btn">Mark All Read</button>
-        <button onclick="openEditFeedModalFromContext()" class="ctx-menu-btn">Settings</button>
-        <button onclick="deleteFeedFromContext()" class="ctx-menu-btn red">Unsubscribe</button>
+    <div id="feed-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-base">
+        <button onclick="refreshSingleFeed()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Refresh Feed</button>
+        <button onclick="markSingleFeedRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
     </div>
 
     <script>
-        // Storage Utility (IndexedDB with Private Mode Fallback)
-        window.Db = new (class {
-            constructor() {
-                this.dbName = 'rss_reader_db';
-                this.storeName = 'keyvalue';
-                this.db = null;
-                this.fallback = new Map();
-                this._initPromise = this.init();
-            }
-            async init() {
-                return new Promise((resolve) => {
-                    const timer = setTimeout(() => {
-                        console.warn('IndexedDB timeout, using fallback Map');
-                        resolve(false);
-                    }, 2000);
-                    try {
-                        const request = indexedDB.open(this.dbName, 1);
-                        request.onupgradeneeded = (e) => {
-                            e.target.result.createObjectStore(this.storeName);
-                        };
-                        request.onsuccess = (e) => {
-                            clearTimeout(timer);
-                            this.db = e.target.result;
-                            resolve(true);
-                        };
-                        request.onerror = () => {
-                            clearTimeout(timer);
-                            console.warn('IndexedDB failed, using fallback Map');
-                            resolve(false);
-                        };
-                    } catch (e) {
-                        clearTimeout(timer);
-                        console.warn('IndexedDB blocked, using fallback Map');
-                        resolve(false);
-                    }
-                });
-            }
-            async get(key, defaultVal = null) {
-                await this._initPromise;
-                if (!this.db) return this.fallback.has(key) ? this.fallback.get(key) : defaultVal;
-                return new Promise((resolve) => {
-                    try {
-                        const tx = this.db.transaction(this.storeName, 'readonly');
-                        const store = tx.objectStore(this.storeName);
-                        const req = store.get(key);
-                        req.onsuccess = () => resolve(req.result !== undefined ? req.result : defaultVal);
-                        req.onerror = () => resolve(defaultVal);
-                    } catch (e) { resolve(defaultVal); }
-                });
-            }
-            async set(key, val) {
-                await this._initPromise;
-                if (!this.db) { this.fallback.set(key, val); return; }
-                return new Promise((resolve) => {
-                    try {
-                        const tx = this.db.transaction(this.storeName, 'readwrite');
-                        const store = tx.objectStore(this.storeName);
-                        const req = store.put(val, key);
-                        req.onsuccess = () => resolve(true);
-                        req.onerror = () => resolve(false);
-                    } catch (e) { resolve(false); }
-                });
-            }
-            async delete(key) {
-                await this._initPromise;
-                if (!this.db) { this.fallback.delete(key); return; }
-                return new Promise((resolve) => {
-                    try {
-                        const tx = this.db.transaction(this.storeName, 'readwrite');
-                        const store = tx.objectStore(this.storeName);
-                        const req = store.delete(key);
-                        req.onsuccess = () => resolve(true);
-                        req.onerror = () => resolve(false);
-                    } catch (e) { resolve(false); }
-                });
-            }
-            // Simple sync-wrapped prefs for UI
-            async loadPrefs() {
-                const p = await this.get('newsreader_prefs', {});
-                this.prefs = p;
-                return p;
-            }
-            async savePrefs() {
-                await this.set('newsreader_prefs', this.prefs);
-            }
-        })();
-
         // Security: HTML Escaping
         window.esc = (str) => {
             if (str === null || str === undefined) return '';
@@ -1504,18 +1720,16 @@
             if (isResizing) {
                 isResizing = false;
                 document.body.classList.remove('resizing');
-                try { Db.set('newsreader_pane_width', timelinePane.style.width); } catch(e) { console.warn('Storage error:', e.message); }
+                try { localStorage.setItem('newsreader_pane_width', timelinePane.style.width); } catch(e) { console.warn('Storage error:', e.message); }
                 if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             }
         });
 
         // Restore timeline pane width
-        (async () => {
-            try {
-                const w = await Db.get('newsreader_pane_width');
-                if (w) timelinePane.style.width = w;
-            } catch(e) { console.warn('Storage error:', e.message); }
-        })();
+        try {
+            const w = localStorage.getItem('newsreader_pane_width');
+            if (w) timelinePane.style.width = w;
+        } catch(e) { console.warn('Storage error:', e.message); }
 
         // --- FETCH & ARTICLE LOGIC ---
         const PROXIES = [
@@ -1574,7 +1788,7 @@
             const CACHE_KEY = 'newsreader_memo_ranks';
             const CACHE_TTL = 86400000; // 24h
             try {
-                const cached = await Db.get(CACHE_KEY);
+                const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
                 if (cached && Date.now() - cached.ts < CACHE_TTL && Object.keys(cached.map).length > 0) {
                     window._memoRankMap = cached.map;
                     console.log('[Dedup] Loaded', Object.keys(cached.map).length, 'source rankings from cache');
@@ -1608,7 +1822,7 @@
             });
             if (Object.keys(map).length > 0) {
                 window._memoRankMap = map;
-                await Db.set(CACHE_KEY, { ts: Date.now(), map });
+                try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), map })); } catch {}
                 console.log('[Dedup] Fetched', Object.keys(map).length, 'source rankings from Memeorandum');
             }
         }
@@ -1768,9 +1982,9 @@
             window._feedHealth[feedUrl] = { lastSuccess: Date.now(), errorCount: 0 };
             const feedObj = window.feeds.find(f => f.url === feedUrl);
             if (feedObj && !feedObj.favicon) {
-                const cached = await Db.get('favicon_' + feedUrl);
+                const cached = (() => { try { return localStorage.getItem('favicon_' + feedUrl); } catch(e) { return null; } })();
                 feedObj.favicon = cached || `https://www.google.com/s2/favicons?domain=bsky.app&sz=32`;
-                if (!cached) { try { await Db.set('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); } }
+                if (!cached) { try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); } }
             }
 
             // Preserve existing IDs by link so DOM onclick handlers stay valid after re-fetch
@@ -1868,7 +2082,7 @@
                 const feedObj = window.feeds.find(f => f.url === feedUrl);
                 // Load favicon from local cache first
                 if (feedObj && !feedObj.favicon) {
-                    const cachedFavicon = await Db.get('favicon_' + feedUrl);
+                    const cachedFavicon = (() => { try { return localStorage.getItem('favicon_' + feedUrl); } catch(e) { return null; } })();
                     if (cachedFavicon) feedObj.favicon = cachedFavicon;
                 }
                 // Fetch/refresh favicon if missing or empty-string cached value
@@ -1882,7 +2096,7 @@
                         const parts = domain.split('.');
                         if (parts.length > 2) domain = parts.slice(-2).join('.');
                         feedObj.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-                        try { await Db.set('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); }
+                        try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch(e) { console.warn('Storage error:', e.message); }
                         preloadFavicon(feedObj.favicon);
                         updateFaviconStyles();
                     } catch(e) { console.warn('Favicon fetch failed:', e.message); }
@@ -2264,18 +2478,19 @@
         function buildArticleCard(a) {
             const favicon = getFavicon(a.source);
             const selected = window.currentArticle?.id === a.id;
-            const selCls = selected ? 'article-selected' : '';
+            const selCls = selected ? 'border-l-4 border-l-blue-500' : '';
+            const selStyle = selected ? 'style="background-color: rgba(23,37,84,0.45);"' : '';
 
             const saId = escJs(a.id);
 
             if (window._viewMode === 'card') {
-                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card ${selCls}">
+                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                     <div class="swipe-hint swipe-hint-left"><span>&#x2713; Mark Read</span></div>
                     <div class="swipe-hint swipe-hint-right"><span>Save Later &#x2605;</span></div>
                     ${a.image ? `<img src="${esc(a.image)}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
                     <div class="p-3">
                         <div class="flex items-center text-[10px] text-gray-400 mb-1">
-                            ${a.unread ? '<span class="bg-blue-600 rounded-full mr-1" style="width:6px;height:6px;flex-shrink:0"></span>' : ''}
+                            ${a.unread ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>' : ''}
                             ${favicon}<span class="font-bold uppercase tracking-widest truncate">${esc(a.source)}</span>
                             <span class="ml-auto flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
@@ -2283,19 +2498,19 @@
                     </div>
                 </div>`;
             }
-            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card-list ${selCls}">
+            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
                 <div class="flex items-start gap-1.5">
                     <div class="flex-shrink-0 mt-2">
-                        ${a.unread ? '<span class="bg-blue-600 rounded-full" style="width:8px;height:8px;display:block"></span>' : '<span class="rounded-full" style="width:8px;height:8px;display:block;opacity:0"></span>'}
+                        ${a.unread ? '<span class="w-2 h-2 bg-blue-500 rounded-full block"></span>' : '<span class="w-2 h-2 rounded-full block opacity-0"></span>'}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center justify-between mb-1.5">
                             <span class="list-source-label font-bold text-blue-500 uppercase tracking-widest truncate mr-2">${favicon}${esc(a.source)}</span>
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1 dynamic-list-title">${esc(a.title)}</h3>
+                        <h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>
                         <p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
                     </div>
                 </div>
@@ -2892,39 +3107,59 @@
                 if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = true;
                 const isCollapsed = window.collapsedCategories[cat];
                 const formattedCat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+
+                // Security: ensure 'cat' is safe for use in event handlers (e.g. escaping single quotes)
                 const sCat = escJs(cat);
 
                 return `
-                    <div class="mb-1" data-category="${esc(cat)}" draggable="true" ondragstart="handleCategoryDragStart(event, '${sCat}')" ondragend="handleCategoryDragEnd(event)" ondragover="handleCategoryDragOver(event, '${sCat}')" ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
-                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="w-full flex items-center justify-between px-3 py-1.5 hover:bg-white/5 rounded-lg group transition-colors">
-                            <button onclick="toggleCategory('${sCat}')" class="flex items-center gap-2 flex-1 text-left outline-none truncate mr-2">
-                                <svg class="w-3 h-3 text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/></svg>
-                                <span class="font-bold text-[11px] text-gray-300 uppercase tracking-widest">${esc(formattedCat)}</span>
+                    <div data-category="${esc(cat)}"
+                         draggable="true"
+                         ondragstart="handleCategoryDragStart(event, '${sCat}')"
+                         ondragend="handleCategoryDragEnd(event)"
+                         ondragover="handleCategoryDragOver(event, '${sCat}')"
+                         ondragleave="handleCategoryDragLeave(event)"
+                         ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
+                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="w-full px-4 text-gray-400 flex items-center justify-between hover:bg-white/5 dynamic-category-text">
+                            <button onclick="toggleCategory('${sCat}')" class="flex items-center gap-2 outline-none flex-shrink-0 mr-2 opacity-60 hover:opacity-100 transition-opacity">
+                                ${isCollapsed ?
+                                    `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>` :
+                                    `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`
+                                }
+                            </button>
+                            <button onclick="setCategoryFilter('${sCat}')" class="flex-1 text-left outline-none truncate">
+                                <span>${esc(formattedCat)}</span>
                             </button>
                             <div class="flex items-center space-x-2 flex-shrink-0">
-                                ${total > 0 ? `<span class="text-[10px] font-bold text-blue-500">${total}</span>` : ''}
+                                ${total > 0 ? `<span class="mob-unread-count text-blue-500 dark:text-blue-400">${total}</span>` : ''}
                             </div>
                         </div>
-                        <div id="cat-${esc(cat)}" class="${isCollapsed ? 'hidden' : ''} space-y-0.5 mt-0.5">
-                            ${feeds.map(f => {
-                                const healthClass = window._feedHealth[f.url]?.errorCount >= 3 ? 'feed-error' : '';
-                                const favicon = getFavicon(f.name);
-                                const sfName = escJs(f.name), sfId = escJs(f.id), sfUrl = escJs(f.url);
-                                return `
-                                <button draggable="true" ondragstart="handleFeedDragStart(event, '${sfId}')" ondragend="event.target.classList.remove('opacity-40')"
-                                    onclick="setSourceFilter('${sfName}')" oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')" 
-                                    class="w-full flex items-center justify-between pl-8 pr-3 py-1 hover:bg-white/5 rounded-lg text-gray-400 transition-colors">
-                                    <span class="flex items-center truncate pr-2 text-[13px]">
-                                        ${favicon}<span class="truncate ${healthClass}">${esc(f.name)}</span>
-                                    </span>
-                                    <span class="text-[10px] text-gray-500">${f.unread || 0}</span>
-                                </button>`;
-                            }).join('')}
-                        </div>
+                        ${!isCollapsed ? feeds.map(f => {
+                            const health = window._feedHealth[f.url];
+                            const isError = health && health.errorCount >= 3;
+                            const isStale = health && health.lastSuccess && (Date.now() - health.lastSuccess > 7 * 86400000);
+                            const healthClass = isError ? 'feed-error' : (isStale ? 'feed-stale' : '');
+                            const fav = f.favicon ? escJs(f.favicon) : '';
+                            const favInvert = faviconNeedsInvert(f) ? ' favicon-invert' : '';
+                            const favicon = f.favicon ? `<span class="${getFaviconSlug(f.name)}${favInvert} inline-block w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;"></span>` : '<span class="w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
+
+                            const sfName = escJs(f.name);
+                            const sfId   = escJs(f.id);
+                            const sfUrl  = escJs(f.url);
+
+                            return `
+                            <button draggable="true"
+                                ondragstart="handleFeedDragStart(event, '${sfId}')"
+                                ondragend="event.target.classList.remove('opacity-40')"
+                                onclick="setSourceFilter('${sfName}')" oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')" class="w-full flex items-center justify-between pl-9 pr-3 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 outline-none cursor-grab active:cursor-grabbing dynamic-category-text">
+                                <span class="flex items-center truncate pr-2">
+                                    ${favicon}<span class="truncate ${healthClass}">${esc(f.name)}</span>
+                                </span>
+                                <span class="text-[10px] text-gray-400 flex-shrink-0">${f.unread || 0}</span>
+                            </button>`;
+                        }).join('') : ''}
                     </div>
                 `;
             }).join('');
-        }
 
             const localList = document.getElementById('local-feed-list');
             if (localList) {
@@ -3018,13 +3253,13 @@
             }
         };
 
-        async function saveCategoryOrder() {
-            try { await Db.set('newsreader_catorder', window._categoryOrder); } catch(e) { console.warn('Storage error:', e.message); }
+        function saveCategoryOrder() {
+            try { localStorage.setItem('newsreader_catorder', JSON.stringify(window._categoryOrder)); } catch(e) { console.warn('Storage error:', e.message); }
         }
-        async function restoreCategoryOrder() {
+        function restoreCategoryOrder() {
             try {
-                const stored = await Db.get('newsreader_catorder');
-                if (stored) window._categoryOrder = stored;
+                const stored = localStorage.getItem('newsreader_catorder');
+                if (stored) window._categoryOrder = JSON.parse(stored);
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
@@ -3237,14 +3472,14 @@
         }
 
         // --- VIEW MODE ---
-        window.toggleViewMode = async () => {
+        window.toggleViewMode = () => {
             window._viewMode = window._viewMode === 'list' ? 'card' : 'list';
             document.getElementById('view-density-toggle').textContent = window._viewMode === 'card' ? 'CARD' : 'LIST';
             renderTimeline();
-            try { await Db.set('newsreader_viewmode', window._viewMode); } catch(e) { console.warn('Storage error:', e.message); }
+            try { localStorage.setItem('newsreader_viewmode', window._viewMode); } catch(e) { console.warn('Storage error:', e.message); }
         };
 
-        window.toggleShowEmptyCategories = async () => {
+        window.toggleShowEmptyCategories = () => {
             window._showEmptyCategories = !window._showEmptyCategories;
             const btn = document.getElementById('show-empty-cats-toggle');
             if (btn) {
@@ -3254,18 +3489,18 @@
                     : 'text-[10px] font-bold px-3 py-1 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400';
             }
             renderFeeds();
-            try { await Db.set('newsreader_showemptycats', window._showEmptyCategories ? '1' : '0'); } catch(e) { console.warn('Storage error:', e.message); }
+            try { localStorage.setItem('newsreader_showemptycats', window._showEmptyCategories ? '1' : '0'); } catch(e) { console.warn('Storage error:', e.message); }
         };
 
         // --- READ LATER PERSISTENCE ---
-        async function saveReadLaterState() {
-            try { await Db.set('newsreader_readlater', Array.from(window._readLaterLinks)); } catch(e) { console.warn('Storage error:', e.message); }
+        function saveReadLaterState() {
+            try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) { console.warn('Storage error:', e.message); }
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
         }
-        async function restoreReadLaterState() {
+        function restoreReadLaterState() {
             try {
-                const stored = await Db.get('newsreader_readlater');
-                if (stored) window._readLaterLinks = new Set(stored);
+                const stored = localStorage.getItem('newsreader_readlater');
+                if (stored) window._readLaterLinks = new Set(JSON.parse(stored));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
@@ -3395,14 +3630,14 @@
             if (icon) icon.innerHTML = `<use href="#icon-${isDark ? 'moon' : 'sun'}"/>`;
             if (label) label.textContent = isDark ? 'DARK' : 'LIGHT';
         };
-        window.toggleTheme = async () => {
+        window.toggleTheme = () => {
             const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-            try { await Db.set('newsreader_theme', next); } catch(e) {}
+            try { localStorage.setItem('newsreader_theme', next); } catch(e) {}
             applyTheme(next);
         };
-        (async () => {
+        (function() {
             let saved;
-            try { saved = await Db.get('newsreader_theme'); } catch(e) {}
+            try { saved = localStorage.getItem('newsreader_theme'); } catch(e) {}
             applyTheme(saved === 'light' ? 'light' : 'dark');
         })();
         window.switchSettingsTab = (tab) => {
@@ -3519,7 +3754,8 @@
             const toast = document.getElementById('toast-notification');
             if (!toast) { processToastQueue(); return; }
             toast.textContent = msg;
-            toast.className = 'toast-notification' + (isError ? ' error' : '');
+            toast.className = `fixed left-1/2 transform -translate-x-1/2 px-6 py-3 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-blue-600'}`;
+            toast.style.top = '16px';
             toast.style.pointerEvents = 'auto';
             toast.style.opacity = '1';
             if (sticky) {
@@ -3630,6 +3866,8 @@
             saveTypographyPrefs();
         };
 
+        window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
+        window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
         window.openExternal = () => { if(window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
         // ===== IMAGE LIGHTBOX =====
@@ -3849,7 +4087,7 @@
             const article = (window.articles || []).find(a => a.id === id);
             const idx = (window.currentTimeline || []).findIndex(a => a.id === id);
             const total = (window.currentTimeline || []).length;
-            const btnClass = "ctx-menu-btn";
+            const btnClass = "w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700";
             const readLabel = article?.unread ? 'Mark Read' : 'Mark Unread';
             const laterLabel = article?.readLater ? 'Remove from Read Later' : 'Save for Later';
             const sid = escJs(id);
@@ -3865,6 +4103,7 @@
             menu.style.top = `${y}px`;
             menu.style.left = `${x}px`;
         };
+
         window.toggleArticleUnread = (id) => {
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
@@ -3974,6 +4213,7 @@
             menu.style.top = `${e.pageY}px`;
             menu.style.left = `${e.pageX}px`;
         };
+
         window.refreshSingleFeed = () => {
             if (!window._feedContextUrl) return;
             window.showToast(`Refreshing ${window._feedContextName}...`);
@@ -4076,10 +4316,10 @@
         };
 
         // --- TYPOGRAPHY PERSISTENCE ---
-        async function saveTypographyPrefs() {
+        function saveTypographyPrefs() {
             const get = id => document.getElementById(id)?.value;
             try {
-                await Db.set('newsreader_prefs', {
+                localStorage.setItem('newsreader_prefs', JSON.stringify({
                     sharedFeedName:     get('shared-feed-name-slider'),
                     sharedListTitle:    get('shared-list-title-slider'),
                     sharedPreview:      get('shared-preview-slider'),
@@ -4096,13 +4336,13 @@
                     autoRefresh:        get('pref-auto-refresh'),
                     mobZoom:            get('mob-zoom-slider'),
                     dedupByTitle:       window._dedupByTitle || false,
-                });
+                }));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
-        async function restoreTypographyPrefs() {
+        function restoreTypographyPrefs() {
             let prefs;
-            try { prefs = await Db.get('newsreader_prefs'); } catch(e) { return; }
+            try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')); } catch(e) { return; }
             if (!prefs) return;
             const root = document.documentElement;
 
@@ -4165,7 +4405,7 @@
         }
 
         // --- ARTICLE CACHE ---
-        async function saveArticleCache() {
+        function saveArticleCache() {
             try {
                 const cache = window.articles
                     .slice().sort((a, b) => (b._ts || 0) - (a._ts || 0)).slice(0, 500)
@@ -4177,13 +4417,15 @@
                     body: a._fullBodyLoaded ? (a.body || '').slice(0, 50000) : '',
                     _fullBodyLoaded: !!a._fullBodyLoaded
                 }));
-                await Db.set('newsreader_articles', cache);
+                localStorage.setItem('newsreader_articles', JSON.stringify(cache));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
-        async function restoreArticleCache() {
+        function restoreArticleCache() {
             try {
-                const cache = await Db.get('newsreader_articles');
+                const stored = localStorage.getItem('newsreader_articles');
+                if (!stored) return;
+                const cache = JSON.parse(stored);
                 if (!Array.isArray(cache) || cache.length === 0) return;
                 const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
                 const fresh = cache.filter(a => {
@@ -4201,32 +4443,33 @@
                     if (!a.body) a.body = '';
                 });
                 window.articles = fresh;
-                refreshUI();
-            } catch(e) { console.warn('Restore error:', e.message); }
+            } catch(e) { console.warn('Storage error:', e.message); }
         }
 
         // --- FEED PERSISTENCE ---
-        async function saveLocalFeeds() {
-            try { await Db.set('newsreader_feeds', window.accountStates.local); } catch(e) { console.warn('Storage error:', e.message); }
+        function saveLocalFeeds() {
+            try { localStorage.setItem('newsreader_feeds', JSON.stringify(window.accountStates.local)); } catch(e) { console.warn('Storage error:', e.message); }
         }
 
         // Initialize an in-memory map to group and cache favicon operations
         window._globalFaviconCache = window._globalFaviconCache || {};
 
-        async function restoreLocalFeeds() {
+        function restoreLocalFeeds() {
             try {
-                const feeds = await Db.get('newsreader_feeds');
+                const stored = localStorage.getItem('newsreader_feeds');
+                if (!stored) return;
+                const feeds = JSON.parse(stored);
                 if (!Array.isArray(feeds) || feeds.length === 0) return;
 
-                for (const f of feeds) {
+                feeds.forEach(f => {
                     if (!f.favicon) {
                         const key = 'favicon_' + f.url;
                         if (window._globalFaviconCache[key] === undefined) {
-                            window._globalFaviconCache[key] = await Db.get(key);
+                            try { window._globalFaviconCache[key] = localStorage.getItem(key) || null; } catch(e){}
                         }
                         f.favicon = window._globalFaviconCache[key] || undefined;
                     }
-                }
+                });
 
                 window.accountStates.local = feeds;
                 window.feeds = feeds;
@@ -4240,28 +4483,26 @@
         function saveReadState() {
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
             clearTimeout(_saveReadStateTimer);
-            _saveReadStateTimer = setTimeout(async () => {
+            _saveReadStateTimer = setTimeout(() => {
                 try {
                     const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
-                    const existing = await getStoredReadLinks();
+                    const existing = getStoredReadLinks();
                     const loadedLinks = new Set(window.articles.map(a => a.link));
                     const preserved = existing.filter(l => !loadedLinks.has(l));
                     const merged = Array.from(new Set([...preserved, ...readLinks]));
-                    await Db.set('newsreader_read', merged.slice(-5000));
+                    localStorage.setItem('newsreader_read', JSON.stringify(merged.slice(-5000)));
                 } catch(e) { console.warn('Storage error:', e.message); }
             }, 2000);
         }
 
-        async function getStoredReadLinks() {
+        function getStoredReadLinks() {
             try {
-                return await Db.get('newsreader_read', []);
+                const stored = localStorage.getItem('newsreader_read');
+                return stored ? JSON.parse(stored) : [];
             } catch(e) { return []; }
         }
 
-        (async () => {
-            const links = await getStoredReadLinks();
-            window._readLinks = new Set(links);
-        })();
+        window._readLinks = new Set(getStoredReadLinks());
 
         // --- MOBILE TAB BAR: active + Reader-tab mode + search + scroll tint ---
         window._mobilePane = 'timeline';
@@ -4417,100 +4658,50 @@
             const input = document.getElementById('mobile-search-input');
             if (input) input.blur();
         };
-        let _searchDebounceTimer = null;
-        let _deepSearchActive = false;
         window.updateSearchResults = (query) => {
-            clearTimeout(_searchDebounceTimer);
             const container = document.getElementById('mobile-search-results');
             if (!container) return;
             const q = (query || '').trim().toLowerCase();
-
+            const list = window.articles || [];
+            let results;
             if (!q) {
-                container.innerHTML = '';
-                const frag = document.createDocumentFragment();
-                (window.articles || []).slice(0, 40).forEach(a => frag.appendChild(renderSearchItem(a)));
-                container.appendChild(frag);
-                return;
-            }
-
-            // Phase 1: Immediate title/source filter (fast)
-            _searchDebounceTimer = setTimeout(() => {
-                const list = window.articles || [];
-                const primaryResults = list.filter(a => {
+                results = list.slice(0, 40);
+            } else {
+                results = list.filter(a => {
                     const t = (a.title || '').toLowerCase();
                     const s = (a.source || '').toLowerCase();
-                    return t.includes(q) || s.includes(q);
+                    const b = (a.excerpt || '').toLowerCase();
+                    return t.includes(q) || s.includes(q) || b.includes(q);
                 }).slice(0, 80);
-
-                container.innerHTML = '';
-                if (primaryResults.length > 0) {
-                    const frag = document.createDocumentFragment();
-                    primaryResults.forEach(a => frag.appendChild(renderSearchItem(a)));
-                    container.appendChild(frag);
-                }
-
-                // Phase 2: Async deep body search for queries > 3 chars
-                if (q.length > 3) {
-                    const deepIndicator = document.createElement('div');
-                    deepIndicator.id = 'search-deep-indicator';
-                    deepIndicator.className = 'px-4 py-2 text-[10px] font-bold text-blue-500 uppercase tracking-widest opacity-70 animate-pulse';
-                    deepIndicator.textContent = 'Deep searching body...';
-                    container.appendChild(deepIndicator);
-
-                    // Use requestIdleCallback if available, or a short timeout to keep UI fluid
-                    const scheduler = window.requestIdleCallback || (cb => setTimeout(cb, 1));
-                    scheduler(() => {
-                        if (document.getElementById('mobile-search-input').value.trim().toLowerCase() !== q) return;
-                        
-                        const secondaryResults = list.filter(a => {
-                            // Skip if already in primary results
-                            if (primaryResults.some(p => p.id === a.id)) return false;
-                            const b = (a.excerpt || '').toLowerCase();
-                            const fullBody = (a.body || '').toLowerCase();
-                            return b.includes(q) || fullBody.includes(q);
-                        }).slice(0, 40);
-
-                        const indicator = document.getElementById('search-deep-indicator');
-                        if (indicator) indicator.remove();
-
-                        if (secondaryResults.length > 0) {
-                            const frag = document.createDocumentFragment();
-                            const divider = document.createElement('div');
-                            divider.className = 'search-section-label border-t border-white/5 mt-2';
-                            divider.textContent = 'Body Matches';
-                            frag.appendChild(divider);
-                            secondaryResults.forEach(a => frag.appendChild(renderSearchItem(a)));
-                            container.appendChild(frag);
-                        } else if (primaryResults.length === 0) {
-                            container.innerHTML = `<div class="search-empty">No matches found</div>`;
-                        }
-                    });
-                } else if (primaryResults.length === 0) {
-                    container.innerHTML = `<div class="search-empty">No matches found</div>`;
-                }
-            }, 200);
-        };
-
-        function renderSearchItem(a) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'search-item';
-            btn.setAttribute('data-id', a.id);
-            const title = document.createElement('div');
-            title.className = 'search-item-title';
-            title.textContent = a.title || '(untitled)';
-            const meta = document.createElement('div');
-            meta.className = 'search-item-meta';
-            const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-            meta.textContent = [a.source, when].filter(Boolean).join(' · ');
-            btn.appendChild(title);
-            btn.appendChild(meta);
-            btn.addEventListener('click', () => {
-                closeSearchSheet();
-                selectArticle(a.id);
+            }
+            if (!results.length) {
+                container.innerHTML = `<div class="search-empty">${q ? 'No matches' : 'No articles yet'}</div>`;
+                return;
+            }
+            const frag = document.createDocumentFragment();
+            results.forEach(a => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'search-item';
+                btn.setAttribute('data-id', a.id);
+                const title = document.createElement('div');
+                title.className = 'search-item-title';
+                title.textContent = a.title || '(untitled)';
+                const meta = document.createElement('div');
+                meta.className = 'search-item-meta';
+                const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                meta.textContent = [a.source, when].filter(Boolean).join(' · ');
+                btn.appendChild(title);
+                btn.appendChild(meta);
+                btn.addEventListener('click', () => {
+                    closeSearchSheet();
+                    selectArticle(a.id);
+                });
+                frag.appendChild(btn);
             });
-            return btn;
-        }
+            container.innerHTML = '';
+            container.appendChild(frag);
+        };
         window.searchSmart = (which) => {
             const input = document.getElementById('mobile-search-input');
             if (input) input.value = '';
@@ -4599,77 +4790,53 @@
 
         setInterval(() => { renderFeeds(); updateBadges?.(); }, 60000);
 
-        // Helper: Simple UUID fallback for non-secure contexts (file://)
-        function generateId() {
-            try {
-                if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
-            } catch(e) {}
-            return 'id-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-        }
-
         window.articles = [];
 
-        (async () => {
-            console.log('App: Starting init...');
-            
-            try { await restoreReadLaterState(); console.log('App: Read later restored'); } catch(e) { console.warn('Init: Read later failed', e); }
-            try { await restoreTypographyPrefs(); console.log('App: Prefs restored'); } catch(e) { console.warn('Init: Prefs failed', e); }
-            
-            loadActiveFont("'Inter', sans-serif");
-            
-            try { await restoreLocalFeeds(); console.log('App: Feeds restored'); } catch(e) { console.warn('Init: Feeds failed', e); }
-            
-            updateFaviconStyles();
-            
-            try { await restoreCategoryOrder(); console.log('App: Categories restored'); } catch(e) { console.warn('Init: Categories failed', e); }
-            try { await restoreArticleCache(); console.log('App: Article cache restored'); } catch(e) { console.warn('Init: Cache failed', e); }
+        restoreReadLaterState();
+        restoreTypographyPrefs();
+        loadActiveFont("'Inter', sans-serif");
+        restoreLocalFeeds();
+        updateFaviconStyles();
+        restoreCategoryOrder();
+        restoreArticleCache();
+        if (window.articles.length === 0) {
+            window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
+        }
 
-            if (window.articles.length === 0) {
-                window.articles = [{ id: generateId(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
+        try {
+            const vm = localStorage.getItem('newsreader_viewmode');
+            if (vm === 'card') { window._viewMode = 'card'; const btn = document.getElementById('view-density-toggle'); if (btn) btn.textContent = 'CARD'; }
+        } catch(e) {}
+
+        try {
+            if (localStorage.getItem('newsreader_showemptycats') === '1') {
+                window._showEmptyCategories = true;
+                const btn = document.getElementById('show-empty-cats-toggle');
+                if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
             }
+        } catch(e) {}
 
-            try {
-                const vm = await Db.get('newsreader_viewmode');
-                if (vm === 'card') { window._viewMode = 'card'; const btn = document.getElementById('view-density-toggle'); if (btn) btn.textContent = 'CARD'; }
-            } catch(e) {}
-
-            try {
-                const showEmpty = await Db.get('newsreader_showemptycats');
-                if (showEmpty === '1') {
-                    window._showEmptyCategories = true;
-                    const btn = document.getElementById('show-empty-cats-toggle');
-                    if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
-                }
-            } catch(e) {}
-
-            try {
-                const prefs = await Db.get('newsreader_prefs', {});
-                if (prefs.autoRefresh) {
-                    const sel = document.getElementById('pref-auto-refresh');
-                    if (sel) sel.value = prefs.autoRefresh;
-                    updateAutoRefresh(prefs.autoRefresh);
-                }
-            } catch(e) {}
-
-            window._localFetchTimer = null;
-            if (window.feeds.length > 0) {
-                window._localFetchTimer = setTimeout(() => {
-                    if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
-                }, 4000);
+        try {
+            const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+            if (prefs.autoRefresh) {
+                const sel = document.getElementById('pref-auto-refresh');
+                if (sel) sel.value = prefs.autoRefresh;
+                updateAutoRefresh(prefs.autoRefresh);
             }
-            
-            try {
-                renderFeeds();
-                if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
-                    showSkeletons();
-                }
-                renderTimeline();
-                updateEmptyState();
-                console.log('App: Init complete');
-            } catch(e) {
-                console.error('App: Critical render failure', e);
-            }
-        })();
+        } catch(e) {}
+
+        window._localFetchTimer = null;
+        if (window.feeds.length > 0) {
+            window._localFetchTimer = setTimeout(() => {
+                if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
+            }, 4000);
+        }
+        renderFeeds();
+        if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
+            showSkeletons();
+        }
+        renderTimeline();
+        updateEmptyState();
 
         let _hiddenAt = 0;
         document.addEventListener('visibilitychange', () => {
@@ -4848,7 +5015,7 @@
                     if (incoming.length > 0) {
                         incoming.forEach(l => window._readLinks.add(l));
                         changed = true;
-                        try { Db.set('newsreader_read', Array.from(window._readLinks)); } catch(e) {}
+                        try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
                     }
                 }
                 if (data.readLaterLinks) {
@@ -4856,7 +5023,7 @@
                     if (newSet.size !== window._readLaterLinks.size || data.readLaterLinks.some(l => !window._readLaterLinks.has(l))) {
                         window._readLaterLinks = newSet;
                         changed = true;
-                        try { Db.set('newsreader_readlater', data.readLaterLinks); } catch(e) {}
+                        try { localStorage.setItem('newsreader_readlater', JSON.stringify(data.readLaterLinks)); } catch(e) {}
                     }
                 }
                 if (changed) {
@@ -4872,19 +5039,19 @@
 
         function syncCloudUiPrefs() {
             const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
-            getDoc(uiRef).then(async (snap) => {
+            getDoc(uiRef).then(snap => {
                 if (snap.exists()) {
                     const data = snap.data();
                     if (data.paneWidth) {
                         const tp = document.getElementById('timeline-pane');
                         if (tp) {
                             tp.style.width = data.paneWidth;
-                            try { await Db.set('newsreader_pane_width', data.paneWidth); } catch(e) {}
+                            try { localStorage.setItem('newsreader_pane_width', data.paneWidth); } catch(e) {}
                         }
                     }
                     if (data.categoryOrder && Array.isArray(data.categoryOrder)) {
                         window._categoryOrder = data.categoryOrder;
-                        try { await Db.set('newsreader_catorder', data.categoryOrder); } catch(e) {}
+                        try { localStorage.setItem('newsreader_catorder', JSON.stringify(data.categoryOrder)); } catch(e) {}
                         window.renderFeeds();
                     }
                     if (data.autoRefresh) {
@@ -4892,9 +5059,9 @@
                         if (sel) sel.value = data.autoRefresh;
                         updateAutoRefresh(data.autoRefresh);
                         try {
-                            const prefs = await Db.get('newsreader_prefs', {});
+                            const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
                             prefs.autoRefresh = data.autoRefresh;
-                            await Db.set('newsreader_prefs', prefs);
+                            localStorage.setItem('newsreader_prefs', JSON.stringify(prefs));
                         } catch(e) {}
                     }
                 }
@@ -4965,6 +5132,7 @@
             const swCode = `
 const CACHE = 'newsreader-v2';
 const ASSETS = [
+    'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;600;700&family=Literata:ital,wght@0,400;0,700;1,400&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap'
 ];
