@@ -107,8 +107,14 @@
         .flex { display: flex; }
         .flex-row { flex-direction: row; }
         .flex-col { flex-direction: column; }
-        .flex-1 { flex: 1 1 0%; } .flex-grow { flex-grow: 1; } .flex-grow { flex-grow: 1; }
+        .flex-1 { flex: 1 1 0%; }
+        .flex-grow { flex: 1 1 0%; }
         .flex-shrink-0 { flex-shrink: 0; }
+        .h-0 { height: 0; }
+        .overflow-y-auto { overflow-y: auto; }
+        .overscroll-contain { overscroll-behavior: contain; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
         .items-center { align-items: center; }
         .items-start { align-items: flex-start; }
         .items-stretch { align-items: stretch; }
@@ -368,7 +374,7 @@
         .timeline { width: 336px; height: 100%; min-height: 0; border-right: none; flex-shrink: 0; }
         .viewer { flex: 1; position: relative; }
 
-        .pane-content { flex: 1; overflow-y: auto; padding: 1.25rem 1rem; }
+        .pane-content { display: flex; flex-direction: column; flex: 1 1 0%; overflow-y: auto; min-height: 0; padding: 1.25rem 1rem; } .pane-content-scroll { display: flex; flex-direction: column; flex: 1 1 0%; overflow-y: auto; min-height: 0; }
 
         .sidebar-card {
             border-radius: 1rem; overflow: hidden;
@@ -715,7 +721,7 @@
             .modal-backdrop { padding: 10px; }
             .modal-card { width: 95% !important; max-width: 100% !important; border-radius: 1rem; }
             #settings-panel-feeds, #settings-panel-prefs { padding: 1.25rem !important; }
-            .settings-group { margin-bottom: 2rem; }
+            .settings-group { min-width: 0; overflow-wrap: break-word; margin-bottom: 2rem; }
         }
 
         /* Invert dark-on-transparent favicons (e.g. NYT) in dark mode */
@@ -839,7 +845,7 @@
                 </div>
             </div>
 
-            <div id="article-list" class="flex-grow overflow-y-auto h-0"></div>
+            <div id="article-list" class="pane-content-scroll"></div>
         </section>
 
         <!-- Column Resizer -->
@@ -2150,7 +2156,7 @@
                 if (_timelinePageStart > 0) {
                     const topSpacer = document.createElement('div');
                     topSpacer.id = 'list-top-spacer';
-                    topSpacer.style.cssText = `height:${_timelinePageStart * 88}px;`; // ~88px avg card height
+                    topSpacer.style.cssText = `height:${_timelinePageStart * 140}px;`; // ~88px avg card height
                     listEl.appendChild(topSpacer);
 
                     // Top sentinel: when visible, slide window up one page
@@ -2314,7 +2320,7 @@
             if (!feedObj?.url) return false;
             try {
                 const host = new URL(feedObj.url).hostname;
-                return DARK_FAVICON_HOSTS.some(re => re.test(host));
+                return DARK_FAVICON_HOSTS.some(re => re.test(host) || feedObj.name.toLowerCase().includes("nyt"));
             } catch(e) { return false; }
         }
 
