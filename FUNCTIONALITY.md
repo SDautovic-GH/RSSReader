@@ -245,6 +245,10 @@ Toasts queue up if multiple actions fire quickly, and always appear above all ot
 
 - **Single file**: Everything — HTML, CSS, JS, icons — is in `index.html`. No server, no build step, no dependencies to install.
 - **Privacy**: No analytics, no tracking. Data stays in your browser unless you enable cloud sync.
-- **Storage**: Uses `localStorage` for all local data. The app stores up to 500 articles and 5000 read-link records.
+- **Storage (IndexedDB v2)**: Uses high-performance IndexedDB for all article data and read states.
+  - **Articles**: History capacity for 2,000 items with automatic 2-day cutoff.
+  - **Read Links**: Tracking for up to 10,000 links (persistent read state).
+  - **Favicons**: Efficient binary cache for site icons to reclaim `localStorage` space.
+  - **Legacy Migration**: Automatically moves old `localStorage` data to IndexedDB on first load.
 - **CORS Proxies**: Feed fetching uses `corsproxy.io` and `allorigins.win` as fallbacks for cross-origin requests. Both need to be reachable for feed refresh to work.
-- **Offline**: Once loaded, the app's Service Worker caches all assets. You can read cached articles without an internet connection; feed refresh requires connectivity.
+- **Offline**: Once loaded, the app's Service Worker (via Blob URL) caches all assets. You can read cached articles without an internet connection; feed refresh requires connectivity.

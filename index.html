@@ -152,7 +152,7 @@
         .dark #article-title { color: #e6edf3 !important; }
         /* Preview — clearly subordinate: muted grey recedes behind the title */
         .dynamic-list-preview { color: #1f2937 !important; }
-        .dark .dynamic-list-preview { color: #8b949e !important; }
+        .dark .dynamic-list-preview { color: #b1bac4 !important; }
         .dark #article-body { color: #c9d1d9 !important; }
         #article-author, #article-date { font-size: var(--article-meta-size) !important; }
 
@@ -1623,6 +1623,13 @@
     </div>
 
     <script>
+        // Global Error Handler for better debugging
+        window.onerror = function(msg, url, line, col, error) {
+            console.error("Global error:", msg, "at", url, ":", line);
+            if (window.showToast) window.showToast("App Error: " + msg, true);
+            return false;
+        };
+
         // Security: HTML Escaping
         window.esc = (str) => {
             if (str === null || str === undefined) return '';
@@ -1639,7 +1646,7 @@
             return window.esc(String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"'));
         };
 
-        // Global State & Definitions
+        // Global State & Definitions (Initialized immediately)
         window.articles = [];
         window.feeds = [];
         window.accountStates = { local: [] };
@@ -1652,14 +1659,129 @@
         window.contextMenuArticleId = null;
         window._searchQuery = '';
         window._autoRefreshTimer = null;
+        window._readLinks = new Set();
+        window._readLaterLinks = new Set();
+        window._pinnedArticleIds = new Set();
 
         window._feedHealth = {};
         window._viewMode = 'list';
         window._ttsActive = false;
-        window._readLaterLinks = new Set();
         window._categoryOrder = [];
         window._showEmptyCategories = false;
         window._navigating = false;
+        window._mobilePane = 'sidebar';
+
+        // ===== INDEXEDDB STORAGE MANAGER =====
+        class RSSReaderDB {
+            constructor() {
+                this.dbName = 'RSSReaderDB';
+                this.version = 2;
+                this.db = null;
+            }
+
+            async open() {
+                if (this.db) return this.db;
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.version);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('articles')) {
+                            const store = db.createObjectStore('articles', { keyPath: 'id' });
+                            store.createIndex('timestamp', '_ts', { unique: false });
+                            store.createIndex('feedUrl', 'feedUrl', { unique: false });
+                            store.createIndex('unread', 'unread', { unique: false });
+                            store.createIndex('readLater', 'readLater', { unique: false });
+                        }
+                        if (!db.objectStoreNames.contains('feeds')) db.createObjectStore('feeds', { keyPath: 'url' });
+                        if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata');
+                        if (!db.objectStoreNames.contains('favicons')) db.createObjectStore('favicons');
+                    };
+                    request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
+                    request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
+                });
+            }
+
+            async put(storeName, item, key) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = key ? store.put(item, key) : store.put(item);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async get(storeName, key) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const store = tx.objectStore(storeName);
+                    const request = store.get(key);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async getAll(storeName) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const store = tx.objectStore(storeName);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async delete(storeName, key) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = store.delete(key);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async clear(storeName) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = store.clear();
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async bulkPutArticles(articles) {
+                if (!articles.length) return;
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('articles', 'readwrite');
+                    const store = tx.objectStore('articles');
+                    articles.forEach(a => store.put(a));
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
+
+            async bulkPutFavicons(map) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('favicons', 'readwrite');
+                    const store = tx.objectStore('favicons');
+                    for (const [url, fav] of Object.entries(map)) {
+                        store.put(fav, url);
+                    }
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
+        }
+        window.appDB = new RSSReaderDB();
 
         // Helper: URL to Links — walks text nodes only, never touches attributes
         function linkify(html) {
@@ -3315,14 +3437,25 @@
             }
         };
 
-        function saveCategoryOrder() {
-            try { localStorage.setItem('newsreader_catorder', JSON.stringify(window._categoryOrder)); } catch(e) { console.warn('Storage error:', e.message); }
-        }
-        function restoreCategoryOrder() {
+        async function saveCategoryOrder() {
             try {
-                const stored = localStorage.getItem('newsreader_catorder');
-                if (stored) window._categoryOrder = JSON.parse(stored);
-            } catch(e) { console.warn('Storage error:', e.message); }
+                await window.appDB.put('metadata', window._categoryOrder, 'categoryOrder');
+            } catch(e) { console.warn('DB error:', e.message); }
+        }
+        async function restoreCategoryOrder() {
+            try {
+                const stored = await window.appDB.get('metadata', 'categoryOrder');
+                if (stored) {
+                    window._categoryOrder = stored;
+                } else {
+                    // Migration
+                    const old = localStorage.getItem('newsreader_catorder');
+                    if (old) {
+                        window._categoryOrder = JSON.parse(old);
+                        await saveCategoryOrder();
+                    }
+                }
+            } catch(e) { console.warn('DB error:', e.message); }
         }
 
         function updateBadges() {
@@ -3555,15 +3688,52 @@
         };
 
         // --- READ LATER PERSISTENCE ---
-        function saveReadLaterState() {
-            try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) { console.warn('Storage error:', e.message); }
+        async function saveReadLaterState() {
+            try {
+                await window.appDB.put('metadata', Array.from(window._readLaterLinks), 'readLaterLinks');
+            } catch(e) { console.warn('DB error:', e.message); }
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
         }
-        function restoreReadLaterState() {
+        async function restoreReadLaterState() {
             try {
-                const stored = localStorage.getItem('newsreader_readlater');
-                if (stored) window._readLaterLinks = new Set(JSON.parse(stored));
-            } catch(e) { console.warn('Storage error:', e.message); }
+                // 1. Try DB
+                let stored = await window.appDB.get('metadata', 'readLaterLinks');
+                // 2. Migration
+                if (!stored) {
+                    const old = localStorage.getItem('newsreader_readlater');
+                    if (old) {
+                        stored = JSON.parse(old);
+                        if (Array.isArray(stored)) {
+                            await window.appDB.put('metadata', stored, 'readLaterLinks');
+                        }
+                    }
+                }
+                if (stored) window._readLaterLinks = new Set(stored);
+            } catch(e) { console.warn('DB error:', e.message); }
+        }
+
+        async function migrateFavicons() {
+            try {
+                const keys = Object.keys(localStorage);
+                const faviconKeys = keys.filter(k => k.startsWith('favicon_'));
+                if (faviconKeys.length === 0) return;
+
+                console.log(`Migrating ${faviconKeys.length} favicons to IndexedDB...`);
+                const batch = {};
+                for (const key of faviconKeys) {
+                    const url = key.replace('favicon_', '');
+                    const data = localStorage.getItem(key);
+                    if (data) batch[url] = data;
+                }
+                
+                await window.appDB.bulkPutFavicons(batch);
+                
+                // Cleanup confirm write success
+                for (const key of faviconKeys) {
+                    localStorage.removeItem(key);
+                }
+                console.log('Favicon migration complete.');
+            } catch(e) { console.warn('Favicon migration error:', e.message); }
         }
 
         // --- READING PROGRESS BAR + LIVE COUNTER ---
@@ -4467,34 +4637,52 @@
         }
 
         // --- ARTICLE CACHE ---
-        function saveArticleCache() {
-            try {
-                const cache = window.articles
-                    .slice().sort((a, b) => (b._ts || 0) - (a._ts || 0)).slice(0, 500)
-                    .map(a => ({
+        async function saveArticleCache() {
+            // Keep the limit but increase it significantly (IndexedDB can handle thousands)
+            const cache = window.articles
+                .slice()
+                .sort((a, b) => (b._ts || 0) - (a._ts || 0))
+                .slice(0, 2000) // 4x increase in history capacity
+                .map(a => ({
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
                     timestamp: a.timestamp, _ts: a._ts, excerpt: a.excerpt, link: a.link,
                     unread: a.unread, readLater: a.readLater, image: a.image,
-                    // Only persist body when fully extracted via proxy (not raw RSS stubs)
-                    body: a._fullBodyLoaded ? (a.body || '').slice(0, 50000) : '',
+                    body: a._fullBodyLoaded ? (a.body || '').slice(0, 100000) : '',
                     _fullBodyLoaded: !!a._fullBodyLoaded
                 }));
-                localStorage.setItem('newsreader_articles', JSON.stringify(cache));
-            } catch(e) { console.warn('Storage error:', e.message); }
+            
+            try {
+                await window.appDB.bulkPutArticles(cache);
+            } catch(e) { console.warn('DB Save error:', e.message); }
         }
 
-        function restoreArticleCache() {
+        async function restoreArticleCache() {
             try {
-                const stored = localStorage.getItem('newsreader_articles');
-                if (!stored) return;
-                const cache = JSON.parse(stored);
+                // 1. Check if DB has articles
+                let cache = await window.appDB.getAll('articles');
+                
+                // 2. Migration: If DB is empty, check localStorage
+                if (cache.length === 0) {
+                    const stored = localStorage.getItem('newsreader_articles');
+                    if (stored) {
+                        console.log('Migrating articles from localStorage to IndexedDB...');
+                        cache = JSON.parse(stored);
+                        if (Array.isArray(cache) && cache.length > 0) {
+                            await window.appDB.bulkPutArticles(cache);
+                            // We don't delete localStorage yet — keep it as backup for this session
+                        }
+                    }
+                }
+
                 if (!Array.isArray(cache) || cache.length === 0) return;
+                
+                // 2-day cutoff for general articles, but ALWAYS keep Read Later items
                 const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
                 const fresh = cache.filter(a => {
                     const ts = a._ts || new Date(a.timestamp).getTime();
                     return ts >= cutoff || a.readLater;
                 });
-                // Build link→body lookup so extracted bodies survive feed re-fetches
+
                 window._bodyCache = {};
                 fresh.forEach(a => {
                     a.unread = !window._readLinks.has(a.link);
@@ -4505,66 +4693,96 @@
                     if (!a.body) a.body = '';
                 });
                 window.articles = fresh;
-            } catch(e) { console.warn('Storage error:', e.message); }
+            } catch(e) { console.warn('DB Restore error:', e.message); }
         }
 
         // --- FEED PERSISTENCE ---
-        function saveLocalFeeds() {
-            try { localStorage.setItem('newsreader_feeds', JSON.stringify(window.accountStates.local)); } catch(e) { console.warn('Storage error:', e.message); }
+        async function saveLocalFeeds() {
+            try {
+                // Clear existing feeds to ensure sync
+                const db = await window.appDB.open();
+                const tx = db.transaction('feeds', 'readwrite');
+                await tx.objectStore('feeds').clear();
+                
+                // Bulk put new feeds
+                for (const f of window.accountStates.local) {
+                    await window.appDB.put('feeds', f);
+                }
+            } catch(e) { console.warn('DB Feed Save error:', e.message); }
         }
 
         // Initialize an in-memory map to group and cache favicon operations
         window._globalFaviconCache = window._globalFaviconCache || {};
 
-        function restoreLocalFeeds() {
+        async function restoreLocalFeeds() {
             try {
-                const stored = localStorage.getItem('newsreader_feeds');
-                if (!stored) return;
-                const feeds = JSON.parse(stored);
+                // 1. Try DB
+                let feeds = await window.appDB.getAll('feeds');
+                
+                // 2. Migration: If DB is empty, check localStorage
+                if (feeds.length === 0) {
+                    const stored = localStorage.getItem('newsreader_feeds');
+                    if (stored) {
+                        feeds = JSON.parse(stored);
+                        if (Array.isArray(feeds) && feeds.length > 0) {
+                            await Promise.all(feeds.map(f => window.appDB.put('feeds', f)));
+                        }
+                    }
+                }
+
                 if (!Array.isArray(feeds) || feeds.length === 0) return;
 
-                feeds.forEach(f => {
+                // Load favicons from dedicated DB store
+                for (const f of feeds) {
                     if (!f.favicon) {
-                        const key = 'favicon_' + f.url;
-                        if (window._globalFaviconCache[key] === undefined) {
-                            try { window._globalFaviconCache[key] = localStorage.getItem(key) || null; } catch(e){}
-                        }
-                        f.favicon = window._globalFaviconCache[key] || undefined;
+                        const fav = await window.appDB.get('favicons', f.url);
+                        if (fav) f.favicon = fav;
                     }
-                });
+                }
 
                 window.accountStates.local = feeds;
                 window.feeds = feeds;
                 preloadAllFavicons();
                 updateFaviconStyles();
-            } catch(e) { console.warn('Storage error:', e.message); }
+            } catch(e) { console.warn('DB Feed Restore error:', e.message); }
         }
+
 
         // --- READ STATE PERSISTENCE ---
         let _saveReadStateTimer = null;
-        function saveReadState() {
+        async function saveReadState() {
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
             clearTimeout(_saveReadStateTimer);
-            _saveReadStateTimer = setTimeout(() => {
+            _saveReadStateTimer = setTimeout(async () => {
                 try {
                     const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
-                    const existing = getStoredReadLinks();
+                    const existing = await getStoredReadLinks();
                     const loadedLinks = new Set(window.articles.map(a => a.link));
                     const preserved = existing.filter(l => !loadedLinks.has(l));
                     const merged = Array.from(new Set([...preserved, ...readLinks]));
-                    localStorage.setItem('newsreader_read', JSON.stringify(merged.slice(-5000)));
-                } catch(e) { console.warn('Storage error:', e.message); }
+                    const final = merged.slice(-10000); // 2x increase in read history
+                    await window.appDB.put('metadata', final, 'readLinks');
+                } catch(e) { console.warn('Read state save error:', e.message); }
             }, 2000);
         }
 
-        function getStoredReadLinks() {
+        async function getStoredReadLinks() {
             try {
-                const stored = localStorage.getItem('newsreader_read');
-                return stored ? JSON.parse(stored) : [];
+                // 1. Try DB
+                let stored = await window.appDB.get('metadata', 'readLinks');
+                // 2. Migration: If not in DB, check localStorage
+                if (!stored) {
+                    const old = localStorage.getItem('newsreader_read');
+                    if (old) {
+                        stored = JSON.parse(old);
+                        if (Array.isArray(stored)) {
+                            await window.appDB.put('metadata', stored, 'readLinks');
+                        }
+                    }
+                }
+                return Array.isArray(stored) ? stored : [];
             } catch(e) { return []; }
         }
-
-        window._readLinks = new Set(getStoredReadLinks());
 
         // --- MOBILE TAB BAR: active + Reader-tab mode + search + scroll tint ---
         window._mobilePane = 'timeline';
@@ -4581,7 +4799,10 @@
                 label.textContent = '✓ Read';
                 btn.classList.add('reader-progress');
                 const circle = document.getElementById('tab-progress-circle');
-                if (circle) circle.style.strokeDashoffset = '97.39';
+                if (circle) {
+                    const CIRC = 97.39;
+                    // Current progress is managed by the scroll listener
+                }
                 const text = document.getElementById('tab-progress-text');
                 if (text) text.textContent = window._articleTotalMinutes ? String(window._articleTotalMinutes) : '';
             } else {
@@ -4737,7 +4958,7 @@
                 }).slice(0, 80);
             }
             if (!results.length) {
-                container.innerHTML = `<div class="search-empty">${q ? 'No matches' : 'No articles yet'}</div>`;
+                container.innerHTML = `<div class=\"search-empty\">${q ? 'No matches' : 'No articles yet'}</div>`;
                 return;
             }
             const frag = document.createDocumentFragment();
@@ -4784,7 +5005,7 @@
             else filtered = list;
             filtered = filtered.slice(0, 80);
             if (!filtered.length) {
-                container.innerHTML = `<div class="search-empty">Empty</div>`;
+                container.innerHTML = `<div class=\"search-empty\">Empty</div>`;
                 return;
             }
             const frag = document.createDocumentFragment();
@@ -4837,8 +5058,6 @@
             _isMobileCache = window.innerWidth <= 900;
         }, { passive: true });
 
-        if (isMobile()) setMobilePane('sidebar');
-
         window.addEventListener('resize', () => {
             if (!_isMobileCache) return;
             if (!document.getElementById('timeline-pane').classList.contains('mobile-active') &&
@@ -4848,57 +5067,7 @@
             }
         }, { passive: true });
 
-        document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
-
         setInterval(() => { renderFeeds(); updateBadges?.(); }, 60000);
-
-        window.articles = [];
-
-        restoreReadLaterState();
-        restoreTypographyPrefs();
-        loadActiveFont("'Inter', sans-serif");
-        restoreLocalFeeds();
-        updateFaviconStyles();
-        restoreCategoryOrder();
-        restoreArticleCache();
-        if (window.articles.length === 0) {
-            window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
-        }
-
-        try {
-            const vm = localStorage.getItem('newsreader_viewmode');
-            if (vm === 'card') { window._viewMode = 'card'; const btn = document.getElementById('view-density-toggle'); if (btn) btn.textContent = 'CARD'; }
-        } catch(e) {}
-
-        try {
-            if (localStorage.getItem('newsreader_showemptycats') === '1') {
-                window._showEmptyCategories = true;
-                const btn = document.getElementById('show-empty-cats-toggle');
-                if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
-            }
-        } catch(e) {}
-
-        try {
-            const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
-            if (prefs.autoRefresh) {
-                const sel = document.getElementById('pref-auto-refresh');
-                if (sel) sel.value = prefs.autoRefresh;
-                updateAutoRefresh(prefs.autoRefresh);
-            }
-        } catch(e) {}
-
-        window._localFetchTimer = null;
-        if (window.feeds.length > 0) {
-            window._localFetchTimer = setTimeout(() => {
-                if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
-            }, 4000);
-        }
-        renderFeeds();
-        if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
-            showSkeletons();
-        }
-        renderTimeline();
-        updateEmptyState();
 
         let _hiddenAt = 0;
         document.addEventListener('visibilitychange', () => {
@@ -4911,6 +5080,110 @@
                 _hiddenAt = 0;
             }
         });
+
+        // --- ASYNC STARTUP SEQUENCE ---
+        (async function initApp() {
+            try {
+                console.log('App: Starting initialization...');
+                
+                // 1. Initial UI Setup (Synchronous)
+                if (isMobile()) setMobilePane('sidebar');
+                
+                // 2. Restore Preferences (Fast)
+                try {
+                    restoreTypographyPrefs();
+                    loadActiveFont("'Inter', sans-serif");
+                } catch(e) { console.warn('App: Prefs restore failed:', e); }
+
+                // 3. Restore Data (Async)
+                // Await critical data loads before first render
+                try {
+                    console.log('App: Restoring feeds and state...');
+                    await Promise.allSettled([
+                        restoreLocalFeeds(),
+                        restoreReadLaterState(),
+                        restoreCategoryOrder()
+                    ]);
+                    
+                    window._readLinks = new Set(await getStoredReadLinks());
+                    console.log('App: Restoring article cache...');
+                    await restoreArticleCache();
+                } catch(e) { console.error('App: Data restore failed:', e); }
+
+                // 4. Fallback for Empty State
+                if (window.articles.length === 0) {
+                    window.articles = [{ 
+                        id: crypto.randomUUID(), 
+                        source: "System", 
+                        title: "Welcome to RSS Reader", 
+                        author: "News Team", 
+                        timestamp: new Date().toISOString(), 
+                        excerpt: "Import an OPML file or add a manual feed to get started.", 
+                        body: "Your high-performance personal news hub.", 
+                        link: "#", 
+                        unread: true, 
+                        readLater: false 
+                    }];
+                }
+
+                // 5. Restore UI Modes
+                try {
+                    const vm = localStorage.getItem('newsreader_viewmode');
+                    if (vm === 'card') { 
+                        window._viewMode = 'card'; 
+                        const btn = document.getElementById('view-density-toggle'); 
+                        if (btn) btn.textContent = 'CARD'; 
+                    }
+                    
+                    if (localStorage.getItem('newsreader_showemptycats') === '1') {
+                        window._showEmptyCategories = true;
+                        const btn = document.getElementById('show-empty-cats-toggle');
+                        if (btn) { 
+                            btn.textContent = 'ON'; 
+                            btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; 
+                        }
+                    }
+
+                    const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                    if (prefs.autoRefresh) {
+                        const sel = document.getElementById('pref-auto-refresh');
+                        if (sel) sel.value = prefs.autoRefresh;
+                        updateAutoRefresh(prefs.autoRefresh);
+                    }
+                } catch(e) { console.warn('App: UI mode restore failed:', e); }
+
+                // 6. Initial Render (Crucial)
+                console.log('App: Performing initial render...');
+                renderFeeds();
+                if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
+                    showSkeletons();
+                }
+                renderTimeline();
+                updateEmptyState();
+
+                // 7. Start Background Sync
+                if (window.feeds.length > 0) {
+                    console.log('App: Starting background fetch...');
+                    window._localFetchTimer = setTimeout(() => {
+                        if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
+                    }, 4000);
+                }
+
+                // Listeners
+                document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
+                
+                console.log('App: Initialization complete.');
+            } catch (globalError) {
+                console.error('App: CRITICAL INITIALIZATION FAILURE:', globalError);
+                if (window.showToast) window.showToast("Critical Startup Error", true);
+                
+                // Absolute fallback render to avoid blank screen
+                try {
+                    renderFeeds();
+                    renderTimeline();
+                } catch(e) {}
+            }
+        })();
     </script>
 
     <!-- FIREBASE MODULE -->
@@ -5188,47 +5461,103 @@
         };
     </script>
 
-    <!-- PWA Service Worker (FIXED for modern Safari/Chrome support) -->
+    <!-- PWA Service Worker (ENHANCED for Offline Reliability) -->
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE = 'newsreader-v2';
-const ASSETS = [
+const CACHE_NAME = 'rss-reader-v3';
+const APP_SHELL = [
+    '/',
+    'index.html'
+];
+const EXTERNAL_ASSETS = [
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;600;700&family=Literata:ital,wght@0,400;0,700;1,400&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap'
 ];
+
 self.addEventListener('install', e => {
-    e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})));
+    e.waitUntil(
+        caches.open(CACHE_NAME).then(cache => {
+            console.log('SW: Caching App Shell and Assets');
+            return cache.addAll([...APP_SHELL, ...EXTERNAL_ASSETS]);
+        }).catch(err => console.warn('SW Install Cache Error:', err))
+    );
     self.skipWaiting();
 });
+
 self.addEventListener('activate', e => {
-    e.waitUntil(caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ));
+    e.waitUntil(
+        caches.keys().then(keys => Promise.all(
+            keys.map(key => {
+                if (key !== CACHE_NAME) {
+                    console.log('SW: Removing old cache', key);
+                    return caches.delete(key);
+                }
+            })
+        ))
+    );
     self.clients.claim();
 });
+
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
-    const isAsset = ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';
-    if (e.request.method !== 'GET' || !isAsset) return;
-    e.respondWith(
-        caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
-            const clone = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, clone));
-            return res;
-        }))
-    );
+    
+    // 1. App Shell & Static Assets: Stale-While-Revalidate
+    const isAppShell = APP_SHELL.includes(url.pathname) || url.pathname === '/';
+    const isStaticAsset = EXTERNAL_ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';
+
+    if (isAppShell || isStaticAsset) {
+        e.respondWith(
+            caches.match(e.request).then(cachedResponse => {
+                const fetchPromise = fetch(e.request).then(networkResponse => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const cacheCopy = networkResponse.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(e.request, cacheCopy));
+                    }
+                    return networkResponse;
+                }).catch(() => {
+                    // Fail silently, we have the cache
+                });
+                return cachedResponse || fetchPromise;
+            })
+        );
+        return;
+    }
+
+    // 2. Feed Fetches (Proxies/APIs): Network-First with Cache Fallback
+    if (e.request.method === 'GET' && (url.hostname.includes('workers.dev') || url.hostname.includes('bsky.app') || url.hostname.includes('allorigins'))) {
+        e.respondWith(
+            fetch(e.request).then(networkResponse => {
+                const cacheCopy = networkResponse.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(e.request, cacheCopy));
+                return networkResponse;
+            }).catch(() => {
+                return caches.match(e.request);
+            })
+        );
+        return;
+    }
 });`;
             try {
-                // FIXED: Blob object URL prevents the security errors caused by Data URIs
                 const blob = new Blob([swCode], { type: 'application/javascript' });
                 const swUrl = URL.createObjectURL(blob);
                 navigator.serviceWorker.register(swUrl, { scope: '/' })
-                    .then(() => console.log('RSS Reader: SW registered successfully via Blob'))
-                    .catch(err => console.warn('RSS Reader: SW registration blocked/failed:', err));
+                    .then(reg => {
+                        console.log('RSS Reader: SW registered successfully');
+                        // Optional: Check for updates automatically
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    if (window.showToast) window.showToast("Update available! Reload to apply.", false, true);
+                                }
+                            });
+                        });
+                    })
+                    .catch(err => console.warn('RSS Reader: SW registration failed:', err));
             } catch (err) {
-                console.warn('RSS Reader: Failed to create Service Worker Blob:', err);
+                console.warn('RSS Reader: Failed to create SW Blob:', err);
             }
         }
     </script>
