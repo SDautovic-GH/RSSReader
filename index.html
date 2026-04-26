@@ -5461,47 +5461,103 @@
         };
     </script>
 
-    <!-- PWA Service Worker (FIXED for modern Safari/Chrome support) -->
+    <!-- PWA Service Worker (ENHANCED for Offline Reliability) -->
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE = 'newsreader-v2';
-const ASSETS = [
+const CACHE_NAME = 'rss-reader-v3';
+const APP_SHELL = [
+    '/',
+    'index.html'
+];
+const EXTERNAL_ASSETS = [
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;600;700&family=Literata:ital,wght@0,400;0,700;1,400&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap'
 ];
+
 self.addEventListener('install', e => {
-    e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})));
+    e.waitUntil(
+        caches.open(CACHE_NAME).then(cache => {
+            console.log('SW: Caching App Shell and Assets');
+            return cache.addAll([...APP_SHELL, ...EXTERNAL_ASSETS]);
+        }).catch(err => console.warn('SW Install Cache Error:', err))
+    );
     self.skipWaiting();
 });
+
 self.addEventListener('activate', e => {
-    e.waitUntil(caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ));
+    e.waitUntil(
+        caches.keys().then(keys => Promise.all(
+            keys.map(key => {
+                if (key !== CACHE_NAME) {
+                    console.log('SW: Removing old cache', key);
+                    return caches.delete(key);
+                }
+            })
+        ))
+    );
     self.clients.claim();
 });
+
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
-    const isAsset = ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';
-    if (e.request.method !== 'GET' || !isAsset) return;
-    e.respondWith(
-        caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
-            const clone = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, clone));
-            return res;
-        }))
-    );
+    
+    // 1. App Shell & Static Assets: Stale-While-Revalidate
+    const isAppShell = APP_SHELL.includes(url.pathname) || url.pathname === '/';
+    const isStaticAsset = EXTERNAL_ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';
+
+    if (isAppShell || isStaticAsset) {
+        e.respondWith(
+            caches.match(e.request).then(cachedResponse => {
+                const fetchPromise = fetch(e.request).then(networkResponse => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const cacheCopy = networkResponse.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(e.request, cacheCopy));
+                    }
+                    return networkResponse;
+                }).catch(() => {
+                    // Fail silently, we have the cache
+                });
+                return cachedResponse || fetchPromise;
+            })
+        );
+        return;
+    }
+
+    // 2. Feed Fetches (Proxies/APIs): Network-First with Cache Fallback
+    if (e.request.method === 'GET' && (url.hostname.includes('workers.dev') || url.hostname.includes('bsky.app') || url.hostname.includes('allorigins'))) {
+        e.respondWith(
+            fetch(e.request).then(networkResponse => {
+                const cacheCopy = networkResponse.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(e.request, cacheCopy));
+                return networkResponse;
+            }).catch(() => {
+                return caches.match(e.request);
+            })
+        );
+        return;
+    }
 });`;
             try {
-                // FIXED: Blob object URL prevents the security errors caused by Data URIs
                 const blob = new Blob([swCode], { type: 'application/javascript' });
                 const swUrl = URL.createObjectURL(blob);
                 navigator.serviceWorker.register(swUrl, { scope: '/' })
-                    .then(() => console.log('RSS Reader: SW registered successfully via Blob'))
-                    .catch(err => console.warn('RSS Reader: SW registration blocked/failed:', err));
+                    .then(reg => {
+                        console.log('RSS Reader: SW registered successfully');
+                        // Optional: Check for updates automatically
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    if (window.showToast) window.showToast("Update available! Reload to apply.", false, true);
+                                }
+                            });
+                        });
+                    })
+                    .catch(err => console.warn('RSS Reader: SW registration failed:', err));
             } catch (err) {
-                console.warn('RSS Reader: Failed to create Service Worker Blob:', err);
+                console.warn('RSS Reader: Failed to create SW Blob:', err);
             }
         }
     </script>
