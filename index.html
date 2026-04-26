@@ -1661,6 +1661,130 @@
         window._showEmptyCategories = false;
         window._navigating = false;
 
+        // ===== INDEXEDDB STORAGE MANAGER =====
+        class RSSReaderDB {
+            constructor() {
+                this.dbName = 'RSSReaderDB';
+                this.version = 2; // Bump version for favicons store
+                this.db = null;
+            }
+
+            async open() {
+                if (this.db) return this.db;
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.version);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        const oldVersion = e.oldVersion;
+
+                        // Articles (Version 1)
+                        if (!db.objectStoreNames.contains('articles')) {
+                            const store = db.createObjectStore('articles', { keyPath: 'id' });
+                            store.createIndex('timestamp', '_ts', { unique: false });
+                            store.createIndex('feedUrl', 'feedUrl', { unique: false });
+                            store.createIndex('unread', 'unread', { unique: false });
+                            store.createIndex('readLater', 'readLater', { unique: false });
+                        }
+                        // Feeds (Version 1)
+                        if (!db.objectStoreNames.contains('feeds')) {
+                            db.createObjectStore('feeds', { keyPath: 'url' });
+                        }
+                        // Metadata (Version 1)
+                        if (!db.objectStoreNames.contains('metadata')) {
+                            db.createObjectStore('metadata');
+                        }
+                        // Favicons (Version 2)
+                        if (!db.objectStoreNames.contains('favicons')) {
+                            db.createObjectStore('favicons');
+                        }
+                    };
+                    request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
+                    request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
+                });
+            }
+
+            async put(storeName, item, key) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = key ? store.put(item, key) : store.put(item);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async get(storeName, key) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const store = tx.objectStore(storeName);
+                    const request = store.get(key);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async getAll(storeName) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const store = tx.objectStore(storeName);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async delete(storeName, key) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = store.delete(key);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async clear(storeName) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = store.clear();
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async bulkPutArticles(articles) {
+                if (!articles.length) return;
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('articles', 'readwrite');
+                    const store = tx.objectStore('articles');
+                    articles.forEach(a => store.put(a));
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
+
+            async bulkPutFavicons(map) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('favicons', 'readwrite');
+                    const store = tx.objectStore('favicons');
+                    for (const [url, fav] of Object.entries(map)) {
+                        store.put(fav, url);
+                    }
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
+        }
+        window.appDB = new RSSReaderDB();
+
         // Helper: URL to Links — walks text nodes only, never touches attributes
         function linkify(html) {
             const tmp = document.createElement('template');
@@ -3315,14 +3439,25 @@
             }
         };
 
-        function saveCategoryOrder() {
-            try { localStorage.setItem('newsreader_catorder', JSON.stringify(window._categoryOrder)); } catch(e) { console.warn('Storage error:', e.message); }
-        }
-        function restoreCategoryOrder() {
+        async function saveCategoryOrder() {
             try {
-                const stored = localStorage.getItem('newsreader_catorder');
-                if (stored) window._categoryOrder = JSON.parse(stored);
-            } catch(e) { console.warn('Storage error:', e.message); }
+                await window.appDB.put('metadata', window._categoryOrder, 'categoryOrder');
+            } catch(e) { console.warn('DB error:', e.message); }
+        }
+        async function restoreCategoryOrder() {
+            try {
+                const stored = await window.appDB.get('metadata', 'categoryOrder');
+                if (stored) {
+                    window._categoryOrder = stored;
+                } else {
+                    // Migration
+                    const old = localStorage.getItem('newsreader_catorder');
+                    if (old) {
+                        window._categoryOrder = JSON.parse(old);
+                        await saveCategoryOrder();
+                    }
+                }
+            } catch(e) { console.warn('DB error:', e.message); }
         }
 
         function updateBadges() {
@@ -3555,15 +3690,52 @@
         };
 
         // --- READ LATER PERSISTENCE ---
-        function saveReadLaterState() {
-            try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(window._readLaterLinks))); } catch(e) { console.warn('Storage error:', e.message); }
+        async function saveReadLaterState() {
+            try {
+                await window.appDB.put('metadata', Array.from(window._readLaterLinks), 'readLaterLinks');
+            } catch(e) { console.warn('DB error:', e.message); }
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
         }
-        function restoreReadLaterState() {
+        async function restoreReadLaterState() {
             try {
-                const stored = localStorage.getItem('newsreader_readlater');
-                if (stored) window._readLaterLinks = new Set(JSON.parse(stored));
-            } catch(e) { console.warn('Storage error:', e.message); }
+                // 1. Try DB
+                let stored = await window.appDB.get('metadata', 'readLaterLinks');
+                // 2. Migration
+                if (!stored) {
+                    const old = localStorage.getItem('newsreader_readlater');
+                    if (old) {
+                        stored = JSON.parse(old);
+                        if (Array.isArray(stored)) {
+                            await window.appDB.put('metadata', stored, 'readLaterLinks');
+                        }
+                    }
+                }
+                if (stored) window._readLaterLinks = new Set(stored);
+            } catch(e) { console.warn('DB error:', e.message); }
+        }
+
+        async function migrateFavicons() {
+            try {
+                const keys = Object.keys(localStorage);
+                const faviconKeys = keys.filter(k => k.startsWith('favicon_'));
+                if (faviconKeys.length === 0) return;
+
+                console.log(`Migrating ${faviconKeys.length} favicons to IndexedDB...`);
+                const batch = {};
+                for (const key of faviconKeys) {
+                    const url = key.replace('favicon_', '');
+                    const data = localStorage.getItem(key);
+                    if (data) batch[url] = data;
+                }
+                
+                await window.appDB.bulkPutFavicons(batch);
+                
+                // Cleanup confirm write success
+                for (const key of faviconKeys) {
+                    localStorage.removeItem(key);
+                }
+                console.log('Favicon migration complete.');
+            } catch(e) { console.warn('Favicon migration error:', e.message); }
         }
 
         // --- READING PROGRESS BAR + LIVE COUNTER ---
@@ -4467,34 +4639,52 @@
         }
 
         // --- ARTICLE CACHE ---
-        function saveArticleCache() {
-            try {
-                const cache = window.articles
-                    .slice().sort((a, b) => (b._ts || 0) - (a._ts || 0)).slice(0, 500)
-                    .map(a => ({
+        async function saveArticleCache() {
+            // Keep the limit but increase it significantly (IndexedDB can handle thousands)
+            const cache = window.articles
+                .slice()
+                .sort((a, b) => (b._ts || 0) - (a._ts || 0))
+                .slice(0, 2000) // 4x increase in history capacity
+                .map(a => ({
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
                     timestamp: a.timestamp, _ts: a._ts, excerpt: a.excerpt, link: a.link,
                     unread: a.unread, readLater: a.readLater, image: a.image,
-                    // Only persist body when fully extracted via proxy (not raw RSS stubs)
-                    body: a._fullBodyLoaded ? (a.body || '').slice(0, 50000) : '',
+                    body: a._fullBodyLoaded ? (a.body || '').slice(0, 100000) : '',
                     _fullBodyLoaded: !!a._fullBodyLoaded
                 }));
-                localStorage.setItem('newsreader_articles', JSON.stringify(cache));
-            } catch(e) { console.warn('Storage error:', e.message); }
+            
+            try {
+                await window.appDB.bulkPutArticles(cache);
+            } catch(e) { console.warn('DB Save error:', e.message); }
         }
 
-        function restoreArticleCache() {
+        async function restoreArticleCache() {
             try {
-                const stored = localStorage.getItem('newsreader_articles');
-                if (!stored) return;
-                const cache = JSON.parse(stored);
+                // 1. Check if DB has articles
+                let cache = await window.appDB.getAll('articles');
+                
+                // 2. Migration: If DB is empty, check localStorage
+                if (cache.length === 0) {
+                    const stored = localStorage.getItem('newsreader_articles');
+                    if (stored) {
+                        console.log('Migrating articles from localStorage to IndexedDB...');
+                        cache = JSON.parse(stored);
+                        if (Array.isArray(cache) && cache.length > 0) {
+                            await window.appDB.bulkPutArticles(cache);
+                            // We don't delete localStorage yet — keep it as backup for this session
+                        }
+                    }
+                }
+
                 if (!Array.isArray(cache) || cache.length === 0) return;
+                
+                // 2-day cutoff for general articles, but ALWAYS keep Read Later items
                 const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
                 const fresh = cache.filter(a => {
                     const ts = a._ts || new Date(a.timestamp).getTime();
                     return ts >= cutoff || a.readLater;
                 });
-                // Build link→body lookup so extracted bodies survive feed re-fetches
+
                 window._bodyCache = {};
                 fresh.forEach(a => {
                     a.unread = !window._readLinks.has(a.link);
@@ -4505,412 +4695,158 @@
                     if (!a.body) a.body = '';
                 });
                 window.articles = fresh;
-            } catch(e) { console.warn('Storage error:', e.message); }
+            } catch(e) { console.warn('DB Restore error:', e.message); }
         }
 
         // --- FEED PERSISTENCE ---
-        function saveLocalFeeds() {
-            try { localStorage.setItem('newsreader_feeds', JSON.stringify(window.accountStates.local)); } catch(e) { console.warn('Storage error:', e.message); }
+        async function saveLocalFeeds() {
+            try {
+                // Clear existing feeds to ensure sync
+                const db = await window.appDB.open();
+                const tx = db.transaction('feeds', 'readwrite');
+                await tx.objectStore('feeds').clear();
+                
+                // Bulk put new feeds
+                for (const f of window.accountStates.local) {
+                    await window.appDB.put('feeds', f);
+                }
+            } catch(e) { console.warn('DB Feed Save error:', e.message); }
         }
 
         // Initialize an in-memory map to group and cache favicon operations
         window._globalFaviconCache = window._globalFaviconCache || {};
 
-        function restoreLocalFeeds() {
+        async function restoreLocalFeeds() {
             try {
-                const stored = localStorage.getItem('newsreader_feeds');
-                if (!stored) return;
-                const feeds = JSON.parse(stored);
+                // 1. Try DB
+                let feeds = await window.appDB.getAll('feeds');
+                
+                // 2. Migration: If DB is empty, check localStorage
+                if (feeds.length === 0) {
+                    const stored = localStorage.getItem('newsreader_feeds');
+                    if (stored) {
+                        feeds = JSON.parse(stored);
+                        if (Array.isArray(feeds) && feeds.length > 0) {
+                            await Promise.all(feeds.map(f => window.appDB.put('feeds', f)));
+                        }
+                    }
+                }
+
                 if (!Array.isArray(feeds) || feeds.length === 0) return;
 
-                feeds.forEach(f => {
+                // Load favicons from dedicated DB store
+                for (const f of feeds) {
                     if (!f.favicon) {
-                        const key = 'favicon_' + f.url;
-                        if (window._globalFaviconCache[key] === undefined) {
-                            try { window._globalFaviconCache[key] = localStorage.getItem(key) || null; } catch(e){}
-                        }
-                        f.favicon = window._globalFaviconCache[key] || undefined;
+                        const fav = await window.appDB.get('favicons', f.url);
+                        if (fav) f.favicon = fav;
                     }
-                });
+                }
 
                 window.accountStates.local = feeds;
                 window.feeds = feeds;
                 preloadAllFavicons();
                 updateFaviconStyles();
-            } catch(e) { console.warn('Storage error:', e.message); }
+            } catch(e) { console.warn('DB Feed Restore error:', e.message); }
         }
+
 
         // --- READ STATE PERSISTENCE ---
         let _saveReadStateTimer = null;
-        function saveReadState() {
+        async function saveReadState() {
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
             clearTimeout(_saveReadStateTimer);
-            _saveReadStateTimer = setTimeout(() => {
+            _saveReadStateTimer = setTimeout(async () => {
                 try {
                     const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
-                    const existing = getStoredReadLinks();
+                    const existing = await getStoredReadLinks();
                     const loadedLinks = new Set(window.articles.map(a => a.link));
                     const preserved = existing.filter(l => !loadedLinks.has(l));
                     const merged = Array.from(new Set([...preserved, ...readLinks]));
-                    localStorage.setItem('newsreader_read', JSON.stringify(merged.slice(-5000)));
-                } catch(e) { console.warn('Storage error:', e.message); }
+                    const final = merged.slice(-10000); // 2x increase in read history
+                    await window.appDB.put('metadata', final, 'readLinks');
+                } catch(e) { console.warn('Read state save error:', e.message); }
             }, 2000);
         }
 
-        function getStoredReadLinks() {
+        async function getStoredReadLinks() {
             try {
-                const stored = localStorage.getItem('newsreader_read');
-                return stored ? JSON.parse(stored) : [];
+                // 1. Try DB
+                let stored = await window.appDB.get('metadata', 'readLinks');
+                // 2. Migration: If not in DB, check localStorage
+                if (!stored) {
+                    const old = localStorage.getItem('newsreader_read');
+                    if (old) {
+                        stored = JSON.parse(old);
+                        if (Array.isArray(stored)) {
+                            await window.appDB.put('metadata', stored, 'readLinks');
+                        }
+                    }
+                }
+                return Array.isArray(stored) ? stored : [];
             } catch(e) { return []; }
         }
 
-        window._readLinks = new Set(getStoredReadLinks());
+        // --- ASYNC STARTUP SEQUENCE ---
+        (async function initApp() {
+            // 1. Initial UI Setup (Synchronous)
+            if (isMobile()) setMobilePane('sidebar');
+            restoreReadLaterState(); // Read later is small, stays in localStorage for now
+            restoreTypographyPrefs();
+            loadActiveFont("'Inter', sans-serif");
+            restoreLocalFeeds();
+            updateFaviconStyles();
+            restoreCategoryOrder();
 
-        // --- MOBILE TAB BAR: active + Reader-tab mode + search + scroll tint ---
-        window._mobilePane = 'timeline';
+            // 2. Async Storage Load
+            window._readLinks = new Set(await getStoredReadLinks());
+            await restoreArticleCache();
 
-        function updateReaderTabMode() {
-            const btn = document.getElementById('mob-tab-reader');
-            const label = document.getElementById('mob-tab-reader-label');
-            if (!btn || !label) return;
-            btn.classList.remove('reader-progress');
-            if (window._mobilePane === 'timeline') {
-                const n = (window.currentTimeline || window.articles || []).filter(a => a.unread).length;
-                label.textContent = n > 0 ? `✓ ${n} Unread` : '✓ Read';
-            } else if (window._mobilePane === 'viewer') {
-                label.textContent = '✓ Read';
-                btn.classList.add('reader-progress');
-                const circle = document.getElementById('tab-progress-circle');
-                if (circle) circle.style.strokeDashoffset = '97.39';
-                const text = document.getElementById('tab-progress-text');
-                if (text) text.textContent = window._articleTotalMinutes ? String(window._articleTotalMinutes) : '';
-            } else {
-                label.textContent = 'Reader';
+            // 3. Fallback for Empty State
+            if (window.articles.length === 0) {
+                window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
             }
-        }
-        window.updateReaderTabMode = updateReaderTabMode;
 
-        window.onReaderTabClick = () => {
-            const pane = window._mobilePane;
-            if (pane === 'timeline') {
-                markAllRead();
-                return;
-            }
-            if (pane === 'viewer') {
-                const current = window.currentArticle;
-                if (current) {
-                    current.unread = false;
-                    window._readLinks.add(current.link);
-                    saveReadState();
+            // 4. Restore UI Modes
+            try {
+                const vm = localStorage.getItem('newsreader_viewmode');
+                if (vm === 'card') { window._viewMode = 'card'; const btn = document.getElementById('view-density-toggle'); if (btn) btn.textContent = 'CARD'; }
+            } catch(e) {}
+
+            try {
+                if (localStorage.getItem('newsreader_showemptycats') === '1') {
+                    window._showEmptyCategories = true;
+                    const btn = document.getElementById('show-empty-cats-toggle');
+                    if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
                 }
-                const nav = (window._navSnapshot && window._navSnapshot.length) ? window._navSnapshot : (window.currentTimeline || []);
-                const currentId = current?.id;
-                const startIdx = currentId ? nav.findIndex(a => a.id === currentId) : -1;
-                let nextUnread = null;
-                for (let i = startIdx + 1; i < nav.length; i++) {
-                    if (nav[i].unread) { nextUnread = nav[i]; break; }
+            } catch(e) {}
+
+            try {
+                const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                if (prefs.autoRefresh) {
+                    const sel = document.getElementById('pref-auto-refresh');
+                    if (sel) sel.value = prefs.autoRefresh;
+                    updateAutoRefresh(prefs.autoRefresh);
                 }
-                if (!nextUnread) {
-                    for (let i = 0; i < startIdx; i++) {
-                        if (nav[i].unread) { nextUnread = nav[i]; break; }
-                    }
-                }
-                refreshUI?.();
-                if (nextUnread) {
-                    window._navigating = true;
-                    selectArticle(nextUnread.id);
-                    window._navigating = false;
-                } else {
-                    setMobilePane('timeline');
-                    window.showToast?.('All caught up');
-                }
-                return;
+            } catch(e) {}
+
+            // 5. Initial Render
+            renderFeeds();
+            if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
+                showSkeletons();
             }
-            if (window.currentArticle) setMobilePane('viewer');
-            else setMobilePane('timeline');
-        };
+            renderTimeline();
+            updateEmptyState();
 
-        window.setMobilePane = (pane) => {
-            window._mobilePane = pane;
-            const paneMap = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
-            const tabMap  = { sidebar: 'mob-tab-feeds', timeline: 'mob-tab-articles', viewer: 'mob-tab-reader' };
-            Object.entries(paneMap).forEach(([key, id]) => {
-                const el = document.getElementById(id);
-                if (el) el.classList.toggle('mobile-active', key === pane);
-            });
-            Object.entries(tabMap).forEach(([key, id]) => {
-                const btn = document.getElementById(id);
-                if (!btn) return;
-                btn.classList.toggle('active', key === pane);
-            });
-            updateReaderTabMode();
-            document.body.classList.remove('bar-scrolled');
-            if (pane === 'timeline') {
-                const listEl = document.getElementById('article-list');
-                if (listEl) {
-                    if (window.currentArticle) {
-                        const el = listEl.querySelector(`[data-id="${window.currentArticle.id}"]`);
-                        if (el) { el.scrollIntoView({ block: 'center' }); }
-                        else { listEl.scrollTop = 0; }
-                    } else {
-                        listEl.scrollTop = 0;
-                    }
-                }
-            }
-        };
-
-        // --- SCROLL-DRIVEN COMPACT BAR (labels hide mid-scroll, return at top and bottom) ---
-        (function() {
-            const TOP_EDGE = 4;
-            const BOTTOM_EDGE = 40;
-            let ticking = false;
-            const getScrollable = () => {
-                const pane = window._mobilePane;
-                if (pane === 'timeline') return document.getElementById('article-list');
-                if (pane === 'viewer') return document.getElementById('reader-view');
-                if (pane === 'sidebar') return document.querySelector('#sidebar-pane .overflow-y-auto');
-                return null;
-            };
-            const applyScrollState = () => {
-                const el = getScrollable();
-                if (!el) {
-                    document.body.classList.remove('bar-scrolled');
-                    ticking = false;
-                    return;
-                }
-                const { scrollTop, scrollHeight, clientHeight } = el;
-                const maxScroll = scrollHeight - clientHeight;
-                const atTop = scrollTop <= TOP_EDGE;
-                const atBottom = maxScroll <= 0 || (maxScroll - scrollTop) <= BOTTOM_EDGE;
-                const midScroll = !atTop && !atBottom;
-                document.body.classList.toggle('bar-scrolled', midScroll);
-                ticking = false;
-            };
-            const onScroll = () => {
-                if (ticking) return;
-                ticking = true;
-                requestAnimationFrame(applyScrollState);
-            };
-            ['article-list', 'reader-view'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.addEventListener('scroll', onScroll, { passive: true });
-            });
-            document.addEventListener('scroll', (e) => {
-                if (e.target && e.target.closest && e.target.closest('#sidebar-pane')) onScroll();
-            }, { passive: true, capture: true });
-        })();
-
-        // --- MOBILE SEARCH SHEET ---
-        window.toggleSearchSheet = () => {
-            const open = !document.body.classList.contains('search-active');
-            if (open) {
-                document.body.classList.add('search-active');
-                const input = document.getElementById('mobile-search-input');
-                if (input) {
-                    input.value = '';
-                    updateSearchResults('');
-                    setTimeout(() => input.focus(), 50);
-                }
-            } else {
-                closeSearchSheet();
-            }
-        };
-        window.closeSearchSheet = () => {
-            document.body.classList.remove('search-active');
-            const input = document.getElementById('mobile-search-input');
-            if (input) input.blur();
-        };
-        window.updateSearchResults = (query) => {
-            const container = document.getElementById('mobile-search-results');
-            if (!container) return;
-            const q = (query || '').trim().toLowerCase();
-            const list = window.articles || [];
-            let results;
-            if (!q) {
-                results = list.slice(0, 40);
-            } else {
-                results = list.filter(a => {
-                    const t = (a.title || '').toLowerCase();
-                    const s = (a.source || '').toLowerCase();
-                    const b = (a.excerpt || '').toLowerCase();
-                    return t.includes(q) || s.includes(q) || b.includes(q);
-                }).slice(0, 80);
-            }
-            if (!results.length) {
-                container.innerHTML = `<div class="search-empty">${q ? 'No matches' : 'No articles yet'}</div>`;
-                return;
-            }
-            const frag = document.createDocumentFragment();
-            results.forEach(a => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'search-item';
-                btn.setAttribute('data-id', a.id);
-                const title = document.createElement('div');
-                title.className = 'search-item-title';
-                title.textContent = a.title || '(untitled)';
-                const meta = document.createElement('div');
-                meta.className = 'search-item-meta';
-                const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-                meta.textContent = [a.source, when].filter(Boolean).join(' · ');
-                btn.appendChild(title);
-                btn.appendChild(meta);
-                btn.addEventListener('click', () => {
-                    closeSearchSheet();
-                    selectArticle(a.id);
-                });
-                frag.appendChild(btn);
-            });
-            container.innerHTML = '';
-            container.appendChild(frag);
-        };
-        window.searchSmart = (which) => {
-            const input = document.getElementById('mobile-search-input');
-            if (input) input.value = '';
-            const container = document.getElementById('mobile-search-results');
-            if (!container) return;
-            const list = window.articles || [];
-            let filtered;
-            if (which === 'all') filtered = list.filter(a => a.unread);
-            else if (which === 'today') {
-                const now = new Date();
-                const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-                filtered = list.filter(a => {
-                    if (!a.timestamp) return false;
-                    const t = new Date(a.timestamp);
-                    return t.getFullYear() === y && t.getMonth() === m && t.getDate() === d;
-                });
-            } else if (which === 'later') filtered = list.filter(a => a.readLater);
-            else filtered = list;
-            filtered = filtered.slice(0, 80);
-            if (!filtered.length) {
-                container.innerHTML = `<div class="search-empty">Empty</div>`;
-                return;
-            }
-            const frag = document.createDocumentFragment();
-            filtered.forEach(a => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'search-item';
-                const title = document.createElement('div');
-                title.className = 'search-item-title';
-                title.textContent = a.title || '(untitled)';
-                const meta = document.createElement('div');
-                meta.className = 'search-item-meta';
-                const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-                meta.textContent = [a.source, when].filter(Boolean).join(' · ');
-                btn.appendChild(title);
-                btn.appendChild(meta);
-                btn.addEventListener('click', () => {
-                    closeSearchSheet();
-                    selectArticle(a.id);
-                });
-                frag.appendChild(btn);
-            });
-            container.innerHTML = '';
-            container.appendChild(frag);
-        };
-
-        // --- FAVICON PRELOAD CACHE ---
-        const _faviconImageCache = {};
-        function preloadFavicon(url) {
-            if (!url || _faviconImageCache[url]) return;
-            const img = new Image();
-            img.src = url;
-            _faviconImageCache[url] = img;
-        }
-        function preloadAllFavicons() {
-            window.feeds.forEach(f => { if (f.favicon) preloadFavicon(f.favicon); });
-        }
-
-        // --- EMPTY STATE ---
-        function updateEmptyState() {
-            const hasFeeds = window.feeds.length > 0;
-            const welcome = document.getElementById('empty-state-welcome');
-            const select = document.getElementById('empty-state-select');
-            if (welcome) welcome.classList.toggle('hidden', hasFeeds);
-            if (select) select.classList.toggle('hidden', !hasFeeds);
-        }
-        let _isMobileCache = window.innerWidth <= 900;
-        function isMobile() { return _isMobileCache; }
-        window.addEventListener('resize', () => {
-            _isMobileCache = window.innerWidth <= 900;
-        }, { passive: true });
-
-        if (isMobile()) setMobilePane('sidebar');
-
-        window.addEventListener('resize', () => {
-            if (!_isMobileCache) return;
-            if (!document.getElementById('timeline-pane').classList.contains('mobile-active') &&
-                !document.getElementById('sidebar-pane').classList.contains('mobile-active') &&
-                !document.getElementById('viewer-pane').classList.contains('mobile-active')) {
-                setMobilePane('timeline');
-            }
-        }, { passive: true });
-
-        document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
-
-        setInterval(() => { renderFeeds(); updateBadges?.(); }, 60000);
-
-        window.articles = [];
-
-        restoreReadLaterState();
-        restoreTypographyPrefs();
-        loadActiveFont("'Inter', sans-serif");
-        restoreLocalFeeds();
-        updateFaviconStyles();
-        restoreCategoryOrder();
-        restoreArticleCache();
-        if (window.articles.length === 0) {
-            window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
-        }
-
-        try {
-            const vm = localStorage.getItem('newsreader_viewmode');
-            if (vm === 'card') { window._viewMode = 'card'; const btn = document.getElementById('view-density-toggle'); if (btn) btn.textContent = 'CARD'; }
-        } catch(e) {}
-
-        try {
-            if (localStorage.getItem('newsreader_showemptycats') === '1') {
-                window._showEmptyCategories = true;
-                const btn = document.getElementById('show-empty-cats-toggle');
-                if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
-            }
-        } catch(e) {}
-
-        try {
-            const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
-            if (prefs.autoRefresh) {
-                const sel = document.getElementById('pref-auto-refresh');
-                if (sel) sel.value = prefs.autoRefresh;
-                updateAutoRefresh(prefs.autoRefresh);
-            }
-        } catch(e) {}
-
-        window._localFetchTimer = null;
-        if (window.feeds.length > 0) {
-            window._localFetchTimer = setTimeout(() => {
-                if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
-            }, 4000);
-        }
-        renderFeeds();
-        if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
-            showSkeletons();
-        }
-        renderTimeline();
-        updateEmptyState();
-
-        let _hiddenAt = 0;
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                _hiddenAt = Date.now();
-            } else {
-                if (_hiddenAt && Date.now() - _hiddenAt > 5 * 60 * 1000) {
+            // 6. Start Background Sync
+            if (window.feeds.length > 0) {
+                window._localFetchTimer = setTimeout(() => {
                     if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
-                }
-                _hiddenAt = 0;
+                }, 4000);
             }
-        });
+
+            // Listeners
+            document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
+        })();
     </script>
 
     <!-- FIREBASE MODULE -->
