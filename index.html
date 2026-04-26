@@ -2378,23 +2378,7 @@
 
             let filtered = window.articles;
 
-            if (window.currentSmartFeed === 'all') {
-                filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
-            } else if (window.currentSmartFeed === 'today') {
-                const dayAgo = new Date(Date.now() - 86400000);
-                filtered = filtered.filter(a => new Date(a.timestamp) > dayAgo || window._pinnedArticleIds.has(a.id));
-            } else if (window.currentSmartFeed === 'read-later') {
-                filtered = filtered.filter(a => a.readLater || window._pinnedArticleIds.has(a.id));
-            }
-
-            if (window.currentCategoryFilter) {
-                const sources = window.feeds.filter(f => f.category === window.currentCategoryFilter).map(f => f.name);
-                filtered = filtered.filter(a => sources.includes(a.source));
-            } else if (window.currentSourceFilter) {
-                filtered = filtered.filter(a => a.source === window.currentSourceFilter);
-            }
-
-            // --- Desktop Search Filter ---
+            // If searching, search globally (all articles)
             if (window._searchQuery) {
                 const q = window._searchQuery.toLowerCase();
                 filtered = filtered.filter(a =>
@@ -2402,6 +2386,23 @@
                     (a.source||'').toLowerCase().includes(q) ||
                     (a.excerpt||'').toLowerCase().includes(q)
                 );
+            } else {
+                // Apply normal filters
+                if (window.currentSmartFeed === 'all') {
+                    filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
+                } else if (window.currentSmartFeed === 'today') {
+                    const dayAgo = new Date(Date.now() - 86400000);
+                    filtered = filtered.filter(a => new Date(a.timestamp) > dayAgo || window._pinnedArticleIds.has(a.id));
+                } else if (window.currentSmartFeed === 'read-later') {
+                    filtered = filtered.filter(a => a.readLater || window._pinnedArticleIds.has(a.id));
+                }
+
+                if (window.currentCategoryFilter) {
+                    const sources = window.feeds.filter(f => f.category === window.currentCategoryFilter).map(f => f.name);
+                    filtered = filtered.filter(a => sources.includes(a.source));
+                } else if (window.currentSourceFilter) {
+                    filtered = filtered.filter(a => a.source === window.currentSourceFilter);
+                }
             }
 
             filtered.sort((a, b) => {

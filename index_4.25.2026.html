@@ -1,6 +1,7 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
-<head></head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1086,10 +1087,23 @@
         <!-- PANE 2: Timeline -->
         <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition" style="width: 336px;">
             <div id="timeline-header" class="px-4 h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
-                <div class="flex items-center">
-                    <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors">0 Unread</button>
-                    <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded">DEDUPED</span>
+                <div class="flex items-center flex-1 min-w-0">
+                    <div id="timeline-count-group" class="flex items-center">
+                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap">0 Unread</button>
+                        <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
+                    </div>
+                    <!-- Desktop Search Input -->
+                    <div id="desk-search-container" class="hidden flex-1 items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-2 h-9 ml-[-8px]">
+                        <svg class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input id="desk-search-input" type="text" placeholder="Search..." class="bg-transparent border-none outline-none text-sm text-gray-900 dark:text-gray-100 w-full font-normal lowercase tracking-normal" oninput="handleDeskSearch(this.value)">
+                        <button onclick="closeDeskSearch()" class="ml-1 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
                 </div>
+                <button id="desk-search-trigger" onclick="openDeskSearch()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 ml-2 flex-shrink-0" title="Search Articles (/)">
+                    <svg class="h-5 w-5"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
             </div>
 
             <div id="article-list" class="flex-1 overflow-y-auto no-scrollbar"></div>
@@ -1633,6 +1647,7 @@
         window.collapsedCategories = {};
         window.currentTimeline = [];
         window.contextMenuArticleId = null;
+        window._searchQuery = '';
         window._autoRefreshTimer = null;
 
         window._feedHealth = {};
@@ -2363,20 +2378,31 @@
 
             let filtered = window.articles;
 
-            if (window.currentSmartFeed === 'all') {
-                filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
-            } else if (window.currentSmartFeed === 'today') {
-                const dayAgo = new Date(Date.now() - 86400000);
-                filtered = filtered.filter(a => new Date(a.timestamp) > dayAgo || window._pinnedArticleIds.has(a.id));
-            } else if (window.currentSmartFeed === 'read-later') {
-                filtered = filtered.filter(a => a.readLater || window._pinnedArticleIds.has(a.id));
-            }
+            // If searching, search globally (all articles)
+            if (window._searchQuery) {
+                const q = window._searchQuery.toLowerCase();
+                filtered = filtered.filter(a =>
+                    (a.title||'').toLowerCase().includes(q) ||
+                    (a.source||'').toLowerCase().includes(q) ||
+                    (a.excerpt||'').toLowerCase().includes(q)
+                );
+            } else {
+                // Apply normal filters
+                if (window.currentSmartFeed === 'all') {
+                    filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
+                } else if (window.currentSmartFeed === 'today') {
+                    const dayAgo = new Date(Date.now() - 86400000);
+                    filtered = filtered.filter(a => new Date(a.timestamp) > dayAgo || window._pinnedArticleIds.has(a.id));
+                } else if (window.currentSmartFeed === 'read-later') {
+                    filtered = filtered.filter(a => a.readLater || window._pinnedArticleIds.has(a.id));
+                }
 
-            if (window.currentCategoryFilter) {
-                const sources = window.feeds.filter(f => f.category === window.currentCategoryFilter).map(f => f.name);
-                filtered = filtered.filter(a => sources.includes(a.source));
-            } else if (window.currentSourceFilter) {
-                filtered = filtered.filter(a => a.source === window.currentSourceFilter);
+                if (window.currentCategoryFilter) {
+                    const sources = window.feeds.filter(f => f.category === window.currentCategoryFilter).map(f => f.name);
+                    filtered = filtered.filter(a => sources.includes(a.source));
+                } else if (window.currentSourceFilter) {
+                    filtered = filtered.filter(a => a.source === window.currentSourceFilter);
+                }
             }
 
             filtered.sort((a, b) => {
@@ -2973,8 +2999,14 @@
             } else if (e.key === '?') {
                 e.preventDefault();
                 openShortcuts();
+            } else if (e.key === '/') {
+                if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    openDeskSearch();
+                }
             } else if (e.key === 'Escape') {
                 closeShortcuts();
+                closeDeskSearch();
             }
         });
 
@@ -3183,6 +3215,34 @@
         window.setCategoryFilter = (cat) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
         window.setSourceFilter = (source) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
         window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
+
+        // --- DESKTOP SEARCH HELPERS ---
+        window.openDeskSearch = () => {
+            document.getElementById('timeline-count-group').classList.add('hidden');
+            document.getElementById('desk-search-trigger').classList.add('hidden');
+            const container = document.getElementById('desk-search-container');
+            container.classList.remove('hidden');
+            container.classList.add('flex');
+            const input = document.getElementById('desk-search-input');
+            input.value = window._searchQuery || '';
+            input.focus();
+            input.select();
+        };
+
+        window.closeDeskSearch = () => {
+            window._searchQuery = '';
+            document.getElementById('desk-search-input').value = '';
+            document.getElementById('desk-search-container').classList.add('hidden');
+            document.getElementById('desk-search-container').classList.remove('flex');
+            document.getElementById('timeline-count-group').classList.remove('hidden');
+            document.getElementById('desk-search-trigger').classList.remove('hidden');
+            renderTimeline();
+        };
+
+        window.handleDeskSearch = (val) => {
+            window._searchQuery = val.trim();
+            renderTimeline();
+        };
 
         // --- DRAG & DROP ---
         window._draggingCategory = null;
