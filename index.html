@@ -1639,7 +1639,7 @@
             return window.esc(String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"'));
         };
 
-        // Global State & Definitions
+        // Global State & Definitions (Initialized immediately)
         window.articles = [];
         window.feeds = [];
         window.accountStates = { local: [] };
@@ -1652,14 +1652,154 @@
         window.contextMenuArticleId = null;
         window._searchQuery = '';
         window._autoRefreshTimer = null;
+        window._readLinks = new Set();
+        window._readLaterLinks = new Set();
+        window._pinnedArticleIds = new Set();
 
         window._feedHealth = {};
         window._viewMode = 'list';
         window._ttsActive = false;
-        window._readLaterLinks = new Set();
         window._categoryOrder = [];
         window._showEmptyCategories = false;
         window._navigating = false;
+        window._mobilePane = 'sidebar';
+
+        // ===== INDEXEDDB STORAGE MANAGER =====
+        class RSSReaderDB {
+            constructor() {
+                this.dbName = 'RSSReaderDB';
+                this.version = 2;
+                this.db = null;
+            }
+
+            async open() {
+                if (this.db) return this.db;
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.version);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('articles')) {
+                            const store = db.createObjectStore('articles', { keyPath: 'id' });
+                            store.createIndex('timestamp', '_ts', { unique: false });
+                            store.createIndex('feedUrl', 'feedUrl', { unique: false });
+                            store.createIndex('unread', 'unread', { unique: false });
+                            store.createIndex('readLater', 'readLater', { unique: false });
+                        }
+                        if (!db.objectStoreNames.contains('feeds')) db.createObjectStore('feeds', { keyPath: 'url' });
+                        if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata');
+                        if (!db.objectStoreNames.contains('favicons')) db.createObjectStore('favicons');
+                    };
+                    request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
+                    request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
+                });
+            }
+
+            async put(storeName, item, key) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = key ? store.put(item, key) : store.put(item);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async get(storeName, key) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const store = tx.objectStore(storeName);
+                    const request = store.get(key);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async getAll(storeName) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const store = tx.objectStore(storeName);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async delete(storeName, key) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = store.delete(key);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async clear(storeName) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readwrite');
+                    const store = tx.objectStore(storeName);
+                    const request = store.clear();
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async bulkPutArticles(articles) {
+                if (!articles.length) return;
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('articles', 'readwrite');
+                    const store = tx.objectStore('articles');
+                    articles.forEach(a => store.put(a));
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
+
+            async bulkPutFavicons(map) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('favicons', 'readwrite');
+                    const store = tx.objectStore('favicons');
+                    for (const [url, fav] of Object.entries(map)) {
+                        store.put(fav, url);
+                    }
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
+        }
+        window.appDB = new RSSReaderDB();
+
+        // Global State & Definitions (Initialized immediately)
+        window.articles = [];
+        window.feeds = [];
+        window.accountStates = { local: [] };
+        window.currentArticle = null;
+        window.currentSmartFeed = 'all';
+        window.currentCategoryFilter = null;
+        window.currentSourceFilter = null;
+        window.collapsedCategories = {};
+        window.currentTimeline = [];
+        window.contextMenuArticleId = null;
+        window._searchQuery = '';
+        window._autoRefreshTimer = null;
+        window._readLinks = new Set();
+        window._readLaterLinks = new Set();
+        window._pinnedArticleIds = new Set();
+
+        window._feedHealth = {};
+        window._viewMode = 'list';
+        window._ttsActive = false;
+        window._categoryOrder = [];
+        window._showEmptyCategories = false;
+        window._navigating = false;
+        window._mobilePane = 'sidebar';
 
         // ===== INDEXEDDB STORAGE MANAGER =====
         class RSSReaderDB {
@@ -4785,6 +4925,303 @@
                 return Array.isArray(stored) ? stored : [];
             } catch(e) { return []; }
         }
+
+        // --- MOBILE TAB BAR: active + Reader-tab mode + search + scroll tint ---
+        window._mobilePane = 'timeline';
+
+        function updateReaderTabMode() {
+            const btn = document.getElementById('mob-tab-reader');
+            const label = document.getElementById('mob-tab-reader-label');
+            if (!btn || !label) return;
+            btn.classList.remove('reader-progress');
+            if (window._mobilePane === 'timeline') {
+                const n = (window.currentTimeline || window.articles || []).filter(a => a.unread).length;
+                label.textContent = n > 0 ? `✓ ${n} Unread` : '✓ Read';
+            } else if (window._mobilePane === 'viewer') {
+                label.textContent = '✓ Read';
+                btn.classList.add('reader-progress');
+                const circle = document.getElementById('tab-progress-circle');
+                if (circle) {
+                    const CIRC = 97.39;
+                    // Current progress is managed by the scroll listener
+                }
+                const text = document.getElementById('tab-progress-text');
+                if (text) text.textContent = window._articleTotalMinutes ? String(window._articleTotalMinutes) : '';
+            } else {
+                label.textContent = 'Reader';
+            }
+        }
+        window.updateReaderTabMode = updateReaderTabMode;
+
+        window.onReaderTabClick = () => {
+            const pane = window._mobilePane;
+            if (pane === 'timeline') {
+                markAllRead();
+                return;
+            }
+            if (pane === 'viewer') {
+                const current = window.currentArticle;
+                if (current) {
+                    current.unread = false;
+                    window._readLinks.add(current.link);
+                    saveReadState();
+                }
+                const nav = (window._navSnapshot && window._navSnapshot.length) ? window._navSnapshot : (window.currentTimeline || []);
+                const currentId = current?.id;
+                const startIdx = currentId ? nav.findIndex(a => a.id === currentId) : -1;
+                let nextUnread = null;
+                for (let i = startIdx + 1; i < nav.length; i++) {
+                    if (nav[i].unread) { nextUnread = nav[i]; break; }
+                }
+                if (!nextUnread) {
+                    for (let i = 0; i < startIdx; i++) {
+                        if (nav[i].unread) { nextUnread = nav[i]; break; }
+                    }
+                }
+                refreshUI?.();
+                if (nextUnread) {
+                    window._navigating = true;
+                    selectArticle(nextUnread.id);
+                    window._navigating = false;
+                } else {
+                    setMobilePane('timeline');
+                    window.showToast?.('All caught up');
+                }
+                return;
+            }
+            if (window.currentArticle) setMobilePane('viewer');
+            else setMobilePane('timeline');
+        };
+
+        window.setMobilePane = (pane) => {
+            window._mobilePane = pane;
+            const paneMap = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
+            const tabMap  = { sidebar: 'mob-tab-feeds', timeline: 'mob-tab-articles', viewer: 'mob-tab-reader' };
+            Object.entries(paneMap).forEach(([key, id]) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('mobile-active', key === pane);
+            });
+            Object.entries(tabMap).forEach(([key, id]) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.classList.toggle('active', key === pane);
+            });
+            updateReaderTabMode();
+            document.body.classList.remove('bar-scrolled');
+            if (pane === 'timeline') {
+                const listEl = document.getElementById('article-list');
+                if (listEl) {
+                    if (window.currentArticle) {
+                        const el = listEl.querySelector(`[data-id="${window.currentArticle.id}"]`);
+                        if (el) { el.scrollIntoView({ block: 'center' }); }
+                        else { listEl.scrollTop = 0; }
+                    } else {
+                        listEl.scrollTop = 0;
+                    }
+                }
+            }
+        };
+
+        // --- SCROLL-DRIVEN COMPACT BAR (labels hide mid-scroll, return at top and bottom) ---
+        (function() {
+            const TOP_EDGE = 4;
+            const BOTTOM_EDGE = 40;
+            let ticking = false;
+            const getScrollable = () => {
+                const pane = window._mobilePane;
+                if (pane === 'timeline') return document.getElementById('article-list');
+                if (pane === 'viewer') return document.getElementById('reader-view');
+                if (pane === 'sidebar') return document.querySelector('#sidebar-pane .overflow-y-auto');
+                return null;
+            };
+            const applyScrollState = () => {
+                const el = getScrollable();
+                if (!el) {
+                    document.body.classList.remove('bar-scrolled');
+                    ticking = false;
+                    return;
+                }
+                const { scrollTop, scrollHeight, clientHeight } = el;
+                const maxScroll = scrollHeight - clientHeight;
+                const atTop = scrollTop <= TOP_EDGE;
+                const atBottom = maxScroll <= 0 || (maxScroll - scrollTop) <= BOTTOM_EDGE;
+                const midScroll = !atTop && !atBottom;
+                document.body.classList.toggle('bar-scrolled', midScroll);
+                ticking = false;
+            };
+            const onScroll = () => {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(applyScrollState);
+            };
+            ['article-list', 'reader-view'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('scroll', onScroll, { passive: true });
+            });
+            document.addEventListener('scroll', (e) => {
+                if (e.target && e.target.closest && e.target.closest('#sidebar-pane')) onScroll();
+            }, { passive: true, capture: true });
+        })();
+
+        // --- MOBILE SEARCH SHEET ---
+        window.toggleSearchSheet = () => {
+            const open = !document.body.classList.contains('search-active');
+            if (open) {
+                document.body.classList.add('search-active');
+                const input = document.getElementById('mobile-search-input');
+                if (input) {
+                    input.value = '';
+                    updateSearchResults('');
+                    setTimeout(() => input.focus(), 50);
+                }
+            } else {
+                closeSearchSheet();
+            }
+        };
+        window.closeSearchSheet = () => {
+            document.body.classList.remove('search-active');
+            const input = document.getElementById('mobile-search-input');
+            if (input) input.blur();
+        };
+        window.updateSearchResults = (query) => {
+            const container = document.getElementById('mobile-search-results');
+            if (!container) return;
+            const q = (query || '').trim().toLowerCase();
+            const list = window.articles || [];
+            let results;
+            if (!q) {
+                results = list.slice(0, 40);
+            } else {
+                results = list.filter(a => {
+                    const t = (a.title || '').toLowerCase();
+                    const s = (a.source || '').toLowerCase();
+                    const b = (a.excerpt || '').toLowerCase();
+                    return t.includes(q) || s.includes(q) || b.includes(q);
+                }).slice(0, 80);
+            }
+            if (!results.length) {
+                container.innerHTML = `<div class=\"search-empty\">${q ? 'No matches' : 'No articles yet'}</div>`;
+                return;
+            }
+            const frag = document.createDocumentFragment();
+            results.forEach(a => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'search-item';
+                btn.setAttribute('data-id', a.id);
+                const title = document.createElement('div');
+                title.className = 'search-item-title';
+                title.textContent = a.title || '(untitled)';
+                const meta = document.createElement('div');
+                meta.className = 'search-item-meta';
+                const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                meta.textContent = [a.source, when].filter(Boolean).join(' · ');
+                btn.appendChild(title);
+                btn.appendChild(meta);
+                btn.addEventListener('click', () => {
+                    closeSearchSheet();
+                    selectArticle(a.id);
+                });
+                frag.appendChild(btn);
+            });
+            container.innerHTML = '';
+            container.appendChild(frag);
+        };
+        window.searchSmart = (which) => {
+            const input = document.getElementById('mobile-search-input');
+            if (input) input.value = '';
+            const container = document.getElementById('mobile-search-results');
+            if (!container) return;
+            const list = window.articles || [];
+            let filtered;
+            if (which === 'all') filtered = list.filter(a => a.unread);
+            else if (which === 'today') {
+                const now = new Date();
+                const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+                filtered = list.filter(a => {
+                    if (!a.timestamp) return false;
+                    const t = new Date(a.timestamp);
+                    return t.getFullYear() === y && t.getMonth() === m && t.getDate() === d;
+                });
+            } else if (which === 'later') filtered = list.filter(a => a.readLater);
+            else filtered = list;
+            filtered = filtered.slice(0, 80);
+            if (!filtered.length) {
+                container.innerHTML = `<div class=\"search-empty\">Empty</div>`;
+                return;
+            }
+            const frag = document.createDocumentFragment();
+            filtered.forEach(a => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'search-item';
+                const title = document.createElement('div');
+                title.className = 'search-item-title';
+                title.textContent = a.title || '(untitled)';
+                const meta = document.createElement('div');
+                meta.className = 'search-item-meta';
+                const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                meta.textContent = [a.source, when].filter(Boolean).join(' · ');
+                btn.appendChild(title);
+                btn.appendChild(meta);
+                btn.addEventListener('click', () => {
+                    closeSearchSheet();
+                    selectArticle(a.id);
+                });
+                frag.appendChild(btn);
+            });
+            container.innerHTML = '';
+            container.appendChild(frag);
+        };
+
+        // --- FAVICON PRELOAD CACHE ---
+        const _faviconImageCache = {};
+        function preloadFavicon(url) {
+            if (!url || _faviconImageCache[url]) return;
+            const img = new Image();
+            img.src = url;
+            _faviconImageCache[url] = img;
+        }
+        function preloadAllFavicons() {
+            window.feeds.forEach(f => { if (f.favicon) preloadFavicon(f.favicon); });
+        }
+
+        // --- EMPTY STATE ---
+        function updateEmptyState() {
+            const hasFeeds = window.feeds.length > 0;
+            const welcome = document.getElementById('empty-state-welcome');
+            const select = document.getElementById('empty-state-select');
+            if (welcome) welcome.classList.toggle('hidden', hasFeeds);
+            if (select) select.classList.toggle('hidden', !hasFeeds);
+        }
+        let _isMobileCache = window.innerWidth <= 900;
+        function isMobile() { return _isMobileCache; }
+        window.addEventListener('resize', () => {
+            _isMobileCache = window.innerWidth <= 900;
+        }, { passive: true });
+
+        window.addEventListener('resize', () => {
+            if (!_isMobileCache) return;
+            if (!document.getElementById('timeline-pane').classList.contains('mobile-active') &&
+                !document.getElementById('sidebar-pane').classList.contains('mobile-active') &&
+                !document.getElementById('viewer-pane').classList.contains('mobile-active')) {
+                setMobilePane('timeline');
+            }
+        }, { passive: true });
+
+        setInterval(() => { renderFeeds(); updateBadges?.(); }, 60000);
+
+        let _hiddenAt = 0;
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                _hiddenAt = Date.now();
+            } else {
+                if (_hiddenAt && Date.now() - _hiddenAt > 5 * 60 * 1000) {
+                    if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
+                }
+                _hiddenAt = 0;
+            }
+        });
 
         // --- ASYNC STARTUP SEQUENCE ---
         (async function initApp() {
