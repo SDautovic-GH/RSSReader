@@ -1623,6 +1623,13 @@
     </div>
 
     <script>
+        // Global Error Handler for better debugging
+        window.onerror = function(msg, url, line, col, error) {
+            console.error("Global error:", msg, "at", url, ":", line);
+            if (window.showToast) window.showToast("App Error: " + msg, true);
+            return false;
+        };
+
         // Security: HTML Escaping
         window.esc = (str) => {
             if (str === null || str === undefined) return '';
@@ -1688,155 +1695,6 @@
                         if (!db.objectStoreNames.contains('feeds')) db.createObjectStore('feeds', { keyPath: 'url' });
                         if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata');
                         if (!db.objectStoreNames.contains('favicons')) db.createObjectStore('favicons');
-                    };
-                    request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
-                    request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
-                });
-            }
-
-            async put(storeName, item, key) {
-                const db = await this.open();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(storeName, 'readwrite');
-                    const store = tx.objectStore(storeName);
-                    const request = key ? store.put(item, key) : store.put(item);
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-            }
-
-            async get(storeName, key) {
-                const db = await this.open();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(storeName, 'readonly');
-                    const store = tx.objectStore(storeName);
-                    const request = store.get(key);
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
-            }
-
-            async getAll(storeName) {
-                const db = await this.open();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(storeName, 'readonly');
-                    const store = tx.objectStore(storeName);
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
-            }
-
-            async delete(storeName, key) {
-                const db = await this.open();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(storeName, 'readwrite');
-                    const store = tx.objectStore(storeName);
-                    const request = store.delete(key);
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-            }
-
-            async clear(storeName) {
-                const db = await this.open();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(storeName, 'readwrite');
-                    const store = tx.objectStore(storeName);
-                    const request = store.clear();
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-            }
-
-            async bulkPutArticles(articles) {
-                if (!articles.length) return;
-                const db = await this.open();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction('articles', 'readwrite');
-                    const store = tx.objectStore('articles');
-                    articles.forEach(a => store.put(a));
-                    tx.oncomplete = () => resolve();
-                    tx.onerror = () => reject(tx.error);
-                });
-            }
-
-            async bulkPutFavicons(map) {
-                const db = await this.open();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction('favicons', 'readwrite');
-                    const store = tx.objectStore('favicons');
-                    for (const [url, fav] of Object.entries(map)) {
-                        store.put(fav, url);
-                    }
-                    tx.oncomplete = () => resolve();
-                    tx.onerror = () => reject(tx.error);
-                });
-            }
-        }
-        window.appDB = new RSSReaderDB();
-
-        // Global State & Definitions (Initialized immediately)
-        window.articles = [];
-        window.feeds = [];
-        window.accountStates = { local: [] };
-        window.currentArticle = null;
-        window.currentSmartFeed = 'all';
-        window.currentCategoryFilter = null;
-        window.currentSourceFilter = null;
-        window.collapsedCategories = {};
-        window.currentTimeline = [];
-        window.contextMenuArticleId = null;
-        window._searchQuery = '';
-        window._autoRefreshTimer = null;
-        window._readLinks = new Set();
-        window._readLaterLinks = new Set();
-        window._pinnedArticleIds = new Set();
-
-        window._feedHealth = {};
-        window._viewMode = 'list';
-        window._ttsActive = false;
-        window._categoryOrder = [];
-        window._showEmptyCategories = false;
-        window._navigating = false;
-        window._mobilePane = 'sidebar';
-
-        // ===== INDEXEDDB STORAGE MANAGER =====
-        class RSSReaderDB {
-            constructor() {
-                this.dbName = 'RSSReaderDB';
-                this.version = 2; // Bump version for favicons store
-                this.db = null;
-            }
-
-            async open() {
-                if (this.db) return this.db;
-                return new Promise((resolve, reject) => {
-                    const request = indexedDB.open(this.dbName, this.version);
-                    request.onupgradeneeded = (e) => {
-                        const db = e.target.result;
-                        const oldVersion = e.oldVersion;
-
-                        // Articles (Version 1)
-                        if (!db.objectStoreNames.contains('articles')) {
-                            const store = db.createObjectStore('articles', { keyPath: 'id' });
-                            store.createIndex('timestamp', '_ts', { unique: false });
-                            store.createIndex('feedUrl', 'feedUrl', { unique: false });
-                            store.createIndex('unread', 'unread', { unique: false });
-                            store.createIndex('readLater', 'readLater', { unique: false });
-                        }
-                        // Feeds (Version 1)
-                        if (!db.objectStoreNames.contains('feeds')) {
-                            db.createObjectStore('feeds', { keyPath: 'url' });
-                        }
-                        // Metadata (Version 1)
-                        if (!db.objectStoreNames.contains('metadata')) {
-                            db.createObjectStore('metadata');
-                        }
-                        // Favicons (Version 2)
-                        if (!db.objectStoreNames.contains('favicons')) {
-                            db.createObjectStore('favicons');
-                        }
                     };
                     request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
                     request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
@@ -5225,64 +5083,106 @@
 
         // --- ASYNC STARTUP SEQUENCE ---
         (async function initApp() {
-            // 1. Initial UI Setup (Synchronous)
-            if (isMobile()) setMobilePane('sidebar');
-            restoreReadLaterState(); // Read later is small, stays in localStorage for now
-            restoreTypographyPrefs();
-            loadActiveFont("'Inter', sans-serif");
-            restoreLocalFeeds();
-            updateFaviconStyles();
-            restoreCategoryOrder();
-
-            // 2. Async Storage Load
-            window._readLinks = new Set(await getStoredReadLinks());
-            await restoreArticleCache();
-
-            // 3. Fallback for Empty State
-            if (window.articles.length === 0) {
-                window.articles = [{ id: crypto.randomUUID(), source: "System", title: "Welcome to RSS Reader", author: "News Team", timestamp: new Date().toISOString(), excerpt: "Import an OPML file or add a manual feed to get started.", body: "Your high-performance personal news hub.", link: "#", unread: true, readLater: false }];
-            }
-
-            // 4. Restore UI Modes
             try {
-                const vm = localStorage.getItem('newsreader_viewmode');
-                if (vm === 'card') { window._viewMode = 'card'; const btn = document.getElementById('view-density-toggle'); if (btn) btn.textContent = 'CARD'; }
-            } catch(e) {}
+                console.log('App: Starting initialization...');
+                
+                // 1. Initial UI Setup (Synchronous)
+                if (isMobile()) setMobilePane('sidebar');
+                
+                // 2. Restore Preferences (Fast)
+                try {
+                    restoreTypographyPrefs();
+                    loadActiveFont("'Inter', sans-serif");
+                } catch(e) { console.warn('App: Prefs restore failed:', e); }
 
-            try {
-                if (localStorage.getItem('newsreader_showemptycats') === '1') {
-                    window._showEmptyCategories = true;
-                    const btn = document.getElementById('show-empty-cats-toggle');
-                    if (btn) { btn.textContent = 'ON'; btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; }
+                // 3. Restore Data (Async)
+                // Await critical data loads before first render
+                try {
+                    console.log('App: Restoring feeds and state...');
+                    await Promise.allSettled([
+                        restoreLocalFeeds(),
+                        restoreReadLaterState(),
+                        restoreCategoryOrder()
+                    ]);
+                    
+                    window._readLinks = new Set(await getStoredReadLinks());
+                    console.log('App: Restoring article cache...');
+                    await restoreArticleCache();
+                } catch(e) { console.error('App: Data restore failed:', e); }
+
+                // 4. Fallback for Empty State
+                if (window.articles.length === 0) {
+                    window.articles = [{ 
+                        id: crypto.randomUUID(), 
+                        source: "System", 
+                        title: "Welcome to RSS Reader", 
+                        author: "News Team", 
+                        timestamp: new Date().toISOString(), 
+                        excerpt: "Import an OPML file or add a manual feed to get started.", 
+                        body: "Your high-performance personal news hub.", 
+                        link: "#", 
+                        unread: true, 
+                        readLater: false 
+                    }];
                 }
-            } catch(e) {}
 
-            try {
-                const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
-                if (prefs.autoRefresh) {
-                    const sel = document.getElementById('pref-auto-refresh');
-                    if (sel) sel.value = prefs.autoRefresh;
-                    updateAutoRefresh(prefs.autoRefresh);
+                // 5. Restore UI Modes
+                try {
+                    const vm = localStorage.getItem('newsreader_viewmode');
+                    if (vm === 'card') { 
+                        window._viewMode = 'card'; 
+                        const btn = document.getElementById('view-density-toggle'); 
+                        if (btn) btn.textContent = 'CARD'; 
+                    }
+                    
+                    if (localStorage.getItem('newsreader_showemptycats') === '1') {
+                        window._showEmptyCategories = true;
+                        const btn = document.getElementById('show-empty-cats-toggle');
+                        if (btn) { 
+                            btn.textContent = 'ON'; 
+                            btn.className = 'text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500 text-blue-500 bg-blue-50 dark:bg-blue-900/20'; 
+                        }
+                    }
+
+                    const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                    if (prefs.autoRefresh) {
+                        const sel = document.getElementById('pref-auto-refresh');
+                        if (sel) sel.value = prefs.autoRefresh;
+                        updateAutoRefresh(prefs.autoRefresh);
+                    }
+                } catch(e) { console.warn('App: UI mode restore failed:', e); }
+
+                // 6. Initial Render (Crucial)
+                console.log('App: Performing initial render...');
+                renderFeeds();
+                if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
+                    showSkeletons();
                 }
-            } catch(e) {}
+                renderTimeline();
+                updateEmptyState();
 
-            // 5. Initial Render
-            renderFeeds();
-            if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
-                showSkeletons();
+                // 7. Start Background Sync
+                if (window.feeds.length > 0) {
+                    console.log('App: Starting background fetch...');
+                    window._localFetchTimer = setTimeout(() => {
+                        if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
+                    }, 4000);
+                }
+
+                // Listeners
+                document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
+                
+                console.log('App: Initialization complete.');
+            } catch (globalError) {
+                console.error('App: CRITICAL INITIALIZATION FAILURE:', globalError);
+                if (window.showToast) window.showToast("Critical Startup Error", true);
+                
+                // Absolute fallback render to avoid blank screen
+                try {
+                    renderFeeds();
+                    renderTimeline();
+                } catch(e) {}
             }
-            renderTimeline();
-            updateEmptyState();
-
-            // 6. Start Background Sync
-            if (window.feeds.length > 0) {
-                window._localFetchTimer = setTimeout(() => {
-                    if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
-                }, 4000);
-            }
-
-            // Listeners
-            document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
         })();
     </script>
 
