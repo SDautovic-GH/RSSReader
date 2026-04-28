@@ -843,9 +843,14 @@
             }
         }
 
-        /* App Zoom — applies to Article List & Article View */
+        /* App Zoom — applies to Article List & Article View. Desktop and mobile values are persisted separately. */
         #article-list, #reader-view {
             zoom: var(--app-zoom, 1);
+        }
+        @media (max-width: 900px) {
+            #article-list, #reader-view {
+                zoom: var(--app-zoom-mobile, 1);
+            }
         }
         /* Reduce paint cost on article list re-renders */
         #article-list > div { contain: style layout; }
@@ -4084,7 +4089,8 @@
 
         window.updateAppZoom = (v) => {
             const pct = parseInt(v);
-            document.documentElement.style.setProperty('--app-zoom', pct / 100);
+            const cssVar = isMobile() ? '--app-zoom-mobile' : '--app-zoom';
+            document.documentElement.style.setProperty(cssVar, pct / 100);
             const lb = document.getElementById('app-zoom-val');
             if (lb) lb.textContent = `${pct}%`;
             saveTypographyPrefs();
@@ -4542,6 +4548,13 @@
         // --- TYPOGRAPHY PERSISTENCE ---
         function saveTypographyPrefs() {
             const get = id => document.getElementById(id)?.value;
+            // App Zoom is persisted per-device — slider only reflects the active viewport,
+            // so we preserve the inactive viewport's saved value from the existing blob.
+            let prevPrefs = {};
+            try { prevPrefs = JSON.parse(localStorage.getItem('newsreader_prefs')) || {}; } catch(e) {}
+            const sliderZoom = get('app-zoom-slider');
+            const appZoomDesktop = isMobile() ? prevPrefs.appZoomDesktop : sliderZoom;
+            const appZoomMobile  = isMobile() ? sliderZoom : prevPrefs.appZoomMobile;
             try {
                 localStorage.setItem('newsreader_prefs', JSON.stringify({
                     sharedFeedName:     get('shared-feed-name-slider'),
@@ -4558,7 +4571,8 @@
                     font:               get('font-family-select'),
                     sortOrder:          get('pref-sort-order'),
                     autoRefresh:        get('pref-auto-refresh'),
-                    appZoom:            get('app-zoom-slider'),
+                    appZoomDesktop,
+                    appZoomMobile,
                     dedupByTitle:       window._dedupByTitle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
@@ -4611,10 +4625,17 @@
 
             if (prefs.sortOrder) { const el = document.getElementById('pref-sort-order'); if (el) el.value = prefs.sortOrder; }
             if (prefs.autoRefresh) { const el = document.getElementById('pref-auto-refresh'); if (el) el.value = prefs.autoRefresh; }
-            if (prefs.appZoom) {
-                const el = document.getElementById('app-zoom-slider'); if (el) el.value = prefs.appZoom;
-                const lb = document.getElementById('app-zoom-val'); if (lb) lb.textContent = `${prefs.appZoom}%`;
-                root.style.setProperty('--app-zoom', prefs.appZoom / 100);
+            // App Zoom — apply both desktop and mobile values to their CSS vars,
+            // then seed the slider from whichever matches the current viewport.
+            // `prefs.appZoom` is the legacy single-value key; fall back to it for both.
+            const appZoomDesktop = prefs.appZoomDesktop || prefs.appZoom;
+            const appZoomMobile  = prefs.appZoomMobile  || prefs.appZoom;
+            if (appZoomDesktop) root.style.setProperty('--app-zoom', appZoomDesktop / 100);
+            if (appZoomMobile)  root.style.setProperty('--app-zoom-mobile', appZoomMobile / 100);
+            const activeZoom = isMobile() ? appZoomMobile : appZoomDesktop;
+            if (activeZoom) {
+                const el = document.getElementById('app-zoom-slider'); if (el) el.value = activeZoom;
+                const lb = document.getElementById('app-zoom-val'); if (lb) lb.textContent = `${activeZoom}%`;
             }
             if (prefs.dedupByTitle) {
                 window._dedupByTitle = true;
@@ -5047,7 +5068,17 @@
         let _isMobileCache = window.innerWidth <= 900;
         function isMobile() { return _isMobileCache; }
         window.addEventListener('resize', () => {
+            const wasMobile = _isMobileCache;
             _isMobileCache = window.innerWidth <= 900;
+            // On viewport crossing, re-seed the App Zoom slider with the now-active device's value
+            if (wasMobile !== _isMobileCache) {
+                try {
+                    const prefs = JSON.parse(localStorage.getItem('newsreader_prefs')) || {};
+                    const active = (_isMobileCache ? prefs.appZoomMobile : prefs.appZoomDesktop) || prefs.appZoom || 100;
+                    const el = document.getElementById('app-zoom-slider'); if (el) el.value = active;
+                    const lb = document.getElementById('app-zoom-val'); if (lb) lb.textContent = `${active}%`;
+                } catch(e) {}
+            }
         }, { passive: true });
 
         window.addEventListener('resize', () => {
