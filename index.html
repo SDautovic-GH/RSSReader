@@ -845,13 +845,18 @@
 
         /* App Zoom — applies to Article List & Article View. Desktop and mobile values are persisted separately.
            Uses font-size scaling (not the `zoom` property) for cross-browser consistency, especially Safari/iOS
-           where `zoom` doesn't reliably propagate. All inner sizes use em/rem so they cascade from this root. */
+           where `zoom` doesn't reliably propagate. Uses absolute `16px` (not `1rem`) inside calc() because Safari
+           applies `-webkit-text-size-adjust` to rem-based computations on scrollable containers, which can
+           neutralize the scaling. The explicit `text-size-adjust: 100%` here also prevents Safari from
+           silently capping font-size changes on these descendants. */
         #article-list, #reader-view {
-            font-size: calc(1rem * var(--app-zoom, 1));
+            font-size: calc(16px * var(--app-zoom, 1));
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
         }
         @media (max-width: 900px) {
             #article-list, #reader-view {
-                font-size: calc(1rem * var(--app-zoom-mobile, 1));
+                font-size: calc(16px * var(--app-zoom-mobile, 1));
             }
         }
         /* Reduce paint cost on article list re-renders */
@@ -5490,7 +5495,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v5';
+const CACHE_NAME = 'rss-reader-v6';
 const APP_SHELL = [
     '/',
     'index.html'
