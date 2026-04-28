@@ -217,6 +217,7 @@
             --view-font-size: 1em;
             --category-font-size: 1em;
             --list-preview-lines: 5;
+            --mob-list-preview-lines: 5;
             --list-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --view-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --mob-feed-name-size: 1.0em;
@@ -231,6 +232,7 @@
             --feed-line-height: 1.6;
             --mob-feed-line-height: 1.6;
             --list-preview-line-height: 1.4;
+            --mob-list-preview-line-height: 1.4;
             --mob-folder-size: 1.0em;
             --mob-list-source-size: 1.0em;
             --mob-list-date-size: 1.0em;
@@ -419,7 +421,11 @@
                 line-height: var(--mob-line-height) !important;
             }
             #article-list .dynamic-list-preview, #article-list .dynamic-list-title {
-                line-height: var(--list-preview-line-height) !important;
+                line-height: var(--mob-list-preview-line-height) !important;
+            }
+            .line-clamp-custom {
+                -webkit-line-clamp: var(--mob-list-preview-lines, 5);
+                line-clamp: var(--mob-list-preview-lines, 5);
             }
             /* Mobile article list — 2px left/right padding, no text select (prevents long-press conflict) */
             #article-list [data-id] { padding-left: 3px !important; padding-right: 3px !important; -webkit-user-select: none; user-select: none; }
@@ -4006,16 +4012,19 @@
         }
 
         // --- TYPOGRAPHY HANDLERS ---
+        // Per-device keys (Article Reader: body/articleTitle/lineHeight/meta;
+        // Article List: listTitle/preview/previewLineHeight) write only the active
+        // viewport's CSS vars so desktop and mobile values can drift independently.
         const SHARED_SIZE_MAP = {
             feedName:     { props: ['--desk-feed-name-size','--mob-feed-name-size','--list-source-size'], label: 'shared-feed-name-val', rerender: 'feeds' },
-            listTitle:    { props: ['--list-title-em-size','--mob-list-title-size'],                      label: 'shared-list-title-val', rerender: 'timeline' },
-            preview:      { props: ['--list-preview-font-size','--mob-list-preview-size'],               label: 'shared-preview-val',    rerender: 'timeline' },
+            listTitle:    { perDevice: true, desktopProps: ['--list-title-em-size'], mobileProps: ['--mob-list-title-size'], label: 'shared-list-title-val', rerender: 'timeline' },
+            preview:      { perDevice: true, desktopProps: ['--list-preview-font-size'], mobileProps: ['--mob-list-preview-size'], label: 'shared-preview-val', rerender: 'timeline' },
             folder:       { props: ['--category-font-size','--mob-folder-size'], label: 'shared-folder-val', rerender: 'feeds' },
-            body:         { props: ['--view-font-size','--mob-body-size'],                               label: 'shared-body-val',       rerender: null },
-            articleTitle: { props: ['--mob-article-title-size'],                                         label: 'shared-article-title-val', rerender: null },
-            meta:         { props: ['--article-meta-size','--mob-author-size'],                          label: 'shared-meta-val',       rerender: null },
-            lineHeight:        { props: ['--line-height','--mob-line-height','--feed-line-height','--mob-feed-line-height'], label: 'shared-line-height-val',         rerender: null,       noEm: true },
-            previewLineHeight: { props: ['--list-preview-line-height'],                                                      label: 'shared-preview-line-height-val', rerender: 'timeline', noEm: true },
+            body:         { perDevice: true, desktopProps: ['--view-font-size'], mobileProps: ['--mob-body-size'], label: 'shared-body-val', rerender: null },
+            articleTitle: { perDevice: true, desktopProps: [], mobileProps: ['--mob-article-title-size'], label: 'shared-article-title-val', rerender: null },
+            meta:         { perDevice: true, desktopProps: ['--article-meta-size'], mobileProps: ['--mob-author-size'], label: 'shared-meta-val', rerender: null },
+            lineHeight:        { perDevice: true, desktopProps: ['--line-height','--feed-line-height'], mobileProps: ['--mob-line-height','--mob-feed-line-height'], label: 'shared-line-height-val', rerender: null, noEm: true },
+            previewLineHeight: { perDevice: true, desktopProps: ['--list-preview-line-height'], mobileProps: ['--mob-list-preview-line-height'], label: 'shared-preview-line-height-val', rerender: 'timeline', noEm: true },
         };
 
         window.updateSharedSize = (key, v) => {
@@ -4024,8 +4033,13 @@
             const val = parseFloat((v / 10).toFixed(1));
             const display = cfg.noEm ? val.toString() : `${val}em`;
             const root = document.documentElement;
-            cfg.props.forEach(p => root.style.setProperty(p, display));
+            const targetProps = cfg.perDevice
+                ? (isMobile() ? cfg.mobileProps : cfg.desktopProps)
+                : cfg.props;
+            (targetProps || []).forEach(p => root.style.setProperty(p, display));
             if (key === 'articleTitle') {
+                // articleTitle has no desktop CSS var; on desktop, fall back to
+                // setting the inline style directly so the slider still works there.
                 window._savedArticleTitleSize = display;
                 const el = document.getElementById('article-title');
                 if (el) el.style.fontSize = display;
@@ -4057,7 +4071,8 @@
         };
 
         window.updateLines = (v) => {
-            document.documentElement.style.setProperty('--list-preview-lines', v);
+            const cssVar = isMobile() ? '--mob-list-preview-lines' : '--list-preview-lines';
+            document.documentElement.style.setProperty(cssVar, v);
             const label = document.getElementById('lines-val');
             if (label) label.textContent = `${v} Lines`;
             renderTimeline();
@@ -4553,33 +4568,49 @@
         };
 
         // --- TYPOGRAPHY PERSISTENCE ---
+        // App Zoom and 8 typography sliders (Article Reader: body/articleTitle/
+        // lineHeight/meta; Article List: listTitle/preview/previewLineHeight/
+        // previewLines) are persisted per-device. The slider only reflects the
+        // active viewport, so on save we preserve the inactive viewport's existing
+        // value from the prefs blob.
         function saveTypographyPrefs() {
             const get = id => document.getElementById(id)?.value;
-            // App Zoom is persisted per-device — slider only reflects the active viewport,
-            // so we preserve the inactive viewport's saved value from the existing blob.
             let prevPrefs = {};
             try { prevPrefs = JSON.parse(localStorage.getItem('newsreader_prefs')) || {}; } catch(e) {}
-            const sliderZoom = get('app-zoom-slider');
-            const appZoomDesktop = isMobile() ? prevPrefs.appZoomDesktop : sliderZoom;
-            const appZoomMobile  = isMobile() ? sliderZoom : prevPrefs.appZoomMobile;
+            const mob = isMobile();
+            const splitSave = (id, deskKey, mobKey) => {
+                const v = get(id);
+                return {
+                    [deskKey]: mob ? prevPrefs[deskKey] : v,
+                    [mobKey]:  mob ? v : prevPrefs[mobKey],
+                };
+            };
+            const appZoom         = splitSave('app-zoom-slider',                  'appZoomDesktop',           'appZoomMobile');
+            const body            = splitSave('shared-body-slider',               'sharedBodyDesktop',        'sharedBodyMobile');
+            const articleTitle    = splitSave('shared-article-title-slider',      'sharedArticleTitleDesktop','sharedArticleTitleMobile');
+            const lineHeight      = splitSave('shared-line-height-slider',        'sharedLineHeightDesktop',  'sharedLineHeightMobile');
+            const meta            = splitSave('shared-meta-slider',               'sharedMetaDesktop',        'sharedMetaMobile');
+            const listTitle       = splitSave('shared-list-title-slider',         'sharedListTitleDesktop',   'sharedListTitleMobile');
+            const preview         = splitSave('shared-preview-slider',            'sharedPreviewDesktop',     'sharedPreviewMobile');
+            const previewLH       = splitSave('shared-preview-line-height-slider','previewLineHeightDesktop', 'previewLineHeightMobile');
+            const previewLines    = splitSave('lines-slider',                     'previewLinesDesktop',      'previewLinesMobile');
             try {
                 localStorage.setItem('newsreader_prefs', JSON.stringify({
                     sharedFeedName:     get('shared-feed-name-slider'),
-                    sharedListTitle:    get('shared-list-title-slider'),
-                    sharedPreview:      get('shared-preview-slider'),
                     sharedFolder:       get('shared-folder-slider'),
                     feedSpacing:        get('feed-spacing-slider'),
-                    sharedBody:         get('shared-body-slider'),
-                    sharedArticleTitle: get('shared-article-title-slider'),
-                    sharedMeta:         get('shared-meta-slider'),
-                    sharedLineHeight:        get('shared-line-height-slider'),
-                    previewLineHeight:       get('shared-preview-line-height-slider'),
-                    previewLines:       get('lines-slider'),
                     font:               get('font-family-select'),
                     sortOrder:          get('pref-sort-order'),
                     autoRefresh:        get('pref-auto-refresh'),
-                    appZoomDesktop,
-                    appZoomMobile,
+                    ...appZoom,
+                    ...body,
+                    ...articleTitle,
+                    ...lineHeight,
+                    ...meta,
+                    ...listTitle,
+                    ...preview,
+                    ...previewLH,
+                    ...previewLines,
                     dedupByTitle:       window._dedupByTitle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
@@ -4591,23 +4622,11 @@
             if (!prefs) return;
             const root = document.documentElement;
 
-            const migrate = (newKey, oldKeys) => {
-                if (prefs[newKey]) return prefs[newKey];
-                for (const k of oldKeys) { if (prefs[k]) return prefs[k]; }
-                return null;
-            };
-
+            // Non-per-device sliders restore as before.
             const shared = [
-                { key: migrate('sharedFeedName',     ['deskFeedNameSize','mobFeedNameSize']),  id: 'shared-feed-name-slider',     label: 'shared-feed-name-val',     fn: v => updateSharedSize('feedName', v) },
-                { key: migrate('sharedListTitle',    ['listTitleEmSize','mobListTitleSize']),   id: 'shared-list-title-slider',    label: 'shared-list-title-val',    fn: v => updateSharedSize('listTitle', v) },
-                { key: migrate('sharedPreview',      ['listPreviewSize','mobListPreviewSize']), id: 'shared-preview-slider',       label: 'shared-preview-val',       fn: v => updateSharedSize('preview', v) },
-                { key: migrate('sharedFolder',       ['categorySize','mobFolderSize']),         id: 'shared-folder-slider',        label: 'shared-folder-val',        fn: v => updateFolderSize(v) },
-                { key: migrate('sharedBody',         ['viewSize','mobBodySize']),               id: 'shared-body-slider',          label: 'shared-body-val',          fn: v => updateSharedSize('body', v) },
-                { key: migrate('sharedArticleTitle', ['articleTitleSize','mobArticleTitleSize']),id:'shared-article-title-slider', label: 'shared-article-title-val', fn: v => updateSharedSize('articleTitle', v) },
-                { key: migrate('sharedMeta',         ['articleMetaSize','mobAuthorSize']),      id: 'shared-meta-slider',          label: 'shared-meta-val',          fn: v => updateSharedSize('meta', v) },
-                { key: migrate('sharedLineHeight',   ['lineHeight','mobLineHeight']),           id: 'shared-line-height-slider',        label: 'shared-line-height-val',         fn: v => updateSharedSize('lineHeight', v) },
-                { key: prefs.previewLineHeight,                                                  id: 'shared-preview-line-height-slider', label: 'shared-preview-line-height-val', fn: v => updateSharedSize('previewLineHeight', v) },
-                { key: prefs.feedSpacing,                                                       id: 'feed-spacing-slider',         label: 'feed-spacing-val',         fn: v => updateFeedSpacing(v) },
+                { key: prefs.sharedFeedName, id: 'shared-feed-name-slider', label: 'shared-feed-name-val', fn: v => updateSharedSize('feedName', v) },
+                { key: prefs.sharedFolder,   id: 'shared-folder-slider',    label: 'shared-folder-val',    fn: v => updateFolderSize(v) },
+                { key: prefs.feedSpacing,    id: 'feed-spacing-slider',     label: 'feed-spacing-val',     fn: v => updateFeedSpacing(v) },
             ];
             shared.forEach(({ key, id, fn }) => {
                 if (!key) return;
@@ -4615,10 +4634,51 @@
                 if (el) { el.value = key; fn(key); }
             });
 
-            if (prefs.previewLines) {
-                const el = document.getElementById('lines-slider'); if (el) el.value = prefs.previewLines;
-                const lb = document.getElementById('lines-val'); if (lb) lb.textContent = prefs.previewLines + ' Lines';
-                root.style.setProperty('--list-preview-lines', prefs.previewLines);
+            // Per-device sliders (Article Reader + Article List): write CSS vars
+            // for BOTH viewports up front so each side has its own value at all
+            // times, then seed the slider from the active viewport's saved value.
+            const mob = isMobile();
+            const applyPerDevice = (mapKey, deskPrefKey, mobPrefKey, sliderId, labelId, suffix = 'em') => {
+                const cfg = SHARED_SIZE_MAP[mapKey];
+                const deskVal = prefs[deskPrefKey];
+                const mobVal  = prefs[mobPrefKey];
+                const toCss = v => {
+                    const f = parseFloat((v / 10).toFixed(1));
+                    return cfg && cfg.noEm ? f.toString() : `${f}${suffix}`;
+                };
+                if (deskVal && cfg) (cfg.desktopProps || []).forEach(p => root.style.setProperty(p, toCss(deskVal)));
+                if (mobVal  && cfg) (cfg.mobileProps  || []).forEach(p => root.style.setProperty(p, toCss(mobVal)));
+                const active = mob ? mobVal : deskVal;
+                if (active) {
+                    const el = document.getElementById(sliderId);
+                    if (el) el.value = active;
+                    const lb = document.getElementById(labelId);
+                    if (lb) lb.textContent = toCss(active);
+                    if (mapKey === 'articleTitle') {
+                        // articleTitle has no desktop CSS var; mirror updateSharedSize behavior.
+                        window._savedArticleTitleSize = toCss(active);
+                        const at = document.getElementById('article-title');
+                        if (at) at.style.fontSize = toCss(active);
+                    }
+                }
+            };
+            applyPerDevice('body',              'sharedBodyDesktop',        'sharedBodyMobile',        'shared-body-slider',                'shared-body-val');
+            applyPerDevice('articleTitle',      'sharedArticleTitleDesktop','sharedArticleTitleMobile','shared-article-title-slider',       'shared-article-title-val');
+            applyPerDevice('lineHeight',        'sharedLineHeightDesktop',  'sharedLineHeightMobile',  'shared-line-height-slider',         'shared-line-height-val');
+            applyPerDevice('meta',              'sharedMetaDesktop',        'sharedMetaMobile',        'shared-meta-slider',                'shared-meta-val');
+            applyPerDevice('listTitle',         'sharedListTitleDesktop',   'sharedListTitleMobile',   'shared-list-title-slider',          'shared-list-title-val');
+            applyPerDevice('preview',           'sharedPreviewDesktop',     'sharedPreviewMobile',     'shared-preview-slider',             'shared-preview-val');
+            applyPerDevice('previewLineHeight', 'previewLineHeightDesktop', 'previewLineHeightMobile', 'shared-preview-line-height-slider', 'shared-preview-line-height-val');
+
+            // previewLines is integer-valued and not in SHARED_SIZE_MAP — apply manually.
+            const linesDesk = prefs.previewLinesDesktop;
+            const linesMob  = prefs.previewLinesMobile;
+            if (linesDesk) root.style.setProperty('--list-preview-lines', linesDesk);
+            if (linesMob)  root.style.setProperty('--mob-list-preview-lines', linesMob);
+            const activeLines = mob ? linesMob : linesDesk;
+            if (activeLines) {
+                const el = document.getElementById('lines-slider'); if (el) el.value = activeLines;
+                const lb = document.getElementById('lines-val');    if (lb) lb.textContent = `${activeLines} Lines`;
             }
 
             const font = prefs.font || prefs.listFont || prefs.viewFont;
@@ -4634,12 +4694,11 @@
             if (prefs.autoRefresh) { const el = document.getElementById('pref-auto-refresh'); if (el) el.value = prefs.autoRefresh; }
             // App Zoom — apply both desktop and mobile values to their CSS vars,
             // then seed the slider from whichever matches the current viewport.
-            // `prefs.appZoom` is the legacy single-value key; fall back to it for both.
-            const appZoomDesktop = prefs.appZoomDesktop || prefs.appZoom;
-            const appZoomMobile  = prefs.appZoomMobile  || prefs.appZoom;
+            const appZoomDesktop = prefs.appZoomDesktop;
+            const appZoomMobile  = prefs.appZoomMobile;
             if (appZoomDesktop) root.style.setProperty('--app-zoom', appZoomDesktop / 100);
             if (appZoomMobile)  root.style.setProperty('--app-zoom-mobile', appZoomMobile / 100);
-            const activeZoom = isMobile() ? appZoomMobile : appZoomDesktop;
+            const activeZoom = mob ? appZoomMobile : appZoomDesktop;
             if (activeZoom) {
                 const el = document.getElementById('app-zoom-slider'); if (el) el.value = activeZoom;
                 const lb = document.getElementById('app-zoom-val'); if (lb) lb.textContent = `${activeZoom}%`;
@@ -5074,18 +5133,38 @@
         }
         let _isMobileCache = window.innerWidth <= 900;
         function isMobile() { return _isMobileCache; }
+        // Per-device sliders re-seeded on viewport crossing so the slider value
+        // reflects the now-active device's saved setting.
+        const PER_DEVICE_SLIDER_CONFIG = [
+            { sliderId: 'app-zoom-slider',                labelId: 'app-zoom-val',                deskKey: 'appZoomDesktop',           mobKey: 'appZoomMobile',           fmt: v => `${v}%`,                              defaultVal: 100, apply: null /* CSS vars already applied for both */ },
+            { sliderId: 'shared-body-slider',             labelId: 'shared-body-val',             deskKey: 'sharedBodyDesktop',        mobKey: 'sharedBodyMobile',        fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('body', v) },
+            { sliderId: 'shared-article-title-slider',    labelId: 'shared-article-title-val',    deskKey: 'sharedArticleTitleDesktop',mobKey: 'sharedArticleTitleMobile',fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('articleTitle', v) },
+            { sliderId: 'shared-line-height-slider',      labelId: 'shared-line-height-val',      deskKey: 'sharedLineHeightDesktop',  mobKey: 'sharedLineHeightMobile',  fmt: v => `${parseFloat((v/10).toFixed(1))}`,   apply: v => updateSharedSize('lineHeight', v) },
+            { sliderId: 'shared-meta-slider',             labelId: 'shared-meta-val',             deskKey: 'sharedMetaDesktop',        mobKey: 'sharedMetaMobile',        fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('meta', v) },
+            { sliderId: 'shared-list-title-slider',       labelId: 'shared-list-title-val',       deskKey: 'sharedListTitleDesktop',   mobKey: 'sharedListTitleMobile',   fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('listTitle', v) },
+            { sliderId: 'shared-preview-slider',          labelId: 'shared-preview-val',          deskKey: 'sharedPreviewDesktop',     mobKey: 'sharedPreviewMobile',     fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('preview', v) },
+            { sliderId: 'shared-preview-line-height-slider', labelId: 'shared-preview-line-height-val', deskKey: 'previewLineHeightDesktop', mobKey: 'previewLineHeightMobile', fmt: v => `${parseFloat((v/10).toFixed(1))}`,  apply: v => updateSharedSize('previewLineHeight', v) },
+            { sliderId: 'lines-slider',                   labelId: 'lines-val',                   deskKey: 'previewLinesDesktop',      mobKey: 'previewLinesMobile',      fmt: v => `${v} Lines`,                         apply: v => updateLines(v) },
+        ];
+        function reseedPerDeviceSliders() {
+            try {
+                const prefs = JSON.parse(localStorage.getItem('newsreader_prefs')) || {};
+                const mob = _isMobileCache;
+                PER_DEVICE_SLIDER_CONFIG.forEach(cfg => {
+                    const val = (mob ? prefs[cfg.mobKey] : prefs[cfg.deskKey]) ?? cfg.defaultVal;
+                    if (val == null) return;
+                    const el = document.getElementById(cfg.sliderId); if (el) el.value = val;
+                    const lb = document.getElementById(cfg.labelId); if (lb) lb.textContent = cfg.fmt(val);
+                    // Re-apply via the underlying writer so per-device side effects
+                    // (e.g. articleTitle's inline style on desktop) follow the new viewport.
+                    if (cfg.apply) cfg.apply(val);
+                });
+            } catch(e) {}
+        }
         window.addEventListener('resize', () => {
             const wasMobile = _isMobileCache;
             _isMobileCache = window.innerWidth <= 900;
-            // On viewport crossing, re-seed the App Zoom slider with the now-active device's value
-            if (wasMobile !== _isMobileCache) {
-                try {
-                    const prefs = JSON.parse(localStorage.getItem('newsreader_prefs')) || {};
-                    const active = (_isMobileCache ? prefs.appZoomMobile : prefs.appZoomDesktop) || prefs.appZoom || 100;
-                    const el = document.getElementById('app-zoom-slider'); if (el) el.value = active;
-                    const lb = document.getElementById('app-zoom-val'); if (lb) lb.textContent = `${active}%`;
-                } catch(e) {}
-            }
+            if (wasMobile !== _isMobileCache) reseedPerDeviceSliders();
         }, { passive: true });
 
         window.addEventListener('resize', () => {
@@ -5495,7 +5574,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v7';
+const CACHE_NAME = 'rss-reader-v9';
 const APP_SHELL = [
     '/',
     'index.html'
