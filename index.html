@@ -1466,28 +1466,28 @@
             </div>
 
             <!-- Tab: Feeds -->
-            <div id="settings-panel-feeds" class="px-5 py-5 overflow-y-auto flex-1 no-scrollbar">
+            <div id="settings-panel-feeds" class="px-5 py-6 overflow-y-auto flex-1 no-scrollbar">
                 <div class="flex items-center justify-between mb-4">
                     <button onclick="openAddFeedModal()" class="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-[14px] font-semibold hover:bg-blue-700 active:scale-95 transition-all shadow-sm">
                         <svg class="w-4 h-4"><use href="#icon-plus"/></svg>
                         Add Feed
                     </button>
-                    <div class="relative">
-                        <button onclick="toggleFeedsOverflow(event)" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700" title="More">
+                    <div>
+                        <button id="feeds-overflow-trigger" onclick="toggleFeedsOverflow(event)" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700" title="More">
                             <svg class="w-5 h-5"><use href="#icon-more"/></svg>
                         </button>
-                        <div id="feeds-overflow-menu" class="hidden absolute right-0 top-full mt-1 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 py-1">
-                            <button onclick="exportSubscriptions(); closeFeedsOverflow()" class="w-full text-left px-4 py-2 text-[14px] hover:bg-gray-100 dark:hover:bg-gray-700">Export OPML</button>
-                            <button onclick="document.getElementById('opml-import').click(); closeFeedsOverflow()" class="w-full text-left px-4 py-2 text-[14px] hover:bg-gray-100 dark:hover:bg-gray-700">Import OPML</button>
-                        </div>
                         <input type="file" id="opml-import" class="hidden" accept=".opml,.xml" onchange="importSubscriptions(event)">
                     </div>
                 </div>
-                <div id="local-feed-list"></div>
+                <div id="local-feed-list" class="pb-2"></div>
+            </div>
+            <div id="feeds-overflow-menu" class="hidden fixed w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[60] py-1">
+                <button onclick="exportSubscriptions(); closeFeedsOverflow()" class="w-full text-left px-4 py-2 text-[14px] hover:bg-gray-100 dark:hover:bg-gray-700">Export OPML</button>
+                <button onclick="document.getElementById('opml-import').click(); closeFeedsOverflow()" class="w-full text-left px-4 py-2 text-[14px] hover:bg-gray-100 dark:hover:bg-gray-700">Import OPML</button>
             </div>
 
             <!-- Tab: Preferences -->
-            <div id="settings-panel-prefs" class="hidden px-5 py-5 overflow-y-auto flex-1 space-y-7 no-scrollbar">
+            <div id="settings-panel-prefs" class="hidden px-5 py-6 pb-7 overflow-y-auto flex-1 space-y-7 no-scrollbar">
 
                 <!-- ACCOUNT -->
                 <div>
@@ -3989,8 +3989,15 @@
         window.toggleFeedsOverflow = (e) => {
             e.stopPropagation();
             const m = document.getElementById('feeds-overflow-menu');
+            const trigger = document.getElementById('feeds-overflow-trigger');
+            const willOpen = m.classList.contains('hidden');
+            if (willOpen && trigger) {
+                const r = trigger.getBoundingClientRect();
+                m.style.top  = `${r.bottom + 4}px`;
+                m.style.left = `${Math.max(8, r.right - 176)}px`; // 176 = w-44
+            }
             m.classList.toggle('hidden');
-            if (!m.classList.contains('hidden')) {
+            if (willOpen) {
                 setTimeout(() => document.addEventListener('click', closeFeedsOverflow, { once: true }), 0);
             }
         };
