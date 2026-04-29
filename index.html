@@ -2295,7 +2295,8 @@
                     author: post.author?.displayName || post.author?.handle || sourceName,
                     timestamp: new Date(record.createdAt || Date.now()).toISOString(),
                     _ts: new Date(record.createdAt || Date.now()).getTime(),
-                    excerpt: text.length > 120 ? text.substring(119, 3000) : '',
+                    excerpt: '',
+                    _searchText: text.substring(0, 3000),
                     _excerptHtml: null,
                     body,
                     link,
@@ -2643,7 +2644,7 @@
                 filtered = filtered.filter(a =>
                     (a.title||'').toLowerCase().includes(q) ||
                     (a.source||'').toLowerCase().includes(q) ||
-                    (a.excerpt||'').toLowerCase().includes(q)
+                    (a.excerpt||a._searchText||'').toLowerCase().includes(q)
                 );
             } else {
                 // Apply normal filters
@@ -5180,7 +5181,7 @@
                 results = list.filter(a => {
                     const t = (a.title || '').toLowerCase();
                     const s = (a.source || '').toLowerCase();
-                    const b = (a.excerpt || '').toLowerCase();
+                    const b = (a.excerpt || a._searchText || '').toLowerCase();
                     return t.includes(q) || s.includes(q) || b.includes(q);
                 }).slice(0, 80);
             }
