@@ -2279,7 +2279,16 @@
                 const text = record.text || '';
                 const isRepost = reason?.$type === 'app.bsky.feed.defs#reasonRepost';
                 const titleText = text.trim() || (isRepost ? '[Repost]' : '[Post]');
-                const title = titleText.length > 120 ? titleText.substring(0, 119) + '…' : titleText;
+                let title, listExcerpt;
+                if (titleText.length > 120) {
+                    let cut = titleText.lastIndexOf(' ', 120);
+                    if (cut < 60) cut = 119;
+                    title = titleText.substring(0, cut) + '…';
+                    listExcerpt = titleText.substring(cut).trim().substring(0, 3000);
+                } else {
+                    title = titleText;
+                    listExcerpt = '';
+                }
                 const body = DOMPurify.sanitize(buildBlueskyPostHtml(feedItem), { ADD_ATTR: ['loading', 'target', 'rel', 'data-fullsize'] });
                 const image = (() => {
                     const emb = post.embed;
@@ -2295,7 +2304,7 @@
                     author: post.author?.displayName || post.author?.handle || sourceName,
                     timestamp: new Date(record.createdAt || Date.now()).toISOString(),
                     _ts: new Date(record.createdAt || Date.now()).getTime(),
-                    excerpt: '',
+                    excerpt: listExcerpt,
                     _searchText: text.substring(0, 3000),
                     _excerptHtml: null,
                     body,
