@@ -2196,7 +2196,12 @@
             if (reason?.$type === 'app.bsky.feed.defs#reasonRepost') {
                 html += `<p class="bsky-repost-label">↻ Reposted</p>`;
             }
-            html += `<p>${applyBskyFacets(record.text || '', record.facets)}</p>`;
+            const _bskyText = record.text || '';
+            const _bskyHasFacets = Array.isArray(record.facets) && record.facets.length > 0;
+            const _bskyTruncated = _bskyText.length > 120;
+            if (_bskyHasFacets || _bskyTruncated) {
+                html += `<p>${applyBskyFacets(_bskyText, record.facets)}</p>`;
+            }
             if (embed?.$type === 'app.bsky.embed.images#view') {
                 html += renderBskyImages(embed.images);
             }
@@ -2290,7 +2295,7 @@
                     author: post.author?.displayName || post.author?.handle || sourceName,
                     timestamp: new Date(record.createdAt || Date.now()).toISOString(),
                     _ts: new Date(record.createdAt || Date.now()).getTime(),
-                    excerpt: text.substring(0, 3000),
+                    excerpt: text.length > 120 ? text.substring(119, 3000) : '',
                     _excerptHtml: null,
                     body,
                     link,
@@ -2790,7 +2795,7 @@
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
                         <h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>
-                        <p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
+                        ${a.excerpt ? `<p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>` : ''}
                     </div>
                 </div>
             </div>`;
