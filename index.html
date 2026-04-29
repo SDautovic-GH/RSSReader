@@ -2187,7 +2187,7 @@
             return `<div class="bsky-quote-embed"><div class="bsky-quote-header">${avatarHtml}<span class="bsky-quote-name">${bskyEsc(author.displayName || author.handle)}</span><span class="bsky-quote-handle">@${bskyEsc(author.handle)}</span></div>${value.text ? `<div class="bsky-quote-text">${applyBskyFacets(value.text, value.facets)}</div>` : ''}${imgEmbed ? renderBskyImages(imgEmbed.images, true) : ''}${extEmbed ? renderBskyExternalCard(extEmbed.external) : ''}</div>`;
         }
 
-        function buildBlueskyPostHtml(feedItem) {
+        function buildBlueskyPostHtml(feedItem, textStartChar = 0) {
             const { post, reason } = feedItem;
             const record = post?.record;
             const embed = post?.embed;
@@ -2197,10 +2197,23 @@
                 html += `<p class="bsky-repost-label">↻ Reposted</p>`;
             }
             const _bskyText = record.text || '';
-            const _bskyHasFacets = Array.isArray(record.facets) && record.facets.length > 0;
-            const _bskyTruncated = _bskyText.length > 80;
-            if (_bskyHasFacets || _bskyTruncated) {
-                html += `<p>${applyBskyFacets(_bskyText, record.facets)}</p>`;
+            // Skip the leading portion already shown in the title (matches Article List excerpt behavior)
+            const _bskyBodyText = textStartChar > 0 ? _bskyText.substring(textStartChar).replace(/^\s+/, '') : _bskyText;
+            if (_bskyBodyText.length > 0) {
+                const _bskyEnc = new TextEncoder();
+                const _bskyByteOffset = textStartChar > 0
+                    ? _bskyEnc.encode(_bskyText.substring(0, _bskyText.length - _bskyBodyText.length)).length
+                    : 0;
+                const _bskyAdjFacets = (record.facets || [])
+                    .filter(f => f.index && f.index.byteEnd > _bskyByteOffset)
+                    .map(f => ({
+                        ...f,
+                        index: {
+                            byteStart: Math.max(0, f.index.byteStart - _bskyByteOffset),
+                            byteEnd: f.index.byteEnd - _bskyByteOffset
+                        }
+                    }));
+                html += `<p>${applyBskyFacets(_bskyBodyText, _bskyAdjFacets)}</p>`;
             }
             if (embed?.$type === 'app.bsky.embed.images#view') {
                 html += renderBskyImages(embed.images);
@@ -2279,17 +2292,22 @@
                 const text = record.text || '';
                 const isRepost = reason?.$type === 'app.bsky.feed.defs#reasonRepost';
                 const titleText = text.trim() || (isRepost ? '[Repost]' : '[Post]');
-                let title, listExcerpt;
+                let title, listExcerpt, bodyStartChar = 0;
                 if (titleText.length > 80) {
                     let cut = titleText.lastIndexOf(' ', 80);
                     if (cut < 40) cut = 79;
                     title = titleText.substring(0, cut) + '…';
                     listExcerpt = titleText.substring(cut).trim().substring(0, 3000);
+                    // Map cut (char offset in trimmed titleText) back to char offset in original text
+                    const _leadWs = text.length - text.replace(/^\s+/, '').length;
+                    bodyStartChar = cut + _leadWs;
                 } else {
                     title = titleText;
                     listExcerpt = '';
+                    // No truncation: title contains entire text, so suppress body text to avoid repetition
+                    bodyStartChar = text.length;
                 }
-                const body = DOMPurify.sanitize(buildBlueskyPostHtml(feedItem), { ADD_ATTR: ['loading', 'target', 'rel', 'data-fullsize'] });
+                const body = DOMPurify.sanitize(buildBlueskyPostHtml(feedItem, bodyStartChar), { ADD_ATTR: ['loading', 'target', 'rel', 'data-fullsize'] });
                 const image = (() => {
                     const emb = post.embed;
                     const imgs = emb?.$type === 'app.bsky.embed.images#view' ? emb.images :
