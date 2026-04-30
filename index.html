@@ -4549,13 +4549,12 @@
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
-            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
-            if (isMobile()) {
-                window.showToast('Marked all read — fetching new items...');
-                setMobilePane('sidebar');
-                fetchAllStaggered(window.feeds);
-            } else if (isSmartFeedWithFetch) {
-                window.showToast('Marked all read — fetching new items...');
+            // Only auto-fetch when the user has actually cleared their entire queue —
+            // marking one folder/source/smart-feed as read shouldn't trigger a global refresh.
+            const allCaughtUp = window.articles.every(a => !a.unread);
+            if (allCaughtUp) {
+                window.showToast('All caught up — fetching new items...');
+                if (isMobile()) setMobilePane('sidebar');
                 fetchAllStaggered(window.feeds);
             } else {
                 window.showToast('Marked all read');
