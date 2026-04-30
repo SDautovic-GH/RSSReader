@@ -2349,6 +2349,17 @@
             return true;
         }
 
+        // Decode HTML entities (&nbsp;, &amp;, &#8217;, etc.) in already-stripped text.
+        // Using a <textarea> is safe — innerHTML on a textarea parses character references but does not execute or render anything.
+        const _entityDecoder = document.createElement('textarea');
+        function decodeHtmlEntities(str) {
+            if (!str || str.indexOf('&') === -1) return str || '';
+            _entityDecoder.innerHTML = str;
+            const out = _entityDecoder.value;
+            _entityDecoder.innerHTML = '';
+            return out;
+        }
+
         // Fix lazy-loaded images in feed HTML (data-src, data-lazy-src, srcset-only)
         function fixLazyImages(html) {
             return html
@@ -2509,7 +2520,7 @@
                         author: getText(item, 'author name', 'author', 'dc\\:creator') || sourceName,
                         timestamp: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
-                        excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
+                        excerpt: decodeHtmlEntities(rawBody.replace(/(<([^>]+)>)/gi, '')).substring(0, 3000),
                         _excerptHtml: null,
                         body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_TAGS: ['audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'controls', 'preload', 'type'] }),
                         link,
