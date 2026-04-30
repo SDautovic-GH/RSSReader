@@ -2030,7 +2030,7 @@
                 try {
                     const proxyUrl = proxyFn(feedUrl);
                     const res = await fetch(proxyUrl, {
-                        signal: AbortSignal.timeout(10000)
+                        signal: AbortSignal.timeout(8000)
                     });
                     if (!res.ok) continue;
                     let xmlText;
@@ -2269,7 +2269,7 @@
             let data = null;
             // Try direct fetch (public.api.bsky.app has CORS enabled)
             try {
-                const res = await fetch(apiUrl, { signal: AbortSignal.timeout(10000) });
+                const res = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) });
                 if (res.ok) data = await res.json();
             } catch(e) { console.warn('Direct fetch failed:', e.message); }
             // Fall back to proxies if direct fetch failed
@@ -2277,7 +2277,7 @@
                 for (const proxyFn of PROXIES) {
                     try {
                         const proxyUrl = proxyFn(apiUrl);
-                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
                         if (!res.ok) continue;
                         let text;
                         if (proxyUrl.includes('allorigins')) {
@@ -3807,7 +3807,7 @@
             renderTimeline();
         };
 
-        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 150) {
+        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 100) {
             const promises = [];
             for (let i = 0; i < feeds.length; i++) {
                 promises.push(fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground));
@@ -5006,6 +5006,11 @@
                     a.readLater = window._readLaterLinks.has(a.link);
                     a._ts = a._ts || new Date(a.timestamp).getTime();
                     a._excerptHtml = null;
+                    // Self-heal stale entities from articles cached by older app versions
+                    // (idempotent — clean strings hit the no-`&` early return in decodeHtmlEntities).
+                    if (a.title) a.title = decodeHtmlEntities(a.title);
+                    if (a.author) a.author = decodeHtmlEntities(a.author);
+                    if (a.excerpt) a.excerpt = decodeHtmlEntities(a.excerpt);
                     if (a._fullBodyLoaded && a.link) window._bodyCache[a.link] = a.body;
                     if (!a.body) a.body = '';
                 });
