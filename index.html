@@ -4549,12 +4549,13 @@
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
+            // On mobile, the current pane is now empty — bounce to sidebar so the user can pick a new folder
+            if (isMobile()) setMobilePane('sidebar');
             // Only auto-fetch when the user has actually cleared their entire queue —
             // marking one folder/source/smart-feed as read shouldn't trigger a global refresh.
             const allCaughtUp = window.articles.every(a => !a.unread);
             if (allCaughtUp) {
                 window.showToast('All caught up — fetching new items...');
-                if (isMobile()) setMobilePane('sidebar');
                 fetchAllStaggered(window.feeds);
             } else {
                 window.showToast('Marked all read');
