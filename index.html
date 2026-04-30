@@ -1568,6 +1568,13 @@
                             </div>
                             <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch" data-on="false" aria-label="Deduplicate by title"></button>
                         </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Mastodon-style Bluesky posts</label>
+                                <p class="text-[12px] text-gray-400 mt-1">Title shows @handle; full post text appears in the preview and body (no headline split)</p>
+                            </div>
+                            <button id="bsky-mastodon-toggle" onclick="toggleBlueskyMastodon()" class="toggle-switch" data-on="false" aria-label="Mastodon-style Bluesky posts"></button>
+                        </div>
                         <div class="settings-row settings-row-stacked">
                             <label class="settings-item-label">Font</label>
                             <select id="font-family-select" onchange="updateFontFamily('both', this.value)" class="settings-input">
@@ -2043,6 +2050,11 @@
             return null;
         }
 
+        // --- BLUESKY DISPLAY MODE ---
+        // false = split mode: title = first ~80 chars of post, excerpt = remainder
+        // true  = Mastodon-style: title = @handle, excerpt = full post text
+        window._bskyMastodonStyle = false;
+
         // --- TITLE DEDUPLICATION ---
         window._dedupByTitle = false;
         window._memoRankMap = null;
@@ -2113,6 +2125,17 @@
             if (btn) btn.setAttribute('data-on', window._dedupByTitle ? 'true' : 'false');
             if (window._dedupByTitle && !window._memoRankMap) fetchMemoRankings();
             saveTypographyPrefs();
+            renderTimeline();
+        };
+
+        window.toggleBlueskyMastodon = async () => {
+            window._bskyMastodonStyle = !window._bskyMastodonStyle;
+            const btn = document.getElementById('bsky-mastodon-toggle');
+            if (btn) btn.setAttribute('data-on', window._bskyMastodonStyle ? 'true' : 'false');
+            saveTypographyPrefs();
+            // Re-fetch all Bluesky feeds so cached articles pick up the new title/excerpt format
+            const bskyFeeds = window.feeds.filter(f => isBlueskyFeed(f.url));
+            if (bskyFeeds.length) await fetchAllStaggered(bskyFeeds, null, false, 100);
             renderTimeline();
         };
 
@@ -2298,7 +2321,16 @@
                 const isRepost = reason?.$type === 'app.bsky.feed.defs#reasonRepost';
                 const titleText = text.trim() || (isRepost ? '[Repost]' : '[Post]');
                 let title, listExcerpt, bodyStartChar = 0;
-                if (titleText.length > 80) {
+                if (window._bskyMastodonStyle) {
+                    // Mastodon-style: full text in preview/body. Title shows @handle ONLY when
+                    // the post's author differs from the feed owner (i.e. reposts or multi-user feeds);
+                    // for normal posts the source line at the top of the card already names the user.
+                    const feedOwnerActor = extractBlueskyActor(feedUrl);
+                    const isOwnPost = feedOwnerActor && (feedOwnerActor === handle || feedOwnerActor === post.author?.did);
+                    title = isOwnPost ? '' : `@${handle}`;
+                    listExcerpt = text.trim().substring(0, 3000);
+                    bodyStartChar = 0;
+                } else if (titleText.length > 80) {
                     let cut = titleText.lastIndexOf(' ', 80);
                     if (cut < 40) cut = 79;
                     title = titleText.substring(0, cut) + '…';
@@ -2347,6 +2379,17 @@
             }
             saveArticleCache();
             return true;
+        }
+
+        // Decode HTML entities (&nbsp;, &amp;, &#8217;, etc.) in already-stripped text.
+        // Using a <textarea> is safe — innerHTML on a textarea parses character references but does not execute or render anything.
+        const _entityDecoder = document.createElement('textarea');
+        function decodeHtmlEntities(str) {
+            if (!str || str.indexOf('&') === -1) return str || '';
+            _entityDecoder.innerHTML = str;
+            const out = _entityDecoder.value;
+            _entityDecoder.innerHTML = '';
+            return out;
         }
 
         // Fix lazy-loaded images in feed HTML (data-src, data-lazy-src, srcset-only)
@@ -2509,7 +2552,7 @@
                         author: getText(item, 'author name', 'author', 'dc\\:creator') || sourceName,
                         timestamp: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
-                        excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
+                        excerpt: decodeHtmlEntities(rawBody.replace(/(<([^>]+)>)/gi, '')).substring(0, 3000),
                         _excerptHtml: null,
                         body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_TAGS: ['audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'controls', 'preload', 'type'] }),
                         link,
@@ -2811,7 +2854,7 @@
                             ${favicon}<span class="font-bold uppercase truncate">${esc(a.source)}</span>
                             <span class="ml-auto flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${esc(a.title)}</h3>
+                        ${a.title ? `<h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${esc(a.title)}</h3>` : ''}
                     </div>
                 </div>`;
             }
@@ -2827,7 +2870,7 @@
                             <span class="list-source-label font-bold text-blue-500 uppercase truncate mr-2">${favicon}${esc(a.source)}</span>
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>
+                        ${a.title ? `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>` : ''}
                         ${a.excerpt ? `<p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>` : ''}
                     </div>
                 </div>
@@ -3043,6 +3086,7 @@
             const titleEl = document.getElementById('article-title');
             titleEl.textContent = article.title;
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
+            titleEl.style.display = article.title ? '' : 'none';
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
@@ -4797,6 +4841,7 @@
                     ...previewLH,
                     ...previewLines,
                     dedupByTitle:       window._dedupByTitle || false,
+                    bskyMastodonStyle:  window._bskyMastodonStyle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
@@ -4893,6 +4938,11 @@
                 const btn = document.getElementById('dedup-title-toggle');
                 if (btn) btn.setAttribute('data-on', 'true');
                 fetchMemoRankings();
+            }
+            if (prefs.bskyMastodonStyle) {
+                window._bskyMastodonStyle = true;
+                const btn = document.getElementById('bsky-mastodon-toggle');
+                if (btn) btn.setAttribute('data-on', 'true');
             }
         }
 
