@@ -2322,8 +2322,12 @@
                 const titleText = text.trim() || (isRepost ? '[Repost]' : '[Post]');
                 let title, listExcerpt, bodyStartChar = 0;
                 if (window._bskyMastodonStyle) {
-                    // Mastodon-style: title = @handle, all post text goes in the preview/body
-                    title = `@${handle}`;
+                    // Mastodon-style: full text in preview/body. Title shows @handle ONLY when
+                    // the post's author differs from the feed owner (i.e. reposts or multi-user feeds);
+                    // for normal posts the source line at the top of the card already names the user.
+                    const feedOwnerActor = extractBlueskyActor(feedUrl);
+                    const isOwnPost = feedOwnerActor && (feedOwnerActor === handle || feedOwnerActor === post.author?.did);
+                    title = isOwnPost ? '' : `@${handle}`;
                     listExcerpt = text.trim().substring(0, 3000);
                     bodyStartChar = 0;
                 } else if (titleText.length > 80) {
@@ -2850,7 +2854,7 @@
                             ${favicon}<span class="font-bold uppercase truncate">${esc(a.source)}</span>
                             <span class="ml-auto flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${esc(a.title)}</h3>
+                        ${a.title ? `<h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${esc(a.title)}</h3>` : ''}
                     </div>
                 </div>`;
             }
@@ -2866,7 +2870,7 @@
                             <span class="list-source-label font-bold text-blue-500 uppercase truncate mr-2">${favicon}${esc(a.source)}</span>
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>
+                        ${a.title ? `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>` : ''}
                         ${a.excerpt ? `<p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>` : ''}
                     </div>
                 </div>
@@ -3082,6 +3086,7 @@
             const titleEl = document.getElementById('article-title');
             titleEl.textContent = article.title;
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
+            titleEl.style.display = article.title ? '' : 'none';
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
