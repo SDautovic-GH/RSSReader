@@ -5006,6 +5006,11 @@
                     a.readLater = window._readLaterLinks.has(a.link);
                     a._ts = a._ts || new Date(a.timestamp).getTime();
                     a._excerptHtml = null;
+                    // Self-heal stale entities from articles cached by older app versions
+                    // (idempotent — clean strings hit the no-`&` early return in decodeHtmlEntities).
+                    if (a.title) a.title = decodeHtmlEntities(a.title);
+                    if (a.author) a.author = decodeHtmlEntities(a.author);
+                    if (a.excerpt) a.excerpt = decodeHtmlEntities(a.excerpt);
                     if (a._fullBodyLoaded && a.link) window._bodyCache[a.link] = a.body;
                     if (!a.body) a.body = '';
                 });
