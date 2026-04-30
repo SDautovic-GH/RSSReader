@@ -2383,13 +2383,20 @@
 
         // Decode HTML entities (&nbsp;, &amp;, &#8217;, etc.) in already-stripped text.
         // Using a <textarea> is safe — innerHTML on a textarea parses character references but does not execute or render anything.
+        // Loops until the result stops changing to handle double-/triple-encoded feeds (e.g. WHDH ships &amp;#8217;
+        // inside a CDATA description, which decodes to literal "&#8217;" after one pass).
         const _entityDecoder = document.createElement('textarea');
         function decodeHtmlEntities(str) {
             if (!str || str.indexOf('&') === -1) return str || '';
-            _entityDecoder.innerHTML = str;
-            const out = _entityDecoder.value;
+            let current = str;
+            for (let i = 0; i < 3; i++) {
+                _entityDecoder.innerHTML = current;
+                const next = _entityDecoder.value;
+                if (next === current) break;
+                current = next;
+            }
             _entityDecoder.innerHTML = '';
-            return out;
+            return current;
         }
 
         // Fix lazy-loaded images in feed HTML (data-src, data-lazy-src, srcset-only)
