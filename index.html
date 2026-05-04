@@ -4503,10 +4503,16 @@
             window._pinnedArticleIds.clear();
             refreshUI();
             const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
+            const inFolderOrSource = !!(window.currentCategoryFilter || window.currentSourceFilter);
+            const remainingUnread = window.articles.filter(a => a.unread).length;
             if (isMobile()) {
-                window.showToast('Marked all read — fetching new items...');
                 setMobilePane('sidebar');
-                fetchAllStaggered(window.feeds);
+                if (inFolderOrSource && remainingUnread > 0) {
+                    window.showToast('Marked all read');
+                } else {
+                    window.showToast('Marked all read — fetching new items...');
+                    fetchAllStaggered(window.feeds);
+                }
             } else if (isSmartFeedWithFetch) {
                 window.showToast('Marked all read — fetching new items...');
                 fetchAllStaggered(window.feeds);
@@ -5775,7 +5781,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v21';
+const CACHE_NAME = 'rss-reader-v22';
 const APP_SHELL = [
     '/',
     'index.html'
