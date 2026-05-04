@@ -1023,16 +1023,11 @@
 
         /* Settings select / range — slightly larger for readability */
         #settings-modal select.settings-input {
-            padding: 10px 36px 10px 12px; font-size: 14px; border-radius: 8px;
-            background: rgba(255,255,255,0.04) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23f0f6fc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='1,1.5 6,6.5 11,1.5'/></svg>") no-repeat right 12px center;
-            border: 1px solid rgba(148,163,184,0.2);
+            padding: 10px 12px; font-size: 14px; border-radius: 8px;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(148,163,184,0.2);
             color: inherit; width: 100%; outline: none;
-            -webkit-appearance: none; appearance: none;
         }
-        html:not(.dark) #settings-modal select.settings-input {
-            background: #f9fafb url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%231f2937' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='1,1.5 6,6.5 11,1.5'/></svg>") no-repeat right 12px center;
-            border-color: #e5e7eb;
-        }
+        html:not(.dark) #settings-modal select.settings-input { background: #f9fafb; border-color: #e5e7eb; }
         #settings-modal select.settings-input option { color: #111827; background: #fff; }
         .dark #settings-modal select.settings-input option { color: #f0f6fc; background: #1f2937; }
         #settings-modal input[type="range"].settings-range {
@@ -1568,13 +1563,6 @@
                             </div>
                             <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch" data-on="false" aria-label="Deduplicate by title"></button>
                         </div>
-                        <div class="settings-row">
-                            <div class="min-w-0 flex-1">
-                                <label class="settings-item-label-sm">Mastodon-style Bluesky posts</label>
-                                <p class="text-[12px] text-gray-400 mt-1">Title shows @handle; full post text appears in the preview and body (no headline split)</p>
-                            </div>
-                            <button id="bsky-mastodon-toggle" onclick="toggleBlueskyMastodon()" class="toggle-switch" data-on="false" aria-label="Mastodon-style Bluesky posts"></button>
-                        </div>
                         <div class="settings-row settings-row-stacked">
                             <label class="settings-item-label">Font</label>
                             <select id="font-family-select" onchange="updateFontFamily('both', this.value)" class="settings-input">
@@ -2030,7 +2018,7 @@
                 try {
                     const proxyUrl = proxyFn(feedUrl);
                     const res = await fetch(proxyUrl, {
-                        signal: AbortSignal.timeout(8000)
+                        signal: AbortSignal.timeout(10000)
                     });
                     if (!res.ok) continue;
                     let xmlText;
@@ -2049,11 +2037,6 @@
             }
             return null;
         }
-
-        // --- BLUESKY DISPLAY MODE ---
-        // false = split mode: title = first ~80 chars of post, excerpt = remainder
-        // true  = Mastodon-style: title = @handle, excerpt = full post text
-        window._bskyMastodonStyle = false;
 
         // --- TITLE DEDUPLICATION ---
         window._dedupByTitle = false;
@@ -2125,17 +2108,6 @@
             if (btn) btn.setAttribute('data-on', window._dedupByTitle ? 'true' : 'false');
             if (window._dedupByTitle && !window._memoRankMap) fetchMemoRankings();
             saveTypographyPrefs();
-            renderTimeline();
-        };
-
-        window.toggleBlueskyMastodon = async () => {
-            window._bskyMastodonStyle = !window._bskyMastodonStyle;
-            const btn = document.getElementById('bsky-mastodon-toggle');
-            if (btn) btn.setAttribute('data-on', window._bskyMastodonStyle ? 'true' : 'false');
-            saveTypographyPrefs();
-            // Re-fetch all Bluesky feeds so cached articles pick up the new title/excerpt format
-            const bskyFeeds = window.feeds.filter(f => isBlueskyFeed(f.url));
-            if (bskyFeeds.length) await fetchAllStaggered(bskyFeeds, null, false, 100);
             renderTimeline();
         };
 
@@ -2215,7 +2187,7 @@
             return `<div class="bsky-quote-embed"><div class="bsky-quote-header">${avatarHtml}<span class="bsky-quote-name">${bskyEsc(author.displayName || author.handle)}</span><span class="bsky-quote-handle">@${bskyEsc(author.handle)}</span></div>${value.text ? `<div class="bsky-quote-text">${applyBskyFacets(value.text, value.facets)}</div>` : ''}${imgEmbed ? renderBskyImages(imgEmbed.images, true) : ''}${extEmbed ? renderBskyExternalCard(extEmbed.external) : ''}</div>`;
         }
 
-        function buildBlueskyPostHtml(feedItem, textStartChar = 0) {
+        function buildBlueskyPostHtml(feedItem) {
             const { post, reason } = feedItem;
             const record = post?.record;
             const embed = post?.embed;
@@ -2224,25 +2196,7 @@
             if (reason?.$type === 'app.bsky.feed.defs#reasonRepost') {
                 html += `<p class="bsky-repost-label">↻ Reposted</p>`;
             }
-            const _bskyText = record.text || '';
-            // Skip the leading portion already shown in the title (matches Article List excerpt behavior)
-            const _bskyBodyText = textStartChar > 0 ? _bskyText.substring(textStartChar).replace(/^\s+/, '') : _bskyText;
-            if (_bskyBodyText.length > 0) {
-                const _bskyEnc = new TextEncoder();
-                const _bskyByteOffset = textStartChar > 0
-                    ? _bskyEnc.encode(_bskyText.substring(0, _bskyText.length - _bskyBodyText.length)).length
-                    : 0;
-                const _bskyAdjFacets = (record.facets || [])
-                    .filter(f => f.index && f.index.byteEnd > _bskyByteOffset)
-                    .map(f => ({
-                        ...f,
-                        index: {
-                            byteStart: Math.max(0, f.index.byteStart - _bskyByteOffset),
-                            byteEnd: f.index.byteEnd - _bskyByteOffset
-                        }
-                    }));
-                html += `<p>${applyBskyFacets(_bskyBodyText, _bskyAdjFacets)}</p>`;
-            }
+            html += `<p>${applyBskyFacets(record.text || '', record.facets)}</p>`;
             if (embed?.$type === 'app.bsky.embed.images#view') {
                 html += renderBskyImages(embed.images);
             }
@@ -2269,7 +2223,7 @@
             let data = null;
             // Try direct fetch (public.api.bsky.app has CORS enabled)
             try {
-                const res = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) });
+                const res = await fetch(apiUrl, { signal: AbortSignal.timeout(10000) });
                 if (res.ok) data = await res.json();
             } catch(e) { console.warn('Direct fetch failed:', e.message); }
             // Fall back to proxies if direct fetch failed
@@ -2277,7 +2231,7 @@
                 for (const proxyFn of PROXIES) {
                     try {
                         const proxyUrl = proxyFn(apiUrl);
-                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
                         if (!res.ok) continue;
                         let text;
                         if (proxyUrl.includes('allorigins')) {
@@ -2320,31 +2274,8 @@
                 const text = record.text || '';
                 const isRepost = reason?.$type === 'app.bsky.feed.defs#reasonRepost';
                 const titleText = text.trim() || (isRepost ? '[Repost]' : '[Post]');
-                let title, listExcerpt, bodyStartChar = 0;
-                if (window._bskyMastodonStyle) {
-                    // Mastodon-style: full text in preview/body. Title shows @handle ONLY when
-                    // the post's author differs from the feed owner (i.e. reposts or multi-user feeds);
-                    // for normal posts the source line at the top of the card already names the user.
-                    const feedOwnerActor = extractBlueskyActor(feedUrl);
-                    const isOwnPost = feedOwnerActor && (feedOwnerActor === handle || feedOwnerActor === post.author?.did);
-                    title = isOwnPost ? '' : `@${handle}`;
-                    listExcerpt = text.trim().substring(0, 3000);
-                    bodyStartChar = 0;
-                } else if (titleText.length > 80) {
-                    let cut = titleText.lastIndexOf(' ', 80);
-                    if (cut < 40) cut = 79;
-                    title = titleText.substring(0, cut) + '…';
-                    listExcerpt = titleText.substring(cut).trim().substring(0, 3000);
-                    // Map cut (char offset in trimmed titleText) back to char offset in original text
-                    const _leadWs = text.length - text.replace(/^\s+/, '').length;
-                    bodyStartChar = cut + _leadWs;
-                } else {
-                    title = titleText;
-                    listExcerpt = '';
-                    // No truncation: title contains entire text, so suppress body text to avoid repetition
-                    bodyStartChar = text.length;
-                }
-                const body = DOMPurify.sanitize(buildBlueskyPostHtml(feedItem, bodyStartChar), { ADD_ATTR: ['loading', 'target', 'rel', 'data-fullsize'] });
+                const title = titleText.length > 120 ? titleText.substring(0, 119) + '…' : titleText;
+                const body = DOMPurify.sanitize(buildBlueskyPostHtml(feedItem), { ADD_ATTR: ['loading', 'target', 'rel', 'data-fullsize'] });
                 const image = (() => {
                     const emb = post.embed;
                     const imgs = emb?.$type === 'app.bsky.embed.images#view' ? emb.images :
@@ -2359,8 +2290,7 @@
                     author: post.author?.displayName || post.author?.handle || sourceName,
                     timestamp: new Date(record.createdAt || Date.now()).toISOString(),
                     _ts: new Date(record.createdAt || Date.now()).getTime(),
-                    excerpt: listExcerpt,
-                    _searchText: text.substring(0, 3000),
+                    excerpt: text.substring(0, 3000),
                     _excerptHtml: null,
                     body,
                     link,
@@ -2379,24 +2309,6 @@
             }
             saveArticleCache();
             return true;
-        }
-
-        // Decode HTML entities (&nbsp;, &amp;, &#8217;, etc.) in already-stripped text.
-        // Using a <textarea> is safe — innerHTML on a textarea parses character references but does not execute or render anything.
-        // Loops until the result stops changing to handle double-/triple-encoded feeds (e.g. WHDH ships &amp;#8217;
-        // inside a CDATA description, which decodes to literal "&#8217;" after one pass).
-        const _entityDecoder = document.createElement('textarea');
-        function decodeHtmlEntities(str) {
-            if (!str || str.indexOf('&') === -1) return str || '';
-            let current = str;
-            for (let i = 0; i < 3; i++) {
-                _entityDecoder.innerHTML = current;
-                const next = _entityDecoder.value;
-                if (next === current) break;
-                current = next;
-            }
-            _entityDecoder.innerHTML = '';
-            return current;
         }
 
         // Fix lazy-loaded images in feed HTML (data-src, data-lazy-src, srcset-only)
@@ -2461,7 +2373,7 @@
                 const getText = (el, ...tags) => {
                     for (const tag of tags) {
                         const node = el.querySelector(tag);
-                        if (node?.textContent?.trim()) return decodeHtmlEntities(node.textContent.trim());
+                        if (node?.textContent?.trim()) return node.textContent.trim();
                     }
                     return '';
                 };
@@ -2559,7 +2471,7 @@
                         author: getText(item, 'author name', 'author', 'dc\\:creator') || sourceName,
                         timestamp: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
-                        excerpt: decodeHtmlEntities(rawBody.replace(/(<([^>]+)>)/gi, '')).substring(0, 3000),
+                        excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
                         _excerptHtml: null,
                         body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_TAGS: ['audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'controls', 'preload', 'type'] }),
                         link,
@@ -2726,7 +2638,7 @@
                 filtered = filtered.filter(a =>
                     (a.title||'').toLowerCase().includes(q) ||
                     (a.source||'').toLowerCase().includes(q) ||
-                    (a.excerpt||a._searchText||'').toLowerCase().includes(q)
+                    (a.excerpt||'').toLowerCase().includes(q)
                 );
             } else {
                 // Apply normal filters
@@ -2847,6 +2759,7 @@
             const selected = window.currentArticle?.id === a.id;
             const selCls = selected ? 'border-l-4 border-l-blue-500' : '';
             const selStyle = selected ? 'style="background-color: rgba(23,37,84,0.45);"' : '';
+            const isBsky = a.feedUrl ? isBlueskyFeed(a.feedUrl) : false;
 
             const saId = escJs(a.id);
 
@@ -2861,10 +2774,14 @@
                             ${favicon}<span class="font-bold uppercase truncate">${esc(a.source)}</span>
                             <span class="ml-auto flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
-                        ${a.title ? `<h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${esc(a.title)}</h3>` : ''}
+                        <h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${esc(a.title)}</h3>
                     </div>
                 </div>`;
             }
+            const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
+            const previewCls = isBsky
+                ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-custom dynamic-list-preview'
+                : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
@@ -2877,8 +2794,8 @@
                             <span class="list-source-label font-bold text-blue-500 uppercase truncate mr-2">${favicon}${esc(a.source)}</span>
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
-                        ${a.title ? `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>` : ''}
-                        ${a.excerpt ? `<p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>` : ''}
+                        ${titleHtml}
+                        <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
                     </div>
                 </div>
             </div>`;
@@ -3093,7 +3010,6 @@
             const titleEl = document.getElementById('article-title');
             titleEl.textContent = article.title;
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
-            titleEl.style.display = article.title ? '' : 'none';
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
             const bodyEl = document.getElementById('article-body');
@@ -3807,7 +3723,7 @@
             renderTimeline();
         };
 
-        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 100) {
+        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 150) {
             const promises = [];
             for (let i = 0; i < feeds.length; i++) {
                 promises.push(fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground));
@@ -4549,17 +4465,17 @@
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
-            // On mobile, the current pane is now empty — bounce to sidebar so the user can pick a new folder
-            if (isMobile()) setMobilePane('sidebar');
-            // Only auto-fetch when the user has actually cleared their entire queue —
-            // marking one folder/source/smart-feed as read shouldn't trigger a global refresh.
-            const allCaughtUp = window.articles.every(a => !a.unread);
-            if (allCaughtUp) {
-                window.showToast('All caught up — fetching new items...');
+            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
+            if (isMobile()) {
+                window.showToast('Marked all read — fetching new items...');
+                setMobilePane('sidebar');
                 fetchAllStaggered(window.feeds);
+            } else if (isSmartFeedWithFetch) {
+                window.showToast('Marked all read — fetching new items...');
+                fetchAllStaggered(window.feeds);
+            } else {
+                window.showToast('Marked all read');
             }
-            // No toast for the regular "marked all read" case — the visible UI change (empty list,
-            // bounce to sidebar) is feedback enough. Toast is reserved for folder-context Mark All Read.
         };
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
@@ -4801,7 +4717,6 @@
             }
             saveReadState(); refreshUI();
             document.getElementById('folder-context-menu').classList.add('hidden');
-            window.showToast('Marked all read');
         };
 
         // --- TYPOGRAPHY PERSISTENCE ---
@@ -4849,7 +4764,6 @@
                     ...previewLH,
                     ...previewLines,
                     dedupByTitle:       window._dedupByTitle || false,
-                    bskyMastodonStyle:  window._bskyMastodonStyle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
@@ -4947,11 +4861,6 @@
                 if (btn) btn.setAttribute('data-on', 'true');
                 fetchMemoRankings();
             }
-            if (prefs.bskyMastodonStyle) {
-                window._bskyMastodonStyle = true;
-                const btn = document.getElementById('bsky-mastodon-toggle');
-                if (btn) btn.setAttribute('data-on', 'true');
-            }
         }
 
         // --- ARTICLE CACHE ---
@@ -5007,11 +4916,6 @@
                     a.readLater = window._readLaterLinks.has(a.link);
                     a._ts = a._ts || new Date(a.timestamp).getTime();
                     a._excerptHtml = null;
-                    // Self-heal stale entities from articles cached by older app versions
-                    // (idempotent — clean strings hit the no-`&` early return in decodeHtmlEntities).
-                    if (a.title) a.title = decodeHtmlEntities(a.title);
-                    if (a.author) a.author = decodeHtmlEntities(a.author);
-                    if (a.excerpt) a.excerpt = decodeHtmlEntities(a.excerpt);
                     if (a._fullBodyLoaded && a.link) window._bodyCache[a.link] = a.body;
                     if (!a.body) a.body = '';
                 });
@@ -5276,7 +5180,7 @@
                 results = list.filter(a => {
                     const t = (a.title || '').toLowerCase();
                     const s = (a.source || '').toLowerCase();
-                    const b = (a.excerpt || a._searchText || '').toLowerCase();
+                    const b = (a.excerpt || '').toLowerCase();
                     return t.includes(q) || s.includes(q) || b.includes(q);
                 }).slice(0, 80);
             }
