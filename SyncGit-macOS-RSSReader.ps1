@@ -105,6 +105,14 @@ try {
         & git merge --abort 2>$null
     }
 
+    # Abort any in-progress rebase
+    $rebaseMergeDir = Join-Path $RepoPath ".git/rebase-merge"
+    $rebaseApplyDir = Join-Path $RepoPath ".git/rebase-apply"
+    if ((Test-Path $rebaseMergeDir) -or (Test-Path $rebaseApplyDir)) {
+        Write-Host "Unresolved rebase detected - aborting before checkout."
+        & git rebase --abort 2>$null
+    }
+
     Invoke-GitChecked -Arguments @("checkout", $MainBranch) -ActionDescription "Checkout $MainBranch"
 
     # 1. Fetch remote changes first
@@ -124,14 +132,16 @@ try {
         Invoke-GitChecked -Arguments @("commit", "-m", "Auto sync macOS $TimeStamp") -ActionDescription "Commit RSSReader changes"
     }
 
-    # 4. Merge remote changes
+    # 4. Rebase local commits onto remote to keep history linear and preserve
+    # atomic local commits (file moves, deletions paired with adds). On conflict,
+    # abort and fall back to a merge preferring remote changes (-Xtheirs).
     try {
-        Invoke-GitChecked -Arguments @("merge", "$RemoteName/$MainBranch", "--no-edit") -ActionDescription "Merge $RemoteName/$MainBranch"
+        Invoke-GitChecked -Arguments @("rebase", "$RemoteName/$MainBranch") -ActionDescription "Rebase onto $RemoteName/$MainBranch"
     }
     catch {
-        Write-Host "Merge issue or conflict detected - resolving by preferring remote changes."
-        & git merge --abort 2>$null
-        Invoke-GitChecked -Arguments @("merge", "-Xtheirs", "$RemoteName/$MainBranch", "--no-edit") -ActionDescription "Merge $RemoteName/$MainBranch (Xtheirs)"
+        Write-Host "Rebase conflict detected - aborting and retrying with merge preferring remote changes."
+        & git rebase --abort 2>$null
+        Invoke-GitChecked -Arguments @("merge", "-Xtheirs", "$RemoteName/$MainBranch", "--no-edit") -ActionDescription "Merge $RemoteName/$MainBranch (Xtheirs fallback)"
     }
 
     # 5. Push if the local branch is ahead of the remote

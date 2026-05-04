@@ -202,6 +202,14 @@ try {
         & git merge --abort 2>$null
     }
 
+    # Abort any in-progress rebase before checkout
+    $rebaseMergeDir = Join-Path $RepoPath ".git\rebase-merge"
+    $rebaseApplyDir = Join-Path $RepoPath ".git\rebase-apply"
+    if ((Test-Path $rebaseMergeDir) -or (Test-Path $rebaseApplyDir)) {
+        Write-Host "Unresolved rebase detected - aborting before checkout."
+        & git rebase --abort 2>$null
+    }
+
     Invoke-GitChecked -Arguments @("checkout", $MainBranch) -ActionDescription "Checkout $MainBranch"
 
     # Restore any tracked files that are missing from disk before staging
@@ -227,15 +235,17 @@ try {
         $needsPush = $true
     }
 
-    # Pull; if a merge conflict occurs, abort and retry preferring local (Xours)
+    # Pull with rebase to keep history linear and preserve atomic local commits
+    # (file moves, deletions paired with adds). On conflict, abort and fall back
+    # to a merge pull preferring local changes (-Xours).
     try {
-        Invoke-GitChecked -Arguments @("pull", "--no-rebase", $RemoteName, $MainBranch) -ActionDescription "Pull $MainBranch"
+        Invoke-GitChecked -Arguments @("pull", "--rebase", $RemoteName, $MainBranch) -ActionDescription "Pull $MainBranch (rebase)"
     }
     catch {
-        if ($_.Exception.Message -match "Automatic merge failed|CONFLICT") {
-            Write-Host "Merge conflict detected - resolving by preferring local changes."
-            & git merge --abort 2>$null
-            Invoke-GitChecked -Arguments @("pull", "--no-rebase", "-Xours", $RemoteName, $MainBranch) -ActionDescription "Pull $MainBranch (Xours)"
+        if ($_.Exception.Message -match "Automatic merge failed|CONFLICT|could not apply") {
+            Write-Host "Rebase conflict detected - aborting and retrying with merge preferring local changes."
+            & git rebase --abort 2>$null
+            Invoke-GitChecked -Arguments @("pull", "--no-rebase", "-Xours", $RemoteName, $MainBranch) -ActionDescription "Pull $MainBranch (Xours fallback)"
             $needsPush = $true
         }
         else {
