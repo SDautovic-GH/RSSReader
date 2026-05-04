@@ -1563,6 +1563,13 @@
                             </div>
                             <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch" data-on="false" aria-label="Deduplicate by title"></button>
                         </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Mastodon-style Bluesky posts</label>
+                                <p class="text-[12px] text-gray-400 mt-1">Title shows @handle; full post text appears in the preview and body (no headline split)</p>
+                            </div>
+                            <button id="bsky-mastodon-toggle" onclick="toggleBskyMastodonStyle()" class="toggle-switch" data-on="false" aria-label="Mastodon-style Bluesky posts"></button>
+                        </div>
                         <div class="settings-row settings-row-stacked">
                             <label class="settings-item-label">Font</label>
                             <select id="font-family-select" onchange="updateFontFamily('both', this.value)" class="settings-input">
@@ -2111,6 +2118,16 @@
             renderTimeline();
         };
 
+        window._bskyMastodonStyle = false;
+        window.toggleBskyMastodonStyle = () => {
+            window._bskyMastodonStyle = !window._bskyMastodonStyle;
+            const btn = document.getElementById('bsky-mastodon-toggle');
+            if (btn) btn.setAttribute('data-on', window._bskyMastodonStyle ? 'true' : 'false');
+            saveTypographyPrefs();
+            renderTimeline();
+            if (window.currentArticle && window.currentArticle.bskyHandle) selectArticle(window.currentArticle.id);
+        };
+
         // ===== BLUESKY AT PROTOCOL INTEGRATION =====
 
         function isBlueskyFeed(url) {
@@ -2287,6 +2304,7 @@
                     source: sourceName,
                     feedUrl,
                     title,
+                    bskyHandle: handle,
                     author: post.author?.displayName || post.author?.handle || sourceName,
                     timestamp: new Date(record.createdAt || Date.now()).toISOString(),
                     _ts: new Date(record.createdAt || Date.now()).getTime(),
@@ -2778,8 +2796,10 @@
                     </div>
                 </div>`;
             }
-            const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
-            const previewCls = isBsky
+            const mastodonStyle = isBsky && window._bskyMastodonStyle;
+            const sourceLabel = mastodonStyle && a.bskyHandle ? `@${a.bskyHandle}` : a.source;
+            const titleHtml = mastodonStyle ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
+            const previewCls = mastodonStyle
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-custom dynamic-list-preview'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
@@ -2791,7 +2811,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between mb-1.5">
-                            <span class="list-source-label font-bold text-blue-500 uppercase truncate mr-2">${favicon}${esc(a.source)}</span>
+                            <span class="list-source-label font-bold text-blue-500 uppercase truncate mr-2">${favicon}${esc(sourceLabel)}</span>
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
                         ${titleHtml}
@@ -3006,9 +3026,17 @@
                     faviconEl.classList.add('hidden');
                 }
             }
-            if (sourceLabelEl) sourceLabelEl.textContent = article.source;
+            const isBskyArticle = article.feedUrl ? isBlueskyFeed(article.feedUrl) : false;
+            const mastodonView = isBskyArticle && window._bskyMastodonStyle;
+            if (sourceLabelEl) sourceLabelEl.textContent = mastodonView && article.bskyHandle ? `@${article.bskyHandle}` : article.source;
             const titleEl = document.getElementById('article-title');
-            titleEl.textContent = article.title;
+            if (mastodonView) {
+                titleEl.textContent = '';
+                titleEl.style.display = 'none';
+            } else {
+                titleEl.style.display = '';
+                titleEl.textContent = article.title;
+            }
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
             document.getElementById('article-author').textContent = article.author;
             document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -4764,6 +4792,7 @@
                     ...previewLH,
                     ...previewLines,
                     dedupByTitle:       window._dedupByTitle || false,
+                    bskyMastodonStyle:  window._bskyMastodonStyle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
@@ -4860,6 +4889,11 @@
                 const btn = document.getElementById('dedup-title-toggle');
                 if (btn) btn.setAttribute('data-on', 'true');
                 fetchMemoRankings();
+            }
+            if (prefs.bskyMastodonStyle) {
+                window._bskyMastodonStyle = true;
+                const btn = document.getElementById('bsky-mastodon-toggle');
+                if (btn) btn.setAttribute('data-on', 'true');
             }
         }
 
@@ -5719,7 +5753,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v14';
+const CACHE_NAME = 'rss-reader-v15';
 const APP_SHELL = [
     '/',
     'index.html'
