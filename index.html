@@ -2809,7 +2809,7 @@
                 </div>`;
             }
             const mastodonStyle = isBsky && window._bskyMastodonStyle;
-            const sourceLabel = mastodonStyle && a.bskyHandle ? `@${a.bskyHandle}` : a.source;
+            const sourceLabel = a.source;
             const titleHtml = mastodonStyle ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
             const previewCls = mastodonStyle
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-custom dynamic-list-preview'
@@ -3040,7 +3040,12 @@
             }
             const isBskyArticle = article.feedUrl ? isBlueskyFeed(article.feedUrl) : false;
             const mastodonView = isBskyArticle && window._bskyMastodonStyle;
-            if (sourceLabelEl) sourceLabelEl.textContent = mastodonView && article.bskyHandle ? `@${article.bskyHandle}` : article.source;
+            const metaEl = document.getElementById('article-meta');
+            if (sourceLabelEl) sourceLabelEl.textContent = article.source;
+            if (metaEl) {
+                metaEl.onclick = isBskyArticle ? (() => window.open(article.link, '_blank', 'noopener,noreferrer')) : filterByCurrentSource;
+                metaEl.title = isBskyArticle ? 'Open post on Bluesky' : '';
+            }
             const titleEl = document.getElementById('article-title');
             if (mastodonView) {
                 titleEl.textContent = '';
@@ -3050,8 +3055,17 @@
                 titleEl.textContent = article.title;
             }
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
-            document.getElementById('article-author').textContent = article.author;
-            document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+            const authorEl = document.getElementById('article-author');
+            const dateEl = document.getElementById('article-date');
+            authorEl.textContent = article.author;
+            dateEl.textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+            if (mastodonView) {
+                authorEl.style.display = 'none';
+                authorEl.nextElementSibling.style.display = 'none';
+            } else {
+                authorEl.style.display = '';
+                authorEl.nextElementSibling.style.display = '';
+            }
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
             stripLeadingEmptyBlocks(bodyEl);
