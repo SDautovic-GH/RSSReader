@@ -1412,7 +1412,7 @@
     </div>
 
     <!-- LOGIN MODAL -->
-    <div id="login-modal" class="fixed inset-0 z-[200] flex items-center justify-center modal-backdrop">
+    <div id="login-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center modal-backdrop">
         <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl p-8 border border-gray-100 dark:border-gray-700">
             <div class="flex items-center justify-center space-x-3 mb-6">
                 <div class="bg-blue-600 text-white p-2 rounded-xl shadow-sm">
@@ -5510,27 +5510,33 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        setPersistence(auth, browserLocalPersistence).catch(() => {});
         const APP_ID = 'rss-reader-fyi';
         let userId = null;
         let userEmail = null;
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                userId = user.uid;
-                userEmail = user.email;
-                document.getElementById('login-modal').classList.add('hidden');
-                document.getElementById('sync-status').textContent = 'Syncing...';
-                document.getElementById('signout-btn').classList.remove('hidden');
-                setupPersistence();
-            } else {
-                userId = null;
-                userEmail = null;
-                document.getElementById('login-modal').classList.remove('hidden');
-                document.getElementById('sync-status').textContent = 'Not signed in';
-                document.getElementById('signout-btn').classList.add('hidden');
-            }
-        });
+        // Await persistence before wiring up the auth listener so the cached
+        // session is honored on cold start (especially on mobile Safari where
+        // the default in-memory persistence would force a re-login every time).
+        setPersistence(auth, browserLocalPersistence)
+            .catch((e) => console.warn('Auth persistence setup failed:', e?.message))
+            .finally(() => {
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userEmail = user.email;
+                        document.getElementById('login-modal').classList.add('hidden');
+                        document.getElementById('sync-status').textContent = 'Syncing...';
+                        document.getElementById('signout-btn').classList.remove('hidden');
+                        setupPersistence();
+                    } else {
+                        userId = null;
+                        userEmail = null;
+                        document.getElementById('login-modal').classList.remove('hidden');
+                        document.getElementById('sync-status').textContent = 'Not signed in';
+                        document.getElementById('signout-btn').classList.add('hidden');
+                    }
+                });
+            });
 
         window.handleSignIn = async () => {
             const email = document.getElementById('login-email').value.trim();
