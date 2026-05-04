@@ -2759,6 +2759,7 @@
             const selected = window.currentArticle?.id === a.id;
             const selCls = selected ? 'border-l-4 border-l-blue-500' : '';
             const selStyle = selected ? 'style="background-color: rgba(23,37,84,0.45);"' : '';
+            const isBsky = a.feedUrl ? isBlueskyFeed(a.feedUrl) : false;
 
             const saId = escJs(a.id);
 
@@ -2777,6 +2778,10 @@
                     </div>
                 </div>`;
             }
+            const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
+            const previewCls = isBsky
+                ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-custom dynamic-list-preview'
+                : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
@@ -2789,8 +2794,8 @@
                             <span class="list-source-label font-bold text-blue-500 uppercase truncate mr-2">${favicon}${esc(a.source)}</span>
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>
-                        <p class="text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
+                        ${titleHtml}
+                        <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
                     </div>
                 </div>
             </div>`;
