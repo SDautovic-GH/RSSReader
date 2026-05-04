@@ -331,18 +331,6 @@
             animation: shimmer 1.4s infinite linear;
         }
 
-        /* Reading progress bar */
-        #reading-progress {
-            position: absolute;
-            top: 0; left: 0;
-            height: 3px;
-            width: 0%;
-            background: #3b82f6;
-            z-index: 20;
-            transition: width 0.1s linear !important;
-            border-radius: 0 2px 2px 0;
-        }
-
         /* Feed health dot */
         .feed-stale::after, .feed-error::after {
             content: '';
@@ -761,7 +749,6 @@
         .dark #viewer-pane .h-14.border-b { border-color: #21262d !important; }
         .dark #timeline-pane .h-14.border-b { border-color: #21262d !important; }
         .dark .p-4.border-t { background: #0a1119 !important; border-color: #21262d !important; }
-        .dark #resizer { border-color: #1c2128 !important; }
 
         /* Article list cards — subtle GitHub-style separators */
         .dark #article-list > div {
@@ -1021,13 +1008,24 @@
         }
         .dark .segmented button[data-active="true"] { background: #4a4a52; color: #fff; }
 
-        /* Settings select / range — slightly larger for readability */
+        /* Settings select / range — slightly larger for readability.
+           Custom chevron via inline-SVG background so the arrow stays visible
+           in dark mode (default native chevron renders near-black on the dark
+           background and disappears). White chevron for dark, slate for light. */
         #settings-modal select.settings-input {
-            padding: 10px 12px; font-size: 14px; border-radius: 8px;
+            padding: 10px 36px 10px 12px; font-size: 14px; border-radius: 8px;
             background: rgba(255,255,255,0.04); border: 1px solid rgba(148,163,184,0.2);
             color: inherit; width: 100%; outline: none;
+            -webkit-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f0f6fc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 12px 12px;
         }
-        html:not(.dark) #settings-modal select.settings-input { background: #f9fafb; border-color: #e5e7eb; }
+        html:not(.dark) #settings-modal select.settings-input {
+            background-color: #f9fafb; border-color: #e5e7eb;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+        }
         #settings-modal select.settings-input option { color: #111827; background: #fff; }
         .dark #settings-modal select.settings-input option { color: #f0f6fc; background: #1f2937; }
         #settings-modal input[type="range"].settings-range {
@@ -1217,7 +1215,7 @@
             <div id="timeline-header" class="px-4 h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
                     <div id="timeline-count-group" class="flex items-center">
-                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap">0 Unread</button>
+                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap">✓ 0</button>
                         <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
                     <!-- Desktop Search Input -->
@@ -1238,7 +1236,7 @@
         </section>
 
         <!-- Column Resizer -->
-        <div id="resizer" class="border-r border-gray-200 dark:border-gray-700 hover:bg-blue-500 transition-colors"></div>
+        <div id="resizer" class="hover:bg-blue-500 transition-colors"></div>
 
         <!-- PANE 3: Viewer -->
         <main id="viewer-pane" class="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
@@ -1248,10 +1246,6 @@
                         EXIT FULL SCREEN
                     </button>
 
-                    <div class="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
-
-                    <!-- Read time / progress estimate -->
-                    <span id="read-time" class="hidden text-[17px] text-gray-400 font-medium tabular-nums"></span>
                 </div>
 
                 <div class="flex items-center space-x-3">
@@ -1283,8 +1277,7 @@
             </div>
 
             <div class="flex-1 relative">
-                <div id="reader-view" class="absolute inset-0 overflow-y-auto overflow-x-hidden p-2 md:p-4 lg:p-6 no-scrollbar" id="reader-scroll">
-                    <div id="reading-progress"></div>
+                <div id="reader-view" class="absolute inset-0 overflow-y-auto overflow-x-hidden p-2 md:p-4 lg:p-6">
                     <div class="max-w-2xl mx-auto">
                         <div id="empty-state" class="text-center py-16 text-gray-400 px-4">
                             <div id="empty-state-welcome" class="hidden">
@@ -1417,7 +1410,7 @@
     </div>
 
     <!-- LOGIN MODAL -->
-    <div id="login-modal" class="fixed inset-0 z-[200] flex items-center justify-center modal-backdrop">
+    <div id="login-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center modal-backdrop">
         <div class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-2xl shadow-2xl p-8 border border-gray-100 dark:border-gray-700">
             <div class="flex items-center justify-center space-x-3 mb-6">
                 <div class="bg-blue-600 text-white p-2 rounded-xl shadow-sm">
@@ -1966,6 +1959,23 @@
             return tmp.innerHTML;
         }
 
+        // Decode HTML entities (&#8217; → ', &amp; → &, etc.) using the browser's parser.
+        // Needed for RSS feeds that wrap titles/excerpts in CDATA — the XML parser does not
+        // decode entities inside CDATA, so we end up with literal "&#8217;" text.
+        // Loops up to 3 times to handle double-encoded values like "&amp;quot;" → "&quot;" → '"'.
+        const _entityDecoder = document.createElement('textarea');
+        function decodeEntities(str) {
+            if (!str || str.indexOf('&') === -1) return str;
+            let out = str, prev;
+            for (let i = 0; i < 3; i++) {
+                prev = out;
+                _entityDecoder.innerHTML = out;
+                out = _entityDecoder.value;
+                if (out === prev || out.indexOf('&') === -1) break;
+            }
+            return out;
+        }
+
         // Cache relative time per render cycle — avoids repeated Date construction per card
         let _relTimeCache = {};
         let _relTimeCacheTime = 0;
@@ -2485,11 +2495,11 @@
                         id: _existingIds.get(link) || crypto.randomUUID(),
                         source: sourceName,
                         feedUrl,
-                        title: getText(item, 'title'),
-                        author: getText(item, 'author name', 'author', 'dc\\:creator') || sourceName,
+                        title: decodeEntities(getText(item, 'title')),
+                        author: decodeEntities(getText(item, 'author name', 'author', 'dc\\:creator')) || sourceName,
                         timestamp: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
-                        excerpt: rawBody.replace(/(<([^>]+)>)/gi, '').substring(0, 3000),
+                        excerpt: decodeEntities(rawBody.replace(/(<([^>]+)>)/gi, '')).substring(0, 3000),
                         _excerptHtml: null,
                         body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_TAGS: ['audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'controls', 'preload', 'type'] }),
                         link,
@@ -2724,7 +2734,7 @@
             renderTimelinePage(filtered);
 
             const unreadCount = filtered.filter(a => a.unread).length;
-            document.getElementById('timeline-count').textContent = `${unreadCount} Unread`;
+            document.getElementById('timeline-count').textContent = `✓ ${unreadCount}`;
             updateBadges();
             if (typeof updateReaderTabMode === 'function') updateReaderTabMode();
         };
@@ -2797,7 +2807,7 @@
                 </div>`;
             }
             const mastodonStyle = isBsky && window._bskyMastodonStyle;
-            const sourceLabel = mastodonStyle && a.bskyHandle ? `@${a.bskyHandle}` : a.source;
+            const sourceLabel = a.source;
             const titleHtml = mastodonStyle ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
             const previewCls = mastodonStyle
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-custom dynamic-list-preview'
@@ -3028,7 +3038,12 @@
             }
             const isBskyArticle = article.feedUrl ? isBlueskyFeed(article.feedUrl) : false;
             const mastodonView = isBskyArticle && window._bskyMastodonStyle;
-            if (sourceLabelEl) sourceLabelEl.textContent = mastodonView && article.bskyHandle ? `@${article.bskyHandle}` : article.source;
+            const metaEl = document.getElementById('article-meta');
+            if (sourceLabelEl) sourceLabelEl.textContent = article.source;
+            if (metaEl) {
+                metaEl.onclick = isBskyArticle ? (() => window.open(article.link, '_blank', 'noopener,noreferrer')) : filterByCurrentSource;
+                metaEl.title = isBskyArticle ? 'Open post on Bluesky' : '';
+            }
             const titleEl = document.getElementById('article-title');
             if (mastodonView) {
                 titleEl.textContent = '';
@@ -3038,22 +3053,24 @@
                 titleEl.textContent = article.title;
             }
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
-            document.getElementById('article-author').textContent = article.author;
-            document.getElementById('article-date').textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+            const authorEl = document.getElementById('article-author');
+            const dateEl = document.getElementById('article-date');
+            authorEl.textContent = article.author;
+            dateEl.textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+            if (mastodonView) {
+                authorEl.style.display = 'none';
+                authorEl.nextElementSibling.style.display = 'none';
+            } else {
+                authorEl.style.display = '';
+                authorEl.nextElementSibling.style.display = '';
+            }
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+            stripLeadingEmptyBlocks(bodyEl);
             initBodyImages(bodyEl);
 
             attemptFullContentLoad(article);
 
-            const wordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
-            window._articleTotalMinutes = Math.max(1, Math.ceil(wordCount / 200));
-            const readTimeEl = document.getElementById('read-time');
-            if (readTimeEl) { readTimeEl.textContent = `~${window._articleTotalMinutes} min read`; readTimeEl.classList.remove('hidden'); }
-            const tabCircle = document.getElementById('tab-progress-circle');
-            if (tabCircle) tabCircle.style.strokeDashoffset = '97.39';
-            const tabText = document.getElementById('tab-progress-text');
-            if (tabText) tabText.textContent = `${window._articleTotalMinutes}`;
 
             const idx = window.currentTimeline.findIndex(a => a.id === id);
             const prevBtn = document.getElementById('prev-article-btn');
@@ -3071,8 +3088,6 @@
             const shareBtn = document.getElementById('share-btn');
             if (shareBtn) shareBtn.classList.remove('hidden');
 
-            const progressBar = document.getElementById('reading-progress');
-            if (progressBar) progressBar.style.width = '0%';
             const readerEl = document.getElementById('reader-view');
             if (readerEl) readerEl.scrollTop = 0;
 
@@ -3229,6 +3244,7 @@
                             // Skip linkify — extracted HTML already has proper <a> tags
                             const sanitized = DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.innerHTML = sanitized;
+                            stripLeadingEmptyBlocks(bodyEl);
                             initBodyImages(bodyEl);
                             article.body = sanitized;
                             article._fullBodyLoaded = true;
@@ -3301,6 +3317,30 @@
         window.closeShortcuts = () => { document.getElementById('shortcuts-modal').classList.add('hidden'); };
 
         // --- SHARED STATE HELPERS ---
+        // Strip leading empty/whitespace-only block elements from the article body.
+        // Some sites (CNBC, etc.) wrap the article in nested empty divs reserved for
+        // ads, video players, or hero-image placeholders — these render as a tall blank
+        // gap between the header and the first paragraph.
+        function stripLeadingEmptyBlocks(bodyEl) {
+            const MAX_REMOVALS = 8;
+            for (let i = 0; i < MAX_REMOVALS; i++) {
+                const first = bodyEl.firstElementChild;
+                if (!first) return;
+                const tag = first.tagName.toLowerCase();
+                // Stop at the first real content element
+                if (tag === 'p' || tag === 'h1' || tag === 'h2' || tag === 'h3' ||
+                    tag === 'h4' || tag === 'ul' || tag === 'ol' || tag === 'blockquote' ||
+                    tag === 'pre' || tag === 'figure' || tag === 'audio' || tag === 'video') return;
+                const text = first.textContent.trim();
+                const hasMedia = first.querySelector('img:not([data-broken]), video, audio, iframe');
+                if (text.length === 0 && !hasMedia) {
+                    first.remove();
+                    continue;
+                }
+                return;
+            }
+        }
+
         function initBodyImages(bodyEl) {
             bodyEl.querySelectorAll('img').forEach(img => {
                 if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
@@ -3902,37 +3942,6 @@
             } catch(e) { console.warn('Favicon migration error:', e.message); }
         }
 
-        // --- READING PROGRESS BAR + LIVE COUNTER ---
-        document.getElementById('reader-view')?.addEventListener('scroll', function() {
-            const { scrollTop, scrollHeight, clientHeight } = this;
-            const bar = document.getElementById('reading-progress');
-            if (!window.currentArticle) return;
-            const pct = scrollHeight <= clientHeight ? 100 : (scrollTop / (scrollHeight - clientHeight)) * 100;
-            const clamped = Math.min(100, Math.max(0, pct));
-            if (bar) bar.style.width = `${clamped}%`;
-
-            const readTimeEl = document.getElementById('read-time');
-            if (readTimeEl && window._articleTotalMinutes) {
-                const remaining = Math.max(1, Math.ceil(window._articleTotalMinutes * (1 - clamped / 100)));
-                const progressText = clamped < 5
-                    ? `~${window._articleTotalMinutes} min read`
-                    : clamped >= 97
-                        ? `Done · ${window._articleTotalMinutes} min`
-                        : `~${remaining} min left`;
-                readTimeEl.textContent = progressText;
-            }
-            const tabCircle = document.getElementById('tab-progress-circle');
-            if (tabCircle) {
-                const CIRC = 97.39;
-                tabCircle.style.strokeDashoffset = CIRC * (1 - clamped / 100);
-            }
-            const tabText = document.getElementById('tab-progress-text');
-            if (tabText && window._articleTotalMinutes) {
-                const remaining = Math.max(1, Math.ceil(window._articleTotalMinutes * (1 - clamped / 100)));
-                tabText.textContent = clamped >= 97 ? '✓' : `${remaining}`;
-            }
-        });
-
         // --- SWIPE GESTURES ---
         (function() {
             const el = document.getElementById('viewer-pane');
@@ -4494,10 +4503,16 @@
             window._pinnedArticleIds.clear();
             refreshUI();
             const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
+            const inFolderOrSource = !!(window.currentCategoryFilter || window.currentSourceFilter);
+            const remainingUnread = window.articles.filter(a => a.unread).length;
             if (isMobile()) {
-                window.showToast('Marked all read — fetching new items...');
                 setMobilePane('sidebar');
-                fetchAllStaggered(window.feeds);
+                if (inFolderOrSource && remainingUnread > 0) {
+                    window.showToast('Marked all read');
+                } else {
+                    window.showToast('Marked all read — fetching new items...');
+                    fetchAllStaggered(window.feeds);
+                }
             } else if (isSmartFeedWithFetch) {
                 window.showToast('Marked all read — fetching new items...');
                 fetchAllStaggered(window.feeds);
@@ -4950,6 +4965,10 @@
                     a.readLater = window._readLaterLinks.has(a.link);
                     a._ts = a._ts || new Date(a.timestamp).getTime();
                     a._excerptHtml = null;
+                    // Decode any HTML entities left over from older cached articles (e.g. CDATA-wrapped titles)
+                    if (a.title) a.title = decodeEntities(a.title);
+                    if (a.author) a.author = decodeEntities(a.author);
+                    if (a.excerpt) a.excerpt = decodeEntities(a.excerpt);
                     if (a._fullBodyLoaded && a.link) window._bodyCache[a.link] = a.body;
                     if (!a.body) a.body = '';
                 });
@@ -5055,17 +5074,20 @@
             btn.classList.remove('reader-progress');
             if (window._mobilePane === 'timeline') {
                 const n = (window.currentTimeline || window.articles || []).filter(a => a.unread).length;
-                label.textContent = n > 0 ? `✓ ${n} Unread` : '✓ Read';
+                label.textContent = n > 0 ? `✓ ${n}` : '✓ Read';
             } else if (window._mobilePane === 'viewer') {
-                label.textContent = '✓ Read';
-                btn.classList.add('reader-progress');
-                const circle = document.getElementById('tab-progress-circle');
-                if (circle) {
-                    const CIRC = 97.39;
-                    // Current progress is managed by the scroll listener
+                // Show count of unread articles in the current article's category folder.
+                // Just the number — keeps the label short enough to fit the pill segment.
+                const cur = window.currentArticle;
+                const feed = cur ? window.feeds.find(f => (cur.feedUrl ? f.url === cur.feedUrl : f.name === cur.source)) : null;
+                const cat = feed?.category;
+                let n = 0;
+                if (cat) {
+                    const catUrls = new Set(window.feeds.filter(f => f.category === cat).map(f => f.url));
+                    const catNames = new Set(window.feeds.filter(f => f.category === cat).map(f => f.name));
+                    n = window.articles.filter(a => a.unread && (a.feedUrl ? catUrls.has(a.feedUrl) : catNames.has(a.source))).length;
                 }
-                const text = document.getElementById('tab-progress-text');
-                if (text) text.textContent = window._articleTotalMinutes ? String(window._articleTotalMinutes) : '';
+                label.textContent = n > 0 ? `✓ ${n}` : '✓ Read';
             } else {
                 label.textContent = 'Reader';
             }
@@ -5492,27 +5514,33 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        setPersistence(auth, browserLocalPersistence).catch(() => {});
         const APP_ID = 'rss-reader-fyi';
         let userId = null;
         let userEmail = null;
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                userId = user.uid;
-                userEmail = user.email;
-                document.getElementById('login-modal').classList.add('hidden');
-                document.getElementById('sync-status').textContent = 'Syncing...';
-                document.getElementById('signout-btn').classList.remove('hidden');
-                setupPersistence();
-            } else {
-                userId = null;
-                userEmail = null;
-                document.getElementById('login-modal').classList.remove('hidden');
-                document.getElementById('sync-status').textContent = 'Not signed in';
-                document.getElementById('signout-btn').classList.add('hidden');
-            }
-        });
+        // Await persistence before wiring up the auth listener so the cached
+        // session is honored on cold start (especially on mobile Safari where
+        // the default in-memory persistence would force a re-login every time).
+        setPersistence(auth, browserLocalPersistence)
+            .catch((e) => console.warn('Auth persistence setup failed:', e?.message))
+            .finally(() => {
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userEmail = user.email;
+                        document.getElementById('login-modal').classList.add('hidden');
+                        document.getElementById('sync-status').textContent = 'Syncing...';
+                        document.getElementById('signout-btn').classList.remove('hidden');
+                        setupPersistence();
+                    } else {
+                        userId = null;
+                        userEmail = null;
+                        document.getElementById('login-modal').classList.remove('hidden');
+                        document.getElementById('sync-status').textContent = 'Not signed in';
+                        document.getElementById('signout-btn').classList.add('hidden');
+                    }
+                });
+            });
 
         window.handleSignIn = async () => {
             const email = document.getElementById('login-email').value.trim();
@@ -5753,7 +5781,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v15';
+const CACHE_NAME = 'rss-reader-v23';
 const APP_SHELL = [
     '/',
     'index.html'
