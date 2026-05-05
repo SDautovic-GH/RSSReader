@@ -2150,6 +2150,12 @@
             return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
+        // Map a facet feature to a URL. Returns null for unknown types (renders as plain text).
+        const BSKY_FACET_HREF = {
+            'app.bsky.richtext.facet#link':    f => f.uri,
+            'app.bsky.richtext.facet#mention': f => `https://bsky.app/profile/${f.did}`,
+            'app.bsky.richtext.facet#tag':     f => `https://bsky.app/hashtag/${f.tag}`,
+        };
         function applyBskyFacets(text, facets) {
             if (!facets?.length) return bskyEsc(text).replace(/\n/g, '<br>');
             const enc = new TextEncoder(), dec = new TextDecoder();
@@ -2162,15 +2168,10 @@
                 html += bskyEsc(dec.decode(bytes.slice(pos, byteStart)));
                 const chunk = bskyEsc(dec.decode(bytes.slice(byteStart, byteEnd)));
                 const feat = f.features?.[0];
-                if (feat?.$type === 'app.bsky.richtext.facet#link') {
-                    html += `<a href="${bskyEsc(feat.uri)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`;
-                } else if (feat?.$type === 'app.bsky.richtext.facet#mention') {
-                    html += `<a href="https://bsky.app/profile/${bskyEsc(feat.did)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`;
-                } else if (feat?.$type === 'app.bsky.richtext.facet#tag') {
-                    html += `<a href="https://bsky.app/hashtag/${bskyEsc(feat.tag)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`;
-                } else {
-                    html += chunk;
-                }
+                const href = feat && BSKY_FACET_HREF[feat.$type]?.(feat);
+                html += href
+                    ? `<a href="${bskyEsc(href)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`
+                    : chunk;
                 pos = byteEnd;
             }
             html += bskyEsc(dec.decode(bytes.slice(pos)));
