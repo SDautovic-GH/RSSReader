@@ -537,30 +537,6 @@
             background: rgba(59, 130, 246, 0.18);
             color: #3b82f6;
         }
-        body.bar-scrolled #mobile-tab-bar .tab-btn.active {
-            background: rgba(88, 166, 255, 0.22);
-            color: #4493f8;
-        }
-        /* Compact mode: labels hide, pill + search shrink */
-        body.bar-scrolled #mobile-tab-bar .tab-pill { height: 46px; padding: 5px; }
-        body.bar-scrolled #mobile-tab-bar .tab-search { width: 44px; height: 44px; }
-        body.bar-scrolled #mobile-tab-bar .tab-btn .tab-label {
-            display: none;
-        }
-        body.bar-scrolled #mobile-tab-bar .tab-btn { gap: 0; }
-        /* Compact mode: heavier icon strokes since labels are hidden */
-        body.bar-scrolled #mobile-tab-bar .tab-ico,
-        body.bar-scrolled #mobile-tab-bar .tab-search svg {
-            stroke-width: 2.4;
-        }
-        body.bar-scrolled #mobile-tab-bar #mob-tab-articles .tab-ico {
-            stroke-width: 2.0;
-        }
-        #mobile-tab-bar .tab-pill,
-        #mobile-tab-bar .tab-search,
-        #mobile-tab-bar .tab-btn {
-            transition: height 0.2s ease, width 0.2s ease, padding 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-        }
         #mobile-tab-bar .tab-btn:active { background: rgba(255,255,255,0.06); }
         #mobile-tab-bar .tab-btn.active:active { background: rgba(59, 130, 246, 0.28); }
         #mobile-tab-bar .tab-search {
@@ -584,10 +560,6 @@
             background: rgba(59, 130, 246, 0.28);
             color: #fff;
             border-color: rgba(59, 130, 246, 0.4);
-        }
-        body.bar-scrolled.search-active #mobile-tab-bar .tab-search {
-            background: rgba(88, 166, 255, 0.35);
-            border-color: rgba(88, 166, 255, 0.45);
         }
         #mobile-tab-bar .tab-search svg { width: 22px; height: 22px; }
 
@@ -1160,6 +1132,12 @@
     <!-- Global Toast Notification -->
     <div id="toast-notification" class="fixed left-1/2 transform -translate-x-1/2 px-4 py-2 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 opacity-0 pointer-events-none" style="top:16px">
         Notification message
+    </div>
+
+    <!-- Mark-all-read Undo toast (mobile only) -->
+    <div id="mark-all-undo-toast" class="fixed left-1/2 transform -translate-x-1/2 flex items-center gap-3 px-4 py-3 bg-blue-600 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 opacity-0 pointer-events-none" style="top:16px">
+        <span id="mark-all-undo-text">Marked all read</span>
+        <button id="mark-all-undo-btn" type="button" class="px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 active:bg-white/40 transition-colors uppercase tracking-wide">Undo</button>
     </div>
 
     <div id="app-container" class="flex h-screen w-full overflow-hidden">
@@ -4485,7 +4463,7 @@
             }
         };
 
-        window.markAllRead = () => {
+        window.markAllRead = (opts = {}) => {
             let toMark;
             if (window.currentCategoryFilter) {
                 const catFeeds = window.feeds.filter(f => f.category === window.currentCategoryFilter);
@@ -4498,6 +4476,7 @@
             } else {
                 toMark = window.currentTimeline || window.articles;
             }
+            const markedSnapshot = toMark.filter(a => a.unread).map(a => ({ id: a.id, link: a.link }));
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
             saveReadState();
             window._pinnedArticleIds.clear();
@@ -4508,18 +4487,53 @@
             if (isMobile()) {
                 setMobilePane('sidebar');
                 if (inFolderOrSource && remainingUnread > 0) {
-                    window.showToast('Marked all read');
+                    // Suppress acknowledgment toast — unread items still remain in other folders.
                 } else {
-                    window.showToast('Marked all read — fetching new items...');
+                    if (!opts.suppressToast) window.showToast('Marked all read — fetching new items...');
                     fetchAllStaggered(window.feeds);
                 }
             } else if (isSmartFeedWithFetch) {
-                window.showToast('Marked all read — fetching new items...');
+                if (!opts.suppressToast) window.showToast('Marked all read — fetching new items...');
                 fetchAllStaggered(window.feeds);
-            } else {
-                window.showToast('Marked all read');
+            } else if (remainingUnread === 0) {
+                if (!opts.suppressToast) window.showToast('Marked all read');
             }
+            return markedSnapshot;
         };
+
+        // Mark-all-read with Undo affordance (mobile Articles pane).
+        // Marks immediately, then offers a 5s window to revert exactly what was marked.
+        window._markAllUndoTimer = null;
+        window.markAllReadWithUndo = () => {
+            const snapshot = window.markAllRead({ suppressToast: true });
+            if (!snapshot || snapshot.length === 0) return;
+            const toast = document.getElementById('mark-all-undo-toast');
+            const text = document.getElementById('mark-all-undo-text');
+            const btn = document.getElementById('mark-all-undo-btn');
+            if (!toast || !btn) return;
+            text.textContent = `Marked ${snapshot.length} read`;
+            const dismiss = () => {
+                toast.style.opacity = '0';
+                toast.style.pointerEvents = 'none';
+                btn.onclick = null;
+                if (window._markAllUndoTimer) { clearTimeout(window._markAllUndoTimer); window._markAllUndoTimer = null; }
+            };
+            btn.onclick = () => {
+                const ids = new Set(snapshot.map(s => s.id));
+                window.articles.forEach(a => {
+                    if (ids.has(a.id)) { a.unread = true; window._readLinks.delete(a.link); }
+                });
+                saveReadState();
+                refreshUI();
+                setMobilePane('timeline');
+                dismiss();
+            };
+            toast.style.opacity = '1';
+            toast.style.pointerEvents = 'auto';
+            if (window._markAllUndoTimer) clearTimeout(window._markAllUndoTimer);
+            window._markAllUndoTimer = setTimeout(dismiss, 5000);
+        };
+
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
             saveReadState(); refreshUI(); hideContextMenu();
@@ -5097,7 +5111,7 @@
         window.onReaderTabClick = () => {
             const pane = window._mobilePane;
             if (pane === 'timeline') {
-                markAllRead();
+                window.markAllReadWithUndo();
                 return;
             }
             if (pane === 'viewer') {
@@ -5148,7 +5162,6 @@
                 btn.classList.toggle('active', key === pane);
             });
             updateReaderTabMode();
-            document.body.classList.remove('bar-scrolled');
             if (pane === 'timeline') {
                 const listEl = document.getElementById('article-list');
                 if (listEl) {
@@ -5162,47 +5175,6 @@
                 }
             }
         };
-
-        // --- SCROLL-DRIVEN COMPACT BAR (labels hide mid-scroll, return at top and bottom) ---
-        (function() {
-            const TOP_EDGE = 4;
-            const BOTTOM_EDGE = 40;
-            let ticking = false;
-            const getScrollable = () => {
-                const pane = window._mobilePane;
-                if (pane === 'timeline') return document.getElementById('article-list');
-                if (pane === 'viewer') return document.getElementById('reader-view');
-                if (pane === 'sidebar') return document.querySelector('#sidebar-pane .overflow-y-auto');
-                return null;
-            };
-            const applyScrollState = () => {
-                const el = getScrollable();
-                if (!el) {
-                    document.body.classList.remove('bar-scrolled');
-                    ticking = false;
-                    return;
-                }
-                const { scrollTop, scrollHeight, clientHeight } = el;
-                const maxScroll = scrollHeight - clientHeight;
-                const atTop = scrollTop <= TOP_EDGE;
-                const atBottom = maxScroll <= 0 || (maxScroll - scrollTop) <= BOTTOM_EDGE;
-                const midScroll = !atTop && !atBottom;
-                document.body.classList.toggle('bar-scrolled', midScroll);
-                ticking = false;
-            };
-            const onScroll = () => {
-                if (ticking) return;
-                ticking = true;
-                requestAnimationFrame(applyScrollState);
-            };
-            ['article-list', 'reader-view'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.addEventListener('scroll', onScroll, { passive: true });
-            });
-            document.addEventListener('scroll', (e) => {
-                if (e.target && e.target.closest && e.target.closest('#sidebar-pane')) onScroll();
-            }, { passive: true, capture: true });
-        })();
 
         // --- MOBILE SEARCH SHEET ---
         window.toggleSearchSheet = () => {
