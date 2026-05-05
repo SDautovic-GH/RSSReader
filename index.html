@@ -1166,13 +1166,7 @@
         Notification message
     </div>
 
-    <!-- Mark-all-read Undo toast (mobile only) -->
-    <div id="mark-all-undo-toast" class="fixed left-1/2 transform -translate-x-1/2 flex items-center gap-3 px-4 py-3 bg-blue-600 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 opacity-0 pointer-events-none" style="top:16px">
-        <span id="mark-all-undo-text">Marked all read</span>
-        <button id="mark-all-undo-btn" type="button" class="px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 active:bg-white/40 transition-colors uppercase tracking-wide">Undo</button>
-    </div>
-
-    <div id="app-container" class="flex h-screen w-full overflow-hidden">
+<div id="app-container" class="flex h-screen w-full overflow-hidden">
 
         <!-- PANE 1: Sidebar -->
         <aside id="sidebar-pane" class="w-[328px] flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col" style="position:relative;">
@@ -4618,44 +4612,7 @@
             return markedSnapshot;
         };
 
-        // Mark-all-read with Undo affordance (mobile Articles pane).
-        // Marks immediately, then offers a 5s window to revert exactly what was marked.
-        window._markAllUndoTimer = null;
-        window.markAllReadWithUndo = () => {
-            const snapshot = window.markAllRead({ suppressToast: true });
-            if (!snapshot || snapshot.length === 0) {
-                if (isMobile()) setMobilePane('sidebar');
-                return;
-            }
-            if (isMobile()) setMobilePane('sidebar');
-            const toast = document.getElementById('mark-all-undo-toast');
-            const text = document.getElementById('mark-all-undo-text');
-            const btn = document.getElementById('mark-all-undo-btn');
-            if (!toast || !btn) return;
-            text.textContent = `Marked ${snapshot.length} read`;
-            const dismiss = () => {
-                toast.style.opacity = '0';
-                toast.style.pointerEvents = 'none';
-                btn.onclick = null;
-                if (window._markAllUndoTimer) { clearTimeout(window._markAllUndoTimer); window._markAllUndoTimer = null; }
-            };
-            btn.onclick = () => {
-                const ids = new Set(snapshot.map(s => s.id));
-                window.articles.forEach(a => {
-                    if (ids.has(a.id)) { a.unread = true; window._readLinks.delete(a.link); }
-                });
-                saveReadState();
-                refreshUI();
-                setMobilePane('timeline');
-                dismiss();
-            };
-            toast.style.opacity = '1';
-            toast.style.pointerEvents = 'auto';
-            if (window._markAllUndoTimer) clearTimeout(window._markAllUndoTimer);
-            window._markAllUndoTimer = setTimeout(dismiss, 5000);
-        };
-
-        window.markArticleRead = (id) => {
+window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
             saveReadState(); refreshUI(); hideContextMenu();
             maybeGoHomeIfTimelineEmpty();
@@ -5247,7 +5204,7 @@
         window.onReaderTabClick = () => {
             const pane = window._mobilePane;
             if (pane === 'timeline') {
-                window.markAllReadWithUndo();
+                window.markAllRead();
                 return;
             }
             if (pane === 'viewer') {
@@ -5281,20 +5238,55 @@
                 }
                 return;
             }
-            // From sidebar (Home): only go to Reader/Articles if there's something to read.
-            // Otherwise stay on Home — prevents a "double-tap Reader" from bouncing the user
-            // into an empty Articles pane showing "All caught up".
-            if (window.currentArticle) { setMobilePane('viewer'); return; }
-            const hasUnread = (window.articles || []).some(a => a.unread);
-            if (hasUnread) {
-                setMobilePane('timeline');
-            } else {
-                // Second tap of a double-tap: kill the lingering undo toast from the first tap.
-                const toast = document.getElementById('mark-all-undo-toast');
-                if (toast) { toast.style.opacity = '0'; toast.style.pointerEvents = 'none'; }
-                if (window._markAllUndoTimer) { clearTimeout(window._markAllUndoTimer); window._markAllUndoTimer = null; }
-            }
+            if (window.currentArticle) setMobilePane('viewer');
+            else setMobilePane('timeline');
         };
+
+        // Long-press on the Reader tab (~500ms hold) marks all read silently and goes Home.
+        // Single tap continues to fire onReaderTabClick via the normal onclick handler.
+        (function() {
+            const btn = document.getElementById('mob-tab-reader');
+            if (!btn) return;
+            let _lpTimer = null;
+            let _lpFired = false;
+            let _startX = 0, _startY = 0;
+
+            const cancel = () => {
+                if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+            };
+
+            btn.addEventListener('touchstart', (e) => {
+                _lpFired = false;
+                const t = e.touches[0];
+                _startX = t.clientX; _startY = t.clientY;
+                cancel();
+                _lpTimer = setTimeout(() => {
+                    _lpTimer = null;
+                    _lpFired = true;
+                    if (navigator.vibrate) navigator.vibrate(30);
+                    // Silent mark-all-read: suppress toast, force pane to sidebar.
+                    window.markAllRead({ suppressToast: true });
+                    if (isMobile()) setMobilePane('sidebar');
+                }, 500);
+            }, { passive: true });
+
+            btn.addEventListener('touchmove', (e) => {
+                const t = e.touches[0];
+                if (Math.abs(t.clientX - _startX) > 10 || Math.abs(t.clientY - _startY) > 10) cancel();
+            }, { passive: true });
+
+            btn.addEventListener('touchend', () => { cancel(); }, { passive: true });
+            btn.addEventListener('touchcancel', () => { cancel(); _lpFired = false; }, { passive: true });
+
+            // Suppress the click that follows touchend if long-press already fired.
+            btn.addEventListener('click', (e) => {
+                if (_lpFired) {
+                    _lpFired = false;
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            }, true);
+        })();
 
         window.setMobilePane = (pane) => {
             window._mobilePane = pane;
