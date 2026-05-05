@@ -1347,7 +1347,7 @@
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
                 <span class="tab-label">Home</span>
             </button>
-            <button id="mob-tab-articles" type="button" class="tab-btn" onclick="if(window._mobilePane==='timeline'){document.getElementById('article-list').scrollTop=0;}else{setMobilePane('timeline');}">
+            <button id="mob-tab-articles" type="button" class="tab-btn" onclick="onArticlesTabClick()">
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2M7 16h6M7 8h6v4H7z"/></svg>
                 <span class="tab-label">Articles</span>
             </button>
@@ -2543,9 +2543,57 @@
             if (_timelineTopObserver) { _timelineTopObserver.disconnect(); _timelineTopObserver = null; }
         }
 
+        function renderTimelineEmptyState() {
+            const inFolder = !!window.currentCategoryFilter;
+            const inSource = !!window.currentSourceFilter;
+            const isReadLater = window.currentSmartFeed === 'read-later';
+            const isToday = window.currentSmartFeed === 'today';
+            let headline, subtext;
+            if (isReadLater) {
+                headline = 'No saved articles';
+                subtext = 'Tap the bookmark on any article to save it for later.';
+            } else if (inFolder) {
+                headline = 'All caught up';
+                subtext = `No unread articles in ${esc(window.currentCategoryFilter)}.`;
+            } else if (inSource) {
+                headline = 'All caught up';
+                subtext = `No unread articles from ${esc(window.currentSourceFilter)}.`;
+            } else if (isToday) {
+                headline = 'Nothing new today';
+                subtext = 'Pull down to refresh, or check back later.';
+            } else {
+                headline = 'All caught up';
+                subtext = "You've read everything. Pull down to refresh.";
+            }
+            return `
+                <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">${esc(headline)}</h2>
+                    <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">${esc(subtext)}</p>
+                    <button onclick="refreshAll()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold" style="background: rgba(59,130,246,0.15); color: #4493f8; border: 1px solid rgba(59,130,246,0.25);">
+                        <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
+                        Refresh
+                    </button>
+                </div>
+            `;
+        }
+
         function renderTimelinePage(filtered) {
             const listEl = document.getElementById('article-list');
             listEl.classList.toggle('card-view', window._viewMode === 'card');
+
+            if (filtered.length === 0) {
+                if (_lastTimelineKey !== '__empty__') {
+                    _lastTimelineKey = '__empty__';
+                    hideSkeletons();
+                    _disconnectSentinels();
+                    listEl.innerHTML = renderTimelineEmptyState();
+                }
+                return;
+            }
+
             const slice = filtered.slice(_timelinePageStart, _timelinePageEnd);
 
             // Key on window bounds + IDs. State changes are patched in-place by selectArticle.
@@ -2909,11 +2957,13 @@
                     window._pinnedArticleIds.delete(id);
                     refreshUI();
                     window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
+                    maybeGoHomeIfTimelineEmpty();
                 } else {
                     // Right swipe → Toggle Save for Later
                     toggleReadLater(article); saveReadLaterState();
                     refreshUI();
                     window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
+                    maybeGoHomeIfTimelineEmpty();
                 }
             }, { passive: true });
         })();
@@ -3371,6 +3421,13 @@
             });
         }
         function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); }
+        // After a user action empties the Articles list on mobile, jump to Feeds
+        // instead of leaving the user staring at an empty pane.
+        function maybeGoHomeIfTimelineEmpty() {
+            if (!isMobile()) return;
+            if (window._mobilePane !== 'timeline') return;
+            if ((window.currentTimeline || []).length === 0) setMobilePane('sidebar');
+        }
         function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
         function toggleUnread(article) {
             article.unread = !article.unread;
@@ -3396,6 +3453,7 @@
                 document.getElementById('article-list').scrollTop = 0;
             }
             hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
 
         window.markBelowRead = function() {
@@ -3410,6 +3468,7 @@
                 document.getElementById('article-list').scrollTop = 0;
             }
             hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
 
         // --- SIDEBAR UI & FILTERING ---
@@ -4537,6 +4596,7 @@
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
             saveReadState(); refreshUI(); hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
         window.toggleUnreadManual = () => {
             if (!window.currentArticle) return;
@@ -4569,6 +4629,7 @@
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
             toggleUnread(article); saveReadState(); refreshUI(); hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
 
         window.toggleArticleReadLater = (id) => {
@@ -4577,6 +4638,7 @@
             toggleReadLater(article); saveReadLaterState(); refreshUI();
             window.showToast(article.readLater ? 'Saved for Later' : 'Removed from Read Later');
             hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
 
         // --- ARTICLE LIST TOUCH INTERACTIONS ---
@@ -5108,6 +5170,20 @@
         }
         window.updateReaderTabMode = updateReaderTabMode;
 
+        window.onArticlesTabClick = () => {
+            // Tapping Articles always shows All Unread — clear any folder/source filter.
+            const wasAllUnread = window.currentSmartFeed === 'all'
+                && !window.currentCategoryFilter
+                && !window.currentSourceFilter;
+            const onTimeline = window._mobilePane === 'timeline';
+            if (wasAllUnread && onTimeline) {
+                document.getElementById('article-list').scrollTop = 0;
+                return;
+            }
+            setSmartFeed('all');
+            setMobilePane('timeline');
+        };
+
         window.onReaderTabClick = () => {
             const pane = window._mobilePane;
             if (pane === 'timeline') {
@@ -5141,6 +5217,7 @@
                 } else {
                     setMobilePane('timeline');
                     window.showToast?.('All caught up');
+                    if ((window.currentTimeline || []).length === 0) setMobilePane('sidebar');
                 }
                 return;
             }
