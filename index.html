@@ -5281,8 +5281,19 @@
                 }
                 return;
             }
-            if (window.currentArticle) setMobilePane('viewer');
-            else setMobilePane('timeline');
+            // From sidebar (Home): only go to Reader/Articles if there's something to read.
+            // Otherwise stay on Home — prevents a "double-tap Reader" from bouncing the user
+            // into an empty Articles pane showing "All caught up".
+            if (window.currentArticle) { setMobilePane('viewer'); return; }
+            const hasUnread = (window.articles || []).some(a => a.unread);
+            if (hasUnread) {
+                setMobilePane('timeline');
+            } else {
+                // Second tap of a double-tap: kill the lingering undo toast from the first tap.
+                const toast = document.getElementById('mark-all-undo-toast');
+                if (toast) { toast.style.opacity = '0'; toast.style.pointerEvents = 'none'; }
+                if (window._markAllUndoTimer) { clearTimeout(window._markAllUndoTimer); window._markAllUndoTimer = null; }
+            }
         };
 
         window.setMobilePane = (pane) => {
