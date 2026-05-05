@@ -537,30 +537,6 @@
             background: rgba(59, 130, 246, 0.18);
             color: #3b82f6;
         }
-        body.bar-scrolled #mobile-tab-bar .tab-btn.active {
-            background: rgba(88, 166, 255, 0.22);
-            color: #4493f8;
-        }
-        /* Compact mode: labels hide, pill + search shrink */
-        body.bar-scrolled #mobile-tab-bar .tab-pill { height: 46px; padding: 5px; }
-        body.bar-scrolled #mobile-tab-bar .tab-search { width: 44px; height: 44px; }
-        body.bar-scrolled #mobile-tab-bar .tab-btn .tab-label {
-            display: none;
-        }
-        body.bar-scrolled #mobile-tab-bar .tab-btn { gap: 0; }
-        /* Compact mode: heavier icon strokes since labels are hidden */
-        body.bar-scrolled #mobile-tab-bar .tab-ico,
-        body.bar-scrolled #mobile-tab-bar .tab-search svg {
-            stroke-width: 2.4;
-        }
-        body.bar-scrolled #mobile-tab-bar #mob-tab-articles .tab-ico {
-            stroke-width: 2.0;
-        }
-        #mobile-tab-bar .tab-pill,
-        #mobile-tab-bar .tab-search,
-        #mobile-tab-bar .tab-btn {
-            transition: height 0.2s ease, width 0.2s ease, padding 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-        }
         #mobile-tab-bar .tab-btn:active { background: rgba(255,255,255,0.06); }
         #mobile-tab-bar .tab-btn.active:active { background: rgba(59, 130, 246, 0.28); }
         #mobile-tab-bar .tab-search {
@@ -584,10 +560,6 @@
             background: rgba(59, 130, 246, 0.28);
             color: #fff;
             border-color: rgba(59, 130, 246, 0.4);
-        }
-        body.bar-scrolled.search-active #mobile-tab-bar .tab-search {
-            background: rgba(88, 166, 255, 0.35);
-            border-color: rgba(88, 166, 255, 0.45);
         }
         #mobile-tab-bar .tab-search svg { width: 22px; height: 22px; }
 
@@ -1074,6 +1046,38 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.45);
         }
 
+        /* ===== ARTICLE LIST POSITION PILL ===== */
+        /* Small floating "N / Total" indicator that fades in while scrolling
+           the Articles list. Tells the user where they are in a long unread
+           queue without committing to a permanent scrollbar. */
+        #list-position-pill {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            z-index: 30;
+            padding: 5px 11px;
+            border-radius: 999px;
+            background: rgba(28,28,30,0.78);
+            color: rgba(255,255,255,0.92);
+            font-size: 15px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+            backdrop-filter: blur(20px) saturate(1.6);
+            -webkit-backdrop-filter: blur(20px) saturate(1.6);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            white-space: nowrap;
+        }
+        #list-position-pill.visible { opacity: 1; }
+        @media (max-width: 900px) {
+            /* On mobile, sit clear of the (hidden) timeline header but well above the bottom bar */
+            #list-position-pill { top: 14px; right: 14px; }
+        }
+
         /* ===== PULL-TO-REFRESH ===== */
         #ptr-indicator {
             position: absolute; top: -56px; left: 0; right: 0;
@@ -1162,6 +1166,12 @@
         Notification message
     </div>
 
+    <!-- Mark-all-read Undo toast (mobile only) -->
+    <div id="mark-all-undo-toast" class="fixed left-1/2 transform -translate-x-1/2 flex items-center gap-3 px-4 py-3 bg-blue-600 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 opacity-0 pointer-events-none" style="top:16px">
+        <span id="mark-all-undo-text">Marked all read</span>
+        <button id="mark-all-undo-btn" type="button" class="px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 active:bg-white/40 transition-colors uppercase tracking-wide">Undo</button>
+    </div>
+
     <div id="app-container" class="flex h-screen w-full overflow-hidden">
 
         <!-- PANE 1: Sidebar -->
@@ -1211,11 +1221,11 @@
         </aside>
 
         <!-- PANE 2: Timeline -->
-        <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition" style="width: 336px;">
+        <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition relative" style="width: 336px;">
             <div id="timeline-header" class="px-4 h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
                     <div id="timeline-count-group" class="flex items-center">
-                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap">✓ 0</button>
+                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap text-[15px] font-semibold tabular-nums">✓ 0</button>
                         <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
                     <!-- Desktop Search Input -->
@@ -1233,6 +1243,8 @@
             </div>
 
             <div id="article-list" class="flex-1 overflow-y-auto no-scrollbar"></div>
+            <!-- Floating position pill — fades in on scroll -->
+            <div id="list-position-pill" aria-hidden="true">1 / 1</div>
         </section>
 
         <!-- Column Resizer -->
@@ -1369,7 +1381,7 @@
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
                 <span class="tab-label">Home</span>
             </button>
-            <button id="mob-tab-articles" type="button" class="tab-btn" onclick="if(window._mobilePane==='timeline'){document.getElementById('article-list').scrollTop=0;}else{setMobilePane('timeline');}">
+            <button id="mob-tab-articles" type="button" class="tab-btn" onclick="onArticlesTabClick()">
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2M7 16h6M7 8h6v4H7z"/></svg>
                 <span class="tab-label">Articles</span>
             </button>
@@ -1555,13 +1567,6 @@
                                 <p class="text-[12px] text-gray-400 mt-1">Keeps one copy per story, favouring sources ranked by Memeorandum</p>
                             </div>
                             <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch" data-on="false" aria-label="Deduplicate by title"></button>
-                        </div>
-                        <div class="settings-row">
-                            <div class="min-w-0 flex-1">
-                                <label class="settings-item-label-sm">Mastodon-style Bluesky posts</label>
-                                <p class="text-[12px] text-gray-400 mt-1">Title shows @handle; full post text appears in the preview and body (no headline split)</p>
-                            </div>
-                            <button id="bsky-mastodon-toggle" onclick="toggleBskyMastodonStyle()" class="toggle-switch" data-on="false" aria-label="Mastodon-style Bluesky posts"></button>
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <label class="settings-item-label">Font</label>
@@ -2035,7 +2040,7 @@
                 try {
                     const proxyUrl = proxyFn(feedUrl);
                     const res = await fetch(proxyUrl, {
-                        signal: AbortSignal.timeout(10000)
+                        signal: AbortSignal.timeout(7000)
                     });
                     if (!res.ok) continue;
                     let xmlText;
@@ -2128,16 +2133,6 @@
             renderTimeline();
         };
 
-        window._bskyMastodonStyle = false;
-        window.toggleBskyMastodonStyle = () => {
-            window._bskyMastodonStyle = !window._bskyMastodonStyle;
-            const btn = document.getElementById('bsky-mastodon-toggle');
-            if (btn) btn.setAttribute('data-on', window._bskyMastodonStyle ? 'true' : 'false');
-            saveTypographyPrefs();
-            renderTimeline();
-            if (window.currentArticle && window.currentArticle.bskyHandle) selectArticle(window.currentArticle.id);
-        };
-
         // ===== BLUESKY AT PROTOCOL INTEGRATION =====
 
         function isBlueskyFeed(url) {
@@ -2155,6 +2150,12 @@
             return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
+        // Map a facet feature to a URL. Returns null for unknown types (renders as plain text).
+        const BSKY_FACET_HREF = {
+            'app.bsky.richtext.facet#link':    f => f.uri,
+            'app.bsky.richtext.facet#mention': f => `https://bsky.app/profile/${f.did}`,
+            'app.bsky.richtext.facet#tag':     f => `https://bsky.app/hashtag/${f.tag}`,
+        };
         function applyBskyFacets(text, facets) {
             if (!facets?.length) return bskyEsc(text).replace(/\n/g, '<br>');
             const enc = new TextEncoder(), dec = new TextDecoder();
@@ -2167,15 +2168,10 @@
                 html += bskyEsc(dec.decode(bytes.slice(pos, byteStart)));
                 const chunk = bskyEsc(dec.decode(bytes.slice(byteStart, byteEnd)));
                 const feat = f.features?.[0];
-                if (feat?.$type === 'app.bsky.richtext.facet#link') {
-                    html += `<a href="${bskyEsc(feat.uri)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`;
-                } else if (feat?.$type === 'app.bsky.richtext.facet#mention') {
-                    html += `<a href="https://bsky.app/profile/${bskyEsc(feat.did)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`;
-                } else if (feat?.$type === 'app.bsky.richtext.facet#tag') {
-                    html += `<a href="https://bsky.app/hashtag/${bskyEsc(feat.tag)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`;
-                } else {
-                    html += chunk;
-                }
+                const href = feat && BSKY_FACET_HREF[feat.$type]?.(feat);
+                html += href
+                    ? `<a href="${bskyEsc(href)}" target="_blank" rel="noopener noreferrer">${chunk}</a>`
+                    : chunk;
                 pos = byteEnd;
             }
             html += bskyEsc(dec.decode(bytes.slice(pos)));
@@ -2221,7 +2217,8 @@
             if (!record) return '';
             let html = '';
             if (reason?.$type === 'app.bsky.feed.defs#reasonRepost') {
-                html += `<p class="bsky-repost-label">↻ Reposted</p>`;
+                const originalAuthor = post.author?.displayName || post.author?.handle || '';
+                html += `<p class="bsky-repost-label">↻ ${bskyEsc(originalAuthor)}</p>`;
             }
             html += `<p>${applyBskyFacets(record.text || '', record.facets)}</p>`;
             if (embed?.$type === 'app.bsky.embed.images#view') {
@@ -2250,7 +2247,7 @@
             let data = null;
             // Try direct fetch (public.api.bsky.app has CORS enabled)
             try {
-                const res = await fetch(apiUrl, { signal: AbortSignal.timeout(10000) });
+                const res = await fetch(apiUrl, { signal: AbortSignal.timeout(7000) });
                 if (res.ok) data = await res.json();
             } catch(e) { console.warn('Direct fetch failed:', e.message); }
             // Fall back to proxies if direct fetch failed
@@ -2258,7 +2255,7 @@
                 for (const proxyFn of PROXIES) {
                     try {
                         const proxyUrl = proxyFn(apiUrl);
-                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(7000) });
                         if (!res.ok) continue;
                         let text;
                         if (proxyUrl.includes('allorigins')) {
@@ -2316,6 +2313,8 @@
                     title,
                     bskyHandle: handle,
                     author: post.author?.displayName || post.author?.handle || sourceName,
+                    bskyIsRepost: isRepost,
+                    bskyOriginalAuthor: isRepost ? (post.author?.displayName || post.author?.handle || '') : null,
                     timestamp: new Date(record.createdAt || Date.now()).toISOString(),
                     _ts: new Date(record.createdAt || Date.now()).getTime(),
                     excerpt: text.substring(0, 3000),
@@ -2565,9 +2564,57 @@
             if (_timelineTopObserver) { _timelineTopObserver.disconnect(); _timelineTopObserver = null; }
         }
 
+        function renderTimelineEmptyState() {
+            const inFolder = !!window.currentCategoryFilter;
+            const inSource = !!window.currentSourceFilter;
+            const isReadLater = window.currentSmartFeed === 'read-later';
+            const isToday = window.currentSmartFeed === 'today';
+            let headline, subtext;
+            if (isReadLater) {
+                headline = 'No saved articles';
+                subtext = 'Tap the bookmark on any article to save it for later.';
+            } else if (inFolder) {
+                headline = 'All caught up';
+                subtext = `No unread articles in ${esc(window.currentCategoryFilter)}.`;
+            } else if (inSource) {
+                headline = 'All caught up';
+                subtext = `No unread articles from ${esc(window.currentSourceFilter)}.`;
+            } else if (isToday) {
+                headline = 'Nothing new today';
+                subtext = 'Pull down to refresh, or check back later.';
+            } else {
+                headline = 'All caught up';
+                subtext = "You've read everything. Pull down to refresh.";
+            }
+            return `
+                <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">${esc(headline)}</h2>
+                    <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">${esc(subtext)}</p>
+                    <button onclick="refreshAll()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold" style="background: rgba(59,130,246,0.15); color: #4493f8; border: 1px solid rgba(59,130,246,0.25);">
+                        <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
+                        Refresh
+                    </button>
+                </div>
+            `;
+        }
+
         function renderTimelinePage(filtered) {
             const listEl = document.getElementById('article-list');
             listEl.classList.toggle('card-view', window._viewMode === 'card');
+
+            if (filtered.length === 0) {
+                if (_lastTimelineKey !== '__empty__') {
+                    _lastTimelineKey = '__empty__';
+                    hideSkeletons();
+                    _disconnectSentinels();
+                    listEl.innerHTML = renderTimelineEmptyState();
+                }
+                return;
+            }
+
             const slice = filtered.slice(_timelinePageStart, _timelinePageEnd);
 
             // Key on window bounds + IDs. State changes are patched in-place by selectArticle.
@@ -2806,10 +2853,15 @@
                     </div>
                 </div>`;
             }
-            const mastodonStyle = isBsky && window._bskyMastodonStyle;
+            // Bluesky posts use Mastodon-style: no headline, full text in the preview row.
             const sourceLabel = a.source;
-            const titleHtml = mastodonStyle ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
-            const previewCls = mastodonStyle
+            // For Bluesky reposts, show the original author above the post text so the
+            // person being read is visible without losing the feed name at the top.
+            const repostLine = (isBsky && a.bskyIsRepost && a.bskyOriginalAuthor)
+                ? `<p class="bsky-repost-byline text-[11px] text-blue-400 font-semibold mb-1">↻ ${esc(a.bskyOriginalAuthor)}</p>`
+                : '';
+            const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
+            const previewCls = isBsky
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-custom dynamic-list-preview'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
@@ -2825,6 +2877,7 @@
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
                         ${titleHtml}
+                        ${repostLine}
                         <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
                     </div>
                 </div>
@@ -2833,11 +2886,42 @@
 
         (function() {
             const list = document.getElementById('article-list');
+            const pill = document.getElementById('list-position-pill');
             let _scrollTimer = null;
+            let _pillHideTimer = null;
+            let _pillTicking = false;
+
+            const updatePill = () => {
+                _pillTicking = false;
+                if (!pill) return;
+                const total = (window.currentTimeline || []).length;
+                if (total === 0) { pill.classList.remove('visible'); return; }
+                // Find the topmost card whose top edge is at-or-below the list's top edge.
+                const listTop = list.getBoundingClientRect().top;
+                const cards = list.querySelectorAll('[data-id]');
+                let visibleIdxInSlice = 0;
+                for (let i = 0; i < cards.length; i++) {
+                    if (cards[i].getBoundingClientRect().bottom > listTop + 4) {
+                        visibleIdxInSlice = i;
+                        break;
+                    }
+                }
+                const absIdx = (typeof _timelinePageStart === 'number' ? _timelinePageStart : 0) + visibleIdxInSlice + 1;
+                pill.textContent = `${Math.min(absIdx, total)} / ${total}`;
+                pill.classList.add('visible');
+            };
+
             list.addEventListener('scroll', () => {
                 list.classList.add('is-scrolling');
                 clearTimeout(_scrollTimer);
                 _scrollTimer = setTimeout(() => list.classList.remove('is-scrolling'), 150);
+
+                if (!_pillTicking) {
+                    _pillTicking = true;
+                    requestAnimationFrame(updatePill);
+                }
+                clearTimeout(_pillHideTimer);
+                _pillHideTimer = setTimeout(() => pill?.classList.remove('visible'), 900);
             }, { passive: true });
         })();
 
@@ -2931,11 +3015,13 @@
                     window._pinnedArticleIds.delete(id);
                     refreshUI();
                     window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
+                    maybeGoHomeIfTimelineEmpty();
                 } else {
                     // Right swipe → Toggle Save for Later
                     toggleReadLater(article); saveReadLaterState();
                     refreshUI();
                     window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
+                    maybeGoHomeIfTimelineEmpty();
                 }
             }, { passive: true });
         })();
@@ -3037,15 +3123,15 @@
                 }
             }
             const isBskyArticle = article.feedUrl ? isBlueskyFeed(article.feedUrl) : false;
-            const mastodonView = isBskyArticle && window._bskyMastodonStyle;
             const metaEl = document.getElementById('article-meta');
             if (sourceLabelEl) sourceLabelEl.textContent = article.source;
             if (metaEl) {
                 metaEl.onclick = isBskyArticle ? (() => window.open(article.link, '_blank', 'noopener,noreferrer')) : filterByCurrentSource;
                 metaEl.title = isBskyArticle ? 'Open post on Bluesky' : '';
             }
+            // Bluesky posts always render Mastodon-style: no headline, no author/date row.
             const titleEl = document.getElementById('article-title');
-            if (mastodonView) {
+            if (isBskyArticle) {
                 titleEl.textContent = '';
                 titleEl.style.display = 'none';
             } else {
@@ -3057,7 +3143,7 @@
             const dateEl = document.getElementById('article-date');
             authorEl.textContent = article.author;
             dateEl.textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-            if (mastodonView) {
+            if (isBskyArticle) {
                 authorEl.style.display = 'none';
                 authorEl.nextElementSibling.style.display = 'none';
             } else {
@@ -3393,6 +3479,13 @@
             });
         }
         function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); }
+        // After a user action empties the Articles list on mobile, jump to Feeds
+        // instead of leaving the user staring at an empty pane.
+        function maybeGoHomeIfTimelineEmpty() {
+            if (!isMobile()) return;
+            if (window._mobilePane !== 'timeline') return;
+            if ((window.currentTimeline || []).length === 0) setMobilePane('sidebar');
+        }
         function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
         function toggleUnread(article) {
             article.unread = !article.unread;
@@ -3418,6 +3511,7 @@
                 document.getElementById('article-list').scrollTop = 0;
             }
             hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
 
         window.markBelowRead = function() {
@@ -3432,6 +3526,7 @@
                 document.getElementById('article-list').scrollTop = 0;
             }
             hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
 
         // --- SIDEBAR UI & FILTERING ---
@@ -3791,7 +3886,7 @@
             renderTimeline();
         };
 
-        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 150) {
+        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 100) {
             const promises = [];
             for (let i = 0; i < feeds.length; i++) {
                 promises.push(fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground));
@@ -4485,7 +4580,7 @@
             }
         };
 
-        window.markAllRead = () => {
+        window.markAllRead = (opts = {}) => {
             let toMark;
             if (window.currentCategoryFilter) {
                 const catFeeds = window.feeds.filter(f => f.category === window.currentCategoryFilter);
@@ -4498,6 +4593,7 @@
             } else {
                 toMark = window.currentTimeline || window.articles;
             }
+            const markedSnapshot = toMark.filter(a => a.unread).map(a => ({ id: a.id, link: a.link }));
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
             saveReadState();
             window._pinnedArticleIds.clear();
@@ -4508,21 +4604,61 @@
             if (isMobile()) {
                 setMobilePane('sidebar');
                 if (inFolderOrSource && remainingUnread > 0) {
-                    window.showToast('Marked all read');
+                    // Suppress acknowledgment toast — unread items still remain in other folders.
                 } else {
-                    window.showToast('Marked all read — fetching new items...');
+                    if (!opts.suppressToast) window.showToast('Marked all read — fetching new items...');
                     fetchAllStaggered(window.feeds);
                 }
             } else if (isSmartFeedWithFetch) {
-                window.showToast('Marked all read — fetching new items...');
+                if (!opts.suppressToast) window.showToast('Marked all read — fetching new items...');
                 fetchAllStaggered(window.feeds);
-            } else {
-                window.showToast('Marked all read');
+            } else if (remainingUnread === 0) {
+                if (!opts.suppressToast) window.showToast('Marked all read');
             }
+            return markedSnapshot;
         };
+
+        // Mark-all-read with Undo affordance (mobile Articles pane).
+        // Marks immediately, then offers a 5s window to revert exactly what was marked.
+        window._markAllUndoTimer = null;
+        window.markAllReadWithUndo = () => {
+            const snapshot = window.markAllRead({ suppressToast: true });
+            if (!snapshot || snapshot.length === 0) {
+                if (isMobile()) setMobilePane('sidebar');
+                return;
+            }
+            if (isMobile()) setMobilePane('sidebar');
+            const toast = document.getElementById('mark-all-undo-toast');
+            const text = document.getElementById('mark-all-undo-text');
+            const btn = document.getElementById('mark-all-undo-btn');
+            if (!toast || !btn) return;
+            text.textContent = `Marked ${snapshot.length} read`;
+            const dismiss = () => {
+                toast.style.opacity = '0';
+                toast.style.pointerEvents = 'none';
+                btn.onclick = null;
+                if (window._markAllUndoTimer) { clearTimeout(window._markAllUndoTimer); window._markAllUndoTimer = null; }
+            };
+            btn.onclick = () => {
+                const ids = new Set(snapshot.map(s => s.id));
+                window.articles.forEach(a => {
+                    if (ids.has(a.id)) { a.unread = true; window._readLinks.delete(a.link); }
+                });
+                saveReadState();
+                refreshUI();
+                setMobilePane('timeline');
+                dismiss();
+            };
+            toast.style.opacity = '1';
+            toast.style.pointerEvents = 'auto';
+            if (window._markAllUndoTimer) clearTimeout(window._markAllUndoTimer);
+            window._markAllUndoTimer = setTimeout(dismiss, 5000);
+        };
+
         window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
             saveReadState(); refreshUI(); hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
         window.toggleUnreadManual = () => {
             if (!window.currentArticle) return;
@@ -4555,6 +4691,7 @@
             const article = window.articles.find(a => a.id === id);
             if (!article) return;
             toggleUnread(article); saveReadState(); refreshUI(); hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
 
         window.toggleArticleReadLater = (id) => {
@@ -4563,6 +4700,7 @@
             toggleReadLater(article); saveReadLaterState(); refreshUI();
             window.showToast(article.readLater ? 'Saved for Later' : 'Removed from Read Later');
             hideContextMenu();
+            maybeGoHomeIfTimelineEmpty();
         };
 
         // --- ARTICLE LIST TOUCH INTERACTIONS ---
@@ -4807,7 +4945,6 @@
                     ...previewLH,
                     ...previewLines,
                     dedupByTitle:       window._dedupByTitle || false,
-                    bskyMastodonStyle:  window._bskyMastodonStyle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
@@ -4905,11 +5042,6 @@
                 if (btn) btn.setAttribute('data-on', 'true');
                 fetchMemoRankings();
             }
-            if (prefs.bskyMastodonStyle) {
-                window._bskyMastodonStyle = true;
-                const btn = document.getElementById('bsky-mastodon-toggle');
-                if (btn) btn.setAttribute('data-on', 'true');
-            }
         }
 
         // --- ARTICLE CACHE ---
@@ -4921,6 +5053,7 @@
                 .slice(0, 2000) // 4x increase in history capacity
                 .map(a => ({
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
+                    bskyHandle: a.bskyHandle, bskyIsRepost: a.bskyIsRepost, bskyOriginalAuthor: a.bskyOriginalAuthor,
                     timestamp: a.timestamp, _ts: a._ts, excerpt: a.excerpt, link: a.link,
                     unread: a.unread, readLater: a.readLater, image: a.image,
                     body: a._fullBodyLoaded ? (a.body || '').slice(0, 100000) : '',
@@ -5094,10 +5227,27 @@
         }
         window.updateReaderTabMode = updateReaderTabMode;
 
+        window.onArticlesTabClick = () => {
+            const fromPane = window._mobilePane;
+            // From Reader, just go back to Articles — preserve whatever filter was active.
+            if (fromPane === 'viewer') {
+                setMobilePane('timeline');
+                return;
+            }
+            // Already on Articles — scroll to top of the current list.
+            if (fromPane === 'timeline') {
+                document.getElementById('article-list').scrollTop = 0;
+                return;
+            }
+            // From Home (sidebar) — load All Unread as the default Articles view.
+            setSmartFeed('all');
+            setMobilePane('timeline');
+        };
+
         window.onReaderTabClick = () => {
             const pane = window._mobilePane;
             if (pane === 'timeline') {
-                markAllRead();
+                window.markAllReadWithUndo();
                 return;
             }
             if (pane === 'viewer') {
@@ -5127,11 +5277,23 @@
                 } else {
                     setMobilePane('timeline');
                     window.showToast?.('All caught up');
+                    if ((window.currentTimeline || []).length === 0) setMobilePane('sidebar');
                 }
                 return;
             }
-            if (window.currentArticle) setMobilePane('viewer');
-            else setMobilePane('timeline');
+            // From sidebar (Home): only go to Reader/Articles if there's something to read.
+            // Otherwise stay on Home — prevents a "double-tap Reader" from bouncing the user
+            // into an empty Articles pane showing "All caught up".
+            if (window.currentArticle) { setMobilePane('viewer'); return; }
+            const hasUnread = (window.articles || []).some(a => a.unread);
+            if (hasUnread) {
+                setMobilePane('timeline');
+            } else {
+                // Second tap of a double-tap: kill the lingering undo toast from the first tap.
+                const toast = document.getElementById('mark-all-undo-toast');
+                if (toast) { toast.style.opacity = '0'; toast.style.pointerEvents = 'none'; }
+                if (window._markAllUndoTimer) { clearTimeout(window._markAllUndoTimer); window._markAllUndoTimer = null; }
+            }
         };
 
         window.setMobilePane = (pane) => {
@@ -5148,7 +5310,6 @@
                 btn.classList.toggle('active', key === pane);
             });
             updateReaderTabMode();
-            document.body.classList.remove('bar-scrolled');
             if (pane === 'timeline') {
                 const listEl = document.getElementById('article-list');
                 if (listEl) {
@@ -5162,47 +5323,6 @@
                 }
             }
         };
-
-        // --- SCROLL-DRIVEN COMPACT BAR (labels hide mid-scroll, return at top and bottom) ---
-        (function() {
-            const TOP_EDGE = 4;
-            const BOTTOM_EDGE = 40;
-            let ticking = false;
-            const getScrollable = () => {
-                const pane = window._mobilePane;
-                if (pane === 'timeline') return document.getElementById('article-list');
-                if (pane === 'viewer') return document.getElementById('reader-view');
-                if (pane === 'sidebar') return document.querySelector('#sidebar-pane .overflow-y-auto');
-                return null;
-            };
-            const applyScrollState = () => {
-                const el = getScrollable();
-                if (!el) {
-                    document.body.classList.remove('bar-scrolled');
-                    ticking = false;
-                    return;
-                }
-                const { scrollTop, scrollHeight, clientHeight } = el;
-                const maxScroll = scrollHeight - clientHeight;
-                const atTop = scrollTop <= TOP_EDGE;
-                const atBottom = maxScroll <= 0 || (maxScroll - scrollTop) <= BOTTOM_EDGE;
-                const midScroll = !atTop && !atBottom;
-                document.body.classList.toggle('bar-scrolled', midScroll);
-                ticking = false;
-            };
-            const onScroll = () => {
-                if (ticking) return;
-                ticking = true;
-                requestAnimationFrame(applyScrollState);
-            };
-            ['article-list', 'reader-view'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.addEventListener('scroll', onScroll, { passive: true });
-            });
-            document.addEventListener('scroll', (e) => {
-                if (e.target && e.target.closest && e.target.closest('#sidebar-pane')) onScroll();
-            }, { passive: true, capture: true });
-        })();
 
         // --- MOBILE SEARCH SHEET ---
         window.toggleSearchSheet = () => {
