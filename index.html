@@ -5171,15 +5171,18 @@
         window.updateReaderTabMode = updateReaderTabMode;
 
         window.onArticlesTabClick = () => {
-            // Tapping Articles always shows All Unread — clear any folder/source filter.
-            const wasAllUnread = window.currentSmartFeed === 'all'
-                && !window.currentCategoryFilter
-                && !window.currentSourceFilter;
-            const onTimeline = window._mobilePane === 'timeline';
-            if (wasAllUnread && onTimeline) {
+            const fromPane = window._mobilePane;
+            // From Reader, just go back to Articles — preserve whatever filter was active.
+            if (fromPane === 'viewer') {
+                setMobilePane('timeline');
+                return;
+            }
+            // Already on Articles — scroll to top of the current list.
+            if (fromPane === 'timeline') {
                 document.getElementById('article-list').scrollTop = 0;
                 return;
             }
+            // From Home (sidebar) — load All Unread as the default Articles view.
             setSmartFeed('all');
             setMobilePane('timeline');
         };
