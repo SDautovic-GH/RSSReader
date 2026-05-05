@@ -1534,13 +1534,6 @@
                             </div>
                             <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch" data-on="false" aria-label="Deduplicate by title"></button>
                         </div>
-                        <div class="settings-row">
-                            <div class="min-w-0 flex-1">
-                                <label class="settings-item-label-sm">Mastodon-style Bluesky posts</label>
-                                <p class="text-[12px] text-gray-400 mt-1">Title shows @handle; full post text appears in the preview and body (no headline split)</p>
-                            </div>
-                            <button id="bsky-mastodon-toggle" onclick="toggleBskyMastodonStyle()" class="toggle-switch" data-on="false" aria-label="Mastodon-style Bluesky posts"></button>
-                        </div>
                         <div class="settings-row settings-row-stacked">
                             <label class="settings-item-label">Font</label>
                             <select id="font-family-select" onchange="updateFontFamily('both', this.value)" class="settings-input">
@@ -2106,16 +2099,6 @@
             renderTimeline();
         };
 
-        window._bskyMastodonStyle = false;
-        window.toggleBskyMastodonStyle = () => {
-            window._bskyMastodonStyle = !window._bskyMastodonStyle;
-            const btn = document.getElementById('bsky-mastodon-toggle');
-            if (btn) btn.setAttribute('data-on', window._bskyMastodonStyle ? 'true' : 'false');
-            saveTypographyPrefs();
-            renderTimeline();
-            if (window.currentArticle && window.currentArticle.bskyHandle) selectArticle(window.currentArticle.id);
-        };
-
         // ===== BLUESKY AT PROTOCOL INTEGRATION =====
 
         function isBlueskyFeed(url) {
@@ -2199,7 +2182,8 @@
             if (!record) return '';
             let html = '';
             if (reason?.$type === 'app.bsky.feed.defs#reasonRepost') {
-                html += `<p class="bsky-repost-label">↻ Reposted</p>`;
+                const originalAuthor = post.author?.displayName || post.author?.handle || '';
+                html += `<p class="bsky-repost-label">↻ ${bskyEsc(originalAuthor)}</p>`;
             }
             html += `<p>${applyBskyFacets(record.text || '', record.facets)}</p>`;
             if (embed?.$type === 'app.bsky.embed.images#view') {
@@ -2294,6 +2278,8 @@
                     title,
                     bskyHandle: handle,
                     author: post.author?.displayName || post.author?.handle || sourceName,
+                    bskyIsRepost: isRepost,
+                    bskyOriginalAuthor: isRepost ? (post.author?.displayName || post.author?.handle || '') : null,
                     timestamp: new Date(record.createdAt || Date.now()).toISOString(),
                     _ts: new Date(record.createdAt || Date.now()).getTime(),
                     excerpt: text.substring(0, 3000),
@@ -2832,10 +2818,15 @@
                     </div>
                 </div>`;
             }
-            const mastodonStyle = isBsky && window._bskyMastodonStyle;
+            // Bluesky posts use Mastodon-style: no headline, full text in the preview row.
             const sourceLabel = a.source;
-            const titleHtml = mastodonStyle ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
-            const previewCls = mastodonStyle
+            // For Bluesky reposts, show the original author above the post text so the
+            // person being read is visible without losing the feed name at the top.
+            const repostLine = (isBsky && a.bskyIsRepost && a.bskyOriginalAuthor)
+                ? `<p class="bsky-repost-byline text-[11px] text-blue-400 font-semibold mb-1">↻ ${esc(a.bskyOriginalAuthor)}</p>`
+                : '';
+            const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
+            const previewCls = isBsky
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-custom dynamic-list-preview'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
@@ -2851,6 +2842,7 @@
                             <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         </div>
                         ${titleHtml}
+                        ${repostLine}
                         <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
                     </div>
                 </div>
@@ -3065,15 +3057,15 @@
                 }
             }
             const isBskyArticle = article.feedUrl ? isBlueskyFeed(article.feedUrl) : false;
-            const mastodonView = isBskyArticle && window._bskyMastodonStyle;
             const metaEl = document.getElementById('article-meta');
             if (sourceLabelEl) sourceLabelEl.textContent = article.source;
             if (metaEl) {
                 metaEl.onclick = isBskyArticle ? (() => window.open(article.link, '_blank', 'noopener,noreferrer')) : filterByCurrentSource;
                 metaEl.title = isBskyArticle ? 'Open post on Bluesky' : '';
             }
+            // Bluesky posts always render Mastodon-style: no headline, no author/date row.
             const titleEl = document.getElementById('article-title');
-            if (mastodonView) {
+            if (isBskyArticle) {
                 titleEl.textContent = '';
                 titleEl.style.display = 'none';
             } else {
@@ -3085,7 +3077,7 @@
             const dateEl = document.getElementById('article-date');
             authorEl.textContent = article.author;
             dateEl.textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-            if (mastodonView) {
+            if (isBskyArticle) {
                 authorEl.style.display = 'none';
                 authorEl.nextElementSibling.style.display = 'none';
             } else {
@@ -4883,7 +4875,6 @@
                     ...previewLH,
                     ...previewLines,
                     dedupByTitle:       window._dedupByTitle || false,
-                    bskyMastodonStyle:  window._bskyMastodonStyle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
         }
@@ -4981,11 +4972,6 @@
                 if (btn) btn.setAttribute('data-on', 'true');
                 fetchMemoRankings();
             }
-            if (prefs.bskyMastodonStyle) {
-                window._bskyMastodonStyle = true;
-                const btn = document.getElementById('bsky-mastodon-toggle');
-                if (btn) btn.setAttribute('data-on', 'true');
-            }
         }
 
         // --- ARTICLE CACHE ---
@@ -4997,6 +4983,7 @@
                 .slice(0, 2000) // 4x increase in history capacity
                 .map(a => ({
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
+                    bskyHandle: a.bskyHandle, bskyIsRepost: a.bskyIsRepost, bskyOriginalAuthor: a.bskyOriginalAuthor,
                     timestamp: a.timestamp, _ts: a._ts, excerpt: a.excerpt, link: a.link,
                     unread: a.unread, readLater: a.readLater, image: a.image,
                     body: a._fullBodyLoaded ? (a.body || '').slice(0, 100000) : '',
