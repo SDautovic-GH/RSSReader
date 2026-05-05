@@ -1046,6 +1046,38 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.45);
         }
 
+        /* ===== ARTICLE LIST POSITION PILL ===== */
+        /* Small floating "N / Total" indicator that fades in while scrolling
+           the Articles list. Tells the user where they are in a long unread
+           queue without committing to a permanent scrollbar. */
+        #list-position-pill {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            z-index: 30;
+            padding: 5px 11px;
+            border-radius: 999px;
+            background: rgba(28,28,30,0.78);
+            color: rgba(255,255,255,0.92);
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+            backdrop-filter: blur(20px) saturate(1.6);
+            -webkit-backdrop-filter: blur(20px) saturate(1.6);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            white-space: nowrap;
+        }
+        #list-position-pill.visible { opacity: 1; }
+        @media (max-width: 900px) {
+            /* On mobile, sit clear of the (hidden) timeline header but well above the bottom bar */
+            #list-position-pill { top: 14px; right: 14px; }
+        }
+
         /* ===== PULL-TO-REFRESH ===== */
         #ptr-indicator {
             position: absolute; top: -56px; left: 0; right: 0;
@@ -1189,7 +1221,7 @@
         </aside>
 
         <!-- PANE 2: Timeline -->
-        <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition" style="width: 336px;">
+        <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition relative" style="width: 336px;">
             <div id="timeline-header" class="px-4 h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
                     <div id="timeline-count-group" class="flex items-center">
@@ -1211,6 +1243,8 @@
             </div>
 
             <div id="article-list" class="flex-1 overflow-y-auto no-scrollbar"></div>
+            <!-- Floating position pill — fades in on scroll -->
+            <div id="list-position-pill" aria-hidden="true">1 / 1</div>
         </section>
 
         <!-- Column Resizer -->
@@ -2851,11 +2885,42 @@
 
         (function() {
             const list = document.getElementById('article-list');
+            const pill = document.getElementById('list-position-pill');
             let _scrollTimer = null;
+            let _pillHideTimer = null;
+            let _pillTicking = false;
+
+            const updatePill = () => {
+                _pillTicking = false;
+                if (!pill) return;
+                const total = (window.currentTimeline || []).length;
+                if (total === 0) { pill.classList.remove('visible'); return; }
+                // Find the topmost card whose top edge is at-or-below the list's top edge.
+                const listTop = list.getBoundingClientRect().top;
+                const cards = list.querySelectorAll('[data-id]');
+                let visibleIdxInSlice = 0;
+                for (let i = 0; i < cards.length; i++) {
+                    if (cards[i].getBoundingClientRect().bottom > listTop + 4) {
+                        visibleIdxInSlice = i;
+                        break;
+                    }
+                }
+                const absIdx = (typeof _timelinePageStart === 'number' ? _timelinePageStart : 0) + visibleIdxInSlice + 1;
+                pill.textContent = `${Math.min(absIdx, total)} / ${total}`;
+                pill.classList.add('visible');
+            };
+
             list.addEventListener('scroll', () => {
                 list.classList.add('is-scrolling');
                 clearTimeout(_scrollTimer);
                 _scrollTimer = setTimeout(() => list.classList.remove('is-scrolling'), 150);
+
+                if (!_pillTicking) {
+                    _pillTicking = true;
+                    requestAnimationFrame(updatePill);
+                }
+                clearTimeout(_pillHideTimer);
+                _pillHideTimer = setTimeout(() => pill?.classList.remove('visible'), 900);
             }, { passive: true });
         })();
 
