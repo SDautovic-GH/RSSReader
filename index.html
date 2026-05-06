@@ -1178,46 +1178,33 @@
         Notification message
     </div>
 
-    <!-- Force the active-item color via JS-injected stylesheet appended LAST,
-         and also patch the inline rule's color directly so it wins regardless of cascade order. -->
+    <!-- Patch the compiled Tailwind .active-item rule's bg-color in place.
+         Pure CSS overrides lose to layered Tailwind utilities even with !important +
+         higher specificity, so we rewrite the rule directly via CSSOM. -->
     <script>
     (function(){
-        function applyFix(){
-            // 1. Append a high-specificity rule at the very end of the document
+        function patch(){
             try {
-                var s = document.createElement('style');
-                s.id = 'active-item-color-fix';
-                s.textContent = 'html body #smart-feeds-card .smart-feed-btn.active-item, html body #feed-list .smart-feed-btn.active-item, html body .smart-feed-btn.active-item, html body .active-item { background-color: #155DFC !important; color: #fff !important; }';
-                document.head.appendChild(s);
-            } catch(e) {}
-            // 2. Patch the compiled Tailwind rule in place — find the bad .active-item rule and rewrite its bg-color
-            try {
-                var sheets = document.styleSheets;
-                for (var i = 0; i < sheets.length; i++) {
-                    var rules; try { rules = sheets[i].cssRules; } catch(e) { continue; }
+                for (var i = 0; i < document.styleSheets.length; i++) {
+                    var rules; try { rules = document.styleSheets[i].cssRules; } catch(e) { continue; }
                     if (!rules) continue;
                     for (var j = 0; j < rules.length; j++) {
                         var r = rules[j];
                         if (r.selectorText === '.active-item' && r.style && r.style.backgroundColor) {
                             r.style.setProperty('background-color', '#155DFC', 'important');
                         }
-                        if (r.cssRules) {
-                            for (var k = 0; k < r.cssRules.length; k++) {
-                                var r2 = r.cssRules[k];
-                                if (r2.selectorText === '.active-item' && r2.style && r2.style.backgroundColor) {
-                                    r2.style.setProperty('background-color', '#155DFC', 'important');
-                                }
+                        if (r.cssRules) for (var k = 0; k < r.cssRules.length; k++) {
+                            var r2 = r.cssRules[k];
+                            if (r2.selectorText === '.active-item' && r2.style && r2.style.backgroundColor) {
+                                r2.style.setProperty('background-color', '#155DFC', 'important');
                             }
                         }
                     }
                 }
             } catch(e) {}
         }
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyFix);
-        else applyFix();
-        // Re-apply after a beat in case Tailwind reloads or SW serves a cached copy
-        setTimeout(applyFix, 500);
-        setTimeout(applyFix, 2000);
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', patch);
+        else patch();
     })();
     </script>
 
@@ -1302,19 +1289,10 @@
         <!-- PANE 3: Viewer -->
         <main id="viewer-pane" class="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
             <div id="viewer-header" class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10" ondblclick="toggleFullScreenManual()" title="Double-click to toggle Full Screen">
-                <div class="flex space-x-3 items-center">
-                    <button id="exit-fullscreen-btn" onclick="toggleFullScreen(false)" class="hidden text-blue-500 font-bold text-[10px] border border-blue-500 px-2 py-1 rounded hover:bg-blue-500 hover:text-white transition-all mr-2">
-                        EXIT FULL SCREEN
-                    </button>
-
-                </div>
+                <div></div>
 
                 <div class="flex items-center space-x-3">
                     <div class="flex space-x-2 mr-2">
-                        <!-- Full Article Attempt Button -->
-                        <button id="full-article-btn" onclick="loadFullArticle()" class="hidden px-2 py-1 text-[10px] font-bold text-blue-500 border border-blue-500 rounded-md hover:bg-blue-50 transition-colors">
-                            FULL ARTICLE
-                        </button>
                         <!-- Share Button -->
                         <button id="share-btn" onclick="shareArticle()" class="hidden px-2 py-1 text-[10px] font-bold text-gray-500 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                             SHARE
@@ -4062,30 +4040,6 @@
             } catch(e) { console.warn('DB error:', e.message); }
         }
 
-        async function migrateFavicons() {
-            try {
-                const keys = Object.keys(localStorage);
-                const faviconKeys = keys.filter(k => k.startsWith('favicon_'));
-                if (faviconKeys.length === 0) return;
-
-                console.log(`Migrating ${faviconKeys.length} favicons to IndexedDB...`);
-                const batch = {};
-                for (const key of faviconKeys) {
-                    const url = key.replace('favicon_', '');
-                    const data = localStorage.getItem(key);
-                    if (data) batch[url] = data;
-                }
-                
-                await window.appDB.bulkPutFavicons(batch);
-                
-                // Cleanup confirm write success
-                for (const key of faviconKeys) {
-                    localStorage.removeItem(key);
-                }
-                console.log('Favicon migration complete.');
-            } catch(e) { console.warn('Favicon migration error:', e.message); }
-        }
-
         // --- SWIPE GESTURES ---
         (function() {
             const el = document.getElementById('viewer-pane');
@@ -5218,9 +5172,6 @@ window.markArticleRead = (id) => {
             } catch(e) { console.warn('DB Feed Save error:', e.message); }
         }
 
-        // Initialize an in-memory map to group and cache favicon operations
-        window._globalFaviconCache = window._globalFaviconCache || {};
-
         async function restoreLocalFeeds() {
             try {
                 // 1. Try DB
@@ -6034,7 +5985,7 @@ window.markArticleRead = (id) => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v33';
+const CACHE_NAME = 'rss-reader-v35';
 const APP_SHELL = [
     '/',
     'index.html'
