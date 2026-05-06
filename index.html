@@ -424,8 +424,9 @@
                 -webkit-line-clamp: var(--mob-list-preview-lines, 5);
                 line-clamp: var(--mob-list-preview-lines, 5);
             }
-            /* Mobile article list — 2px left/right padding, no text select (prevents long-press conflict) */
-            #article-list [data-id] { padding-left: 3px !important; padding-right: 3px !important; -webkit-user-select: none; user-select: none; }
+            /* Mobile flush-content surfaces use 16px horizontal padding — matches iOS system inset */
+            #article-list [data-id] { padding-left: 16px !important; padding-right: 16px !important; -webkit-user-select: none; user-select: none; }
+            #reader-view { padding-left: 16px !important; padding-right: 16px !important; }
 
             /* ===== MOBILE TOP BAR SIZING ===== */
             /* Sidebar header — taller, larger icons and title */
@@ -2576,7 +2577,6 @@
         let _timelineObserver = null;
         let _timelineTopObserver = null;
         let _lastTimelineKey = '';
-        window._pinnedArticleIds = new Set();
 
         function _buildFragment(articles) {
             const tempDiv = document.createElement('div');
@@ -4160,10 +4160,6 @@
             try { localStorage.setItem('newsreader_theme', mode); } catch(e) {}
             applyTheme(mode);
         };
-        window.toggleTheme = () => {
-            const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-            setTheme(next);
-        };
         (function() {
             let saved;
             try { saved = localStorage.getItem('newsreader_theme'); } catch(e) {}
@@ -4703,12 +4699,7 @@
             return markedSnapshot;
         };
 
-window.markArticleRead = (id) => {
-            window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
-            saveReadState(); refreshUI(); hideContextMenu();
-            maybeGoHomeIfTimelineEmpty();
-        };
-        window.toggleUnreadManual = () => {
+window.toggleUnreadManual = () => {
             if (!window.currentArticle) return;
             toggleUnread(window.currentArticle); saveReadState(); refreshUI(); updateActionButton();
         };
@@ -5985,7 +5976,7 @@ window.markArticleRead = (id) => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v35';
+const CACHE_NAME = 'rss-reader-v37';
 const APP_SHELL = [
     '/',
     'index.html'
