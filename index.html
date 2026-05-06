@@ -3183,6 +3183,7 @@
             }
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+            stripJsonBlobs(bodyEl);
             stripLeadingEmptyBlocks(bodyEl);
             initBodyImages(bodyEl);
             const readerElEarly = document.getElementById('reader-view');
@@ -3366,6 +3367,7 @@
                                     }
                                 }
                             }
+                            stripJsonBlobs(content);
                             // Skip linkify — extracted HTML already has proper <a> tags
                             const sanitized = DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.innerHTML = sanitized;
@@ -3450,6 +3452,30 @@
         // Some sites (CNBC, etc.) wrap the article in nested empty divs reserved for
         // ads, video players, or hero-image placeholders — these render as a tall blank
         // gap between the header and the first paragraph.
+        // Some sites (e.g. Slobodna-Bosna) host gallery widgets whose JSON config
+        // sits as a direct text node inside the article container, e.g.
+        //   <div>[{"img":"...","caption":"..."}, ...]</div>
+        // Script-stripping doesn't catch it because it isn't in a <script> tag.
+        // Remove descendants whose direct text content is a JSON array/object.
+        // Skip <pre>/<code>/<blockquote>/<figure> so legitimate code samples survive.
+        function stripJsonBlobs(rootEl) {
+            const SKIP = new Set(['PRE', 'CODE', 'BLOCKQUOTE', 'FIGURE']);
+            const candidates = rootEl.querySelectorAll('div, section, span, p');
+            for (const el of candidates) {
+                if (SKIP.has(el.tagName)) continue;
+                if (el.closest('pre, code, blockquote, figure')) continue;
+                if (el.children.length > 0) continue; // only leaf-ish nodes
+                const txt = el.textContent.trim();
+                if (txt.length < 20) continue;
+                if (!(txt.startsWith('[{') || txt.startsWith('{"'))) continue;
+                if (!(txt.endsWith('}]') || txt.endsWith('}'))) continue;
+                try {
+                    JSON.parse(txt);
+                    el.remove();
+                } catch (e) { /* not valid JSON, leave alone */ }
+            }
+        }
+
         function stripLeadingEmptyBlocks(bodyEl) {
             const MAX_REMOVALS = 8;
             for (let i = 0; i < MAX_REMOVALS; i++) {
@@ -5992,7 +6018,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v46';
+const CACHE_NAME = 'rss-reader-v47';
 const APP_SHELL = [
     '/',
     'index.html'
