@@ -3185,6 +3185,8 @@
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
             stripLeadingEmptyBlocks(bodyEl);
             initBodyImages(bodyEl);
+            const readerElEarly = document.getElementById('reader-view');
+            if (readerElEarly) readerElEarly.scrollTop = 0;
 
             attemptFullContentLoad(article);
 
@@ -3205,12 +3207,18 @@
             const shareBtn = document.getElementById('share-btn');
             if (shareBtn) shareBtn.classList.remove('hidden');
 
-            const readerEl = document.getElementById('reader-view');
-            if (readerEl) readerEl.scrollTop = 0;
-
             if (window._ttsActive) stopTTS();
 
             if (isMobile()) setMobilePane('viewer');
+
+            const readerEl = document.getElementById('reader-view');
+            if (readerEl) {
+                readerEl.scrollTop = 0;
+                // After the pane is laid out (especially on mobile, where viewer-pane
+                // toggles from display:none → flex), assert scrollTop again — iOS Safari
+                // discards scrollTop set on a hidden scroll container.
+                requestAnimationFrame(() => { readerEl.scrollTop = 0; });
+            }
 
             const listEl = document.getElementById('article-list');
             if (listEl) {
@@ -3368,6 +3376,10 @@
                             window._articleTotalMinutes = Math.max(1, Math.ceil(fullWordCount / 200));
                             const readTimeEl = document.getElementById('read-time');
                             if (readTimeEl) readTimeEl.textContent = `~${window._articleTotalMinutes} min read`;
+                            // Body just got replaced with a much longer extracted version —
+                            // snap back to the top so the reader doesn't appear mid-article.
+                            const readerEl = document.getElementById('reader-view');
+                            if (readerEl) readerEl.scrollTop = 0;
                         }
                         return;
                     }
@@ -5980,7 +5992,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v45';
+const CACHE_NAME = 'rss-reader-v46';
 const APP_SHELL = [
     '/',
     'index.html'
