@@ -4308,9 +4308,43 @@
         window._toastQueue = [];
         window._toastBusy = false;
         window._toastSticky = false;
+        window._toastActionTimer = null;
         window.showToast = (msg, isError = false, sticky = false) => {
             window._toastQueue.push({ msg, isError, sticky });
             if (!window._toastBusy) processToastQueue();
+        };
+        // Show a toast with an inline action button (e.g. Undo). Auto-dismisses after `durationMs`.
+        // onAction fires when the button is tapped; the toast is hidden either way.
+        window.showToastWithAction = (msg, label, onAction, durationMs = 6000) => {
+            const toast = document.getElementById('toast-notification');
+            if (!toast) return;
+            // Clear any existing pending action
+            if (window._toastActionTimer) { clearTimeout(window._toastActionTimer); window._toastActionTimer = null; }
+            window._toastSticky = true;
+            window._toastBusy = true;
+            toast.innerHTML = '';
+            toast.className = 'fixed left-1/2 transform -translate-x-1/2 px-5 py-3 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 bg-blue-600 flex items-center gap-3';
+            toast.style.top = '16px';
+            toast.style.pointerEvents = 'auto';
+            toast.style.opacity = '1';
+            const span = document.createElement('span');
+            span.textContent = msg;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = label;
+            btn.className = 'uppercase tracking-wider text-xs font-extrabold px-2 py-1 rounded bg-white/20 hover:bg-white/30 active:bg-white/40 transition-colors';
+            btn.style.cssText = 'border:none;color:#fff;cursor:pointer;font-family:inherit;';
+            btn.addEventListener('click', () => {
+                if (window._toastActionTimer) { clearTimeout(window._toastActionTimer); window._toastActionTimer = null; }
+                try { onAction && onAction(); } catch(e) { console.warn('Toast action error:', e); }
+                window.hideToast();
+            });
+            toast.appendChild(span);
+            toast.appendChild(btn);
+            window._toastActionTimer = setTimeout(() => {
+                window._toastActionTimer = null;
+                window.hideToast();
+            }, durationMs);
         };
         window.hideToast = () => {
             const toast = document.getElementById('toast-notification');
@@ -4319,7 +4353,12 @@
                 toast.style.pointerEvents = 'none';
             }
             window._toastSticky = false;
-            setTimeout(() => { window._toastBusy = false; processToastQueue(); }, 350);
+            if (window._toastActionTimer) { clearTimeout(window._toastActionTimer); window._toastActionTimer = null; }
+            setTimeout(() => {
+                if (toast) toast.innerHTML = '';
+                window._toastBusy = false;
+                processToastQueue();
+            }, 350);
         };
         function processToastQueue() {
             if (window._toastSticky) return;
@@ -4343,6 +4382,29 @@
                 setTimeout(() => processToastQueue(), 350);
             }, 2500);
         }
+
+        // Restore a snapshot returned by markAllRead — flips items back to unread.
+        // Captures the filter context that was active at mark-time so the user
+        // lands back on the same Articles view they were on before.
+        window.restoreMarkedSnapshot = (snapshot, filterCtx) => {
+            if (!snapshot || !snapshot.length) return;
+            const ids = new Set(snapshot.map(s => s.id));
+            window.articles.forEach(a => {
+                if (ids.has(a.id)) {
+                    a.unread = true;
+                    window._readLinks.delete(a.link);
+                }
+            });
+            saveReadState();
+            // Restore the filter context the user was looking at
+            if (filterCtx) {
+                window.currentSmartFeed = filterCtx.smart;
+                window.currentCategoryFilter = filterCtx.category;
+                window.currentSourceFilter = filterCtx.source;
+            }
+            if (isMobile()) setMobilePane('timeline');
+            refreshUI();
+        };
 
         // --- TYPOGRAPHY HANDLERS ---
         // Per-device keys (Article Reader: body/articleTitle/lineHeight/meta;
@@ -4630,6 +4692,12 @@
         };
 
         window.markAllRead = (opts = {}) => {
+            // Capture filter context BEFORE marking, so undo can restore the same view
+            const filterCtx = {
+                smart: window.currentSmartFeed,
+                category: window.currentCategoryFilter,
+                source: window.currentSourceFilter,
+            };
             let toMark;
             if (window.currentCategoryFilter) {
                 const catFeeds = window.feeds.filter(f => f.category === window.currentCategoryFilter);
@@ -4650,6 +4718,20 @@
             const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
             const inFolderOrSource = !!(window.currentCategoryFilter || window.currentSourceFilter);
             const remainingUnread = window.articles.filter(a => a.unread).length;
+            // Undo flow: navigate to sidebar and show a sticky toast with an Undo button.
+            // We deliberately skip the background fetch so the user has a clean undo target —
+            // the next user-triggered refresh (or auto-refresh) will pick up new items.
+            if (opts.withUndo && markedSnapshot.length > 0) {
+                if (isMobile()) setMobilePane('sidebar');
+                const snap = markedSnapshot;
+                window.showToastWithAction(
+                    `Marked ${snap.length} read`,
+                    'Undo',
+                    () => window.restoreMarkedSnapshot(snap, filterCtx),
+                    6000
+                );
+                return markedSnapshot;
+            }
             if (isMobile()) {
                 setMobilePane('sidebar');
                 if (inFolderOrSource && remainingUnread > 0) {
@@ -5259,7 +5341,8 @@ window.markArticleRead = (id) => {
         window.onReaderTabClick = () => {
             const pane = window._mobilePane;
             if (pane === 'timeline') {
-                window.markAllRead();
+                // Single-tap Mark Read from Articles → mark all + go Home + show Undo toast
+                window.markAllRead({ withUndo: true });
                 return;
             }
             if (pane === 'viewer') {
@@ -5951,7 +6034,7 @@ window.markArticleRead = (id) => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v32';
+const CACHE_NAME = 'rss-reader-v33';
 const APP_SHELL = [
     '/',
     'index.html'
