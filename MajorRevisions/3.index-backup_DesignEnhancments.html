@@ -51,9 +51,18 @@
             overflow: hidden;
         }
 
+        #smart-feeds-card .smart-feed-btn.active-item,
+        #feed-list .smart-feed-btn.active-item,
+        .smart-feed-btn.active-item,
         .active-item {
-            background-color: #3b82f6;
+            background-color: #155DFC !important;
             color: white !important;
+        }
+        /* Count badge inside the active feed row reads as white — unselected rows
+           keep their blue-400 tint so the number stays visually subordinate. */
+        .smart-feed-btn.active-item .feed-badge,
+        .smart-feed-btn.active-item .mob-unread-count {
+            color: #ffffff !important;
         }
 
         .article-content img {
@@ -522,6 +531,9 @@
             cursor: pointer;
             transition: background-color 0.18s ease, color 0.18s ease;
             -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
             font-family: inherit;
         }
         #mobile-tab-bar .tab-btn .tab-ico { width: 22px; height: 22px; display: block; stroke: currentColor; color: inherit; }
@@ -762,7 +774,7 @@
                 -webkit-backdrop-filter: none !important;
             }
             .dark .smart-feed-btn.active-item {
-                background: rgba(68,147,248,0.2) !important;
+                background: #155DFC !important;
                 border-radius: 0 !important;
             }
 
@@ -1052,7 +1064,7 @@
            queue without committing to a permanent scrollbar. */
         #list-position-pill {
             position: absolute;
-            top: 12px;
+            bottom: 12px;
             right: 14px;
             z-index: 30;
             padding: 5px 11px;
@@ -1074,8 +1086,8 @@
         }
         #list-position-pill.visible { opacity: 1; }
         @media (max-width: 900px) {
-            /* On mobile, sit clear of the (hidden) timeline header but well above the bottom bar */
-            #list-position-pill { top: 14px; right: 14px; }
+            /* On mobile, lift above the floating bottom tab bar (~96px tall + safe-area) */
+            #list-position-pill { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); right: 14px; }
         }
 
         /* ===== PULL-TO-REFRESH ===== */
@@ -1166,13 +1178,50 @@
         Notification message
     </div>
 
-    <!-- Mark-all-read Undo toast (mobile only) -->
-    <div id="mark-all-undo-toast" class="fixed left-1/2 transform -translate-x-1/2 flex items-center gap-3 px-4 py-3 bg-blue-600 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 opacity-0 pointer-events-none" style="top:16px">
-        <span id="mark-all-undo-text">Marked all read</span>
-        <button id="mark-all-undo-btn" type="button" class="px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 active:bg-white/40 transition-colors uppercase tracking-wide">Undo</button>
-    </div>
+    <!-- Force the active-item color via JS-injected stylesheet appended LAST,
+         and also patch the inline rule's color directly so it wins regardless of cascade order. -->
+    <script>
+    (function(){
+        function applyFix(){
+            // 1. Append a high-specificity rule at the very end of the document
+            try {
+                var s = document.createElement('style');
+                s.id = 'active-item-color-fix';
+                s.textContent = 'html body #smart-feeds-card .smart-feed-btn.active-item, html body #feed-list .smart-feed-btn.active-item, html body .smart-feed-btn.active-item, html body .active-item { background-color: #155DFC !important; color: #fff !important; }';
+                document.head.appendChild(s);
+            } catch(e) {}
+            // 2. Patch the compiled Tailwind rule in place — find the bad .active-item rule and rewrite its bg-color
+            try {
+                var sheets = document.styleSheets;
+                for (var i = 0; i < sheets.length; i++) {
+                    var rules; try { rules = sheets[i].cssRules; } catch(e) { continue; }
+                    if (!rules) continue;
+                    for (var j = 0; j < rules.length; j++) {
+                        var r = rules[j];
+                        if (r.selectorText === '.active-item' && r.style && r.style.backgroundColor) {
+                            r.style.setProperty('background-color', '#155DFC', 'important');
+                        }
+                        if (r.cssRules) {
+                            for (var k = 0; k < r.cssRules.length; k++) {
+                                var r2 = r.cssRules[k];
+                                if (r2.selectorText === '.active-item' && r2.style && r2.style.backgroundColor) {
+                                    r2.style.setProperty('background-color', '#155DFC', 'important');
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyFix);
+        else applyFix();
+        // Re-apply after a beat in case Tailwind reloads or SW serves a cached copy
+        setTimeout(applyFix, 500);
+        setTimeout(applyFix, 2000);
+    })();
+    </script>
 
-    <div id="app-container" class="flex h-screen w-full overflow-hidden">
+<div id="app-container" class="flex h-screen w-full overflow-hidden">
 
         <!-- PANE 1: Sidebar -->
         <aside id="sidebar-pane" class="w-[328px] flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col" style="position:relative;">
@@ -1222,7 +1271,7 @@
 
         <!-- PANE 2: Timeline -->
         <section id="timeline-pane" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition relative" style="width: 336px;">
-            <div id="timeline-header" class="px-4 h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
+            <div id="timeline-header" class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
                     <div id="timeline-count-group" class="flex items-center">
                         <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap text-[15px] font-semibold tabular-nums">✓ 0</button>
@@ -1252,7 +1301,7 @@
 
         <!-- PANE 3: Viewer -->
         <main id="viewer-pane" class="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
-            <div id="viewer-header" class="h-14 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10" ondblclick="toggleFullScreenManual()" title="Double-click to toggle Full Screen">
+            <div id="viewer-header" class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10" ondblclick="toggleFullScreenManual()" title="Double-click to toggle Full Screen">
                 <div class="flex space-x-3 items-center">
                     <button id="exit-fullscreen-btn" onclick="toggleFullScreen(false)" class="hidden text-blue-500 font-bold text-[10px] border border-blue-500 px-2 py-1 rounded hover:bg-blue-500 hover:text-white transition-all mr-2">
                         EXIT FULL SCREEN
@@ -2858,7 +2907,7 @@
             // For Bluesky reposts, show the original author above the post text so the
             // person being read is visible without losing the feed name at the top.
             const repostLine = (isBsky && a.bskyIsRepost && a.bskyOriginalAuthor)
-                ? `<p class="bsky-repost-byline text-[11px] text-blue-400 font-semibold mb-1">↻ ${esc(a.bskyOriginalAuthor)}</p>`
+                ? `<p class="bsky-repost-byline dynamic-list-preview text-blue-400 font-semibold mb-1">↻ ${esc(a.bskyOriginalAuthor)}</p>`
                 : '';
             const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
             const previewCls = isBsky
@@ -4618,44 +4667,7 @@
             return markedSnapshot;
         };
 
-        // Mark-all-read with Undo affordance (mobile Articles pane).
-        // Marks immediately, then offers a 5s window to revert exactly what was marked.
-        window._markAllUndoTimer = null;
-        window.markAllReadWithUndo = () => {
-            const snapshot = window.markAllRead({ suppressToast: true });
-            if (!snapshot || snapshot.length === 0) {
-                if (isMobile()) setMobilePane('sidebar');
-                return;
-            }
-            if (isMobile()) setMobilePane('sidebar');
-            const toast = document.getElementById('mark-all-undo-toast');
-            const text = document.getElementById('mark-all-undo-text');
-            const btn = document.getElementById('mark-all-undo-btn');
-            if (!toast || !btn) return;
-            text.textContent = `Marked ${snapshot.length} read`;
-            const dismiss = () => {
-                toast.style.opacity = '0';
-                toast.style.pointerEvents = 'none';
-                btn.onclick = null;
-                if (window._markAllUndoTimer) { clearTimeout(window._markAllUndoTimer); window._markAllUndoTimer = null; }
-            };
-            btn.onclick = () => {
-                const ids = new Set(snapshot.map(s => s.id));
-                window.articles.forEach(a => {
-                    if (ids.has(a.id)) { a.unread = true; window._readLinks.delete(a.link); }
-                });
-                saveReadState();
-                refreshUI();
-                setMobilePane('timeline');
-                dismiss();
-            };
-            toast.style.opacity = '1';
-            toast.style.pointerEvents = 'auto';
-            if (window._markAllUndoTimer) clearTimeout(window._markAllUndoTimer);
-            window._markAllUndoTimer = setTimeout(dismiss, 5000);
-        };
-
-        window.markArticleRead = (id) => {
+window.markArticleRead = (id) => {
             window.articles.forEach(a => { if (a.id === id) { a.unread = false; window._readLinks.add(a.link); } });
             saveReadState(); refreshUI(); hideContextMenu();
             maybeGoHomeIfTimelineEmpty();
@@ -5247,7 +5259,7 @@
         window.onReaderTabClick = () => {
             const pane = window._mobilePane;
             if (pane === 'timeline') {
-                window.markAllReadWithUndo();
+                window.markAllRead();
                 return;
             }
             if (pane === 'viewer') {
@@ -5281,20 +5293,58 @@
                 }
                 return;
             }
-            // From sidebar (Home): only go to Reader/Articles if there's something to read.
-            // Otherwise stay on Home — prevents a "double-tap Reader" from bouncing the user
-            // into an empty Articles pane showing "All caught up".
-            if (window.currentArticle) { setMobilePane('viewer'); return; }
-            const hasUnread = (window.articles || []).some(a => a.unread);
-            if (hasUnread) {
-                setMobilePane('timeline');
-            } else {
-                // Second tap of a double-tap: kill the lingering undo toast from the first tap.
-                const toast = document.getElementById('mark-all-undo-toast');
-                if (toast) { toast.style.opacity = '0'; toast.style.pointerEvents = 'none'; }
-                if (window._markAllUndoTimer) { clearTimeout(window._markAllUndoTimer); window._markAllUndoTimer = null; }
-            }
+            if (window.currentArticle) setMobilePane('viewer');
+            else setMobilePane('timeline');
         };
+
+        // Long-press on the Reader tab (~500ms hold) marks all read silently and goes Home.
+        // Single tap continues to fire onReaderTabClick via the normal onclick handler.
+        (function() {
+            const btn = document.getElementById('mob-tab-reader');
+            if (!btn) return;
+            let _lpTimer = null;
+            let _lpFired = false;
+            let _startX = 0, _startY = 0;
+
+            const cancel = () => {
+                if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+            };
+
+            btn.addEventListener('touchstart', (e) => {
+                _lpFired = false;
+                const t = e.touches[0];
+                _startX = t.clientX; _startY = t.clientY;
+                cancel();
+                _lpTimer = setTimeout(() => {
+                    _lpTimer = null;
+                    _lpFired = true;
+                    if (navigator.vibrate) navigator.vibrate(30);
+                    // Silent mark-all-read: suppress toast, force pane to sidebar.
+                    window.markAllRead({ suppressToast: true });
+                    if (isMobile()) setMobilePane('sidebar');
+                }, 500);
+            }, { passive: true });
+
+            btn.addEventListener('touchmove', (e) => {
+                const t = e.touches[0];
+                if (Math.abs(t.clientX - _startX) > 10 || Math.abs(t.clientY - _startY) > 10) cancel();
+            }, { passive: true });
+
+            btn.addEventListener('touchend', () => { cancel(); }, { passive: true });
+            btn.addEventListener('touchcancel', () => { cancel(); _lpFired = false; }, { passive: true });
+
+            // Suppress the click that follows touchend if long-press already fired.
+            btn.addEventListener('click', (e) => {
+                if (_lpFired) {
+                    _lpFired = false;
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            }, true);
+
+            // Suppress iOS native long-press context menu / text-callout on this button.
+            btn.addEventListener('contextmenu', (e) => e.preventDefault());
+        })();
 
         window.setMobilePane = (pane) => {
             window._mobilePane = pane;
@@ -5901,7 +5951,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v23';
+const CACHE_NAME = 'rss-reader-v32';
 const APP_SHELL = [
     '/',
     'index.html'
