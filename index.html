@@ -293,12 +293,12 @@
         #article-list:not(.is-scrolling) > div, #article-list:not(.is-scrolling) .article-card {
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
         }
-        /* Unread dot — absolute-positioned in the item's left gutter so source/title/preview share the same left edge.
-           top calibrated to vertically center on the source-label row (py-4 = 16px top padding + ~half line-height). */
+        /* Unread dot — vertically centered on the source-label row, sits in the card's left padding gutter */
         #article-list [data-id] .unread-dot {
             position: absolute;
-            left: 6px;
-            top: 20px;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
             width: 7px;
             height: 7px;
             border-radius: 9999px;
@@ -438,8 +438,6 @@
             /* Mobile flush-content surfaces use 12px horizontal padding */
             #article-list [data-id] { padding-left: 12px !important; padding-right: 12px !important; -webkit-user-select: none; user-select: none; }
             #reader-view { padding-left: 12px !important; padding-right: 12px !important; }
-            /* Dot tucks into the left gutter; right edge sits ~4px from the source label so it reads as a marker, not a bullet */
-            #article-list [data-id] .unread-dot { left: 1px; }
 
             /* ===== MOBILE TOP BAR SIZING ===== */
             /* Sidebar header — taller, larger icons and title */
@@ -2907,9 +2905,9 @@
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="relative px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
-                ${a.unread ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
                 <div class="min-w-0">
-                    <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center justify-between mb-1.5 relative">
+                        ${a.unread ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
                         <span class="list-source-label font-bold text-blue-500 uppercase truncate mr-2">${favicon}${esc(sourceLabel)}</span>
                         <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                     </div>
@@ -5985,7 +5983,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v40';
+const CACHE_NAME = 'rss-reader-v41';
 const APP_SHELL = [
     '/',
     'index.html'
