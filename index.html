@@ -438,12 +438,17 @@
 
             /* ===== MOBILE TOP BAR SIZING ===== */
             /* Sidebar header — taller, larger icons and title.
-               Top padding includes safe-area-inset-top so the header sits below
-               the iOS status bar (clock/battery) when running fullscreen with
-               viewport-fit=cover. The h-[74px] utility on the element pins the
-               box height, so padding alone would be eaten by box-sizing — we
-               also override the height to auto on mobile. */
-            #sidebar-pane > div:first-child {
+               IMPORTANT: the actual header is the SECOND div child of
+               #sidebar-pane. The first div child is #ptr-indicator
+               (pull-to-refresh, position:absolute, off-screen). Using
+               :first-child here would silently target the PTR div and do
+               nothing visible. nth-of-type(2) targets the real header.
+               Top padding includes safe-area-inset-top so the header sits
+               below the iOS status bar (clock/battery) when running
+               fullscreen with viewport-fit=cover. The h-[74px] utility
+               pins box height, so padding alone is eaten by box-sizing —
+               also override height to auto on mobile. */
+            #sidebar-pane > div:nth-of-type(2) {
                 height: auto !important;
                 padding: calc(1rem + env(safe-area-inset-top, 0px)) 1.25rem 1rem !important;
             }
@@ -452,10 +457,10 @@
                translucent status bar — Facebook-style. No safe-area padding
                here; the article body / list cards scroll behind the clock
                and battery icons rather than reserving a dead band for them. */
-            #sidebar-pane > div:first-child svg { width: 1.5rem !important; height: 1.5rem !important; }
-            #sidebar-pane > div:first-child h1 { font-size: 1.1rem !important; }
-            #sidebar-pane > div:first-child button { padding: 0.5rem !important; }
-            #sidebar-pane > div:first-child button svg { width: 1.5rem !important; height: 1.5rem !important; }
+            #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
+            #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
+            #sidebar-pane > div:nth-of-type(2) button { padding: 0.5rem !important; }
+            #sidebar-pane > div:nth-of-type(2) button svg { width: 1.5rem !important; height: 1.5rem !important; }
 
             /* Timeline header — taller with larger text and button */
             #timeline-pane > div:first-child { padding-top: 0.875rem !important; padding-bottom: 0.875rem !important; font-size: 0.875rem !important; }
@@ -6031,7 +6036,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v49';
+const CACHE_NAME = 'rss-reader-v50';
 const APP_SHELL = [
     '/',
     'index.html'
