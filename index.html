@@ -3636,7 +3636,11 @@
                 groups[c].push(f);
             });
 
-            const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|');
+            // Include category order — without it, reordering folders updates
+            // _categoryOrder but produces an identical key, and the early-return
+            // skips the DOM re-render so the folder visually stays put.
+            const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|')
+                + '||' + (window._categoryOrder || []).join(',');
             if (renderKey === _lastFeedRenderKey) {
                 updateBadges();
                 return;
@@ -6074,7 +6078,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v54';
+const CACHE_NAME = 'rss-reader-v55';
 const APP_SHELL = [
     '/',
     'index.html'
