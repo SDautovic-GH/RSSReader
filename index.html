@@ -450,13 +450,16 @@
                also override height to auto on mobile. */
             #sidebar-pane > div:nth-of-type(2) {
                 height: auto !important;
-                padding: calc(1rem + env(safe-area-inset-top, 0px)) 1.25rem 1rem !important;
+                padding: calc(0.25rem + env(safe-area-inset-top, 0px)) 1.25rem 0.75rem !important;
             }
-            /* Timeline + viewer panes have no visible header on mobile and
-               intentionally let content paint edge-to-edge under the
-               translucent status bar — Facebook-style. No safe-area padding
-               here; the article body / list cards scroll behind the clock
-               and battery icons rather than reserving a dead band for them. */
+            /* Timeline + viewer panes have no visible header on mobile.
+               Apple Glass pattern: content starts below the status bar at
+               rest (padding-top = safe-area-inset-top), then slides UNDER
+               the translucent status bar as the user scrolls. The padding
+               itself scrolls with the content, exposing the dark pane
+               background behind the clock as items scroll away. */
+            #timeline-pane.mobile-active #article-list { padding-top: env(safe-area-inset-top, 0px); }
+            #viewer-pane.mobile-active #reader-view { padding-top: env(safe-area-inset-top, 0px); }
             #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
             #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
             #sidebar-pane > div:nth-of-type(2) button { padding: 0.5rem !important; }
@@ -6036,7 +6039,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v50';
+const CACHE_NAME = 'rss-reader-v51';
 const APP_SHELL = [
     '/',
     'index.html'
