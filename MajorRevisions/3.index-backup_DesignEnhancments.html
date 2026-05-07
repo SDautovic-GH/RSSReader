@@ -2097,11 +2097,15 @@
         ];
 
         async function fetchWithProxyFallback(feedUrl) {
-            for (const proxyFn of PROXIES) {
+            for (let i = 0; i < PROXIES.length; i++) {
+                const proxyFn = PROXIES[i];
                 try {
                     const proxyUrl = proxyFn(feedUrl);
+                    // Tight 4s on the primary (Workers proxy is fast when healthy);
+                    // patient 7s on fallbacks since the primary already failed.
+                    const timeoutMs = i === 0 ? 4000 : 7000;
                     const res = await fetch(proxyUrl, {
-                        signal: AbortSignal.timeout(7000)
+                        signal: AbortSignal.timeout(timeoutMs)
                     });
                     if (!res.ok) continue;
                     let xmlText;
@@ -4015,7 +4019,7 @@
             renderTimeline();
         };
 
-        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 100) {
+        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 30) {
             const promises = [];
             for (let i = 0; i < feeds.length; i++) {
                 promises.push(fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground));
@@ -6078,7 +6082,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v55';
+const CACHE_NAME = 'rss-reader-v56';
 const APP_SHELL = [
     '/',
     'index.html'
