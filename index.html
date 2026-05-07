@@ -3770,75 +3770,102 @@
         };
 
         // --- DRAG & DROP ---
+        // All six handlers are inline-bound from renderFeeds()-built HTML and
+        // wrapped in try/catch so a stray null DOM reference (event.target or
+        // event.currentTarget being null after dispatch ends, or the source
+        // element being detached when renderFeeds rebuilds the list) cannot
+        // throw an "App Error" toast or abort the reorder. Element references
+        // are captured synchronously before any setTimeout.
         window._draggingCategory = null;
 
         window.handleFeedDragStart = (e, feedId) => {
-            e.dataTransfer.setData('feedId', feedId);
-            e.dataTransfer.setData('type', 'feed');
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => e.target.classList.add('opacity-40'), 0);
+            try {
+                e.dataTransfer.setData('feedId', feedId);
+                e.dataTransfer.setData('type', 'feed');
+                e.dataTransfer.effectAllowed = 'move';
+                const el = e.target;
+                setTimeout(() => { try { el && el.classList && el.classList.add('opacity-40'); } catch(_) {} }, 0);
+            } catch (err) { console.warn('handleFeedDragStart:', err); }
         };
 
         window.handleCategoryDragStart = (e, cat) => {
-            if (e.target.closest('button') && !e.target.closest('[data-category]')) return;
-            e.dataTransfer.setData('categoryName', cat);
-            e.dataTransfer.setData('type', 'category');
-            e.dataTransfer.effectAllowed = 'move';
-            window._draggingCategory = cat;
-            setTimeout(() => e.currentTarget.classList.add('opacity-40'), 0);
+            try {
+                if (e.target && e.target.closest && e.target.closest('button') && !e.target.closest('[data-category]')) return;
+                e.dataTransfer.setData('categoryName', cat);
+                e.dataTransfer.setData('type', 'category');
+                e.dataTransfer.effectAllowed = 'move';
+                window._draggingCategory = cat;
+                const el = e.currentTarget;
+                setTimeout(() => { try { el && el.classList && el.classList.add('opacity-40'); } catch(_) {} }, 0);
+            } catch (err) { console.warn('handleCategoryDragStart:', err); }
         };
 
         window.handleCategoryDragEnd = (e) => {
-            // currentTarget can be null here: the drop handler calls renderFeeds()
-            // which wipes the dragged element from the DOM before dragend fires.
-            if (e.currentTarget) {
-                e.currentTarget.classList.remove('opacity-40', 'ring-2', 'ring-blue-400', 'ring-inset', 'border-t-2', 'border-blue-400');
-            }
+            try {
+                const el = e.currentTarget;
+                if (el && el.classList) {
+                    el.classList.remove('opacity-40', 'ring-2', 'ring-blue-400', 'ring-inset', 'border-t-2', 'border-blue-400');
+                }
+            } catch (err) { console.warn('handleCategoryDragEnd:', err); }
             window._draggingCategory = null;
         };
 
         window.handleCategoryDragOver = (e, cat) => {
-            e.preventDefault();
-            const type = e.dataTransfer.types.includes('categoryname') || window._draggingCategory ? 'category' : 'feed';
-            if (type === 'category' && window._draggingCategory !== cat) {
-                e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
-            } else if (type === 'feed') {
-                e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
-            }
+            try {
+                e.preventDefault();
+                const el = e.currentTarget;
+                if (!el || !el.classList) return;
+                const types = e.dataTransfer && e.dataTransfer.types;
+                const hasCategoryType = types && (typeof types.includes === 'function'
+                    ? types.includes('categoryname')
+                    : (typeof types.contains === 'function' && types.contains('categoryname')));
+                const type = (hasCategoryType || window._draggingCategory) ? 'category' : 'feed';
+                if (type === 'category' && window._draggingCategory !== cat) {
+                    el.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
+                } else if (type === 'feed') {
+                    el.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
+                }
+            } catch (err) { console.warn('handleCategoryDragOver:', err); }
         };
 
         window.handleCategoryDragLeave = (e) => {
-            e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+            try {
+                const el = e.currentTarget;
+                if (el && el.classList) el.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+            } catch (err) { console.warn('handleCategoryDragLeave:', err); }
         };
 
         window.handleCategoryOrFeedDrop = (e, targetCat) => {
-            e.preventDefault();
-            e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+            try {
+                e.preventDefault();
+                const el = e.currentTarget;
+                if (el && el.classList) el.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
 
-            const feedId = e.dataTransfer.getData('feedId');
-            const draggedCat = e.dataTransfer.getData('categoryName') || window._draggingCategory;
+                const feedId = e.dataTransfer && e.dataTransfer.getData('feedId');
+                const draggedCat = (e.dataTransfer && e.dataTransfer.getData('categoryName')) || window._draggingCategory;
 
-            if (feedId) {
-                const feed = window.feeds.find(f => f.id === feedId);
-                const localFeed = window.accountStates.local.find(f => f.id === feedId);
-                if (!feed || feed.category === targetCat) return;
-                feed.category = targetCat;
-                if (localFeed) localFeed.category = targetCat;
-                saveLocalFeeds();
-                if (typeof window.saveFeeds === 'function') window.saveFeeds([feed]);
-                renderFeeds();
-                window.showToast(`Moved to ${targetCat}`);
-            } else if (draggedCat && draggedCat !== targetCat) {
-                const order = window._categoryOrder;
-                const fromIdx = order.indexOf(draggedCat);
-                const toIdx   = order.indexOf(targetCat);
-                if (fromIdx === -1 || toIdx === -1) return;
-                order.splice(fromIdx, 1);
-                order.splice(toIdx, 0, draggedCat);
-                saveCategoryOrder();
-                renderFeeds();
-                if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
-            }
+                if (feedId) {
+                    const feed = window.feeds.find(f => f.id === feedId);
+                    const localFeed = window.accountStates.local.find(f => f.id === feedId);
+                    if (!feed || feed.category === targetCat) return;
+                    feed.category = targetCat;
+                    if (localFeed) localFeed.category = targetCat;
+                    saveLocalFeeds();
+                    if (typeof window.saveFeeds === 'function') window.saveFeeds([feed]);
+                    renderFeeds();
+                    window.showToast(`Moved to ${targetCat}`);
+                } else if (draggedCat && draggedCat !== targetCat) {
+                    const order = window._categoryOrder;
+                    const fromIdx = order.indexOf(draggedCat);
+                    const toIdx   = order.indexOf(targetCat);
+                    if (fromIdx === -1 || toIdx === -1) return;
+                    order.splice(fromIdx, 1);
+                    order.splice(toIdx, 0, draggedCat);
+                    saveCategoryOrder();
+                    renderFeeds();
+                    if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+                }
+            } catch (err) { console.warn('handleCategoryOrFeedDrop:', err); }
         };
 
         async function saveCategoryOrder() {
@@ -6047,7 +6074,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v51';
+const CACHE_NAME = 'rss-reader-v54';
 const APP_SHELL = [
     '/',
     'index.html'
