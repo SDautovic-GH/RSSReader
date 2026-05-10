@@ -904,10 +904,23 @@
         /* App Zoom applied to the Settings modal too. Uses `zoom` (not
            font-size) because the modal's internal styles are hardcoded in px
            and wouldn't cascade off font-size. Scoped to the inner card so
-           the backdrop still covers the full viewport at any zoom level. */
-        #settings-modal > div { zoom: var(--app-zoom, 1); }
+           the backdrop still covers the full viewport at any zoom level.
+           max-height is divided by the zoom factor so the *visual* height
+           after zoom still lands at 90vh — without this, zoom=1.5 turned
+           the 90vh layout box into a 135vh visual box that overflowed top
+           and bottom. !important is needed to override the inline
+           `style="max-height:90vh"` on the element. */
+        #settings-modal > div {
+            zoom: var(--app-zoom, 1);
+            max-height: calc(90vh / var(--app-zoom, 1)) !important;
+            max-width: calc(min(480px, 100vw - 32px) / var(--app-zoom, 1)) !important;
+        }
         @media (max-width: 900px) {
-            #settings-modal > div { zoom: var(--app-zoom-mobile, 1); }
+            #settings-modal > div {
+                zoom: var(--app-zoom-mobile, 1);
+                max-height: calc(90vh / var(--app-zoom-mobile, 1)) !important;
+                max-width: calc(min(480px, 100vw - 32px) / var(--app-zoom-mobile, 1)) !important;
+            }
         }
         /* Reduce paint cost on article list re-renders */
         #article-list > div { contain: style layout; }
@@ -6222,7 +6235,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v63';
+const CACHE_NAME = 'rss-reader-v65';
 const APP_SHELL = [
     '/',
     'index.html'
