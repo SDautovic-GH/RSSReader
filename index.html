@@ -4620,6 +4620,22 @@
                 ? (isMobile() ? cfg.mobileProps : cfg.desktopProps)
                 : cfg.props;
             (targetProps || []).forEach(p => root.style.setProperty(p, display));
+            // TEMP DIAGNOSTIC — remove once line-height bug confirmed fixed
+            if (key === 'lineHeight' || key === 'previewLineHeight') {
+                const isMob = isMobile();
+                const probe = key === 'lineHeight'
+                    ? document.querySelector('#article-body p')
+                    : document.querySelector('#article-list .dynamic-list-preview');
+                const mobVar = getComputedStyle(root).getPropertyValue(
+                    key === 'lineHeight' ? '--mob-line-height' : '--mob-list-preview-line-height'
+                ).trim();
+                const deskVar = getComputedStyle(root).getPropertyValue(
+                    key === 'lineHeight' ? '--line-height' : '--list-preview-line-height'
+                ).trim();
+                const computed = probe ? getComputedStyle(probe).lineHeight : 'no-probe';
+                const w = window.innerWidth;
+                window.showToast(`mob=${isMob} w=${w} mobVar=${mobVar} deskVar=${deskVar} comp=${computed}`, false);
+            }
             if (key === 'articleTitle') {
                 // articleTitle has no desktop CSS var; on desktop, fall back to
                 // setting the inline style directly so the slider still works there.
@@ -6214,7 +6230,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v59';
+const CACHE_NAME = 'rss-reader-v60';
 const APP_SHELL = [
     '/',
     'index.html'
