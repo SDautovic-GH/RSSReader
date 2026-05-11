@@ -904,11 +904,13 @@
         /* App Zoom applied to the Settings modal too. Uses `zoom` (not
            font-size) because the modal's internal styles are hardcoded in px
            and wouldn't cascade off font-size. Scoped to the inner card so
-           the backdrop still covers the full viewport at any zoom level. */
-        #settings-modal > div { zoom: var(--app-zoom, 1); }
-        @media (max-width: 900px) {
-            #settings-modal > div { zoom: var(--app-zoom-mobile, 1); }
-        }
+           the backdrop still covers the full viewport at any zoom level.
+           max-height is divided by the zoom factor so the *visual* height
+           after zoom still lands at 90vh — without this, zoom=1.5 turned
+           the 90vh layout box into a 135vh visual box that overflowed top
+           and bottom. !important is needed to override the inline
+           `style="max-height:90vh"` on the element. */
+        /* Modal sizes itself with the inline max-height/max-width on the element. */
         /* Reduce paint cost on article list re-renders */
         #article-list > div { contain: style layout; }
 
@@ -974,7 +976,7 @@
             padding-bottom: 0 !important;
         }
         .settings-section-label {
-            font-size: 12px; font-weight: 700; text-transform: uppercase;
+            font-size: 14px; font-weight: 600; text-transform: uppercase;
             letter-spacing: 0.06em; color: #94a3b8;
             margin-bottom: 10px; padding: 0 4px;
         }
@@ -990,7 +992,7 @@
         html:not(.dark) .settings-item-label,
         html:not(.dark) .settings-item-label-sm,
         html:not(.dark) .settings-item label { color: #1f2937; }
-        .settings-value { font-size: 13px; font-weight: 700; color: #3b82f6; }
+        .settings-value { font-size: 14px; font-weight: 600; color: #3b82f6; }
 
         /* Grouped list (iOS-style): rows separated by hairlines, no card-in-card */
         .settings-list { background: rgba(255,255,255,0.03); border-radius: 12px; overflow: hidden; }
@@ -1001,7 +1003,7 @@
             border-bottom: 1px solid rgba(148,163,184,0.12);
         }
         .settings-row:last-child { border-bottom: none; }
-        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 8px; }
+        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 14px; }
 
         /* Feed row in Feeds tab */
         .feed-row {
@@ -6222,7 +6224,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v63';
+const CACHE_NAME = 'rss-reader-v69';
 const APP_SHELL = [
     '/',
     'index.html'
@@ -6259,7 +6261,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
-    
+
     // 1. App Shell & Static Assets: Stale-While-Revalidate
     const isAppShell = APP_SHELL.includes(url.pathname) || url.pathname === '/';
     const isStaticAsset = EXTERNAL_ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';
