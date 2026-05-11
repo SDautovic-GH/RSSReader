@@ -3,7 +3,7 @@
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RSS Reader">
@@ -125,7 +125,9 @@
         #img-lightbox img.lb-zoomed { cursor: grab; border-radius: 0; }
         #img-lightbox img.lb-zoomed:active { cursor: grabbing; }
         #img-lightbox-close {
-            position: absolute; top: 14px; right: 16px;
+            position: absolute;
+            top: calc(14px + env(safe-area-inset-top, 0px));
+            right: calc(16px + env(safe-area-inset-right, 0px));
             color: #fff; font-size: 28px; line-height: 1;
             cursor: pointer; opacity: 0.75; background: none; border: none;
             padding: 4px 8px; z-index: 1;
@@ -294,13 +296,16 @@
         #article-list:not(.is-scrolling) > div, #article-list:not(.is-scrolling) .article-card {
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
         }
-        /* Unread dot — flex sibling at the start of the source row, sits outside the truncate span */
+        /* Unread dot — flex sibling at the start of the source row, sits outside the truncate span.
+           margin-right offsets the row's gap-2 (8px) so the visible dot↔source distance is 5px,
+           without affecting source↔date spacing. */
         #article-list [data-id] .unread-dot {
             flex-shrink: 0;
             width: 8px;
             height: 8px;
             border-radius: 9999px;
             background: #3b82f6;
+            margin-right: -3px;
         }
 
         /* Respect OS-level reduced-motion preference */
@@ -426,7 +431,25 @@
             #article-body, #article-title {
                 line-height: var(--mob-line-height) !important;
             }
+            /* Article-body's rendered HTML — <p>/<li> read --line-height
+               (desktop var) by default via the .article-content rules at the
+               bottom of this stylesheet. On mobile the slider only writes
+               --mob-line-height, so re-point the paragraphs/list-items here.
+               NOTE: .article-content is a class ON #article-body itself, not
+               a descendant — so the selector is "#article-body p", not
+               "#article-body .article-content p". */
+            #article-body p,
+            #article-body li {
+                line-height: var(--mob-line-height) !important;
+            }
             #article-list .dynamic-list-preview, #article-list .dynamic-list-title {
+                line-height: var(--mob-list-preview-line-height) !important;
+            }
+            /* Belt-and-suspenders for the Article List: target the rendered
+               <h3>/<p> directly so Tailwind's leading-* utility (still present
+               on the element) cannot win in any cascade edge case. */
+            #article-list h3.dynamic-list-title,
+            #article-list p.dynamic-list-preview {
                 line-height: var(--mob-list-preview-line-height) !important;
             }
             .line-clamp-custom {
@@ -438,12 +461,38 @@
             #reader-view { padding-left: 12px !important; padding-right: 12px !important; }
 
             /* ===== MOBILE TOP BAR SIZING ===== */
-            /* Sidebar header — taller, larger icons and title */
-            #sidebar-pane > div:first-child { padding: 1rem 1.25rem !important; }
-            #sidebar-pane > div:first-child svg { width: 1.5rem !important; height: 1.5rem !important; }
-            #sidebar-pane > div:first-child h1 { font-size: 1.1rem !important; }
-            #sidebar-pane > div:first-child button { padding: 0.5rem !important; }
-            #sidebar-pane > div:first-child button svg { width: 1.5rem !important; height: 1.5rem !important; }
+            /* Sidebar header — taller, larger icons and title.
+               IMPORTANT: the actual header is the SECOND div child of
+               #sidebar-pane. The first div child is #ptr-indicator
+               (pull-to-refresh, position:absolute, off-screen). Using
+               :first-child here would silently target the PTR div and do
+               nothing visible. nth-of-type(2) targets the real header.
+               Top padding includes safe-area-inset-top so the header sits
+               below the iOS status bar (clock/battery) when running
+               fullscreen with viewport-fit=cover. The h-[74px] utility
+               pins box height, so padding alone is eaten by box-sizing —
+               also override height to auto on mobile. */
+            #sidebar-pane > div:nth-of-type(2) {
+                height: auto !important;
+                padding: env(safe-area-inset-top, 0px) 1.25rem 0.75rem !important;
+            }
+            /* Timeline + viewer panes have no visible header on mobile.
+               Apple Glass pattern: content starts below the status bar at
+               rest (padding-top = safe-area-inset-top), then slides UNDER
+               the translucent status bar as the user scrolls. The padding
+               itself scrolls with the content, exposing the dark pane
+               background behind the clock as items scroll away. */
+            /* Compensate for the card/content's own internal top padding so
+               the visible text baseline lands at env(safe-area-inset-top) —
+               matching the home header title baseline. The article cards
+               have py-4 (1rem) inside, so the list container subtracts 1rem.
+               max() prevents negative padding on devices with no safe area. */
+            #timeline-pane.mobile-active #article-list { padding-top: max(0px, calc(env(safe-area-inset-top, 0px) - 1rem)); }
+            #viewer-pane.mobile-active #reader-view { padding-top: env(safe-area-inset-top, 0px); }
+            #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
+            #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
+            #sidebar-pane > div:nth-of-type(2) button { padding: 0.5rem !important; }
+            #sidebar-pane > div:nth-of-type(2) button svg { width: 1.5rem !important; height: 1.5rem !important; }
 
             /* Timeline header — taller with larger text and button */
             #timeline-pane > div:first-child { padding-top: 0.875rem !important; padding-bottom: 0.875rem !important; font-size: 0.875rem !important; }
@@ -497,7 +546,7 @@
             left: 0; right: 0;
             bottom: 0;
             z-index: 50;
-            padding: 8px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+            padding: 8px 18px env(safe-area-inset-bottom, 0px);
             background: transparent !important;
             border: none !important;
             pointer-events: none;
@@ -730,8 +779,7 @@
             background: #0a1119 !important;
             border-color: #21262d !important;
         }
-        .dark #sidebar-pane .p-4,
-        .dark #sidebar-pane > div:first-child {
+        .dark #sidebar-pane .p-4 {
             background: #0a1119 !important;
             border-color: #21262d !important;
         }
@@ -844,16 +892,26 @@
            applies `-webkit-text-size-adjust` to rem-based computations on scrollable containers, which can
            neutralize the scaling. The explicit `text-size-adjust: 100%` here also prevents Safari from
            silently capping font-size changes on these descendants. */
-        #article-list, #reader-view {
+        #article-list, #reader-view, #sidebar-pane {
             font-size: calc(16px * var(--app-zoom, 1));
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
         }
         @media (max-width: 900px) {
-            #article-list, #reader-view {
+            #article-list, #reader-view, #sidebar-pane {
                 font-size: calc(16px * var(--app-zoom-mobile, 1));
             }
         }
+        /* App Zoom applied to the Settings modal too. Uses `zoom` (not
+           font-size) because the modal's internal styles are hardcoded in px
+           and wouldn't cascade off font-size. Scoped to the inner card so
+           the backdrop still covers the full viewport at any zoom level.
+           max-height is divided by the zoom factor so the *visual* height
+           after zoom still lands at 90vh — without this, zoom=1.5 turned
+           the 90vh layout box into a 135vh visual box that overflowed top
+           and bottom. !important is needed to override the inline
+           `style="max-height:90vh"` on the element. */
+        /* Modal sizes itself with the inline max-height/max-width on the element. */
         /* Reduce paint cost on article list re-renders */
         #article-list > div { contain: style layout; }
 
@@ -919,7 +977,7 @@
             padding-bottom: 0 !important;
         }
         .settings-section-label {
-            font-size: 12px; font-weight: 700; text-transform: uppercase;
+            font-size: 14px; font-weight: 600; text-transform: uppercase;
             letter-spacing: 0.06em; color: #94a3b8;
             margin-bottom: 10px; padding: 0 4px;
         }
@@ -935,7 +993,7 @@
         html:not(.dark) .settings-item-label,
         html:not(.dark) .settings-item-label-sm,
         html:not(.dark) .settings-item label { color: #1f2937; }
-        .settings-value { font-size: 13px; font-weight: 700; color: #3b82f6; }
+        .settings-value { font-size: 14px; font-weight: 600; color: #3b82f6; }
 
         /* Grouped list (iOS-style): rows separated by hairlines, no card-in-card */
         .settings-list { background: rgba(255,255,255,0.03); border-radius: 12px; overflow: hidden; }
@@ -946,7 +1004,7 @@
             border-bottom: 1px solid rgba(148,163,184,0.12);
         }
         .settings-row:last-child { border-bottom: none; }
-        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 8px; }
+        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 14px; }
 
         /* Feed row in Feeds tab */
         .feed-row {
@@ -1184,7 +1242,7 @@
     </svg>
 
     <!-- Global Toast Notification -->
-    <div id="toast-notification" class="fixed left-1/2 transform -translate-x-1/2 px-4 py-2 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 opacity-0 pointer-events-none" style="top:16px">
+    <div id="toast-notification" class="fixed left-1/2 transform -translate-x-1/2 px-4 py-2 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 opacity-0 pointer-events-none" style="top:env(safe-area-inset-top, 0px)">
         Notification message
     </div>
 
@@ -1275,10 +1333,18 @@
                         <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
                     <!-- Desktop Search Input -->
-                    <div id="desk-search-container" class="hidden flex-1 items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-2 h-9 ml-[-8px]">
-                        <svg class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input id="desk-search-input" type="text" placeholder="Search..." class="bg-transparent border-none outline-none text-sm text-gray-900 dark:text-gray-100 w-full font-normal lowercase tracking-normal" oninput="handleDeskSearch(this.value)">
-                        <button onclick="closeDeskSearch()" class="ml-1 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <div id="desk-search-container" class="hidden flex-1 items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-2 h-9 ml-[-8px] gap-1">
+                        <svg class="w-4 h-4 text-gray-500 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input id="desk-search-input" type="text" placeholder="Search..." class="bg-transparent border-none outline-none text-sm text-gray-900 dark:text-gray-100 flex-1 min-w-0 font-normal lowercase tracking-normal" oninput="handleDeskSearch(this.value)">
+                        <select id="desk-search-scope" onchange="handleDeskSearch(document.getElementById('desk-search-input').value)" title="Search scope" class="bg-transparent border-none outline-none text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 max-w-[140px]">
+                            <option value="all">All folders</option>
+                        </select>
+                        <select id="desk-search-readstate" onchange="handleDeskSearch(document.getElementById('desk-search-input').value)" title="Read state" class="bg-transparent border-none outline-none text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                            <option value="all">All</option>
+                            <option value="unread">Unread</option>
+                            <option value="read">Read</option>
+                        </select>
+                        <button onclick="closeDeskSearch()" class="ml-1 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
@@ -2073,11 +2139,15 @@
         ];
 
         async function fetchWithProxyFallback(feedUrl) {
-            for (const proxyFn of PROXIES) {
+            for (let i = 0; i < PROXIES.length; i++) {
+                const proxyFn = PROXIES[i];
                 try {
                     const proxyUrl = proxyFn(feedUrl);
+                    // Tight 4s on the primary (Workers proxy is fast when healthy);
+                    // patient 7s on fallbacks since the primary already failed.
+                    const timeoutMs = i === 0 ? 4000 : 7000;
                     const res = await fetch(proxyUrl, {
-                        signal: AbortSignal.timeout(7000)
+                        signal: AbortSignal.timeout(timeoutMs)
                     });
                     if (!res.ok) continue;
                     let xmlText;
@@ -2737,21 +2807,75 @@
             const list = document.getElementById('article-list');
             if (!list) return;
 
-            const sortOrder = window.currentSmartFeed === 'today'
+            const isRecentlyRead = window.currentSmartFeed === 'recently-read';
+            const sortOrder = window.currentSmartFeed === 'today' || isRecentlyRead
                 ? 'desc'
                 : (document.getElementById('pref-sort-order')?.value || 'asc');
 
-            let filtered = window.articles;
+            // Recently-read has its own pre-loaded source (from IndexedDB
+            // readArchive). All other smart feeds work off the in-memory
+            // article cache.
+            let filtered = isRecentlyRead
+                ? (window._recentlyReadArticles || [])
+                : window.articles;
 
-            // If searching, search globally (all articles)
-            if (window._searchQuery) {
-                const q = window._searchQuery.toLowerCase();
-                filtered = filtered.filter(a =>
-                    (a.title||'').toLowerCase().includes(q) ||
-                    (a.source||'').toLowerCase().includes(q) ||
-                    (a.excerpt||'').toLowerCase().includes(q)
-                );
-            } else {
+            // If searching, scan title/source/excerpt across the chosen scope.
+            // Scope and read-state pre-filter the pool; then the query string
+            // narrows it. Even an empty query string with non-default scope
+            // still applies the scope/read filters so the results list reflects
+            // what the user picked in the dropdowns.
+            const searchScope = document.getElementById('desk-search-scope')?.value || 'all';
+            const searchReadState = document.getElementById('desk-search-readstate')?.value || 'all';
+            const searchActive = !!window._searchQuery || searchScope !== 'all' || searchReadState !== 'all';
+            if (searchActive && !isRecentlyRead) {
+                // Start with in-memory cache (~500 most-recent), then merge in
+                // the read-archive snapshot loaded by openDeskSearch so search
+                // covers the full 90-day read history. In-memory wins on dup
+                // (it has fresh state like .unread).
+                let pool = window.articles.slice();
+                if (Array.isArray(window._readArchiveCache) && window._readArchiveCache.length) {
+                    const seen = new Set(pool.map(a => a.link));
+                    for (const r of window._readArchiveCache) {
+                        if (seen.has(r.link)) continue;
+                        pool.push({
+                            id: 'ra:' + r.link,
+                            link: r.link,
+                            title: r.title,
+                            source: r.source,
+                            feedUrl: r.feedUrl,
+                            excerpt: r.excerpt,
+                            body: r.body || '',
+                            author: r.author || '',
+                            timestamp: r.timestamp,
+                            readAt: r.readAt,
+                            unread: false,
+                            readLater: window._readLaterLinks.has(r.link),
+                        });
+                    }
+                }
+                if (searchScope.startsWith('cat:')) {
+                    const cat = searchScope.slice(4);
+                    const sources = window.feeds.filter(f => f.category === cat).map(f => f.name);
+                    pool = pool.filter(a => sources.includes(a.source));
+                } else if (searchScope.startsWith('feed:')) {
+                    const url = searchScope.slice(5);
+                    const f = window.feeds.find(f => f.url === url);
+                    if (f) pool = pool.filter(a => a.source === f.name);
+                    else pool = [];
+                }
+                if (searchReadState === 'unread') pool = pool.filter(a => a.unread);
+                else if (searchReadState === 'read') pool = pool.filter(a => !a.unread);
+                if (window._searchQuery) {
+                    const q = window._searchQuery.toLowerCase();
+                    pool = pool.filter(a =>
+                        (a.title||'').toLowerCase().includes(q) ||
+                        (a.source||'').toLowerCase().includes(q) ||
+                        (a.excerpt||'').toLowerCase().includes(q) ||
+                        (a.body||'').toLowerCase().includes(q)
+                    );
+                }
+                filtered = pool;
+            } else if (!isRecentlyRead) {
                 // Apply normal filters
                 if (window.currentSmartFeed === 'all') {
                     filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
@@ -2771,6 +2895,11 @@
             }
 
             filtered.sort((a, b) => {
+                // Recently-read sorts by when WE read it, not by publish time.
+                if (isRecentlyRead) {
+                    const diff = (a.readAt || 0) - (b.readAt || 0);
+                    return sortOrder === 'desc' ? -diff : diff;
+                }
                 const diff = (a._ts || new Date(a.timestamp).getTime()) - (b._ts || new Date(b.timestamp).getTime());
                 return sortOrder === 'desc' ? -diff : diff;
             });
@@ -3612,7 +3741,11 @@
                 groups[c].push(f);
             });
 
-            const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|');
+            // Include category order — without it, reordering folders updates
+            // _categoryOrder but produces an identical key, and the early-return
+            // skips the DOM re-render so the folder visually stays put.
+            const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|')
+                + '||' + (window._categoryOrder || []).join(',');
             if (renderKey === _lastFeedRenderKey) {
                 updateBadges();
                 return;
@@ -3672,7 +3805,7 @@
                             return `
                             <button draggable="true"
                                 ondragstart="handleFeedDragStart(event, '${sfId}')"
-                                ondragend="event.target.classList.remove('opacity-40')"
+                                ondragend="event.target && event.target.classList && event.target.classList.remove('opacity-40')"
                                 onclick="setSourceFilter('${sfName}')" oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')" class="w-full flex items-center justify-between pl-9 pr-3 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 outline-none cursor-grab active:cursor-grabbing dynamic-category-text">
                                 <span class="flex items-center truncate pr-2">
                                     ${favicon}<span class="truncate ${healthClass}">${esc(f.name)}</span>
@@ -3718,21 +3851,58 @@
         window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
 
         // --- DESKTOP SEARCH HELPERS ---
-        window.openDeskSearch = () => {
+        function refreshDeskSearchScope() {
+            const sel = document.getElementById('desk-search-scope');
+            if (!sel) return;
+            const current = sel.value || 'all';
+            const cats = [...new Set((window.feeds || []).map(f => f.category).filter(Boolean))];
+            const feedOpts = (window.feeds || []).slice().sort((a,b) => (a.name||'').localeCompare(b.name||''));
+            let html = '<option value="all">All folders</option>';
+            if (cats.length) {
+                html += '<optgroup label="Folders">';
+                for (const c of cats) html += `<option value="cat:${esc(c)}">${esc(c)}</option>`;
+                html += '</optgroup>';
+            }
+            if (feedOpts.length) {
+                html += '<optgroup label="Feeds">';
+                for (const f of feedOpts) html += `<option value="feed:${esc(f.url)}">${esc(f.name)}</option>`;
+                html += '</optgroup>';
+            }
+            sel.innerHTML = html;
+            // Restore prior selection if it still exists in the new list.
+            if ([...sel.options].some(o => o.value === current)) sel.value = current;
+            else sel.value = 'all';
+        }
+
+        window.openDeskSearch = async () => {
             document.getElementById('timeline-count-group').classList.add('hidden');
             document.getElementById('desk-search-trigger').classList.add('hidden');
             const container = document.getElementById('desk-search-container');
             container.classList.remove('hidden');
             container.classList.add('flex');
+            refreshDeskSearchScope();
             const input = document.getElementById('desk-search-input');
             input.value = window._searchQuery || '';
             input.focus();
             input.select();
+            // Snapshot the read-archive (up to the maximum 90-day window)
+            // into a cache so search can include it without async queries
+            // on every keystroke.
+            if (window.appDB && typeof window.appDB.getRecentlyRead === 'function') {
+                try { window._readArchiveCache = await window.appDB.getRecentlyRead(90); }
+                catch(e) { window._readArchiveCache = []; }
+                // If the user is mid-typing a query, re-render with the
+                // archive now included.
+                if (window._searchQuery) renderTimeline();
+            }
         };
 
         window.closeDeskSearch = () => {
             window._searchQuery = '';
+            window._readArchiveCache = null;
             document.getElementById('desk-search-input').value = '';
+            const sc = document.getElementById('desk-search-scope'); if (sc) sc.value = 'all';
+            const rs = document.getElementById('desk-search-readstate'); if (rs) rs.value = 'all';
             document.getElementById('desk-search-container').classList.add('hidden');
             document.getElementById('desk-search-container').classList.remove('flex');
             document.getElementById('timeline-count-group').classList.remove('hidden');
@@ -3740,77 +3910,113 @@
             renderTimeline();
         };
 
+        // Body search adds a meaningful per-keystroke cost (≈50 KB × N
+        // articles to scan), so debounce the actual render. Selects don't
+        // hit this path — they call renderTimeline directly via onchange.
+        let _deskSearchDebounce = null;
         window.handleDeskSearch = (val) => {
-            window._searchQuery = val.trim();
-            renderTimeline();
+            window._searchQuery = (val || '').trim();
+            clearTimeout(_deskSearchDebounce);
+            _deskSearchDebounce = setTimeout(() => renderTimeline(), 150);
         };
 
         // --- DRAG & DROP ---
+        // All six handlers are inline-bound from renderFeeds()-built HTML and
+        // wrapped in try/catch so a stray null DOM reference (event.target or
+        // event.currentTarget being null after dispatch ends, or the source
+        // element being detached when renderFeeds rebuilds the list) cannot
+        // throw an "App Error" toast or abort the reorder. Element references
+        // are captured synchronously before any setTimeout.
         window._draggingCategory = null;
 
         window.handleFeedDragStart = (e, feedId) => {
-            e.dataTransfer.setData('feedId', feedId);
-            e.dataTransfer.setData('type', 'feed');
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => e.target.classList.add('opacity-40'), 0);
+            try {
+                e.dataTransfer.setData('feedId', feedId);
+                e.dataTransfer.setData('type', 'feed');
+                e.dataTransfer.effectAllowed = 'move';
+                const el = e.target;
+                setTimeout(() => { try { el && el.classList && el.classList.add('opacity-40'); } catch(_) {} }, 0);
+            } catch (err) { console.warn('handleFeedDragStart:', err); }
         };
 
         window.handleCategoryDragStart = (e, cat) => {
-            if (e.target.closest('button') && !e.target.closest('[data-category]')) return;
-            e.dataTransfer.setData('categoryName', cat);
-            e.dataTransfer.setData('type', 'category');
-            e.dataTransfer.effectAllowed = 'move';
-            window._draggingCategory = cat;
-            setTimeout(() => e.currentTarget.classList.add('opacity-40'), 0);
+            try {
+                if (e.target && e.target.closest && e.target.closest('button') && !e.target.closest('[data-category]')) return;
+                e.dataTransfer.setData('categoryName', cat);
+                e.dataTransfer.setData('type', 'category');
+                e.dataTransfer.effectAllowed = 'move';
+                window._draggingCategory = cat;
+                const el = e.currentTarget;
+                setTimeout(() => { try { el && el.classList && el.classList.add('opacity-40'); } catch(_) {} }, 0);
+            } catch (err) { console.warn('handleCategoryDragStart:', err); }
         };
 
         window.handleCategoryDragEnd = (e) => {
-            e.currentTarget.classList.remove('opacity-40', 'ring-2', 'ring-blue-400', 'ring-inset', 'border-t-2', 'border-blue-400');
+            try {
+                const el = e.currentTarget;
+                if (el && el.classList) {
+                    el.classList.remove('opacity-40', 'ring-2', 'ring-blue-400', 'ring-inset', 'border-t-2', 'border-blue-400');
+                }
+            } catch (err) { console.warn('handleCategoryDragEnd:', err); }
             window._draggingCategory = null;
         };
 
         window.handleCategoryDragOver = (e, cat) => {
-            e.preventDefault();
-            const type = e.dataTransfer.types.includes('categoryname') || window._draggingCategory ? 'category' : 'feed';
-            if (type === 'category' && window._draggingCategory !== cat) {
-                e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
-            } else if (type === 'feed') {
-                e.currentTarget.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
-            }
+            try {
+                e.preventDefault();
+                const el = e.currentTarget;
+                if (!el || !el.classList) return;
+                const types = e.dataTransfer && e.dataTransfer.types;
+                const hasCategoryType = types && (typeof types.includes === 'function'
+                    ? types.includes('categoryname')
+                    : (typeof types.contains === 'function' && types.contains('categoryname')));
+                const type = (hasCategoryType || window._draggingCategory) ? 'category' : 'feed';
+                if (type === 'category' && window._draggingCategory !== cat) {
+                    el.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
+                } else if (type === 'feed') {
+                    el.classList.add('ring-2', 'ring-blue-400', 'ring-inset');
+                }
+            } catch (err) { console.warn('handleCategoryDragOver:', err); }
         };
 
         window.handleCategoryDragLeave = (e) => {
-            e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+            try {
+                const el = e.currentTarget;
+                if (el && el.classList) el.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+            } catch (err) { console.warn('handleCategoryDragLeave:', err); }
         };
 
         window.handleCategoryOrFeedDrop = (e, targetCat) => {
-            e.preventDefault();
-            e.currentTarget.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
+            try {
+                e.preventDefault();
+                const el = e.currentTarget;
+                if (el && el.classList) el.classList.remove('ring-2', 'ring-blue-400', 'ring-inset');
 
-            const feedId = e.dataTransfer.getData('feedId');
-            const draggedCat = e.dataTransfer.getData('categoryName') || window._draggingCategory;
+                const feedId = e.dataTransfer && e.dataTransfer.getData('feedId');
+                const draggedCat = (e.dataTransfer && e.dataTransfer.getData('categoryName')) || window._draggingCategory;
 
-            if (feedId) {
-                const feed = window.feeds.find(f => f.id === feedId);
-                const localFeed = window.accountStates.local.find(f => f.id === feedId);
-                if (!feed || feed.category === targetCat) return;
-                feed.category = targetCat;
-                if (localFeed) localFeed.category = targetCat;
-                saveLocalFeeds();
-                if (typeof window.saveFeeds === 'function') window.saveFeeds([feed]);
-                renderFeeds();
-                window.showToast(`Moved to ${targetCat}`);
-            } else if (draggedCat && draggedCat !== targetCat) {
-                const order = window._categoryOrder;
-                const fromIdx = order.indexOf(draggedCat);
-                const toIdx   = order.indexOf(targetCat);
-                if (fromIdx === -1 || toIdx === -1) return;
-                order.splice(fromIdx, 1);
-                order.splice(toIdx, 0, draggedCat);
-                saveCategoryOrder();
-                renderFeeds();
-                if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
-            }
+                if (feedId) {
+                    const feed = window.feeds.find(f => f.id === feedId);
+                    const localFeed = window.accountStates.local.find(f => f.id === feedId);
+                    if (!feed || feed.category === targetCat) return;
+                    feed.category = targetCat;
+                    if (localFeed) localFeed.category = targetCat;
+                    saveLocalFeeds();
+                    if (typeof window.saveFeeds === 'function') window.saveFeeds([feed]);
+                    renderFeeds();
+                    window.showToast(`Moved to ${targetCat}`);
+                } else if (draggedCat && draggedCat !== targetCat) {
+                    const order = window._categoryOrder;
+                    const fromIdx = order.indexOf(draggedCat);
+                    const toIdx   = order.indexOf(targetCat);
+                    if (fromIdx === -1 || toIdx === -1) return;
+                    order.splice(fromIdx, 1);
+                    order.splice(toIdx, 0, draggedCat);
+                    saveCategoryOrder();
+                    renderFeeds();
+                    if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+                }
+            } catch (err) { console.warn('handleCategoryOrFeedDrop:', err); }
         };
 
         async function saveCategoryOrder() {
@@ -3956,7 +4162,7 @@
             renderTimeline();
         };
 
-        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 100) {
+        async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 30) {
             const promises = [];
             for (let i = 0; i < feeds.length; i++) {
                 promises.push(fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground));
@@ -4308,7 +4514,7 @@
         };
         // Show a toast with an inline action button (e.g. Undo). Auto-dismisses after `durationMs`.
         // onAction fires when the button is tapped; the toast is hidden either way.
-        window.showToastWithAction = (msg, label, onAction, durationMs = 6000) => {
+        window.showToastWithAction = (msg, label, onAction, durationMs = 4000) => {
             const toast = document.getElementById('toast-notification');
             if (!toast) return;
             // Clear any existing pending action
@@ -4317,7 +4523,7 @@
             window._toastBusy = true;
             toast.innerHTML = '';
             toast.className = 'fixed left-1/2 transform -translate-x-1/2 px-5 py-3 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 bg-blue-600 flex items-center gap-3';
-            toast.style.top = '16px';
+            toast.style.top = 'env(safe-area-inset-top, 0px)';
             toast.style.pointerEvents = 'auto';
             toast.style.opacity = '1';
             const span = document.createElement('span');
@@ -4362,7 +4568,7 @@
             if (!toast) { processToastQueue(); return; }
             toast.textContent = msg;
             toast.className = `fixed left-1/2 transform -translate-x-1/2 px-6 py-3 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-blue-600'}`;
-            toast.style.top = '16px';
+            toast.style.top = 'env(safe-area-inset-top, 0px)';
             toast.style.pointerEvents = 'auto';
             toast.style.opacity = '1';
             if (sticky) {
@@ -4373,7 +4579,7 @@
                 toast.style.opacity = '0';
                 toast.style.pointerEvents = 'none';
                 setTimeout(() => processToastQueue(), 350);
-            }, 2500);
+            }, 2000);
         }
 
         // Restore a snapshot returned by markAllRead — flips items back to unread.
@@ -6056,7 +6262,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
-    
+
     // 1. App Shell & Static Assets: Stale-While-Revalidate
     const isAppShell = APP_SHELL.includes(url.pathname) || url.pathname === '/';
     const isStaticAsset = EXTERNAL_ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';
