@@ -911,15 +911,15 @@
            and bottom. !important is needed to override the inline
            `style="max-height:90vh"` on the element. */
         #settings-modal > div {
-            zoom: var(--app-zoom, 1);
-            max-height: calc(90vh / var(--app-zoom, 1)) !important;
-            max-width: calc(min(480px, 100vw - 32px) / var(--app-zoom, 1)) !important;
+            zoom: var(--settings-zoom, 1);
+            max-height: calc(90vh / var(--settings-zoom, 1)) !important;
+            max-width: calc(min(480px, 100vw - 32px) / var(--settings-zoom, 1)) !important;
         }
         @media (max-width: 900px) {
             #settings-modal > div {
-                zoom: var(--app-zoom-mobile, 1);
-                max-height: calc(90vh / var(--app-zoom-mobile, 1)) !important;
-                max-width: calc(min(480px, 100vw - 32px) / var(--app-zoom-mobile, 1)) !important;
+                zoom: var(--settings-zoom-mobile, 1);
+                max-height: calc(90vh / var(--settings-zoom-mobile, 1)) !important;
+                max-width: calc(min(480px, 100vw - 32px) / var(--settings-zoom-mobile, 1)) !important;
             }
         }
         /* Reduce paint cost on article list re-renders */
@@ -1014,7 +1014,7 @@
             border-bottom: 1px solid rgba(148,163,184,0.12);
         }
         .settings-row:last-child { border-bottom: none; }
-        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 8px; }
+        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 14px; }
 
         /* Feed row in Feeds tab */
         .feed-row {
@@ -1639,6 +1639,13 @@
                                 <span class="settings-value" id="app-zoom-val">100%</span>
                             </div>
                             <input type="range" min="100" max="150" value="100" id="app-zoom-slider" class="settings-range" oninput="updateAppZoom(this.value)">
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <span class="settings-item-label">Settings Font Size</span>
+                                <span class="settings-value" id="settings-zoom-val">100%</span>
+                            </div>
+                            <input type="range" min="100" max="150" value="100" id="settings-zoom-slider" class="settings-range" oninput="updateSettingsZoom(this.value)">
                         </div>
                     </div>
                 </div>
@@ -4722,6 +4729,15 @@
             saveTypographyPrefs();
         };
 
+        window.updateSettingsZoom = (v) => {
+            const pct = parseInt(v);
+            const cssVar = isMobile() ? '--settings-zoom-mobile' : '--settings-zoom';
+            document.documentElement.style.setProperty(cssVar, pct / 100);
+            const lb = document.getElementById('settings-zoom-val');
+            if (lb) lb.textContent = `${pct}%`;
+            saveTypographyPrefs();
+        };
+
         window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
         window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
         window.openExternal = () => { if(window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
@@ -5217,6 +5233,7 @@ window.toggleUnreadManual = () => {
                 };
             };
             const appZoom         = splitSave('app-zoom-slider',                  'appZoomDesktop',           'appZoomMobile');
+            const settingsZoom    = splitSave('settings-zoom-slider',             'settingsZoomDesktop',      'settingsZoomMobile');
             const body            = splitSave('shared-body-slider',               'sharedBodyDesktop',        'sharedBodyMobile');
             const articleTitle    = splitSave('shared-article-title-slider',      'sharedArticleTitleDesktop','sharedArticleTitleMobile');
             const lineHeight      = splitSave('shared-line-height-slider',        'sharedLineHeightDesktop',  'sharedLineHeightMobile');
@@ -5234,6 +5251,7 @@ window.toggleUnreadManual = () => {
                     sortOrder:          get('pref-sort-order'),
                     autoRefresh:        get('pref-auto-refresh'),
                     ...appZoom,
+                    ...settingsZoom,
                     ...body,
                     ...articleTitle,
                     ...lineHeight,
@@ -5333,6 +5351,16 @@ window.toggleUnreadManual = () => {
             if (activeZoom) {
                 const el = document.getElementById('app-zoom-slider'); if (el) el.value = activeZoom;
                 const lb = document.getElementById('app-zoom-val'); if (lb) lb.textContent = `${activeZoom}%`;
+            }
+            // Settings Font Size — own per-device CSS vars, scoped only to the settings modal.
+            const settingsZoomDesktop = prefs.settingsZoomDesktop;
+            const settingsZoomMobile  = prefs.settingsZoomMobile;
+            if (settingsZoomDesktop) root.style.setProperty('--settings-zoom', settingsZoomDesktop / 100);
+            if (settingsZoomMobile)  root.style.setProperty('--settings-zoom-mobile', settingsZoomMobile / 100);
+            const activeSettingsZoom = mob ? settingsZoomMobile : settingsZoomDesktop;
+            if (activeSettingsZoom) {
+                const el = document.getElementById('settings-zoom-slider'); if (el) el.value = activeSettingsZoom;
+                const lb = document.getElementById('settings-zoom-val'); if (lb) lb.textContent = `${activeSettingsZoom}%`;
             }
             if (prefs.dedupByTitle) {
                 window._dedupByTitle = true;
@@ -5795,6 +5823,7 @@ window.toggleUnreadManual = () => {
         // reflects the now-active device's saved setting.
         const PER_DEVICE_SLIDER_CONFIG = [
             { sliderId: 'app-zoom-slider',                labelId: 'app-zoom-val',                deskKey: 'appZoomDesktop',           mobKey: 'appZoomMobile',           fmt: v => `${v}%`,                              defaultVal: 100, apply: null /* CSS vars already applied for both */ },
+            { sliderId: 'settings-zoom-slider',           labelId: 'settings-zoom-val',           deskKey: 'settingsZoomDesktop',      mobKey: 'settingsZoomMobile',      fmt: v => `${v}%`,                              defaultVal: 100, apply: null /* CSS vars already applied for both */ },
             { sliderId: 'shared-body-slider',             labelId: 'shared-body-val',             deskKey: 'sharedBodyDesktop',        mobKey: 'sharedBodyMobile',        fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('body', v) },
             { sliderId: 'shared-article-title-slider',    labelId: 'shared-article-title-val',    deskKey: 'sharedArticleTitleDesktop',mobKey: 'sharedArticleTitleMobile',fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('articleTitle', v) },
             { sliderId: 'shared-line-height-slider',      labelId: 'shared-line-height-val',      deskKey: 'sharedLineHeightDesktop',  mobKey: 'sharedLineHeightMobile',  fmt: v => `${parseFloat((v/10).toFixed(1))}`,   apply: v => updateSharedSize('lineHeight', v) },
