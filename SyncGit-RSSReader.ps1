@@ -212,12 +212,9 @@ try {
 
     Invoke-GitChecked -Arguments @("checkout", $MainBranch) -ActionDescription "Checkout $MainBranch"
 
-    # Restore any tracked files that are missing from disk before staging
-    $deletedTracked = & git ls-files --deleted 2>$null
-    foreach ($f in ($deletedTracked | Where-Object { $_ -match '\S' })) {
-        & git checkout -- $f 2>$null
-        Write-Host "Restored missing tracked file: $f"
-    }
+    # Note: deliberately do NOT auto-restore tracked files missing from disk.
+    # Deletions and renames (delete + add) are legitimate edits the user wants
+    # committed; resurrecting them here would silently block every rm/mv.
 
     # Force-add .opml, .md, and .html — parent .gitignore would otherwise block them
     $forceFiles = @(Get-ChildItem -Path $RepoPath -File -Include "*.opml","*.md","*.html" -ErrorAction SilentlyContinue)

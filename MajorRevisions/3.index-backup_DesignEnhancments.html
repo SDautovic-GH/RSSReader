@@ -125,7 +125,9 @@
         #img-lightbox img.lb-zoomed { cursor: grab; border-radius: 0; }
         #img-lightbox img.lb-zoomed:active { cursor: grabbing; }
         #img-lightbox-close {
-            position: absolute; top: 14px; right: 16px;
+            position: absolute;
+            top: calc(14px + env(safe-area-inset-top, 0px));
+            right: calc(16px + env(safe-area-inset-right, 0px));
             color: #fff; font-size: 28px; line-height: 1;
             cursor: pointer; opacity: 0.75; background: none; border: none;
             padding: 4px 8px; z-index: 1;
@@ -428,7 +430,25 @@
             #article-body, #article-title {
                 line-height: var(--mob-line-height) !important;
             }
+            /* Article-body's rendered HTML — <p>/<li> read --line-height
+               (desktop var) by default via the .article-content rules at the
+               bottom of this stylesheet. On mobile the slider only writes
+               --mob-line-height, so re-point the paragraphs/list-items here.
+               NOTE: .article-content is a class ON #article-body itself, not
+               a descendant — so the selector is "#article-body p", not
+               "#article-body .article-content p". */
+            #article-body p,
+            #article-body li {
+                line-height: var(--mob-line-height) !important;
+            }
             #article-list .dynamic-list-preview, #article-list .dynamic-list-title {
+                line-height: var(--mob-list-preview-line-height) !important;
+            }
+            /* Belt-and-suspenders for the Article List: target the rendered
+               <h3>/<p> directly so Tailwind's leading-* utility (still present
+               on the element) cannot win in any cascade edge case. */
+            #article-list h3.dynamic-list-title,
+            #article-list p.dynamic-list-preview {
                 line-height: var(--mob-list-preview-line-height) !important;
             }
             .line-clamp-custom {
@@ -525,7 +545,7 @@
             left: 0; right: 0;
             bottom: 0;
             z-index: 50;
-            padding: 8px 18px calc(env(safe-area-inset-bottom, 0px) / 2);
+            padding: 8px 18px env(safe-area-inset-bottom, 0px);
             background: transparent !important;
             border: none !important;
             pointer-events: none;
@@ -871,16 +891,26 @@
            applies `-webkit-text-size-adjust` to rem-based computations on scrollable containers, which can
            neutralize the scaling. The explicit `text-size-adjust: 100%` here also prevents Safari from
            silently capping font-size changes on these descendants. */
-        #article-list, #reader-view {
+        #article-list, #reader-view, #sidebar-pane {
             font-size: calc(16px * var(--app-zoom, 1));
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
         }
         @media (max-width: 900px) {
-            #article-list, #reader-view {
+            #article-list, #reader-view, #sidebar-pane {
                 font-size: calc(16px * var(--app-zoom-mobile, 1));
             }
         }
+        /* App Zoom applied to the Settings modal too. Uses `zoom` (not
+           font-size) because the modal's internal styles are hardcoded in px
+           and wouldn't cascade off font-size. Scoped to the inner card so
+           the backdrop still covers the full viewport at any zoom level.
+           max-height is divided by the zoom factor so the *visual* height
+           after zoom still lands at 90vh — without this, zoom=1.5 turned
+           the 90vh layout box into a 135vh visual box that overflowed top
+           and bottom. !important is needed to override the inline
+           `style="max-height:90vh"` on the element. */
+        /* Modal sizes itself with the inline max-height/max-width on the element. */
         /* Reduce paint cost on article list re-renders */
         #article-list > div { contain: style layout; }
 
@@ -946,7 +976,7 @@
             padding-bottom: 0 !important;
         }
         .settings-section-label {
-            font-size: 12px; font-weight: 700; text-transform: uppercase;
+            font-size: 14px; font-weight: 600; text-transform: uppercase;
             letter-spacing: 0.06em; color: #94a3b8;
             margin-bottom: 10px; padding: 0 4px;
         }
@@ -962,7 +992,7 @@
         html:not(.dark) .settings-item-label,
         html:not(.dark) .settings-item-label-sm,
         html:not(.dark) .settings-item label { color: #1f2937; }
-        .settings-value { font-size: 13px; font-weight: 700; color: #3b82f6; }
+        .settings-value { font-size: 14px; font-weight: 600; color: #3b82f6; }
 
         /* Grouped list (iOS-style): rows separated by hairlines, no card-in-card */
         .settings-list { background: rgba(255,255,255,0.03); border-radius: 12px; overflow: hidden; }
@@ -973,7 +1003,7 @@
             border-bottom: 1px solid rgba(148,163,184,0.12);
         }
         .settings-row:last-child { border-bottom: none; }
-        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 8px; }
+        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 14px; }
 
         /* Feed row in Feeds tab */
         .feed-row {
@@ -1302,10 +1332,18 @@
                         <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
                     <!-- Desktop Search Input -->
-                    <div id="desk-search-container" class="hidden flex-1 items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-2 h-9 ml-[-8px]">
-                        <svg class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input id="desk-search-input" type="text" placeholder="Search..." class="bg-transparent border-none outline-none text-sm text-gray-900 dark:text-gray-100 w-full font-normal lowercase tracking-normal" oninput="handleDeskSearch(this.value)">
-                        <button onclick="closeDeskSearch()" class="ml-1 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <div id="desk-search-container" class="hidden flex-1 items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-2 h-9 ml-[-8px] gap-1">
+                        <svg class="w-4 h-4 text-gray-500 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input id="desk-search-input" type="text" placeholder="Search..." class="bg-transparent border-none outline-none text-sm text-gray-900 dark:text-gray-100 flex-1 min-w-0 font-normal lowercase tracking-normal" oninput="handleDeskSearch(this.value)">
+                        <select id="desk-search-scope" onchange="handleDeskSearch(document.getElementById('desk-search-input').value)" title="Search scope" class="bg-transparent border-none outline-none text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 max-w-[140px]">
+                            <option value="all">All folders</option>
+                        </select>
+                        <select id="desk-search-readstate" onchange="handleDeskSearch(document.getElementById('desk-search-input').value)" title="Read state" class="bg-transparent border-none outline-none text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                            <option value="all">All</option>
+                            <option value="unread">Unread</option>
+                            <option value="read">Read</option>
+                        </select>
+                        <button onclick="closeDeskSearch()" class="ml-1 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
@@ -2768,21 +2806,75 @@
             const list = document.getElementById('article-list');
             if (!list) return;
 
-            const sortOrder = window.currentSmartFeed === 'today'
+            const isRecentlyRead = window.currentSmartFeed === 'recently-read';
+            const sortOrder = window.currentSmartFeed === 'today' || isRecentlyRead
                 ? 'desc'
                 : (document.getElementById('pref-sort-order')?.value || 'asc');
 
-            let filtered = window.articles;
+            // Recently-read has its own pre-loaded source (from IndexedDB
+            // readArchive). All other smart feeds work off the in-memory
+            // article cache.
+            let filtered = isRecentlyRead
+                ? (window._recentlyReadArticles || [])
+                : window.articles;
 
-            // If searching, search globally (all articles)
-            if (window._searchQuery) {
-                const q = window._searchQuery.toLowerCase();
-                filtered = filtered.filter(a =>
-                    (a.title||'').toLowerCase().includes(q) ||
-                    (a.source||'').toLowerCase().includes(q) ||
-                    (a.excerpt||'').toLowerCase().includes(q)
-                );
-            } else {
+            // If searching, scan title/source/excerpt across the chosen scope.
+            // Scope and read-state pre-filter the pool; then the query string
+            // narrows it. Even an empty query string with non-default scope
+            // still applies the scope/read filters so the results list reflects
+            // what the user picked in the dropdowns.
+            const searchScope = document.getElementById('desk-search-scope')?.value || 'all';
+            const searchReadState = document.getElementById('desk-search-readstate')?.value || 'all';
+            const searchActive = !!window._searchQuery || searchScope !== 'all' || searchReadState !== 'all';
+            if (searchActive && !isRecentlyRead) {
+                // Start with in-memory cache (~500 most-recent), then merge in
+                // the read-archive snapshot loaded by openDeskSearch so search
+                // covers the full 90-day read history. In-memory wins on dup
+                // (it has fresh state like .unread).
+                let pool = window.articles.slice();
+                if (Array.isArray(window._readArchiveCache) && window._readArchiveCache.length) {
+                    const seen = new Set(pool.map(a => a.link));
+                    for (const r of window._readArchiveCache) {
+                        if (seen.has(r.link)) continue;
+                        pool.push({
+                            id: 'ra:' + r.link,
+                            link: r.link,
+                            title: r.title,
+                            source: r.source,
+                            feedUrl: r.feedUrl,
+                            excerpt: r.excerpt,
+                            body: r.body || '',
+                            author: r.author || '',
+                            timestamp: r.timestamp,
+                            readAt: r.readAt,
+                            unread: false,
+                            readLater: window._readLaterLinks.has(r.link),
+                        });
+                    }
+                }
+                if (searchScope.startsWith('cat:')) {
+                    const cat = searchScope.slice(4);
+                    const sources = window.feeds.filter(f => f.category === cat).map(f => f.name);
+                    pool = pool.filter(a => sources.includes(a.source));
+                } else if (searchScope.startsWith('feed:')) {
+                    const url = searchScope.slice(5);
+                    const f = window.feeds.find(f => f.url === url);
+                    if (f) pool = pool.filter(a => a.source === f.name);
+                    else pool = [];
+                }
+                if (searchReadState === 'unread') pool = pool.filter(a => a.unread);
+                else if (searchReadState === 'read') pool = pool.filter(a => !a.unread);
+                if (window._searchQuery) {
+                    const q = window._searchQuery.toLowerCase();
+                    pool = pool.filter(a =>
+                        (a.title||'').toLowerCase().includes(q) ||
+                        (a.source||'').toLowerCase().includes(q) ||
+                        (a.excerpt||'').toLowerCase().includes(q) ||
+                        (a.body||'').toLowerCase().includes(q)
+                    );
+                }
+                filtered = pool;
+            } else if (!isRecentlyRead) {
                 // Apply normal filters
                 if (window.currentSmartFeed === 'all') {
                     filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
@@ -2802,6 +2894,11 @@
             }
 
             filtered.sort((a, b) => {
+                // Recently-read sorts by when WE read it, not by publish time.
+                if (isRecentlyRead) {
+                    const diff = (a.readAt || 0) - (b.readAt || 0);
+                    return sortOrder === 'desc' ? -diff : diff;
+                }
                 const diff = (a._ts || new Date(a.timestamp).getTime()) - (b._ts || new Date(b.timestamp).getTime());
                 return sortOrder === 'desc' ? -diff : diff;
             });
@@ -3753,21 +3850,58 @@
         window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
 
         // --- DESKTOP SEARCH HELPERS ---
-        window.openDeskSearch = () => {
+        function refreshDeskSearchScope() {
+            const sel = document.getElementById('desk-search-scope');
+            if (!sel) return;
+            const current = sel.value || 'all';
+            const cats = [...new Set((window.feeds || []).map(f => f.category).filter(Boolean))];
+            const feedOpts = (window.feeds || []).slice().sort((a,b) => (a.name||'').localeCompare(b.name||''));
+            let html = '<option value="all">All folders</option>';
+            if (cats.length) {
+                html += '<optgroup label="Folders">';
+                for (const c of cats) html += `<option value="cat:${esc(c)}">${esc(c)}</option>`;
+                html += '</optgroup>';
+            }
+            if (feedOpts.length) {
+                html += '<optgroup label="Feeds">';
+                for (const f of feedOpts) html += `<option value="feed:${esc(f.url)}">${esc(f.name)}</option>`;
+                html += '</optgroup>';
+            }
+            sel.innerHTML = html;
+            // Restore prior selection if it still exists in the new list.
+            if ([...sel.options].some(o => o.value === current)) sel.value = current;
+            else sel.value = 'all';
+        }
+
+        window.openDeskSearch = async () => {
             document.getElementById('timeline-count-group').classList.add('hidden');
             document.getElementById('desk-search-trigger').classList.add('hidden');
             const container = document.getElementById('desk-search-container');
             container.classList.remove('hidden');
             container.classList.add('flex');
+            refreshDeskSearchScope();
             const input = document.getElementById('desk-search-input');
             input.value = window._searchQuery || '';
             input.focus();
             input.select();
+            // Snapshot the read-archive (up to the maximum 90-day window)
+            // into a cache so search can include it without async queries
+            // on every keystroke.
+            if (window.appDB && typeof window.appDB.getRecentlyRead === 'function') {
+                try { window._readArchiveCache = await window.appDB.getRecentlyRead(90); }
+                catch(e) { window._readArchiveCache = []; }
+                // If the user is mid-typing a query, re-render with the
+                // archive now included.
+                if (window._searchQuery) renderTimeline();
+            }
         };
 
         window.closeDeskSearch = () => {
             window._searchQuery = '';
+            window._readArchiveCache = null;
             document.getElementById('desk-search-input').value = '';
+            const sc = document.getElementById('desk-search-scope'); if (sc) sc.value = 'all';
+            const rs = document.getElementById('desk-search-readstate'); if (rs) rs.value = 'all';
             document.getElementById('desk-search-container').classList.add('hidden');
             document.getElementById('desk-search-container').classList.remove('flex');
             document.getElementById('timeline-count-group').classList.remove('hidden');
@@ -3775,9 +3909,14 @@
             renderTimeline();
         };
 
+        // Body search adds a meaningful per-keystroke cost (≈50 KB × N
+        // articles to scan), so debounce the actual render. Selects don't
+        // hit this path — they call renderTimeline directly via onchange.
+        let _deskSearchDebounce = null;
         window.handleDeskSearch = (val) => {
-            window._searchQuery = val.trim();
-            renderTimeline();
+            window._searchQuery = (val || '').trim();
+            clearTimeout(_deskSearchDebounce);
+            _deskSearchDebounce = setTimeout(() => renderTimeline(), 150);
         };
 
         // --- DRAG & DROP ---
@@ -4374,7 +4513,7 @@
         };
         // Show a toast with an inline action button (e.g. Undo). Auto-dismisses after `durationMs`.
         // onAction fires when the button is tapped; the toast is hidden either way.
-        window.showToastWithAction = (msg, label, onAction, durationMs = 6000) => {
+        window.showToastWithAction = (msg, label, onAction, durationMs = 4000) => {
             const toast = document.getElementById('toast-notification');
             if (!toast) return;
             // Clear any existing pending action
@@ -4439,7 +4578,7 @@
                 toast.style.opacity = '0';
                 toast.style.pointerEvents = 'none';
                 setTimeout(() => processToastQueue(), 350);
-            }, 2500);
+            }, 2000);
         }
 
         // Restore a snapshot returned by markAllRead — flips items back to unread.
@@ -6085,7 +6224,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v58';
+const CACHE_NAME = 'rss-reader-v69';
 const APP_SHELL = [
     '/',
     'index.html'
@@ -6122,7 +6261,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
-    
+
     // 1. App Shell & Static Assets: Stale-While-Revalidate
     const isAppShell = APP_SHELL.includes(url.pathname) || url.pathname === '/';
     const isStaticAsset = EXTERNAL_ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';

@@ -224,32 +224,33 @@
         }
 
         :root {
-            --list-preview-font-size: 1em;
-            --view-font-size: 1em;
-            --category-font-size: 1em;
-            --list-preview-lines: 5;
-            --mob-list-preview-lines: 5;
+            --list-preview-font-size: 1.1em;
+            --view-font-size: 1.1em;
+            --category-font-size: 1.15em;
+            --list-preview-lines: 10;
+            --mob-list-preview-lines: 10;
             --list-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --view-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --mob-feed-name-size: 1.0em;
-            --mob-article-title-size: 1.3em;
-            --mob-body-size: 1.0em;
+            --mob-article-title-size: 1.1em;
+            --mob-body-size: 1.1em;
             --mob-author-size: 1.1em;
-            --list-title-em-size: 1.0em;
-            --mob-list-preview-size: 1.0em;
-            --mob-list-title-size: 1.0em;
-            --line-height: 1.6;
-            --mob-line-height: 1.6;
-            --feed-line-height: 1.6;
-            --mob-feed-line-height: 1.6;
+            --list-title-em-size: 1.1em;
+            --mob-list-preview-size: 1.1em;
+            --mob-list-title-size: 1.1em;
+            --line-height: 1.4;
+            --mob-line-height: 1.4;
+            --feed-line-height: 1.4;
+            --mob-feed-line-height: 1.4;
             --list-preview-line-height: 1.4;
             --mob-list-preview-line-height: 1.4;
-            --mob-folder-size: 1.0em;
+            --mob-folder-size: 1.15em;
             --mob-list-source-size: 1.0em;
             --mob-list-date-size: 1.0em;
             --list-source-size: 1.0em;
             --desk-feed-name-size: 1.0em;
             --article-meta-size: 1.1em;
+            --feed-row-padding: 0.20rem;
         }
 
         .dynamic-list-title {
@@ -430,7 +431,25 @@
             #article-body, #article-title {
                 line-height: var(--mob-line-height) !important;
             }
+            /* Article-body's rendered HTML — <p>/<li> read --line-height
+               (desktop var) by default via the .article-content rules at the
+               bottom of this stylesheet. On mobile the slider only writes
+               --mob-line-height, so re-point the paragraphs/list-items here.
+               NOTE: .article-content is a class ON #article-body itself, not
+               a descendant — so the selector is "#article-body p", not
+               "#article-body .article-content p". */
+            #article-body p,
+            #article-body li {
+                line-height: var(--mob-line-height) !important;
+            }
             #article-list .dynamic-list-preview, #article-list .dynamic-list-title {
+                line-height: var(--mob-list-preview-line-height) !important;
+            }
+            /* Belt-and-suspenders for the Article List: target the rendered
+               <h3>/<p> directly so Tailwind's leading-* utility (still present
+               on the element) cannot win in any cascade edge case. */
+            #article-list h3.dynamic-list-title,
+            #article-list p.dynamic-list-preview {
                 line-height: var(--mob-list-preview-line-height) !important;
             }
             .line-clamp-custom {
@@ -550,7 +569,7 @@
             backdrop-filter: blur(40px) saturate(1.8);
             -webkit-backdrop-filter: blur(40px) saturate(1.8);
             flex: 1 1 auto;
-            max-width: 420px;
+            max-width: 480px;
             min-width: 0;
             transition: background-color 0.25s ease, border-color 0.25s ease;
         }
@@ -593,25 +612,22 @@
         #mobile-tab-bar .tab-btn.active:active { background: rgba(59, 130, 246, 0.28); }
         #mobile-tab-bar .tab-search {
             flex: 0 0 auto;
-            width: 54px; height: 54px;
+            width: 50px; height: 50px;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            background: rgba(28,28,30,0.72);
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            backdrop-filter: blur(40px) saturate(1.8);
-            -webkit-backdrop-filter: blur(40px) saturate(1.8);
-            color: rgba(255,255,255,0.88);
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.82);
             cursor: pointer;
             padding: 0;
-            transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+            margin-left: 4px;
+            transition: background-color 0.18s ease, color 0.18s ease;
             -webkit-tap-highlight-color: transparent;
         }
-        #mobile-tab-bar .tab-search:active { background: rgba(255,255,255,0.12); }
+        #mobile-tab-bar .tab-search:active { background: rgba(255,255,255,0.06); }
         body.search-active #mobile-tab-bar .tab-search {
-            background: rgba(59, 130, 246, 0.28);
-            color: #fff;
-            border-color: rgba(59, 130, 246, 0.4);
+            background: rgba(59, 130, 246, 0.18);
+            color: #3b82f6;
         }
         #mobile-tab-bar .tab-search svg { width: 22px; height: 22px; }
 
@@ -873,16 +889,26 @@
            applies `-webkit-text-size-adjust` to rem-based computations on scrollable containers, which can
            neutralize the scaling. The explicit `text-size-adjust: 100%` here also prevents Safari from
            silently capping font-size changes on these descendants. */
-        #article-list, #reader-view {
+        #article-list, #reader-view, #sidebar-pane {
             font-size: calc(16px * var(--app-zoom, 1));
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
         }
         @media (max-width: 900px) {
-            #article-list, #reader-view {
+            #article-list, #reader-view, #sidebar-pane {
                 font-size: calc(16px * var(--app-zoom-mobile, 1));
             }
         }
+        /* App Zoom applied to the Settings modal too. Uses `zoom` (not
+           font-size) because the modal's internal styles are hardcoded in px
+           and wouldn't cascade off font-size. Scoped to the inner card so
+           the backdrop still covers the full viewport at any zoom level.
+           max-height is divided by the zoom factor so the *visual* height
+           after zoom still lands at 90vh — without this, zoom=1.5 turned
+           the 90vh layout box into a 135vh visual box that overflowed top
+           and bottom. !important is needed to override the inline
+           `style="max-height:90vh"` on the element. */
+        /* Modal sizes itself with the inline max-height/max-width on the element. */
         /* Reduce paint cost on article list re-renders */
         #article-list > div { contain: style layout; }
 
@@ -948,7 +974,7 @@
             padding-bottom: 0 !important;
         }
         .settings-section-label {
-            font-size: 12px; font-weight: 700; text-transform: uppercase;
+            font-size: 14px; font-weight: 600; text-transform: uppercase;
             letter-spacing: 0.06em; color: #94a3b8;
             margin-bottom: 10px; padding: 0 4px;
         }
@@ -964,7 +990,7 @@
         html:not(.dark) .settings-item-label,
         html:not(.dark) .settings-item-label-sm,
         html:not(.dark) .settings-item label { color: #1f2937; }
-        .settings-value { font-size: 13px; font-weight: 700; color: #3b82f6; }
+        .settings-value { font-size: 14px; font-weight: 600; color: #3b82f6; }
 
         /* Grouped list (iOS-style): rows separated by hairlines, no card-in-card */
         .settings-list { background: rgba(255,255,255,0.03); border-radius: 12px; overflow: hidden; }
@@ -975,7 +1001,7 @@
             border-bottom: 1px solid rgba(148,163,184,0.12);
         }
         .settings-row:last-child { border-bottom: none; }
-        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 8px; }
+        .settings-row-stacked { flex-direction: column; align-items: stretch; gap: 14px; }
 
         /* Feed row in Feeds tab */
         .feed-row {
@@ -1304,10 +1330,18 @@
                         <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
                     <!-- Desktop Search Input -->
-                    <div id="desk-search-container" class="hidden flex-1 items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-2 h-9 ml-[-8px]">
-                        <svg class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input id="desk-search-input" type="text" placeholder="Search..." class="bg-transparent border-none outline-none text-sm text-gray-900 dark:text-gray-100 w-full font-normal lowercase tracking-normal" oninput="handleDeskSearch(this.value)">
-                        <button onclick="closeDeskSearch()" class="ml-1 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <div id="desk-search-container" class="hidden flex-1 items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-2 h-9 ml-[-8px] gap-1">
+                        <svg class="w-4 h-4 text-gray-500 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input id="desk-search-input" type="text" placeholder="Search..." class="bg-transparent border-none outline-none text-sm text-gray-900 dark:text-gray-100 flex-1 min-w-0 font-normal lowercase tracking-normal" oninput="handleDeskSearch(this.value)">
+                        <select id="desk-search-scope" onchange="handleDeskSearch(document.getElementById('desk-search-input').value)" title="Search scope" class="bg-transparent border-none outline-none text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 max-w-[140px]">
+                            <option value="all">All folders</option>
+                        </select>
+                        <select id="desk-search-readstate" onchange="handleDeskSearch(document.getElementById('desk-search-input').value)" title="Read state" class="bg-transparent border-none outline-none text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                            <option value="all">All</option>
+                            <option value="unread">Unread</option>
+                            <option value="read">Read</option>
+                        </select>
+                        <button onclick="closeDeskSearch()" class="ml-1 p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
@@ -1459,10 +1493,10 @@
                 </span>
                 <span id="mob-tab-reader-label" class="tab-label">Reader</span>
             </button>
+            <button id="mob-tab-search" type="button" class="tab-search" onclick="toggleSearchSheet()" aria-label="Search">
+                <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
         </div>
-        <button id="mob-tab-search" type="button" class="tab-search" onclick="toggleSearchSheet()" aria-label="Search">
-            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </button>
     </nav>
     <!-- MOBILE SEARCH SHEET -->
     <div id="mobile-search-sheet" aria-hidden="true">
@@ -1632,7 +1666,7 @@
                                 <label class="settings-item-label-sm">Deduplicate articles by title</label>
                                 <p class="text-[12px] text-gray-400 mt-1">Keeps one copy per story, favouring sources ranked by Memeorandum</p>
                             </div>
-                            <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch" data-on="false" aria-label="Deduplicate by title"></button>
+                            <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch" data-on="true" aria-label="Deduplicate by title"></button>
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <label class="settings-item-label">Font</label>
@@ -1662,16 +1696,16 @@
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Folder Size</span>
-                                <span class="settings-value" id="shared-folder-val">1.0em</span>
+                                <span class="settings-value" id="shared-folder-val">1.15em</span>
                             </div>
-                            <input type="range" min="12" max="28" value="20" id="shared-folder-slider" class="settings-range" oninput="updateFolderSize(this.value)">
+                            <input type="range" min="12" max="28" value="23" id="shared-folder-slider" class="settings-range" oninput="updateFolderSize(this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Row Spacing</span>
-                                <span class="settings-value" id="feed-spacing-val">0.30rem</span>
+                                <span class="settings-value" id="feed-spacing-val">0.20rem</span>
                             </div>
-                            <input type="range" min="2" max="10" value="6" id="feed-spacing-slider" class="settings-range" oninput="updateFeedSpacing(this.value)">
+                            <input type="range" min="2" max="10" value="4" id="feed-spacing-slider" class="settings-range" oninput="updateFeedSpacing(this.value)">
                         </div>
                     </div>
                 </div>
@@ -1683,23 +1717,23 @@
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Article Title Size</span>
-                                <span class="settings-value" id="shared-list-title-val">1.0em</span>
+                                <span class="settings-value" id="shared-list-title-val">1.1em</span>
                             </div>
-                            <input type="range" min="4" max="19" value="10" id="shared-list-title-slider" class="settings-range" oninput="updateSharedSize('listTitle', this.value)">
+                            <input type="range" min="4" max="19" value="11" id="shared-list-title-slider" class="settings-range" oninput="updateSharedSize('listTitle', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Preview Text Size</span>
-                                <span class="settings-value" id="shared-preview-val">1.0em</span>
+                                <span class="settings-value" id="shared-preview-val">1.1em</span>
                             </div>
-                            <input type="range" min="4" max="19" value="10" id="shared-preview-slider" class="settings-range" oninput="updateSharedSize('preview', this.value)">
+                            <input type="range" min="4" max="19" value="11" id="shared-preview-slider" class="settings-range" oninput="updateSharedSize('preview', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Preview Lines</span>
-                                <span class="settings-value" id="lines-val">5 Lines</span>
+                                <span class="settings-value" id="lines-val">10 Lines</span>
                             </div>
-                            <input type="range" min="2" max="15" value="5" id="lines-slider" class="settings-range" oninput="updateLines(this.value)">
+                            <input type="range" min="2" max="15" value="10" id="lines-slider" class="settings-range" oninput="updateLines(this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -1718,23 +1752,23 @@
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Body Size</span>
-                                <span class="settings-value" id="shared-body-val">1.0em</span>
+                                <span class="settings-value" id="shared-body-val">1.1em</span>
                             </div>
-                            <input type="range" min="4" max="22" value="10" id="shared-body-slider" class="settings-range" oninput="updateSharedSize('body', this.value)">
+                            <input type="range" min="4" max="22" value="11" id="shared-body-slider" class="settings-range" oninput="updateSharedSize('body', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Line Height</span>
-                                <span class="settings-value" id="shared-line-height-val">1.6</span>
+                                <span class="settings-value" id="shared-line-height-val">1.4</span>
                             </div>
-                            <input type="range" min="8" max="24" value="16" id="shared-line-height-slider" class="settings-range" oninput="updateSharedSize('lineHeight', this.value)">
+                            <input type="range" min="8" max="24" value="14" id="shared-line-height-slider" class="settings-range" oninput="updateSharedSize('lineHeight', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Title Size</span>
-                                <span class="settings-value" id="shared-article-title-val">1.3em</span>
+                                <span class="settings-value" id="shared-article-title-val">1.1em</span>
                             </div>
-                            <input type="range" min="4" max="22" value="13" id="shared-article-title-slider" class="settings-range" oninput="updateSharedSize('articleTitle', this.value)">
+                            <input type="range" min="4" max="22" value="11" id="shared-article-title-slider" class="settings-range" oninput="updateSharedSize('articleTitle', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -2131,7 +2165,7 @@
         }
 
         // --- TITLE DEDUPLICATION ---
-        window._dedupByTitle = false;
+        window._dedupByTitle = true;
         window._memoRankMap = null;
 
         function normTitle(t) {
@@ -2770,21 +2804,75 @@
             const list = document.getElementById('article-list');
             if (!list) return;
 
-            const sortOrder = window.currentSmartFeed === 'today'
+            const isRecentlyRead = window.currentSmartFeed === 'recently-read';
+            const sortOrder = window.currentSmartFeed === 'today' || isRecentlyRead
                 ? 'desc'
                 : (document.getElementById('pref-sort-order')?.value || 'asc');
 
-            let filtered = window.articles;
+            // Recently-read has its own pre-loaded source (from IndexedDB
+            // readArchive). All other smart feeds work off the in-memory
+            // article cache.
+            let filtered = isRecentlyRead
+                ? (window._recentlyReadArticles || [])
+                : window.articles;
 
-            // If searching, search globally (all articles)
-            if (window._searchQuery) {
-                const q = window._searchQuery.toLowerCase();
-                filtered = filtered.filter(a =>
-                    (a.title||'').toLowerCase().includes(q) ||
-                    (a.source||'').toLowerCase().includes(q) ||
-                    (a.excerpt||'').toLowerCase().includes(q)
-                );
-            } else {
+            // If searching, scan title/source/excerpt across the chosen scope.
+            // Scope and read-state pre-filter the pool; then the query string
+            // narrows it. Even an empty query string with non-default scope
+            // still applies the scope/read filters so the results list reflects
+            // what the user picked in the dropdowns.
+            const searchScope = document.getElementById('desk-search-scope')?.value || 'all';
+            const searchReadState = document.getElementById('desk-search-readstate')?.value || 'all';
+            const searchActive = !!window._searchQuery || searchScope !== 'all' || searchReadState !== 'all';
+            if (searchActive && !isRecentlyRead) {
+                // Start with in-memory cache (~500 most-recent), then merge in
+                // the read-archive snapshot loaded by openDeskSearch so search
+                // covers the full 90-day read history. In-memory wins on dup
+                // (it has fresh state like .unread).
+                let pool = window.articles.slice();
+                if (Array.isArray(window._readArchiveCache) && window._readArchiveCache.length) {
+                    const seen = new Set(pool.map(a => a.link));
+                    for (const r of window._readArchiveCache) {
+                        if (seen.has(r.link)) continue;
+                        pool.push({
+                            id: 'ra:' + r.link,
+                            link: r.link,
+                            title: r.title,
+                            source: r.source,
+                            feedUrl: r.feedUrl,
+                            excerpt: r.excerpt,
+                            body: r.body || '',
+                            author: r.author || '',
+                            timestamp: r.timestamp,
+                            readAt: r.readAt,
+                            unread: false,
+                            readLater: window._readLaterLinks.has(r.link),
+                        });
+                    }
+                }
+                if (searchScope.startsWith('cat:')) {
+                    const cat = searchScope.slice(4);
+                    const sources = window.feeds.filter(f => f.category === cat).map(f => f.name);
+                    pool = pool.filter(a => sources.includes(a.source));
+                } else if (searchScope.startsWith('feed:')) {
+                    const url = searchScope.slice(5);
+                    const f = window.feeds.find(f => f.url === url);
+                    if (f) pool = pool.filter(a => a.source === f.name);
+                    else pool = [];
+                }
+                if (searchReadState === 'unread') pool = pool.filter(a => a.unread);
+                else if (searchReadState === 'read') pool = pool.filter(a => !a.unread);
+                if (window._searchQuery) {
+                    const q = window._searchQuery.toLowerCase();
+                    pool = pool.filter(a =>
+                        (a.title||'').toLowerCase().includes(q) ||
+                        (a.source||'').toLowerCase().includes(q) ||
+                        (a.excerpt||'').toLowerCase().includes(q) ||
+                        (a.body||'').toLowerCase().includes(q)
+                    );
+                }
+                filtered = pool;
+            } else if (!isRecentlyRead) {
                 // Apply normal filters
                 if (window.currentSmartFeed === 'all') {
                     filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
@@ -2804,6 +2892,11 @@
             }
 
             filtered.sort((a, b) => {
+                // Recently-read sorts by when WE read it, not by publish time.
+                if (isRecentlyRead) {
+                    const diff = (a.readAt || 0) - (b.readAt || 0);
+                    return sortOrder === 'desc' ? -diff : diff;
+                }
                 const diff = (a._ts || new Date(a.timestamp).getTime()) - (b._ts || new Date(b.timestamp).getTime());
                 return sortOrder === 'desc' ? -diff : diff;
             });
@@ -3755,21 +3848,58 @@
         window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
 
         // --- DESKTOP SEARCH HELPERS ---
-        window.openDeskSearch = () => {
+        function refreshDeskSearchScope() {
+            const sel = document.getElementById('desk-search-scope');
+            if (!sel) return;
+            const current = sel.value || 'all';
+            const cats = [...new Set((window.feeds || []).map(f => f.category).filter(Boolean))];
+            const feedOpts = (window.feeds || []).slice().sort((a,b) => (a.name||'').localeCompare(b.name||''));
+            let html = '<option value="all">All folders</option>';
+            if (cats.length) {
+                html += '<optgroup label="Folders">';
+                for (const c of cats) html += `<option value="cat:${esc(c)}">${esc(c)}</option>`;
+                html += '</optgroup>';
+            }
+            if (feedOpts.length) {
+                html += '<optgroup label="Feeds">';
+                for (const f of feedOpts) html += `<option value="feed:${esc(f.url)}">${esc(f.name)}</option>`;
+                html += '</optgroup>';
+            }
+            sel.innerHTML = html;
+            // Restore prior selection if it still exists in the new list.
+            if ([...sel.options].some(o => o.value === current)) sel.value = current;
+            else sel.value = 'all';
+        }
+
+        window.openDeskSearch = async () => {
             document.getElementById('timeline-count-group').classList.add('hidden');
             document.getElementById('desk-search-trigger').classList.add('hidden');
             const container = document.getElementById('desk-search-container');
             container.classList.remove('hidden');
             container.classList.add('flex');
+            refreshDeskSearchScope();
             const input = document.getElementById('desk-search-input');
             input.value = window._searchQuery || '';
             input.focus();
             input.select();
+            // Snapshot the read-archive (up to the maximum 90-day window)
+            // into a cache so search can include it without async queries
+            // on every keystroke.
+            if (window.appDB && typeof window.appDB.getRecentlyRead === 'function') {
+                try { window._readArchiveCache = await window.appDB.getRecentlyRead(90); }
+                catch(e) { window._readArchiveCache = []; }
+                // If the user is mid-typing a query, re-render with the
+                // archive now included.
+                if (window._searchQuery) renderTimeline();
+            }
         };
 
         window.closeDeskSearch = () => {
             window._searchQuery = '';
+            window._readArchiveCache = null;
             document.getElementById('desk-search-input').value = '';
+            const sc = document.getElementById('desk-search-scope'); if (sc) sc.value = 'all';
+            const rs = document.getElementById('desk-search-readstate'); if (rs) rs.value = 'all';
             document.getElementById('desk-search-container').classList.add('hidden');
             document.getElementById('desk-search-container').classList.remove('flex');
             document.getElementById('timeline-count-group').classList.remove('hidden');
@@ -3777,9 +3907,14 @@
             renderTimeline();
         };
 
+        // Body search adds a meaningful per-keystroke cost (≈50 KB × N
+        // articles to scan), so debounce the actual render. Selects don't
+        // hit this path — they call renderTimeline directly via onchange.
+        let _deskSearchDebounce = null;
         window.handleDeskSearch = (val) => {
-            window._searchQuery = val.trim();
-            renderTimeline();
+            window._searchQuery = (val || '').trim();
+            clearTimeout(_deskSearchDebounce);
+            _deskSearchDebounce = setTimeout(() => renderTimeline(), 150);
         };
 
         // --- DRAG & DROP ---
@@ -6087,7 +6222,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v58';
+const CACHE_NAME = 'rss-reader-v48';
 const APP_SHELL = [
     '/',
     'index.html'
@@ -6124,7 +6259,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
-    
+
     // 1. App Shell & Static Assets: Stale-While-Revalidate
     const isAppShell = APP_SHELL.includes(url.pathname) || url.pathname === '/';
     const isStaticAsset = EXTERNAL_ASSETS.includes(e.request.url) || url.hostname === 'fonts.gstatic.com';
