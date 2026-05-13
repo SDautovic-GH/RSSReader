@@ -195,14 +195,12 @@ try {
         Write-Host "Updated RSSReader .gitignore."
     }
 
-    # Abort any in-progress merge before checkout (avoids "needs merge" index error)
+    # Abort any in-progress merge or rebase before checkout
     $mergeHead = Join-Path $RepoPath ".git\MERGE_HEAD"
     if (Test-Path $mergeHead) {
         Write-Host "Unresolved merge detected - aborting before checkout."
         & git merge --abort 2>$null
     }
-
-    # Abort any in-progress rebase before checkout
     $rebaseMergeDir = Join-Path $RepoPath ".git\rebase-merge"
     $rebaseApplyDir = Join-Path $RepoPath ".git\rebase-apply"
     if ((Test-Path $rebaseMergeDir) -or (Test-Path $rebaseApplyDir)) {
@@ -216,44 +214,58 @@ try {
     # Deletions and renames (delete + add) are legitimate edits the user wants
     # committed; resurrecting them here would silently block every rm/mv.
 
+    # ============================================
+    # PULL-FIRST flow: stash local edits, fast-forward to origin, then pop.
+    # Guarantees the working tree sits on top of the latest remote state
+    # before any local commit. If FF is impossible or stash-pop conflicts,
+    # we abort cleanly with the user's work preserved -- never silently
+    # overwrite either side.
+    # ============================================
+
+    $isDirty = [bool](& git status --porcelain 2>$null)
+    $stashed = $false
+    if ($isDirty) {
+        Write-Host "Local changes detected - stashing before pull."
+        $stashLabel = "auto-sync-prepull-$(Get-Date -Format 'yyyyMMddHHmmss')"
+        Invoke-GitChecked -Arguments @("stash", "push", "-u", "-m", $stashLabel) `
+            -ActionDescription "Stash local changes before pull"
+        $stashed = $true
+    }
+
+    Invoke-GitChecked -Arguments @("fetch", $RemoteName, $MainBranch) `
+        -ActionDescription "Fetch $MainBranch from $RemoteName"
+    try {
+        Invoke-GitChecked -Arguments @("merge", "--ff-only", "$RemoteName/$MainBranch") `
+            -ActionDescription "Fast-forward $MainBranch to $RemoteName/$MainBranch"
+    }
+    catch {
+        if ($stashed) { & git stash pop 2>$null }
+        Stop-WithError -Message ("Cannot fast-forward $MainBranch from $RemoteName/$MainBranch.`n" +
+            "Local branch has commits that aren't on the remote, or history has diverged.`n" +
+            "Resolve manually: review 'git log HEAD..$RemoteName/$MainBranch' and " +
+            "'git log $RemoteName/$MainBranch..HEAD', then merge or rebase deliberately.")
+    }
+
+    if ($stashed) {
+        $popOutput = & git stash pop 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Stop-WithError -Message ("Stash-pop conflict after pull. Your local changes remain in the stash.`n" +
+                "Resolve the conflict in the working tree, then run 'git stash drop' when done.`n" +
+                "Conflict output:`n$($popOutput | Out-String)")
+        }
+    }
+
     # Force-add .opml, .md, and .html — parent .gitignore would otherwise block them
     $forceFiles = @(Get-ChildItem -Path $RepoPath -File -Include "*.opml","*.md","*.html" -ErrorAction SilentlyContinue)
     foreach ($f in $forceFiles) {
         & git add --force -- $f.Name 2>$null
     }
 
-    # Commit any local changes BEFORE pulling to avoid merge conflicts
+    # Commit any local changes (now safely on top of latest origin)
     $needsPush = $false
     Invoke-GitChecked -Arguments @("add", "-A") -ActionDescription "Stage RSSReader changes"
-    $PrePullChanges = & git status --porcelain 2>$null
-    if ($PrePullChanges) {
-        $TimeStamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        Invoke-GitChecked -Arguments @("commit", "-m", "Auto sync $TimeStamp") -ActionDescription "Commit RSSReader changes before pull"
-        $needsPush = $true
-    }
-
-    # Pull with rebase to keep history linear and preserve atomic local commits
-    # (file moves, deletions paired with adds). On conflict, abort and fall back
-    # to a merge pull preferring local changes (-Xours).
-    try {
-        Invoke-GitChecked -Arguments @("pull", "--rebase", $RemoteName, $MainBranch) -ActionDescription "Pull $MainBranch (rebase)"
-    }
-    catch {
-        if ($_.Exception.Message -match "Automatic merge failed|CONFLICT|could not apply") {
-            Write-Host "Rebase conflict detected - aborting and retrying with merge preferring local changes."
-            & git rebase --abort 2>$null
-            Invoke-GitChecked -Arguments @("pull", "--no-rebase", "-Xours", $RemoteName, $MainBranch) -ActionDescription "Pull $MainBranch (Xours fallback)"
-            $needsPush = $true
-        }
-        else {
-            throw
-        }
-    }
-
-    # Check for any remaining changes after pull and commit
-    $RSSChanges = & git status --porcelain 2>$null
-    if ($RSSChanges) {
-        Invoke-GitChecked -Arguments @("add", "-A") -ActionDescription "Stage post-pull changes"
+    $PostPullChanges = & git status --porcelain 2>$null
+    if ($PostPullChanges) {
         $TimeStamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         Invoke-GitChecked -Arguments @("commit", "-m", "Auto sync $TimeStamp") -ActionDescription "Commit RSSReader changes"
         $needsPush = $true

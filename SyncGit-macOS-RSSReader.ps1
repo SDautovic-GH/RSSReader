@@ -115,36 +115,63 @@ try {
 
     Invoke-GitChecked -Arguments @("checkout", $MainBranch) -ActionDescription "Checkout $MainBranch"
 
-    # 1. Fetch remote changes first
-    Invoke-GitChecked -Arguments @("fetch", $RemoteName) -ActionDescription "Fetch from $RemoteName"
+    # ============================================
+    # PULL-FIRST flow: stash local edits, fast-forward to origin, then pop.
+    # Guarantees the working tree sits on top of the latest remote state
+    # before any local commit. If FF is impossible or stash-pop conflicts,
+    # we abort cleanly with the user's work preserved -- never silently
+    # overwrite either side. (Replaces previous -Xtheirs fallback which
+    # silently discarded local Mac edits on rebase conflict.)
+    # ============================================
 
-    # 2. Force-add .opml, .md, and .html recursively using absolute paths
+    $isDirty = [bool](& git status --porcelain 2>$null)
+    $stashed = $false
+    if ($isDirty) {
+        Write-Host "Local changes detected - stashing before pull."
+        $stashLabel = "auto-sync-prepull-$(Get-Date -Format 'yyyyMMddHHmmss')"
+        Invoke-GitChecked -Arguments @("stash", "push", "-u", "-m", $stashLabel) `
+            -ActionDescription "Stash local changes before pull"
+        $stashed = $true
+    }
+
+    Invoke-GitChecked -Arguments @("fetch", $RemoteName, $MainBranch) `
+        -ActionDescription "Fetch $MainBranch from $RemoteName"
+    try {
+        Invoke-GitChecked -Arguments @("merge", "--ff-only", "$RemoteName/$MainBranch") `
+            -ActionDescription "Fast-forward $MainBranch to $RemoteName/$MainBranch"
+    }
+    catch {
+        if ($stashed) { & git stash pop 2>$null }
+        Stop-WithError -Message ("Cannot fast-forward $MainBranch from $RemoteName/$MainBranch.`n" +
+            "Local branch has commits that aren't on the remote, or history has diverged.`n" +
+            "Resolve manually: review 'git log HEAD..$RemoteName/$MainBranch' and " +
+            "'git log $RemoteName/$MainBranch..HEAD', then merge or rebase deliberately.")
+    }
+
+    if ($stashed) {
+        $popOutput = & git stash pop 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Stop-WithError -Message ("Stash-pop conflict after pull. Your local changes remain in the stash.`n" +
+                "Resolve the conflict in the working tree, then run 'git stash drop' when done.`n" +
+                "Conflict output:`n$($popOutput | Out-String)")
+        }
+    }
+
+    # Force-add .opml, .md, and .html recursively (parent .gitignore otherwise blocks)
     $forceFiles = Get-ChildItem -Path $RepoPath -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '^\.(opml|md|html)$' }
     foreach ($f in $forceFiles) {
         & git add --force -- $f.FullName 2>$null
     }
 
-    # 3. Stage and commit any local changes before merging
+    # Commit any local changes (now safely on top of latest origin)
     Invoke-GitChecked -Arguments @("add", "-A") -ActionDescription "Stage RSSReader changes"
-    $prePullChanges = & git status --porcelain 2>$null
-    if ($prePullChanges) {
+    $postPullChanges = & git status --porcelain 2>$null
+    if ($postPullChanges) {
         $TimeStamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         Invoke-GitChecked -Arguments @("commit", "-m", "Auto sync macOS $TimeStamp") -ActionDescription "Commit RSSReader changes"
     }
 
-    # 4. Rebase local commits onto remote to keep history linear and preserve
-    # atomic local commits (file moves, deletions paired with adds). On conflict,
-    # abort and fall back to a merge preferring remote changes (-Xtheirs).
-    try {
-        Invoke-GitChecked -Arguments @("rebase", "$RemoteName/$MainBranch") -ActionDescription "Rebase onto $RemoteName/$MainBranch"
-    }
-    catch {
-        Write-Host "Rebase conflict detected - aborting and retrying with merge preferring remote changes."
-        & git rebase --abort 2>$null
-        Invoke-GitChecked -Arguments @("merge", "-Xtheirs", "$RemoteName/$MainBranch", "--no-edit") -ActionDescription "Merge $RemoteName/$MainBranch (Xtheirs fallback)"
-    }
-
-    # 5. Push if the local branch is ahead of the remote
+    # Push if the local branch is ahead of the remote
     $unpushed = & git log "$RemoteName/$MainBranch..$MainBranch" --oneline 2>$null
     if ($unpushed) {
         Invoke-GitChecked -Arguments @("push", $RemoteName, $MainBranch) -ActionDescription "Push RSSReader to $RemoteName"
