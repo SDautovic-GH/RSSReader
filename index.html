@@ -489,15 +489,33 @@
                max() prevents negative padding on devices with no safe area. */
             #timeline-pane.mobile-active #article-list {
                 padding-top: max(0px, calc(env(safe-area-inset-top, 0px) - 1rem));
-                /* Fade content as it scrolls under the iOS status bar / notch.
-                   Transparent at y=0, opaque at the safe-area baseline. */
-                -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 env(safe-area-inset-top, 0px));
-                mask-image: linear-gradient(to bottom, transparent 0, #000 env(safe-area-inset-top, 0px));
+                /* Fade content as it scrolls under the iOS status bar / notch (top)
+                   and into the floating tab pill (bottom). Pill geometry: 62px height
+                   + 8px container top-padding = 70px above safe-area-inset-bottom.
+                   16px fade ramp above the pill's top edge. */
+                -webkit-mask-image: linear-gradient(to bottom,
+                    transparent 0,
+                    #000 env(safe-area-inset-top, 0px),
+                    #000 calc(100% - (env(safe-area-inset-bottom, 0px) + 86px)),
+                    transparent calc(100% - (env(safe-area-inset-bottom, 0px) + 70px)));
+                mask-image: linear-gradient(to bottom,
+                    transparent 0,
+                    #000 env(safe-area-inset-top, 0px),
+                    #000 calc(100% - (env(safe-area-inset-bottom, 0px) + 86px)),
+                    transparent calc(100% - (env(safe-area-inset-bottom, 0px) + 70px)));
             }
             #viewer-pane.mobile-active #reader-view {
                 padding-top: env(safe-area-inset-top, 0px);
-                -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 env(safe-area-inset-top, 0px));
-                mask-image: linear-gradient(to bottom, transparent 0, #000 env(safe-area-inset-top, 0px));
+                -webkit-mask-image: linear-gradient(to bottom,
+                    transparent 0,
+                    #000 env(safe-area-inset-top, 0px),
+                    #000 calc(100% - (env(safe-area-inset-bottom, 0px) + 86px)),
+                    transparent calc(100% - (env(safe-area-inset-bottom, 0px) + 70px)));
+                mask-image: linear-gradient(to bottom,
+                    transparent 0,
+                    #000 env(safe-area-inset-top, 0px),
+                    #000 calc(100% - (env(safe-area-inset-bottom, 0px) + 86px)),
+                    transparent calc(100% - (env(safe-area-inset-bottom, 0px) + 70px)));
             }
             #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
             #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
@@ -6239,7 +6257,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v53';
+const CACHE_NAME = 'rss-reader-v54';
 const APP_SHELL = [
     '/',
     'index.html'
