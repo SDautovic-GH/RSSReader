@@ -3471,6 +3471,7 @@
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
             stripJsonBlobs(bodyEl);
+            stripImagePlaceholders(bodyEl);
             stripLeadingEmptyBlocks(bodyEl);
             initBodyImages(bodyEl);
             const readerElEarly = document.getElementById('reader-view');
@@ -3658,6 +3659,7 @@
                             // Skip linkify — extracted HTML already has proper <a> tags
                             const sanitized = DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.innerHTML = sanitized;
+                            stripImagePlaceholders(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
                             initBodyImages(bodyEl);
                             article.body = sanitized;
@@ -3761,6 +3763,21 @@
                     el.remove();
                 } catch (e) { /* not valid JSON, leave alone */ }
             }
+        }
+
+        // Strip aspect-ratio image placeholders (e.g. CNBC's <div style="padding-bottom:55.5%"
+        // class="InlineImage-imagePlaceholder">). These reserve space for an image that React
+        // would lazy-inject on the live site — we don't run that JS, so it stays as a tall gap.
+        function stripImagePlaceholders(bodyEl) {
+            bodyEl.querySelectorAll('[style*="padding-bottom"]').forEach(el => {
+                const pb = el.style.paddingBottom || '';
+                // Aspect-ratio reservation pattern: padding-bottom expressed as a percentage >= 10%
+                const m = pb.match(/^\s*(\d+(?:\.\d+)?)\s*%\s*$/);
+                if (!m || parseFloat(m[1]) < 10) return;
+                // Real image inside? leave it alone — the padding is legitimate aspect-ratio framing
+                if (el.querySelector('img:not([data-broken]), video, iframe, picture source')) return;
+                el.remove();
+            });
         }
 
         function stripLeadingEmptyBlocks(bodyEl) {
@@ -6394,7 +6411,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v58';
+const CACHE_NAME = 'rss-reader-v60';
 const APP_SHELL = [
     '/',
     'index.html'
