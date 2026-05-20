@@ -2201,6 +2201,91 @@
                 .trim();
         }
 
+        // --- FUZZY TITLE DEDUP HELPERS ---
+        // Stopwords we strip before computing similarity. Keep small — over-stripping kills signal.
+        const _DEDUP_STOPWORDS = new Set([
+            'a','an','the','and','or','but','of','in','on','at','to','for','from','by','with','as','is','are','was','were',
+            'be','been','being','this','that','these','those','it','its','if','than','then','so','also','about','over',
+            'after','before','into','out','up','down','off','vs','via','new','says','say','said','will','has','have','had',
+            'amid','amidst','his','her','their','our','your','my','he','she','they','we','you','i','him','them','us',
+            'plus','more','here','today','yesterday','breaking','exclusive','watch','listen','opinion','analysis','update',
+            'alert','developing','report','video'
+        ]);
+
+        // Tokenize a title for similarity: lowercase, strip a leading "Source:" / "Section -" prefix,
+        // drop punctuation/stopwords, keep tokens >= 2 chars.
+        function dedupTokens(title) {
+            if (!title) return { all: new Set(), proper: new Set() };
+            // Remember which tokens were Capitalized in the original (proxy for proper nouns).
+            const originalWords = title.replace(/^[^:–—-]{1,30}[:–—-]\s+/, '').split(/\s+/);
+            const properRaw = new Set();
+            for (const w of originalWords) {
+                const clean = w.replace(/[^A-Za-z0-9]/g, '');
+                if (clean.length >= 3 && /^[A-Z]/.test(clean) && !/^[A-Z]+$/.test(clean)) {
+                    properRaw.add(clean.toLowerCase());
+                }
+            }
+            const norm = normTitle(title);
+            const all = new Set();
+            for (const tok of norm.split(' ')) {
+                if (tok.length < 2) continue;
+                if (_DEDUP_STOPWORDS.has(tok)) continue;
+                all.add(tok);
+            }
+            const proper = new Set();
+            for (const p of properRaw) if (all.has(p)) proper.add(p);
+            return { all, proper };
+        }
+
+        function jaccard(a, b) {
+            if (a.size === 0 || b.size === 0) return 0;
+            let inter = 0;
+            const [small, big] = a.size <= b.size ? [a, b] : [b, a];
+            for (const x of small) if (big.has(x)) inter++;
+            return inter / (a.size + b.size - inter);
+        }
+
+        // Two articles are "same story" if:
+        //   - they share >= 2 proper-noun-ish tokens (required guard against false positives), AND
+        //   - within a 24h window, AND
+        //   - EITHER overall Jaccard >= 0.55, OR they share >= 3 rare tokens (rare = appears in <=2 articles).
+        // The rare-token path catches reworded headlines about the same specific event (e.g. an
+        // obituary where two outlets pick different adjectives but reuse the unique proper nouns).
+        const _DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000;
+        const _DEDUP_JACCARD = 0.55;
+        const _DEDUP_MIN_SHARED_PROPER = 2;
+        const _DEDUP_MIN_SHARED_RARE = 3;
+        const _DEDUP_RARE_MAX_DF = 2; // a token is "rare" if it appears in <= 2 articles in the current timeline
+
+        function buildDocFreq(allTokens) {
+            const df = new Map();
+            for (const t of allTokens) {
+                for (const tok of t.all) df.set(tok, (df.get(tok) || 0) + 1);
+            }
+            return df;
+        }
+
+        function isSameStory(aTok, bTok, aDate, bDate, df) {
+            if (Math.abs(aDate - bDate) > _DEDUP_WINDOW_MS) return false;
+            let sharedProper = 0;
+            const [smallP, bigP] = aTok.proper.size <= bTok.proper.size ? [aTok.proper, bTok.proper] : [bTok.proper, aTok.proper];
+            for (const x of smallP) if (bigP.has(x)) { sharedProper++; if (sharedProper >= _DEDUP_MIN_SHARED_PROPER) break; }
+            if (sharedProper < _DEDUP_MIN_SHARED_PROPER) return false;
+            if (jaccard(aTok.all, bTok.all) >= _DEDUP_JACCARD) return true;
+            // Rare-token fallback
+            if (!df) return false;
+            let sharedRare = 0;
+            const [smallA, bigA] = aTok.all.size <= bTok.all.size ? [aTok.all, bTok.all] : [bTok.all, aTok.all];
+            for (const x of smallA) {
+                if (!bigA.has(x)) continue;
+                if ((df.get(x) || 0) <= _DEDUP_RARE_MAX_DF) {
+                    sharedRare++;
+                    if (sharedRare >= _DEDUP_MIN_SHARED_RARE) return true;
+                }
+            }
+            return false;
+        }
+
         function getSourceRank(article) {
             if (!window._memoRankMap) return 9999;
             try {
@@ -2925,10 +3010,13 @@
                 return sortOrder === 'desc' ? -diff : diff;
             });
 
-            // --- Title dedup ---
+            // --- Title dedup (fuzzy: exact-match pass + Jaccard cluster pass within 24h) ---
             let dedupRemovedCount = 0;
             if (window._dedupByTitle) {
-                const bestForTitle = new Map(); // normTitle -> best article
+                const before = filtered.length;
+
+                // Pass 1: exact normalized-title collapse (cheap, catches reposts/wire copies)
+                const bestForTitle = new Map();
                 for (const art of filtered) {
                     const nt = normTitle(art.title);
                     if (!nt) continue;
@@ -2939,9 +3027,57 @@
                         if (getSourceRank(art) < getSourceRank(existing)) bestForTitle.set(nt, art);
                     }
                 }
-                const winners = new Set(bestForTitle.values());
-                const before = filtered.length;
-                filtered = filtered.filter(a => { const nt = normTitle(a.title); return !nt || winners.has(a); });
+                const exactWinners = new Set(bestForTitle.values());
+                filtered = filtered.filter(a => { const nt = normTitle(a.title); return !nt || exactWinners.has(a); });
+
+                // Pass 2: fuzzy cluster. Pre-tokenize, then for each article find the first earlier
+                // cluster head it matches. Pairwise within a sliding 24h window — cheap for normal feed sizes.
+                const tokens = filtered.map(a => dedupTokens(a.title));
+                const df = buildDocFreq(tokens);
+                const dates = filtered.map(a => {
+                    const t = a.timestamp ? Date.parse(a.timestamp) : NaN;
+                    return Number.isFinite(t) ? t : Date.now();
+                });
+                const clusterOf = new Array(filtered.length).fill(-1); // index into clusters[]
+                const clusters = []; // each: { headIdx, memberIdxs: [] }
+                for (let i = 0; i < filtered.length; i++) {
+                    if (!tokens[i].all.size) continue;
+                    let matchedCluster = -1;
+                    // Walk recent clusters backward; bail when their head falls outside the window
+                    for (let c = clusters.length - 1; c >= 0; c--) {
+                        const headIdx = clusters[c].headIdx;
+                        if (Math.abs(dates[i] - dates[headIdx]) > _DEDUP_WINDOW_MS) break;
+                        if (isSameStory(tokens[i], tokens[headIdx], dates[i], dates[headIdx], df)) {
+                            matchedCluster = c;
+                            break;
+                        }
+                    }
+                    if (matchedCluster === -1) {
+                        clusterOf[i] = clusters.length;
+                        clusters.push({ headIdx: i, memberIdxs: [i] });
+                    } else {
+                        clusterOf[i] = matchedCluster;
+                        clusters[matchedCluster].memberIdxs.push(i);
+                    }
+                }
+                // Pick a winner per cluster: lowest Memeorandum rank wins; ties (and unranked) → newest.
+                const keepIdx = new Set();
+                for (const cl of clusters) {
+                    if (cl.memberIdxs.length === 1) { keepIdx.add(cl.memberIdxs[0]); continue; }
+                    let bestI = cl.memberIdxs[0];
+                    let bestRank = getSourceRank(filtered[bestI]);
+                    let bestDate = dates[bestI];
+                    for (let k = 1; k < cl.memberIdxs.length; k++) {
+                        const j = cl.memberIdxs[k];
+                        const r = getSourceRank(filtered[j]);
+                        if (r < bestRank || (r === bestRank && dates[j] > bestDate)) {
+                            bestI = j; bestRank = r; bestDate = dates[j];
+                        }
+                    }
+                    keepIdx.add(bestI);
+                }
+                filtered = filtered.filter((_, i) => !tokens[i].all.size || keepIdx.has(i));
+
                 dedupRemovedCount = before - filtered.length;
             }
             const dedupBadge = document.getElementById('dedup-badge');
@@ -6258,7 +6394,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v56';
+const CACHE_NAME = 'rss-reader-v58';
 const APP_SHELL = [
     '/',
     'index.html'
