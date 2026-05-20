@@ -1328,9 +1328,12 @@
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-calendar"/></svg> Today</span>
                         <span id="badge-today" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
                     </button>
-                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
+                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-bookmark"/></svg> Read Later</span>
                         <span id="badge-read-later" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
+                    </button>
+                    <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" oncontextmenu="showFolderContextMenu(event,'smart','recently-read')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> Recently Read</span>
                     </button>
                 </div>
                 <!-- Category folders card -->
@@ -1934,7 +1937,7 @@
         class RSSReaderDB {
             constructor() {
                 this.dbName = 'RSSReaderDB';
-                this.version = 2;
+                this.version = 3;
                 this.db = null;
             }
 
@@ -1954,9 +1957,50 @@
                         if (!db.objectStoreNames.contains('feeds')) db.createObjectStore('feeds', { keyPath: 'url' });
                         if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata');
                         if (!db.objectStoreNames.contains('favicons')) db.createObjectStore('favicons');
+                        // v3: per-article snapshot of every read article, retained independently
+                        // of the rolling articles cache so the "Recently Read" smart folder
+                        // (and search) can reach back beyond what's currently in memory.
+                        if (!db.objectStoreNames.contains('readArchive')) {
+                            const ra = db.createObjectStore('readArchive', { keyPath: 'link' });
+                            ra.createIndex('readAt', 'readAt', { unique: false });
+                        }
                     };
                     request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
                     request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
+                });
+            }
+
+            async getRecentlyRead(days) {
+                const cutoff = Date.now() - (days * 86400000);
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('readArchive', 'readonly');
+                    const idx = tx.objectStore('readArchive').index('readAt');
+                    const range = IDBKeyRange.lowerBound(cutoff);
+                    const out = [];
+                    idx.openCursor(range, 'prev').onsuccess = (e) => {
+                        const cur = e.target.result;
+                        if (cur) { out.push(cur.value); cur.continue(); }
+                        else resolve(out);
+                    };
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
+
+            async pruneReadArchive(maxAgeDays = 90) {
+                const cutoff = Date.now() - (maxAgeDays * 86400000);
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('readArchive', 'readwrite');
+                    const idx = tx.objectStore('readArchive').index('readAt');
+                    const range = IDBKeyRange.upperBound(cutoff, true);
+                    let n = 0;
+                    idx.openCursor(range).onsuccess = (e) => {
+                        const cur = e.target.result;
+                        if (cur) { cur.delete(); n++; cur.continue(); }
+                        else resolve(n);
+                    };
+                    tx.onerror = () => reject(tx.error);
                 });
             }
 
@@ -2147,20 +2191,26 @@
         } catch(e) { console.warn('Storage error:', e.message); }
 
         // --- FETCH & ARTICLE LOGIC ---
+        const PRIMARY_PROXY_ORIGIN = 'https://still-shadow-1ebe.sdfyix.workers.dev';
         const PROXIES = [
-            url => `https://still-shadow-1ebe.sdfyix.workers.dev/?url=${encodeURIComponent(url)}`,
+            url => `${PRIMARY_PROXY_ORIGIN}/?url=${encodeURIComponent(url)}`,
             url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&_=${Date.now()}`,
             url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
         ];
+
+        // Warm the primary Cloudflare Worker on app load so the first pull-to-refresh
+        // doesn't eat a 3-5s cold start and time out half the feeds.
+        (function warmPrimaryProxy() {
+            try { fetch(PRIMARY_PROXY_ORIGIN + '/', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch(e) {}
+        })();
 
         async function fetchWithProxyFallback(feedUrl) {
             for (let i = 0; i < PROXIES.length; i++) {
                 const proxyFn = PROXIES[i];
                 try {
                     const proxyUrl = proxyFn(feedUrl);
-                    // Tight 4s on the primary (Workers proxy is fast when healthy);
-                    // patient 7s on fallbacks since the primary already failed.
-                    const timeoutMs = i === 0 ? 4000 : 7000;
+                    // Primary: 8s covers a cold Worker start; fallbacks: 7s since primary already burned time.
+                    const timeoutMs = i === 0 ? 8000 : 7000;
                     const res = await fetch(proxyUrl, {
                         signal: AbortSignal.timeout(timeoutMs)
                     });
@@ -2193,6 +2243,91 @@
                 .replace(/[^a-z0-9\s]/g, '')
                 .replace(/\s+/g, ' ')
                 .trim();
+        }
+
+        // --- FUZZY TITLE DEDUP HELPERS ---
+        // Stopwords we strip before computing similarity. Keep small — over-stripping kills signal.
+        const _DEDUP_STOPWORDS = new Set([
+            'a','an','the','and','or','but','of','in','on','at','to','for','from','by','with','as','is','are','was','were',
+            'be','been','being','this','that','these','those','it','its','if','than','then','so','also','about','over',
+            'after','before','into','out','up','down','off','vs','via','new','says','say','said','will','has','have','had',
+            'amid','amidst','his','her','their','our','your','my','he','she','they','we','you','i','him','them','us',
+            'plus','more','here','today','yesterday','breaking','exclusive','watch','listen','opinion','analysis','update',
+            'alert','developing','report','video'
+        ]);
+
+        // Tokenize a title for similarity: lowercase, strip a leading "Source:" / "Section -" prefix,
+        // drop punctuation/stopwords, keep tokens >= 2 chars.
+        function dedupTokens(title) {
+            if (!title) return { all: new Set(), proper: new Set() };
+            // Remember which tokens were Capitalized in the original (proxy for proper nouns).
+            const originalWords = title.replace(/^[^:–—-]{1,30}[:–—-]\s+/, '').split(/\s+/);
+            const properRaw = new Set();
+            for (const w of originalWords) {
+                const clean = w.replace(/[^A-Za-z0-9]/g, '');
+                if (clean.length >= 3 && /^[A-Z]/.test(clean) && !/^[A-Z]+$/.test(clean)) {
+                    properRaw.add(clean.toLowerCase());
+                }
+            }
+            const norm = normTitle(title);
+            const all = new Set();
+            for (const tok of norm.split(' ')) {
+                if (tok.length < 2) continue;
+                if (_DEDUP_STOPWORDS.has(tok)) continue;
+                all.add(tok);
+            }
+            const proper = new Set();
+            for (const p of properRaw) if (all.has(p)) proper.add(p);
+            return { all, proper };
+        }
+
+        function jaccard(a, b) {
+            if (a.size === 0 || b.size === 0) return 0;
+            let inter = 0;
+            const [small, big] = a.size <= b.size ? [a, b] : [b, a];
+            for (const x of small) if (big.has(x)) inter++;
+            return inter / (a.size + b.size - inter);
+        }
+
+        // Two articles are "same story" if:
+        //   - they share >= 2 proper-noun-ish tokens (required guard against false positives), AND
+        //   - within a 24h window, AND
+        //   - EITHER overall Jaccard >= 0.55, OR they share >= 3 rare tokens (rare = appears in <=2 articles).
+        // The rare-token path catches reworded headlines about the same specific event (e.g. an
+        // obituary where two outlets pick different adjectives but reuse the unique proper nouns).
+        const _DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000;
+        const _DEDUP_JACCARD = 0.55;
+        const _DEDUP_MIN_SHARED_PROPER = 2;
+        const _DEDUP_MIN_SHARED_RARE = 3;
+        const _DEDUP_RARE_MAX_DF = 2; // a token is "rare" if it appears in <= 2 articles in the current timeline
+
+        function buildDocFreq(allTokens) {
+            const df = new Map();
+            for (const t of allTokens) {
+                for (const tok of t.all) df.set(tok, (df.get(tok) || 0) + 1);
+            }
+            return df;
+        }
+
+        function isSameStory(aTok, bTok, aDate, bDate, df) {
+            if (Math.abs(aDate - bDate) > _DEDUP_WINDOW_MS) return false;
+            let sharedProper = 0;
+            const [smallP, bigP] = aTok.proper.size <= bTok.proper.size ? [aTok.proper, bTok.proper] : [bTok.proper, aTok.proper];
+            for (const x of smallP) if (bigP.has(x)) { sharedProper++; if (sharedProper >= _DEDUP_MIN_SHARED_PROPER) break; }
+            if (sharedProper < _DEDUP_MIN_SHARED_PROPER) return false;
+            if (jaccard(aTok.all, bTok.all) >= _DEDUP_JACCARD) return true;
+            // Rare-token fallback
+            if (!df) return false;
+            let sharedRare = 0;
+            const [smallA, bigA] = aTok.all.size <= bTok.all.size ? [aTok.all, bTok.all] : [bTok.all, aTok.all];
+            for (const x of smallA) {
+                if (!bigA.has(x)) continue;
+                if ((df.get(x) || 0) <= _DEDUP_RARE_MAX_DF) {
+                    sharedRare++;
+                    if (sharedRare >= _DEDUP_MIN_SHARED_RARE) return true;
+                }
+            }
+            return false;
         }
 
         function getSourceRank(article) {
@@ -2690,8 +2825,12 @@
             const inSource = !!window.currentSourceFilter;
             const isReadLater = window.currentSmartFeed === 'read-later';
             const isToday = window.currentSmartFeed === 'today';
+            const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             let headline, subtext;
-            if (isReadLater) {
+            if (isRecentlyRead) {
+                headline = 'No recent reads';
+                subtext = `Articles you've read in the last ${RECENTLY_READ_DAYS} days will appear here.`;
+            } else if (isReadLater) {
                 headline = 'No saved articles';
                 subtext = 'Tap the bookmark on any article to save it for later.';
             } else if (inFolder) {
@@ -2919,10 +3058,13 @@
                 return sortOrder === 'desc' ? -diff : diff;
             });
 
-            // --- Title dedup ---
+            // --- Title dedup (fuzzy: exact-match pass + Jaccard cluster pass within 24h) ---
             let dedupRemovedCount = 0;
             if (window._dedupByTitle) {
-                const bestForTitle = new Map(); // normTitle -> best article
+                const before = filtered.length;
+
+                // Pass 1: exact normalized-title collapse (cheap, catches reposts/wire copies)
+                const bestForTitle = new Map();
                 for (const art of filtered) {
                     const nt = normTitle(art.title);
                     if (!nt) continue;
@@ -2933,9 +3075,57 @@
                         if (getSourceRank(art) < getSourceRank(existing)) bestForTitle.set(nt, art);
                     }
                 }
-                const winners = new Set(bestForTitle.values());
-                const before = filtered.length;
-                filtered = filtered.filter(a => { const nt = normTitle(a.title); return !nt || winners.has(a); });
+                const exactWinners = new Set(bestForTitle.values());
+                filtered = filtered.filter(a => { const nt = normTitle(a.title); return !nt || exactWinners.has(a); });
+
+                // Pass 2: fuzzy cluster. Pre-tokenize, then for each article find the first earlier
+                // cluster head it matches. Pairwise within a sliding 24h window — cheap for normal feed sizes.
+                const tokens = filtered.map(a => dedupTokens(a.title));
+                const df = buildDocFreq(tokens);
+                const dates = filtered.map(a => {
+                    const t = a.timestamp ? Date.parse(a.timestamp) : NaN;
+                    return Number.isFinite(t) ? t : Date.now();
+                });
+                const clusterOf = new Array(filtered.length).fill(-1); // index into clusters[]
+                const clusters = []; // each: { headIdx, memberIdxs: [] }
+                for (let i = 0; i < filtered.length; i++) {
+                    if (!tokens[i].all.size) continue;
+                    let matchedCluster = -1;
+                    // Walk recent clusters backward; bail when their head falls outside the window
+                    for (let c = clusters.length - 1; c >= 0; c--) {
+                        const headIdx = clusters[c].headIdx;
+                        if (Math.abs(dates[i] - dates[headIdx]) > _DEDUP_WINDOW_MS) break;
+                        if (isSameStory(tokens[i], tokens[headIdx], dates[i], dates[headIdx], df)) {
+                            matchedCluster = c;
+                            break;
+                        }
+                    }
+                    if (matchedCluster === -1) {
+                        clusterOf[i] = clusters.length;
+                        clusters.push({ headIdx: i, memberIdxs: [i] });
+                    } else {
+                        clusterOf[i] = matchedCluster;
+                        clusters[matchedCluster].memberIdxs.push(i);
+                    }
+                }
+                // Pick a winner per cluster: lowest Memeorandum rank wins; ties (and unranked) → newest.
+                const keepIdx = new Set();
+                for (const cl of clusters) {
+                    if (cl.memberIdxs.length === 1) { keepIdx.add(cl.memberIdxs[0]); continue; }
+                    let bestI = cl.memberIdxs[0];
+                    let bestRank = getSourceRank(filtered[bestI]);
+                    let bestDate = dates[bestI];
+                    for (let k = 1; k < cl.memberIdxs.length; k++) {
+                        const j = cl.memberIdxs[k];
+                        const r = getSourceRank(filtered[j]);
+                        if (r < bestRank || (r === bestRank && dates[j] > bestDate)) {
+                            bestI = j; bestRank = r; bestDate = dates[j];
+                        }
+                    }
+                    keepIdx.add(bestI);
+                }
+                filtered = filtered.filter((_, i) => !tokens[i].all.size || keepIdx.has(i));
+
                 dedupRemovedCount = before - filtered.length;
             }
             const dedupBadge = document.getElementById('dedup-badge');
@@ -3267,13 +3457,41 @@
             document.addEventListener('touchcancel', cancel, { passive: true });
         })();
 
+        // Snapshot a freshly-read article into the readArchive store so the
+        // "Recently Read" smart folder (and full-history search) can show it
+        // even after the rolling article cache rotates it out.
+        function archiveReadArticle(article) {
+            if (!article || !article.link || !window.appDB) return;
+            // Cap body at 50 KB so the archive can't blow up IndexedDB over time.
+            const body = (article.body || '').slice(0, 50000);
+            const record = {
+                link:      article.link,
+                title:     article.title || '',
+                source:    article.source || '',
+                feedUrl:   article.feedUrl || '',
+                excerpt:   article.excerpt || '',
+                body:      body,
+                author:    article.author || '',
+                timestamp: article.timestamp || null,
+                readAt:    Date.now(),
+            };
+            window.appDB.put('readArchive', record).catch(e =>
+                console.warn('archiveReadArticle:', e?.message));
+        }
+
         window.selectArticle = function(id) {
-            const article = window.articles.find(a => a.id === id);
+            // Recently-read items live in their own list (window._recentlyReadArticles)
+            // and aren't in window.articles, so look there too.
+            let article = window.articles.find(a => a.id === id);
+            if (!article && Array.isArray(window._recentlyReadArticles)) {
+                article = window._recentlyReadArticles.find(a => a.id === id);
+            }
             if (!article) return;
 
             window.articles.forEach(a => { if (a.id === id) a.unread = false; });
             window.currentArticle = article;
             window._readLinks.add(article.link);
+            archiveReadArticle(article);
             saveReadState();
 
             document.getElementById('empty-state').classList.add('hidden');
@@ -3329,6 +3547,7 @@
             const bodyEl = document.getElementById('article-body');
             bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
             stripJsonBlobs(bodyEl);
+            stripImagePlaceholders(bodyEl);
             stripLeadingEmptyBlocks(bodyEl);
             initBodyImages(bodyEl);
             const readerElEarly = document.getElementById('reader-view');
@@ -3447,7 +3666,16 @@
                         '[aria-hidden="true"]','[role="complementary"]',
                         '[role="banner"]','[role="navigation"]','[role="dialog"]',
                         '[class*="related"]','[class*="recommendation"]','[class*="more-stories"]',
-                        '[class*="sticky-nav"]','[class*="breadcrumb"]'
+                        '[class*="sticky-nav"]','[class*="breadcrumb"]',
+                        // Ad placements (AdSense + common ad-wrapper conventions)
+                        'ins.adsbygoogle','[data-ad-client]','[data-ad-slot]','[class*="adsbygoogle"]',
+                        // Site-chrome metadata blocks that duplicate the reader header
+                        // (category chip / relative-time stamp / comment count).
+                        // Match common conventions but only when they're standalone meta wrappers,
+                        // not content classes (so "article-info" is excluded — that's often the body itself).
+                        '.news_info','.news_gallery','.dcfp',
+                        '.post-meta','.entry-meta','.article-meta','.story-meta',
+                        '.post-info','.entry-info'
                     ].join(',')).forEach(el => el.remove());
 
                     const SELECTORS = [
@@ -3516,6 +3744,7 @@
                             // Skip linkify — extracted HTML already has proper <a> tags
                             const sanitized = DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.innerHTML = sanitized;
+                            stripImagePlaceholders(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
                             initBodyImages(bodyEl);
                             article.body = sanitized;
@@ -3621,6 +3850,21 @@
             }
         }
 
+        // Strip aspect-ratio image placeholders (e.g. CNBC's <div style="padding-bottom:55.5%"
+        // class="InlineImage-imagePlaceholder">). These reserve space for an image that React
+        // would lazy-inject on the live site — we don't run that JS, so it stays as a tall gap.
+        function stripImagePlaceholders(bodyEl) {
+            bodyEl.querySelectorAll('[style*="padding-bottom"]').forEach(el => {
+                const pb = el.style.paddingBottom || '';
+                // Aspect-ratio reservation pattern: padding-bottom expressed as a percentage >= 10%
+                const m = pb.match(/^\s*(\d+(?:\.\d+)?)\s*%\s*$/);
+                if (!m || parseFloat(m[1]) < 10) return;
+                // Real image inside? leave it alone — the padding is legitimate aspect-ratio framing
+                if (el.querySelector('img:not([data-broken]), video, iframe, picture source')) return;
+                el.remove();
+            });
+        }
+
         function stripLeadingEmptyBlocks(bodyEl) {
             const MAX_REMOVALS = 8;
             for (let i = 0; i < MAX_REMOVALS; i++) {
@@ -3703,7 +3947,7 @@
         function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
         function toggleUnread(article) {
             article.unread = !article.unread;
-            if (!article.unread) window._readLinks.add(article.link);
+            if (!article.unread) { window._readLinks.add(article.link); archiveReadArticle(article); }
             else window._readLinks.delete(article.link);
         }
         function toggleReadLater(article) {
@@ -3718,7 +3962,7 @@
             const idx = window.currentTimeline.findIndex(a => a.id === window.contextMenuArticleId);
             if (idx > 0) {
                 const idSet = new Set(window.currentTimeline.slice(0, idx).map(a => a.id));
-                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
+                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 idSet.forEach(id => window._pinnedArticleIds.delete(id));
                 saveReadState();
                 _lastTimelineKey = ''; renderTimeline(false); renderFeeds();
@@ -3733,7 +3977,7 @@
             const idx = window.currentTimeline.findIndex(a => a.id === window.contextMenuArticleId);
             if (idx !== -1 && idx < window.currentTimeline.length - 1) {
                 const idSet = new Set(window.currentTimeline.slice(idx + 1).map(a => a.id));
-                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
+                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 idSet.forEach(id => window._pinnedArticleIds.delete(id));
                 saveReadState();
                 _lastTimelineKey = ''; renderTimeline(false); renderFeeds();
@@ -4168,12 +4412,40 @@
         };
 
         // --- UI ACTIONS ---
-        window.setSmartFeed = (type) => {
+        // "Recently Read" smart folder window — items read in the last N days.
+        const RECENTLY_READ_DAYS = 7;
+        window.setSmartFeed = async (type) => {
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
-            document.getElementById('feed-btn-' + type).classList.add('active-item');
+            const btn = document.getElementById('feed-btn-' + type);
+            if (btn) btn.classList.add('active-item');
             if (isMobile()) setMobilePane('timeline');
+            if (type === 'recently-read') {
+                try {
+                    const archived = (window.appDB && typeof window.appDB.getRecentlyRead === 'function')
+                        ? await window.appDB.getRecentlyRead(RECENTLY_READ_DAYS)
+                        : [];
+                    // Re-shape archive records into article-shaped objects so
+                    // renderTimeline / selectArticle don't need special-casing.
+                    window._recentlyReadArticles = archived.map(r => ({
+                        id: 'ra:' + r.link,
+                        link: r.link,
+                        title: r.title,
+                        source: r.source,
+                        feedUrl: r.feedUrl,
+                        excerpt: r.excerpt,
+                        body: r.body || '',
+                        author: r.author || '',
+                        timestamp: r.timestamp,
+                        readAt: r.readAt,
+                        unread: false,
+                        readLater: window._readLaterLinks ? window._readLaterLinks.has(r.link) : false,
+                    }));
+                } catch(e) { console.warn('getRecentlyRead failed:', e); window._recentlyReadArticles = []; }
+            } else {
+                window._recentlyReadArticles = null;
+            }
             renderTimeline();
         };
 
@@ -4925,7 +5197,7 @@
                 toMark = window.currentTimeline || window.articles;
             }
             const markedSnapshot = toMark.filter(a => a.unread).map(a => ({ id: a.id, link: a.link }));
-            toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
+            toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);});
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
@@ -5112,7 +5384,7 @@ window.toggleUnreadManual = () => {
         window.markSingleFeedRead = () => {
             if (!window._feedContextName) return;
             window.articles.forEach(a => {
-                if (a.source === window._feedContextName) { a.unread = false; window._readLinks.add(a.link); }
+                if (a.source === window._feedContextName) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);}
             });
             saveReadState(); refreshUI();
             document.getElementById('feed-context-menu').classList.add('hidden');
@@ -5190,14 +5462,14 @@ window.toggleUnreadManual = () => {
             const key  = window.folderContextKey;
             if (type === 'smart') {
                 if (key === 'all') {
-                    window.articles.forEach(a => { if (a.unread) { a.unread = false; window._readLinks.add(a.link); } });
+                    window.articles.forEach(a => { if (a.unread) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 } else if (key === 'today') {
                     const dayAgo = new Date(Date.now() - 86400000);
-                    window.articles.forEach(a => { if (new Date(a.timestamp) > dayAgo) { a.unread = false; window._readLinks.add(a.link); } });
+                    window.articles.forEach(a => { if (new Date(a.timestamp) > dayAgo) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 }
             } else if (type === 'category') {
                 const sources = window.feeds.filter(f => f.category === key).map(f => f.name);
-                window.articles.forEach(a => { if (sources.includes(a.source)) { a.unread = false; window._readLinks.add(a.link); } });
+                window.articles.forEach(a => { if (sources.includes(a.source)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
             }
             saveReadState(); refreshUI();
             document.getElementById('folder-context-menu').classList.add('hidden');
@@ -5476,7 +5748,7 @@ window.toggleUnreadManual = () => {
                     const final = merged.slice(-10000); // 2x increase in read history
                     await window.appDB.put('metadata', final, 'readLinks');
                 } catch(e) { console.warn('Read state save error:', e.message); }
-            }, 2000);
+            }, 500);
         }
 
         async function getStoredReadLinks() {
@@ -5664,7 +5936,7 @@ window.toggleUnreadManual = () => {
         };
 
         // --- MOBILE SEARCH SHEET ---
-        window.toggleSearchSheet = () => {
+        window.toggleSearchSheet = async () => {
             const open = !document.body.classList.contains('search-active');
             if (open) {
                 document.body.classList.add('search-active');
@@ -5674,6 +5946,12 @@ window.toggleUnreadManual = () => {
                     updateSearchResults('');
                     setTimeout(() => input.focus(), 50);
                 }
+                // Load the read-archive cache so search reaches recently-read items
+                // that have rotated out of the in-memory article cache.
+                if (window.appDB && typeof window.appDB.getRecentlyRead === 'function') {
+                    try { window._readArchiveCache = await window.appDB.getRecentlyRead(90); }
+                    catch(e) { window._readArchiveCache = []; }
+                }
             } else {
                 closeSearchSheet();
             }
@@ -5682,15 +5960,39 @@ window.toggleUnreadManual = () => {
             document.body.classList.remove('search-active');
             const input = document.getElementById('mobile-search-input');
             if (input) input.blur();
+            window._readArchiveCache = null;
         };
         window.updateSearchResults = (query) => {
             const container = document.getElementById('mobile-search-results');
             if (!container) return;
             const q = (query || '').trim().toLowerCase();
-            const list = window.articles || [];
             if (!q) {
                 container.innerHTML = '';
                 return;
+            }
+            // Combine in-memory articles with the read-archive snapshot so search
+            // reaches articles already rotated out of the rolling cache.
+            const seen = new Set();
+            const list = [];
+            for (const a of (window.articles || [])) { if (!seen.has(a.link)) { seen.add(a.link); list.push(a); } }
+            if (Array.isArray(window._readArchiveCache)) {
+                for (const r of window._readArchiveCache) {
+                    if (seen.has(r.link)) continue;
+                    seen.add(r.link);
+                    list.push({
+                        id: 'ra:' + r.link,
+                        link: r.link,
+                        title: r.title,
+                        source: r.source,
+                        feedUrl: r.feedUrl,
+                        excerpt: r.excerpt,
+                        body: r.body || '',
+                        author: r.author || '',
+                        timestamp: r.timestamp,
+                        readAt: r.readAt,
+                        unread: false,
+                    });
+                }
             }
             const results = list.filter(a => {
                 const t = (a.title || '').toLowerCase();
@@ -5879,6 +6181,14 @@ window.toggleUnreadManual = () => {
                     window._readLinks = new Set(await getStoredReadLinks());
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
+                    // Prune readArchive: drop entries older than the longest window we support
+                    // (90 days, used by full-history search). Done in the background so it
+                    // doesn't delay first paint.
+                    if (window.appDB && typeof window.appDB.pruneReadArchive === 'function') {
+                        window.appDB.pruneReadArchive(90)
+                            .then(n => { if (n > 0) console.log(`Pruned ${n} old readArchive entries`); })
+                            .catch(e => console.warn('pruneReadArchive:', e?.message));
+                    }
                 } catch(e) { console.error('App: Data restore failed:', e); }
 
                 // 4. Fallback for Empty State
@@ -6113,9 +6423,9 @@ window.toggleUnreadManual = () => {
 
         function syncCloudReadState() {
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
-            onSnapshot(stateRef, (snap) => {
-                // Skip our own writes (both the pending write and the server echo)
-                if (snap.metadata.hasPendingWrites || snap.metadata.fromCache) return;
+            const applySnap = (snap) => {
+                // Skip our own pending writes (server echo is still applied so other-device updates land)
+                if (snap.metadata.hasPendingWrites) return;
                 if (!snap.exists()) return;
                 const data = snap.data();
                 let changed = false;
@@ -6143,7 +6453,15 @@ window.toggleUnreadManual = () => {
                     window.renderTimeline(true);
                     window.renderFeeds();
                 }
-            }, e => console.warn('Could not sync read state:', e));
+            };
+            onSnapshot(stateRef, applySnap, e => console.warn('Could not sync read state:', e));
+            // Force a server-fresh pull when the tab is re-focused (mobile OSes pause Firestore streams in background)
+            const resyncOnFocus = () => {
+                if (document.visibilityState !== 'visible') return;
+                getDoc(stateRef).then(applySnap).catch(e => console.warn('Resync read state failed:', e));
+            };
+            document.addEventListener('visibilitychange', resyncOnFocus);
+            window.addEventListener('focus', resyncOnFocus);
         }
 
         function syncCloudUiPrefs() {
@@ -6178,16 +6496,21 @@ window.toggleUnreadManual = () => {
         }
 
         function setupCloudSaveFunctions() {
-            window.saveReadStateCloud = async () => {
+            let _cloudReadStateTimer = null;
+            window.saveReadStateCloud = () => {
                 if (!userId) return;
-                try {
-                    const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
-                    await setDoc(stateRef, {
-                        readLinks: Array.from(window._readLinks).slice(-5000),
-                        readLaterLinks: Array.from(window._readLaterLinks),
-                        updatedAt: new Date().toISOString()
-                    });
-                } catch(e) { console.warn('Cloud read state save failed:', e); }
+                // Coalesce bursts (e.g. mark-all-read, fast scroll) into one Firestore write
+                clearTimeout(_cloudReadStateTimer);
+                _cloudReadStateTimer = setTimeout(async () => {
+                    try {
+                        const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
+                        await setDoc(stateRef, {
+                            readLinks: Array.from(window._readLinks).slice(-5000),
+                            readLaterLinks: Array.from(window._readLaterLinks),
+                            updatedAt: new Date().toISOString()
+                        });
+                    } catch(e) { console.warn('Cloud read state save failed:', e); }
+                }, 500);
             };
 
             window.saveUiPrefsCloud = async () => {
@@ -6239,7 +6562,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v55';
+const CACHE_NAME = 'rss-reader-v62';
 const APP_SHELL = [
     '/',
     'index.html'
