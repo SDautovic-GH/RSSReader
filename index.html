@@ -2147,20 +2147,26 @@
         } catch(e) { console.warn('Storage error:', e.message); }
 
         // --- FETCH & ARTICLE LOGIC ---
+        const PRIMARY_PROXY_ORIGIN = 'https://still-shadow-1ebe.sdfyix.workers.dev';
         const PROXIES = [
-            url => `https://still-shadow-1ebe.sdfyix.workers.dev/?url=${encodeURIComponent(url)}`,
+            url => `${PRIMARY_PROXY_ORIGIN}/?url=${encodeURIComponent(url)}`,
             url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&_=${Date.now()}`,
             url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
         ];
+
+        // Warm the primary Cloudflare Worker on app load so the first pull-to-refresh
+        // doesn't eat a 3-5s cold start and time out half the feeds.
+        (function warmPrimaryProxy() {
+            try { fetch(PRIMARY_PROXY_ORIGIN + '/', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch(e) {}
+        })();
 
         async function fetchWithProxyFallback(feedUrl) {
             for (let i = 0; i < PROXIES.length; i++) {
                 const proxyFn = PROXIES[i];
                 try {
                     const proxyUrl = proxyFn(feedUrl);
-                    // Tight 4s on the primary (Workers proxy is fast when healthy);
-                    // patient 7s on fallbacks since the primary already failed.
-                    const timeoutMs = i === 0 ? 4000 : 7000;
+                    // Primary: 8s covers a cold Worker start; fallbacks: 7s since primary already burned time.
+                    const timeoutMs = i === 0 ? 8000 : 7000;
                     const res = await fetch(proxyUrl, {
                         signal: AbortSignal.timeout(timeoutMs)
                     });
@@ -5476,7 +5482,7 @@ window.toggleUnreadManual = () => {
                     const final = merged.slice(-10000); // 2x increase in read history
                     await window.appDB.put('metadata', final, 'readLinks');
                 } catch(e) { console.warn('Read state save error:', e.message); }
-            }, 2000);
+            }, 500);
         }
 
         async function getStoredReadLinks() {
@@ -6113,9 +6119,9 @@ window.toggleUnreadManual = () => {
 
         function syncCloudReadState() {
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
-            onSnapshot(stateRef, (snap) => {
-                // Skip our own writes (both the pending write and the server echo)
-                if (snap.metadata.hasPendingWrites || snap.metadata.fromCache) return;
+            const applySnap = (snap) => {
+                // Skip our own pending writes (server echo is still applied so other-device updates land)
+                if (snap.metadata.hasPendingWrites) return;
                 if (!snap.exists()) return;
                 const data = snap.data();
                 let changed = false;
@@ -6143,7 +6149,15 @@ window.toggleUnreadManual = () => {
                     window.renderTimeline(true);
                     window.renderFeeds();
                 }
-            }, e => console.warn('Could not sync read state:', e));
+            };
+            onSnapshot(stateRef, applySnap, e => console.warn('Could not sync read state:', e));
+            // Force a server-fresh pull when the tab is re-focused (mobile OSes pause Firestore streams in background)
+            const resyncOnFocus = () => {
+                if (document.visibilityState !== 'visible') return;
+                getDoc(stateRef).then(applySnap).catch(e => console.warn('Resync read state failed:', e));
+            };
+            document.addEventListener('visibilitychange', resyncOnFocus);
+            window.addEventListener('focus', resyncOnFocus);
         }
 
         function syncCloudUiPrefs() {
@@ -6178,16 +6192,21 @@ window.toggleUnreadManual = () => {
         }
 
         function setupCloudSaveFunctions() {
-            window.saveReadStateCloud = async () => {
+            let _cloudReadStateTimer = null;
+            window.saveReadStateCloud = () => {
                 if (!userId) return;
-                try {
-                    const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
-                    await setDoc(stateRef, {
-                        readLinks: Array.from(window._readLinks).slice(-5000),
-                        readLaterLinks: Array.from(window._readLaterLinks),
-                        updatedAt: new Date().toISOString()
-                    });
-                } catch(e) { console.warn('Cloud read state save failed:', e); }
+                // Coalesce bursts (e.g. mark-all-read, fast scroll) into one Firestore write
+                clearTimeout(_cloudReadStateTimer);
+                _cloudReadStateTimer = setTimeout(async () => {
+                    try {
+                        const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
+                        await setDoc(stateRef, {
+                            readLinks: Array.from(window._readLinks).slice(-5000),
+                            readLaterLinks: Array.from(window._readLaterLinks),
+                            updatedAt: new Date().toISOString()
+                        });
+                    } catch(e) { console.warn('Cloud read state save failed:', e); }
+                }, 500);
             };
 
             window.saveUiPrefsCloud = async () => {
@@ -6239,7 +6258,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v55';
+const CACHE_NAME = 'rss-reader-v56';
 const APP_SHELL = [
     '/',
     'index.html'
