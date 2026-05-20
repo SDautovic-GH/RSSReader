@@ -1328,9 +1328,12 @@
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-calendar"/></svg> Today</span>
                         <span id="badge-today" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
                     </button>
-                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
+                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-bookmark"/></svg> Read Later</span>
                         <span id="badge-read-later" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
+                    </button>
+                    <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" oncontextmenu="showFolderContextMenu(event,'smart','recently-read')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> Recently Read</span>
                     </button>
                 </div>
                 <!-- Category folders card -->
@@ -1934,7 +1937,7 @@
         class RSSReaderDB {
             constructor() {
                 this.dbName = 'RSSReaderDB';
-                this.version = 2;
+                this.version = 3;
                 this.db = null;
             }
 
@@ -1954,9 +1957,50 @@
                         if (!db.objectStoreNames.contains('feeds')) db.createObjectStore('feeds', { keyPath: 'url' });
                         if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata');
                         if (!db.objectStoreNames.contains('favicons')) db.createObjectStore('favicons');
+                        // v3: per-article snapshot of every read article, retained independently
+                        // of the rolling articles cache so the "Recently Read" smart folder
+                        // (and search) can reach back beyond what's currently in memory.
+                        if (!db.objectStoreNames.contains('readArchive')) {
+                            const ra = db.createObjectStore('readArchive', { keyPath: 'link' });
+                            ra.createIndex('readAt', 'readAt', { unique: false });
+                        }
                     };
                     request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
                     request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
+                });
+            }
+
+            async getRecentlyRead(days) {
+                const cutoff = Date.now() - (days * 86400000);
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('readArchive', 'readonly');
+                    const idx = tx.objectStore('readArchive').index('readAt');
+                    const range = IDBKeyRange.lowerBound(cutoff);
+                    const out = [];
+                    idx.openCursor(range, 'prev').onsuccess = (e) => {
+                        const cur = e.target.result;
+                        if (cur) { out.push(cur.value); cur.continue(); }
+                        else resolve(out);
+                    };
+                    tx.onerror = () => reject(tx.error);
+                });
+            }
+
+            async pruneReadArchive(maxAgeDays = 90) {
+                const cutoff = Date.now() - (maxAgeDays * 86400000);
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('readArchive', 'readwrite');
+                    const idx = tx.objectStore('readArchive').index('readAt');
+                    const range = IDBKeyRange.upperBound(cutoff, true);
+                    let n = 0;
+                    idx.openCursor(range).onsuccess = (e) => {
+                        const cur = e.target.result;
+                        if (cur) { cur.delete(); n++; cur.continue(); }
+                        else resolve(n);
+                    };
+                    tx.onerror = () => reject(tx.error);
                 });
             }
 
@@ -2781,8 +2825,12 @@
             const inSource = !!window.currentSourceFilter;
             const isReadLater = window.currentSmartFeed === 'read-later';
             const isToday = window.currentSmartFeed === 'today';
+            const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             let headline, subtext;
-            if (isReadLater) {
+            if (isRecentlyRead) {
+                headline = 'No recent reads';
+                subtext = `Articles you've read in the last ${RECENTLY_READ_DAYS} days will appear here.`;
+            } else if (isReadLater) {
                 headline = 'No saved articles';
                 subtext = 'Tap the bookmark on any article to save it for later.';
             } else if (inFolder) {
@@ -3409,13 +3457,41 @@
             document.addEventListener('touchcancel', cancel, { passive: true });
         })();
 
+        // Snapshot a freshly-read article into the readArchive store so the
+        // "Recently Read" smart folder (and full-history search) can show it
+        // even after the rolling article cache rotates it out.
+        function archiveReadArticle(article) {
+            if (!article || !article.link || !window.appDB) return;
+            // Cap body at 50 KB so the archive can't blow up IndexedDB over time.
+            const body = (article.body || '').slice(0, 50000);
+            const record = {
+                link:      article.link,
+                title:     article.title || '',
+                source:    article.source || '',
+                feedUrl:   article.feedUrl || '',
+                excerpt:   article.excerpt || '',
+                body:      body,
+                author:    article.author || '',
+                timestamp: article.timestamp || null,
+                readAt:    Date.now(),
+            };
+            window.appDB.put('readArchive', record).catch(e =>
+                console.warn('archiveReadArticle:', e?.message));
+        }
+
         window.selectArticle = function(id) {
-            const article = window.articles.find(a => a.id === id);
+            // Recently-read items live in their own list (window._recentlyReadArticles)
+            // and aren't in window.articles, so look there too.
+            let article = window.articles.find(a => a.id === id);
+            if (!article && Array.isArray(window._recentlyReadArticles)) {
+                article = window._recentlyReadArticles.find(a => a.id === id);
+            }
             if (!article) return;
 
             window.articles.forEach(a => { if (a.id === id) a.unread = false; });
             window.currentArticle = article;
             window._readLinks.add(article.link);
+            archiveReadArticle(article);
             saveReadState();
 
             document.getElementById('empty-state').classList.add('hidden');
@@ -3871,7 +3947,7 @@
         function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
         function toggleUnread(article) {
             article.unread = !article.unread;
-            if (!article.unread) window._readLinks.add(article.link);
+            if (!article.unread) { window._readLinks.add(article.link); archiveReadArticle(article); }
             else window._readLinks.delete(article.link);
         }
         function toggleReadLater(article) {
@@ -3886,7 +3962,7 @@
             const idx = window.currentTimeline.findIndex(a => a.id === window.contextMenuArticleId);
             if (idx > 0) {
                 const idSet = new Set(window.currentTimeline.slice(0, idx).map(a => a.id));
-                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
+                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 idSet.forEach(id => window._pinnedArticleIds.delete(id));
                 saveReadState();
                 _lastTimelineKey = ''; renderTimeline(false); renderFeeds();
@@ -3901,7 +3977,7 @@
             const idx = window.currentTimeline.findIndex(a => a.id === window.contextMenuArticleId);
             if (idx !== -1 && idx < window.currentTimeline.length - 1) {
                 const idSet = new Set(window.currentTimeline.slice(idx + 1).map(a => a.id));
-                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); } });
+                window.articles.forEach(a => { if (idSet.has(a.id)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 idSet.forEach(id => window._pinnedArticleIds.delete(id));
                 saveReadState();
                 _lastTimelineKey = ''; renderTimeline(false); renderFeeds();
@@ -4336,12 +4412,40 @@
         };
 
         // --- UI ACTIONS ---
-        window.setSmartFeed = (type) => {
+        // "Recently Read" smart folder window — items read in the last N days.
+        const RECENTLY_READ_DAYS = 7;
+        window.setSmartFeed = async (type) => {
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
-            document.getElementById('feed-btn-' + type).classList.add('active-item');
+            const btn = document.getElementById('feed-btn-' + type);
+            if (btn) btn.classList.add('active-item');
             if (isMobile()) setMobilePane('timeline');
+            if (type === 'recently-read') {
+                try {
+                    const archived = (window.appDB && typeof window.appDB.getRecentlyRead === 'function')
+                        ? await window.appDB.getRecentlyRead(RECENTLY_READ_DAYS)
+                        : [];
+                    // Re-shape archive records into article-shaped objects so
+                    // renderTimeline / selectArticle don't need special-casing.
+                    window._recentlyReadArticles = archived.map(r => ({
+                        id: 'ra:' + r.link,
+                        link: r.link,
+                        title: r.title,
+                        source: r.source,
+                        feedUrl: r.feedUrl,
+                        excerpt: r.excerpt,
+                        body: r.body || '',
+                        author: r.author || '',
+                        timestamp: r.timestamp,
+                        readAt: r.readAt,
+                        unread: false,
+                        readLater: window._readLaterLinks ? window._readLaterLinks.has(r.link) : false,
+                    }));
+                } catch(e) { console.warn('getRecentlyRead failed:', e); window._recentlyReadArticles = []; }
+            } else {
+                window._recentlyReadArticles = null;
+            }
             renderTimeline();
         };
 
@@ -5093,7 +5197,7 @@
                 toMark = window.currentTimeline || window.articles;
             }
             const markedSnapshot = toMark.filter(a => a.unread).map(a => ({ id: a.id, link: a.link }));
-            toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); });
+            toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);});
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
@@ -5280,7 +5384,7 @@ window.toggleUnreadManual = () => {
         window.markSingleFeedRead = () => {
             if (!window._feedContextName) return;
             window.articles.forEach(a => {
-                if (a.source === window._feedContextName) { a.unread = false; window._readLinks.add(a.link); }
+                if (a.source === window._feedContextName) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);}
             });
             saveReadState(); refreshUI();
             document.getElementById('feed-context-menu').classList.add('hidden');
@@ -5358,14 +5462,14 @@ window.toggleUnreadManual = () => {
             const key  = window.folderContextKey;
             if (type === 'smart') {
                 if (key === 'all') {
-                    window.articles.forEach(a => { if (a.unread) { a.unread = false; window._readLinks.add(a.link); } });
+                    window.articles.forEach(a => { if (a.unread) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 } else if (key === 'today') {
                     const dayAgo = new Date(Date.now() - 86400000);
-                    window.articles.forEach(a => { if (new Date(a.timestamp) > dayAgo) { a.unread = false; window._readLinks.add(a.link); } });
+                    window.articles.forEach(a => { if (new Date(a.timestamp) > dayAgo) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 }
             } else if (type === 'category') {
                 const sources = window.feeds.filter(f => f.category === key).map(f => f.name);
-                window.articles.forEach(a => { if (sources.includes(a.source)) { a.unread = false; window._readLinks.add(a.link); } });
+                window.articles.forEach(a => { if (sources.includes(a.source)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
             }
             saveReadState(); refreshUI();
             document.getElementById('folder-context-menu').classList.add('hidden');
@@ -5832,7 +5936,7 @@ window.toggleUnreadManual = () => {
         };
 
         // --- MOBILE SEARCH SHEET ---
-        window.toggleSearchSheet = () => {
+        window.toggleSearchSheet = async () => {
             const open = !document.body.classList.contains('search-active');
             if (open) {
                 document.body.classList.add('search-active');
@@ -5842,6 +5946,12 @@ window.toggleUnreadManual = () => {
                     updateSearchResults('');
                     setTimeout(() => input.focus(), 50);
                 }
+                // Load the read-archive cache so search reaches recently-read items
+                // that have rotated out of the in-memory article cache.
+                if (window.appDB && typeof window.appDB.getRecentlyRead === 'function') {
+                    try { window._readArchiveCache = await window.appDB.getRecentlyRead(90); }
+                    catch(e) { window._readArchiveCache = []; }
+                }
             } else {
                 closeSearchSheet();
             }
@@ -5850,15 +5960,39 @@ window.toggleUnreadManual = () => {
             document.body.classList.remove('search-active');
             const input = document.getElementById('mobile-search-input');
             if (input) input.blur();
+            window._readArchiveCache = null;
         };
         window.updateSearchResults = (query) => {
             const container = document.getElementById('mobile-search-results');
             if (!container) return;
             const q = (query || '').trim().toLowerCase();
-            const list = window.articles || [];
             if (!q) {
                 container.innerHTML = '';
                 return;
+            }
+            // Combine in-memory articles with the read-archive snapshot so search
+            // reaches articles already rotated out of the rolling cache.
+            const seen = new Set();
+            const list = [];
+            for (const a of (window.articles || [])) { if (!seen.has(a.link)) { seen.add(a.link); list.push(a); } }
+            if (Array.isArray(window._readArchiveCache)) {
+                for (const r of window._readArchiveCache) {
+                    if (seen.has(r.link)) continue;
+                    seen.add(r.link);
+                    list.push({
+                        id: 'ra:' + r.link,
+                        link: r.link,
+                        title: r.title,
+                        source: r.source,
+                        feedUrl: r.feedUrl,
+                        excerpt: r.excerpt,
+                        body: r.body || '',
+                        author: r.author || '',
+                        timestamp: r.timestamp,
+                        readAt: r.readAt,
+                        unread: false,
+                    });
+                }
             }
             const results = list.filter(a => {
                 const t = (a.title || '').toLowerCase();
@@ -6047,6 +6181,14 @@ window.toggleUnreadManual = () => {
                     window._readLinks = new Set(await getStoredReadLinks());
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
+                    // Prune readArchive: drop entries older than the longest window we support
+                    // (90 days, used by full-history search). Done in the background so it
+                    // doesn't delay first paint.
+                    if (window.appDB && typeof window.appDB.pruneReadArchive === 'function') {
+                        window.appDB.pruneReadArchive(90)
+                            .then(n => { if (n > 0) console.log(`Pruned ${n} old readArchive entries`); })
+                            .catch(e => console.warn('pruneReadArchive:', e?.message));
+                    }
                 } catch(e) { console.error('App: Data restore failed:', e); }
 
                 // 4. Fallback for Empty State
@@ -6420,7 +6562,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v61';
+const CACHE_NAME = 'rss-reader-v62';
 const APP_SHELL = [
     '/',
     'index.html'
