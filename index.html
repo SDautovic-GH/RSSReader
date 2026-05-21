@@ -1515,7 +1515,7 @@
                         <span id="badge-read-later" class="feed-badge mob-saved-count text-amber-500 dark:text-amber-400 hidden">0</span>
                     </button>
                     <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" oncontextmenu="showFolderContextMenu(event,'smart','recently-read')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> Recently Read</span>
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> History</span>
                         <span id="badge-recently-read" class="feed-badge mob-archive-count text-gray-500 dark:text-gray-500 hidden">0</span>
                     </button>
                 </div>
@@ -1873,6 +1873,15 @@
                             <select id="pref-sort-order" onchange="renderTimeline()" class="settings-input">
                                 <option value="asc" selected>Oldest Published First</option>
                                 <option value="desc">Newest Published First</option>
+                            </select>
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <label class="settings-item-label">History window</label>
+                            <select id="pref-recently-read-days" onchange="updateRecentlyReadDays(this.value)" class="settings-input">
+                                <option value="7">Last 7 days</option>
+                                <option value="30" selected>Last 30 days</option>
+                                <option value="60">Last 60 days</option>
+                                <option value="90">Last 90 days</option>
                             </select>
                         </div>
                         <div class="settings-row">
@@ -3039,8 +3048,8 @@
                 subtext = 'Add your first feed from Settings → Feeds to get started.';
                 showRefresh = false;
             } else if (isRecentlyRead) {
-                headline = 'No recent reads';
-                subtext = `Articles you've read in the last ${RECENTLY_READ_DAYS} days will appear here.`;
+                headline = 'No history yet';
+                subtext = `Articles you've read in the last ${getRecentlyReadDays()} days will appear here.`;
             } else if (isReadLater) {
                 headline = 'No saved articles';
                 subtext = 'Tap the bookmark on any article to save it for later.';
@@ -4659,8 +4668,24 @@
         };
 
         // --- UI ACTIONS ---
-        // "Recently Read" smart folder window — items read in the last N days.
-        const RECENTLY_READ_DAYS = 7;
+        function getRecentlyReadDays() {
+            try {
+                const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                const v = parseInt(prefs.recentlyReadDays, 10);
+                if ([7, 30, 60, 90].includes(v)) return v;
+            } catch(e) {}
+            return 30;
+        }
+        window.updateRecentlyReadDays = (v) => {
+            const days = parseInt(v, 10);
+            if (![7, 30, 60, 90].includes(days)) return;
+            try {
+                const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                prefs.recentlyReadDays = String(days);
+                localStorage.setItem('newsreader_prefs', JSON.stringify(prefs));
+            } catch(e) {}
+            if (window.currentSmartFeed === 'recently-read') setSmartFeed('recently-read');
+        };
         window.setSmartFeed = async (type) => {
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
@@ -4671,7 +4696,7 @@
             if (type === 'recently-read') {
                 try {
                     const archived = (window.appDB && typeof window.appDB.getRecentlyRead === 'function')
-                        ? await window.appDB.getRecentlyRead(RECENTLY_READ_DAYS)
+                        ? await window.appDB.getRecentlyRead(getRecentlyReadDays())
                         : [];
                     // Re-shape archive records into article-shaped objects so
                     // renderTimeline / selectArticle don't need special-casing.
@@ -5814,6 +5839,7 @@ window.toggleUnreadManual = () => {
             }
 
             if (prefs.sortOrder) { const el = document.getElementById('pref-sort-order'); if (el) el.value = prefs.sortOrder; }
+            if (prefs.recentlyReadDays) { const el = document.getElementById('pref-recently-read-days'); if (el) el.value = prefs.recentlyReadDays; }
             if (prefs.autoRefresh) { const el = document.getElementById('pref-auto-refresh'); if (el) el.value = prefs.autoRefresh; }
             // App Zoom — apply both desktop and mobile values to their CSS vars,
             // then seed the slider from whichever matches the current viewport.
