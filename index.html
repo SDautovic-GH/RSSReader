@@ -351,11 +351,6 @@
             border-left: 3px solid #3b82f6 !important;
             border-left-color: #3b82f6 !important;
         }
-        /* Smart-feed row marked redundant (e.g. Today == All Unread) — visually
-           de-emphasized without hiding, so the user still knows the row exists. */
-        .smart-feed-btn.is-redundant { opacity: 0.45; }
-        .smart-feed-btn.is-redundant:hover { opacity: 0.7; }
-        .smart-feed-btn.is-redundant.active-item { opacity: 1; }
         /* Sidebar header — small drop shadow below the existing border so the
            header reads as elevated chrome above the scrolling card content. */
         #sidebar-header {
@@ -480,8 +475,6 @@
             #sidebar-pane .overflow-y-auto {
                 padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
             }
-            #article-list { scrollbar-width: none; }
-            #article-list::-webkit-scrollbar { display: none; }
             #resizer { display: none !important; }
             #mobile-tab-bar { display: flex !important; }
             #sidebar-pane.mobile-active { flex-direction: column; }
@@ -1517,10 +1510,6 @@
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> All Unread</span>
                         <span id="badge-all" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
                     </button>
-                    <button id="feed-btn-today" onclick="setSmartFeed('today')" oncontextmenu="showFolderContextMenu(event,'smart','today')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-calendar"/></svg> Today</span>
-                        <span id="badge-today" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
-                    </button>
                     <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-bookmark"/></svg> Read Later</span>
                         <span id="badge-read-later" class="feed-badge mob-saved-count text-amber-500 dark:text-amber-400 hidden">0</span>
@@ -1737,7 +1726,6 @@
             </div>
             <div class="search-smart">
                 <button class="search-smart-btn" type="button" onclick="searchSmart('all')">All Unread</button>
-                <button class="search-smart-btn" type="button" onclick="searchSmart('today')">Today</button>
                 <button class="search-smart-btn" type="button" onclick="searchSmart('later')">Read Later</button>
             </div>
             <div id="mobile-search-results" class="search-results"></div>
@@ -3044,7 +3032,6 @@
             const inFolder = !!window.currentCategoryFilter;
             const inSource = !!window.currentSourceFilter;
             const isReadLater = window.currentSmartFeed === 'read-later';
-            const isToday = window.currentSmartFeed === 'today';
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             let headline, subtext, showRefresh = true;
             if (!hasFeeds) {
@@ -3063,9 +3050,6 @@
             } else if (inSource) {
                 headline = 'All caught up';
                 subtext = `No unread articles from ${esc(window.currentSourceFilter)}.`;
-            } else if (isToday) {
-                headline = 'Nothing new today';
-                subtext = 'Pull down to refresh, or check back later.';
             } else {
                 headline = 'All caught up';
                 subtext = "You've read everything. Pull down to refresh.";
@@ -3188,7 +3172,7 @@
             if (!list) return;
 
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
-            const sortOrder = window.currentSmartFeed === 'today' || isRecentlyRead
+            const sortOrder = isRecentlyRead
                 ? 'desc'
                 : (document.getElementById('pref-sort-order')?.value || 'asc');
 
@@ -3259,9 +3243,6 @@
                 // Apply normal filters
                 if (window.currentSmartFeed === 'all') {
                     filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
-                } else if (window.currentSmartFeed === 'today') {
-                    const dayAgo = new Date(Date.now() - 86400000);
-                    filtered = filtered.filter(a => new Date(a.timestamp) > dayAgo || window._pinnedArticleIds.has(a.id));
                 } else if (window.currentSmartFeed === 'read-later') {
                     filtered = filtered.filter(a => a.readLater || window._pinnedArticleIds.has(a.id));
                 }
@@ -4538,20 +4519,14 @@
 
         function updateBadges() {
             const allUnread = window.articles.filter(a => a.unread).length;
-            const todayCount = window.articles.filter(a => (new Date(Date.now() - 86400000) < new Date(a.timestamp)) && a.unread).length;
             const readLaterCount = window.articles.filter(a => a.readLater).length;
-            // Recently-read count comes from the IDB-backed cache populated on init/login.
-            // If the cache isn't loaded yet, we just don't show a number — the async
-            // refresher below populates it shortly.
             const recentlyReadCount = Array.isArray(window._readArchiveCache) ? window._readArchiveCache.length : null;
 
             const badgeAll = document.getElementById('badge-all');
-            const badgeToday = document.getElementById('badge-today');
             const badgeReadLater = document.getElementById('badge-read-later');
             const badgeRecently = document.getElementById('badge-recently-read');
 
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
-            if (badgeToday) { badgeToday.textContent = todayCount; badgeToday.classList.toggle('hidden', todayCount === 0); }
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
             if (badgeRecently) {
                 if (recentlyReadCount === null || recentlyReadCount === 0) {
@@ -4560,15 +4535,6 @@
                     badgeRecently.textContent = recentlyReadCount;
                     badgeRecently.classList.remove('hidden');
                 }
-            }
-
-            // Dim the Today row when its count equals All Unread (i.e. everything unread
-            // is also from today) — in that case Today is informationally redundant with
-            // All Unread, so we de-emphasize it without hiding the row.
-            const todayBtn = document.getElementById('feed-btn-today');
-            if (todayBtn) {
-                const redundant = todayCount > 0 && todayCount === allUnread;
-                todayBtn.classList.toggle('is-redundant', redundant);
             }
 
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
@@ -5455,7 +5421,7 @@
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
-            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
+            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter);
             const inFolderOrSource = !!(window.currentCategoryFilter || window.currentSourceFilter);
             const remainingUnread = window.articles.filter(a => a.unread).length;
             if (isMobile()) {
@@ -5702,9 +5668,6 @@ window.toggleUnreadManual = () => {
             if (type === 'smart') {
                 if (key === 'all') {
                     window.articles.forEach(a => { if (a.unread) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
-                } else if (key === 'today') {
-                    const dayAgo = new Date(Date.now() - 86400000);
-                    window.articles.forEach(a => { if (new Date(a.timestamp) > dayAgo) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 }
             } else if (type === 'category') {
                 const sources = new Set(window.feeds.filter(f => f.category === key).map(f => f.name));
@@ -6342,15 +6305,7 @@ window.toggleUnreadManual = () => {
             const list = window.articles || [];
             let filtered;
             if (which === 'all') filtered = list.filter(a => a.unread);
-            else if (which === 'today') {
-                const now = new Date();
-                const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-                filtered = list.filter(a => {
-                    if (!a.timestamp) return false;
-                    const t = new Date(a.timestamp);
-                    return t.getFullYear() === y && t.getMonth() === m && t.getDate() === d;
-                });
-            } else if (which === 'later') filtered = list.filter(a => a.readLater);
+            else if (which === 'later') filtered = list.filter(a => a.readLater);
             else filtered = list;
             filtered = filtered.slice(0, 80);
             if (!filtered.length) {
