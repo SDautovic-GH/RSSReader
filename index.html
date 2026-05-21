@@ -152,6 +152,10 @@
         #article-body, #article-title {
             line-height: var(--line-height) !important;
         }
+        /* Guarantee breathing room between the byline/border line and the first
+           paragraph of the body, independent of byline-div's mb (which gets
+           scaled by app-zoom). */
+        #article-body { padding-top: 28px; }
         .dynamic-list-preview, .dynamic-list-title {
             line-height: var(--list-preview-line-height) !important;
         }
@@ -183,14 +187,40 @@
         #resizer {
             width: 4px;
             cursor: col-resize;
-            background-color: rgba(255, 255, 255, 0.06);
+            /* Transparent inside the 74px header band so the top reads as one
+               unified bar; subtle divider color below. */
+            background: linear-gradient(to bottom, transparent 0, transparent 74px, rgba(255, 255, 255, 0.06) 74px);
             z-index: 50;
             flex-shrink: 0;
-            transition: background-color 0.2s;
+            transition: background-color 0.2s, background 0.2s;
         }
-        :root:not(.dark) #resizer { background-color: rgba(0, 0, 0, 0.08); }
+        :root:not(.dark) #resizer {
+            background: linear-gradient(to bottom, transparent 0, transparent 74px, rgba(0, 0, 0, 0.08) 74px);
+        }
         #resizer:hover, .resizing #resizer {
-            background-color: #3b82f6;
+            background: #3b82f6;
+        }
+        /* Suppress the sidebar/timeline pane border-r within the header band
+           and re-draw it as a pseudo-element starting below the 74px header,
+           so the top of the app reads as one continuous toolbar instead of
+           three boxed segments. */
+        #sidebar-pane, #timeline-pane {
+            border-right: none !important;
+        }
+        #sidebar-pane::after, #timeline-pane::after {
+            content: '';
+            position: absolute;
+            top: 74px;
+            bottom: 0;
+            right: 0;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.05);
+            pointer-events: none;
+            z-index: 5;
+        }
+        :root:not(.dark) #sidebar-pane::after,
+        :root:not(.dark) #timeline-pane::after {
+            background: rgba(0, 0, 0, 0.1);
         }
         .resizing {
             cursor: col-resize;
@@ -297,11 +327,10 @@
         #article-list:not(.is-scrolling) > div, #article-list:not(.is-scrolling) .article-card {
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
         }
-        /* Active (currently selected) article card — 3px blue left stripe + subtle blue tint.
+        /* Active (currently selected) article card — 3px blue left stripe only.
            Defined as a single class so DOM mutations don't have to juggle multiple Tailwind classes. */
         #article-list .is-active-card {
             border-left: 3px solid #3b82f6 !important;
-            background-color: rgba(23,37,84,0.45) !important;
         }
         /* Unread dot — flex sibling at the start of the source row, sits outside the truncate span.
            margin-right offsets the row's gap-2 (8px) so the visible dot↔source distance is 5px,
@@ -523,14 +552,24 @@
         /* Mobile tab bar — h-20 = 80px */
         #mobile-tab-bar { display: none; }
         #mobile-reader-bar { display: none; }
-        /* ===== DESKTOP FLOATING ARTICLE NAV ===== */
+        /* ===== DESKTOP FLOATING ARTICLE NAV =====
+           Positioned to sit just to the right of the reader content column
+           (max-w-2xl = 42rem, left-anchored with lg:ml-8 + lg:p-6 padding),
+           so the buttons feel attached to the article instead of floating off
+           in dead space on wide screens. */
         #desk-nav-float {
             position: absolute;
             bottom: 24px;
-            right: 28px;
+            left: calc(1.5rem + 2rem + 42rem + 1rem); /* lg:p-6 + lg:ml-8 + max-w-2xl + gap */
+            right: auto;
             z-index: 20;
             flex-direction: column;
             gap: 5px;
+        }
+        @media (max-width: 1023px) {
+            #desk-nav-float {
+                left: calc(1rem + 1rem + 42rem + 1rem); /* md:p-4 + md:ml-4 + max-w-2xl + gap */
+            }
         }
         #desk-nav-float button {
             display: flex;
@@ -1378,7 +1417,7 @@
             <div id="timeline-header" class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
                     <div id="timeline-count-group" class="flex items-center">
-                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap text-[15px] font-semibold tabular-nums">Mark Read 0</button>
+                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap text-[15px] font-semibold tabular-nums">Mark Read · 0</button>
                         <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
                     <!-- Desktop Search Input -->
@@ -3194,7 +3233,7 @@
             renderTimelinePage(filtered);
 
             const unreadCount = filtered.filter(a => a.unread).length;
-            document.getElementById('timeline-count').textContent = `Mark Read ${unreadCount}`;
+            document.getElementById('timeline-count').textContent = `Mark Read · ${unreadCount}`;
             updateBadges();
             if (typeof updateReaderTabMode === 'function') updateReaderTabMode();
         };
