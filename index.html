@@ -61,7 +61,9 @@
         /* Count badge inside the active feed row reads as white — unselected rows
            keep their blue-400 tint so the number stays visually subordinate. */
         .smart-feed-btn.active-item .feed-badge,
-        .smart-feed-btn.active-item .mob-unread-count {
+        .smart-feed-btn.active-item .mob-unread-count,
+        .active-item .mob-unread-count,
+        .active-item .text-gray-400 {
             color: #ffffff !important;
         }
 
@@ -4257,7 +4259,7 @@
                          ondragover="handleCategoryDragOver(event, '${sCat}')"
                          ondragleave="handleCategoryDragLeave(event)"
                          ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
-                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="w-full px-4 text-gray-400 flex items-center justify-between hover:bg-white/5 dynamic-category-text">
+                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="w-full px-4 text-gray-400 flex items-center justify-between hover:bg-white/5 dynamic-category-text${window.currentCategoryFilter === sCat && !window.currentSourceFilter && window.currentSmartFeed === 'all' ? ' active-item' : ''}">
                             <button onclick="toggleCategory('${sCat}')" class="flex items-center gap-2 outline-none flex-shrink-0 mr-2 opacity-60 hover:opacity-100 transition-opacity">
                                 ${isCollapsed ?
                                     `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>` :
@@ -4292,7 +4294,7 @@
                             <button draggable="true"
                                 ondragstart="handleFeedDragStart(event, '${sfId}')"
                                 ondragend="event.target && event.target.classList && event.target.classList.remove('opacity-40')"
-                                onclick="setSourceFilter('${sfName}')" oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')" class="w-full flex items-center justify-between pl-9 pr-3 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 outline-none cursor-grab active:cursor-grabbing dynamic-category-text">
+                                onclick="setSourceFilter('${sfName}')" oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')" class="w-full flex items-center justify-between pl-9 pr-3 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 outline-none cursor-grab active:cursor-grabbing dynamic-category-text${window.currentSourceFilter === f.name ? ' active-item' : ''}">
                                 <span class="flex items-center truncate pr-2">
                                     ${favicon}<span class="truncate ${healthClass}">${esc(f.name)}</span>
                                 </span>
@@ -4332,8 +4334,8 @@
             updateBadges();
         }
 
-        window.setCategoryFilter = (cat) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
-        window.setSourceFilter = (source) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
+        window.setCategoryFilter = (cat) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
+        window.setSourceFilter = (source) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
         window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
 
         // --- DESKTOP SEARCH HELPERS ---
@@ -4692,6 +4694,7 @@
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
             const btn = document.getElementById('feed-btn-' + type);
             if (btn) btn.classList.add('active-item');
+            renderFeeds();
             if (isMobile()) setMobilePane('timeline');
             if (type === 'recently-read') {
                 try {
@@ -6854,7 +6857,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v70';
+const CACHE_NAME = 'rss-reader-v71';
 const APP_SHELL = [
     '/',
     'index.html'
