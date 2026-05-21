@@ -3735,11 +3735,18 @@
         }
 
         window.selectArticle = function(id) {
-            // Recently-read items live in their own list (window._recentlyReadArticles)
-            // and aren't in window.articles, so look there too.
+            // Bucket-backed views (Saved, Read Later) and the History view keep
+            // their own synthetic article lists with prefixed IDs (sv:, rl:, ra:)
+            // that aren't in window.articles. Search them all.
             let article = window.articles.find(a => a.id === id);
             if (!article && Array.isArray(window._recentlyReadArticles)) {
                 article = window._recentlyReadArticles.find(a => a.id === id);
+            }
+            if (!article && Array.isArray(window._savedArticles)) {
+                article = window._savedArticles.find(a => a.id === id);
+            }
+            if (!article && Array.isArray(window._readLaterArticles)) {
+                article = window._readLaterArticles.find(a => a.id === id);
             }
             if (!article) return;
 
@@ -5567,7 +5574,12 @@ window.toggleUnreadManual = () => {
         window.showArticleContextMenu = (e, id) => {
             e.preventDefault();
             window.contextMenuArticleId = id;
-            const article = (window.articles || []).find(a => a.id === id);
+            // Look across all article sources — Saved (sv:), Read Later (rl:),
+            // History (ra:) live outside window.articles.
+            const article = (window.articles || []).find(a => a.id === id)
+                || (Array.isArray(window._savedArticles) && window._savedArticles.find(a => a.id === id))
+                || (Array.isArray(window._readLaterArticles) && window._readLaterArticles.find(a => a.id === id))
+                || (Array.isArray(window._recentlyReadArticles) && window._recentlyReadArticles.find(a => a.id === id));
             const idx = (window.currentTimeline || []).findIndex(a => a.id === id);
             const total = (window.currentTimeline || []).length;
             const btnClass = "w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700";
@@ -7137,7 +7149,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v81';
+const CACHE_NAME = 'rss-reader-v83';
 const APP_SHELL = [
     '/',
     'index.html'
