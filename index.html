@@ -183,11 +183,12 @@
         #resizer {
             width: 4px;
             cursor: col-resize;
-            background-color: transparent;
+            background-color: rgba(255, 255, 255, 0.06);
             z-index: 50;
             flex-shrink: 0;
             transition: background-color 0.2s;
         }
+        :root:not(.dark) #resizer { background-color: rgba(0, 0, 0, 0.08); }
         #resizer:hover, .resizing #resizer {
             background-color: #3b82f6;
         }
@@ -295,6 +296,12 @@
         /* Article list items get transitions only when not scrolling, to avoid per-item cost during scroll */
         #article-list:not(.is-scrolling) > div, #article-list:not(.is-scrolling) .article-card {
             transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+        }
+        /* Active (currently selected) article card — 3px blue left stripe + subtle blue tint.
+           Defined as a single class so DOM mutations don't have to juggle multiple Tailwind classes. */
+        #article-list .is-active-card {
+            border-left: 3px solid #3b82f6 !important;
+            background-color: rgba(23,37,84,0.45) !important;
         }
         /* Unread dot — flex sibling at the start of the source row, sits outside the truncate span.
            margin-right offsets the row's gap-2 (8px) so the visible dot↔source distance is 5px,
@@ -1253,6 +1260,30 @@
             <symbol id="icon-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
             </symbol>
+            <symbol id="icon-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/>
+            </symbol>
+            <symbol id="icon-headphones" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3v5zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3v5z"/>
+            </symbol>
+            <symbol id="icon-stop" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <rect x="6" y="6" width="12" height="12" rx="1"/>
+            </symbol>
+            <symbol id="icon-mark-unread" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+            </symbol>
+            <symbol id="icon-bookmark-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </symbol>
+            <symbol id="icon-bookmark-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M9 8l6 6M15 8l-6 6"/>
+            </symbol>
+            <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+            </symbol>
+            <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+            </symbol>
         </defs>
     </svg>
 
@@ -1347,7 +1378,7 @@
             <div id="timeline-header" class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
                     <div id="timeline-count-group" class="flex items-center">
-                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap text-[15px] font-semibold tabular-nums">✓ 0</button>
+                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap text-[15px] font-semibold tabular-nums">Mark Read 0</button>
                         <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
                     <!-- Desktop Search Input -->
@@ -1388,30 +1419,32 @@
                 <div class="flex items-center space-x-3">
                     <div class="flex space-x-2 mr-2">
                         <!-- Share Button -->
-                        <button id="share-btn" onclick="shareArticle()" class="hidden px-2 py-1 text-[10px] font-bold text-gray-500 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                            SHARE
+                        <button id="share-btn" onclick="shareArticle()" title="Share" aria-label="Share" class="hidden p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <svg class="w-4 h-4"><use href="#icon-share"/></svg>
                         </button>
                         <!-- TTS Button -->
-                        <button id="tts-btn" onclick="toggleTTS()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                            LISTEN
+                        <button id="tts-btn" onclick="toggleTTS()" title="Listen" aria-label="Listen" class="hidden p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <svg class="w-4 h-4"><use href="#icon-headphones"/></svg>
                         </button>
                         <!-- Unread Toggle Button -->
-                        <button id="unread-action-btn" onclick="toggleUnreadManual()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border transition-colors">
-                            MARK READ
+                        <button id="unread-action-btn" onclick="toggleUnreadManual()" title="Mark Read" aria-label="Mark Read" class="hidden p-1.5 rounded-md border transition-colors">
+                            <svg class="w-4 h-4"><use href="#icon-check"/></svg>
                         </button>
                         <!-- Dynamic Read Later Action Button -->
-                        <button id="read-later-action-btn" onclick="handleReadLaterAction()" class="hidden text-[10px] font-bold px-2 py-1 rounded-md border transition-colors">
-                            READ LATER
+                        <button id="read-later-action-btn" onclick="handleReadLaterAction()" title="Read Later" aria-label="Read Later" class="hidden p-1.5 rounded-md border transition-colors">
+                            <svg class="w-4 h-4"><use href="#icon-bookmark"/></svg>
                         </button>
                     </div>
                     <!-- View mode toggle: List / Card -->
-                    <button onclick="toggleViewMode()" id="view-density-toggle" class="text-[10px] font-bold text-gray-500 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-md" title="Toggle List/Card view">LIST</button>
+                    <button onclick="toggleViewMode()" id="view-density-toggle" title="Toggle List/Card view" aria-label="Toggle List/Card view" class="p-1.5 rounded-md text-gray-500 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                        <svg class="w-4 h-4"><use href="#icon-list"/></svg>
+                    </button>
                 </div>
             </div>
 
             <div class="flex-1 relative">
                 <div id="reader-view" class="absolute inset-0 overflow-y-auto overflow-x-hidden p-2 md:p-4 lg:p-6">
-                    <div class="max-w-2xl mx-auto">
+                    <div class="max-w-2xl mr-auto md:ml-4 lg:ml-8">
                         <div id="empty-state" class="text-center py-16 text-gray-400 px-4">
                             <div id="empty-state-welcome" class="hidden">
                                 <!-- First-run: no feeds added yet -->
@@ -1445,7 +1478,7 @@
                                     <span id="article-source-label"></span>
                                 </p>
                                 <h1 id="article-title" onclick="openExternal()" class="font-extrabold leading-tight mb-6 dark:text-white cursor-pointer hover:opacity-80 transition-opacity" style="font-size: 1.7em;"></h1>
-                                <div class="flex items-center text-xs text-gray-500 mb-8 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                <div class="flex items-center text-xs text-gray-500 mb-12 pb-5 border-b border-gray-100 dark:border-gray-800">
                                     <span id="article-author" class="font-semibold"></span><span class="mx-2">•</span><span id="article-date"></span>
                                 </div>
                             </div>
@@ -2824,13 +2857,18 @@
         }
 
         function renderTimelineEmptyState() {
+            const hasFeeds = (window.feeds || []).length > 0;
             const inFolder = !!window.currentCategoryFilter;
             const inSource = !!window.currentSourceFilter;
             const isReadLater = window.currentSmartFeed === 'read-later';
             const isToday = window.currentSmartFeed === 'today';
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
-            let headline, subtext;
-            if (isRecentlyRead) {
+            let headline, subtext, showRefresh = true;
+            if (!hasFeeds) {
+                headline = 'No feeds yet';
+                subtext = 'Add your first feed from Settings → Feeds to get started.';
+                showRefresh = false;
+            } else if (isRecentlyRead) {
                 headline = 'No recent reads';
                 subtext = `Articles you've read in the last ${RECENTLY_READ_DAYS} days will appear here.`;
             } else if (isReadLater) {
@@ -2849,6 +2887,11 @@
                 headline = 'All caught up';
                 subtext = "You've read everything. Pull down to refresh.";
             }
+            const refreshBtn = showRefresh ? `
+                    <button onclick="refreshAll()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold" style="background: rgba(59,130,246,0.15); color: #4493f8; border: 1px solid rgba(59,130,246,0.25);">
+                        <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
+                        Refresh
+                    </button>` : '';
             return `
                 <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
@@ -2856,10 +2899,7 @@
                     </div>
                     <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">${esc(headline)}</h2>
                     <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">${esc(subtext)}</p>
-                    <button onclick="refreshAll()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold" style="background: rgba(59,130,246,0.15); color: #4493f8; border: 1px solid rgba(59,130,246,0.25);">
-                        <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
-                        Refresh
-                    </button>
+                    ${refreshBtn}
                 </div>
             `;
         }
@@ -3154,7 +3194,7 @@
             renderTimelinePage(filtered);
 
             const unreadCount = filtered.filter(a => a.unread).length;
-            document.getElementById('timeline-count').textContent = `✓ ${unreadCount}`;
+            document.getElementById('timeline-count').textContent = `Mark Read ${unreadCount}`;
             updateBadges();
             if (typeof updateReaderTabMode === 'function') updateReaderTabMode();
         };
@@ -3205,22 +3245,21 @@
         function buildArticleCard(a) {
             const favicon = getFavicon(a.source);
             const selected = window.currentArticle?.id === a.id;
-            const selCls = selected ? 'border-l-4 border-l-blue-500' : '';
-            const selStyle = selected ? 'style="background-color: rgba(23,37,84,0.45);"' : '';
+            const selCls = selected ? 'is-active-card' : '';
             const isBsky = a.feedUrl ? isBlueskyFeed(a.feedUrl) : false;
 
             const saId = escJs(a.id);
 
             if (window._viewMode === 'card') {
-                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                     <div class="swipe-hint swipe-hint-left"><span>&#x2713; Mark Read</span></div>
                     <div class="swipe-hint swipe-hint-right"><span>Save Later &#x2605;</span></div>
                     ${a.image ? `<img src="${esc(a.image)}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
                     <div class="p-3">
-                        <div class="flex items-center text-[10px] text-gray-400 mb-1">
+                        <div class="flex items-center text-[10px] mb-1">
                             ${a.unread ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>' : ''}
-                            ${favicon}<span class="font-bold uppercase truncate">${esc(a.source)}</span>
-                            <span class="ml-auto flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                            ${favicon}<span class="font-bold uppercase truncate text-blue-400 dark:text-blue-300">${esc(a.source)}</span>
+                            <span class="ml-auto flex-shrink-0 text-gray-500 dark:text-gray-500">${getRelativeTime(a.timestamp)}</span>
                         </div>
                         <h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${esc(a.title)}</h3>
                     </div>
@@ -3237,14 +3276,14 @@
             const previewCls = isBsky
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-custom dynamic-list-preview'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
-            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" ${selStyle} class="relative px-4 py-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="relative px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
                 <div class="min-w-0">
                     <div class="flex items-center justify-between mb-1.5 gap-2">
                         ${a.unread ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
-                        <span class="list-source-label font-bold text-blue-500 uppercase truncate mr-2 flex-1 min-w-0">${favicon}${esc(sourceLabel)}</span>
-                        <span class="list-date-label text-[11px] text-gray-400 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                        <span class="list-source-label font-bold text-blue-400 dark:text-blue-300 uppercase truncate mr-2 flex-1 min-w-0">${favicon}${esc(sourceLabel)}</span>
+                        <span class="list-date-label text-[11px] text-gray-500 dark:text-gray-500 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                     </div>
                     ${titleHtml}
                     ${repostLine}
@@ -3539,7 +3578,10 @@
             const authorEl = document.getElementById('article-author');
             const dateEl = document.getElementById('article-date');
             authorEl.textContent = article.author;
-            dateEl.textContent = new Date(article.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+            const _d = new Date(article.timestamp);
+            const _datePart = _d.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric', year: 'numeric' });
+            const _timePart = _d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true });
+            dateEl.textContent = `${_datePart} · ${_timePart}`;
             if (isBskyArticle) {
                 authorEl.style.display = 'none';
                 authorEl.nextElementSibling.style.display = 'none';
@@ -3590,15 +3632,13 @@
 
             const listEl = document.getElementById('article-list');
             if (listEl) {
-                const prevSelected = listEl.querySelector('.border-l-blue-500');
+                const prevSelected = listEl.querySelector('.is-active-card');
                 if (prevSelected) {
-                    prevSelected.classList.remove('border-l-4', 'border-l-blue-500');
-                    prevSelected.style.backgroundColor = '';
+                    prevSelected.classList.remove('is-active-card');
                 }
                 const newSelected = listEl.querySelector(`[data-id="${id}"]`);
                 if (newSelected) {
-                    newSelected.classList.add('border-l-4', 'border-l-blue-500');
-                    newSelected.style.backgroundColor = 'rgba(23,37,84,0.45)';
+                    newSelected.classList.add('is-active-card');
                     // Update unread dot in-place — no outerHTML replacement, no smooth scroll
                     const dot = newSelected.querySelector('.bg-blue-500.rounded-full');
                     if (dot) { dot.classList.remove('bg-blue-500'); dot.classList.add('opacity-0'); }
@@ -4470,6 +4510,12 @@
                 if (i < feeds.length - 1) await new Promise(r => setTimeout(r, delayMs));
             }
             await Promise.allSettled(promises);
+            // Background fetches don't trigger a full timeline/sidebar refresh per-feed
+            // (only the visible source filter re-renders inside fetchRecentArticles).
+            // After the batch completes, refresh once so the header counter and sidebar
+            // badges reflect newly-arrived unread articles. preserveLayout=true keeps
+            // the user's scroll position.
+            if (isBackground) refreshUI();
         }
 
         window.refreshAll = () => {
@@ -4543,16 +4589,27 @@
         function updateTTSButton() {
             const btn = document.getElementById('tts-btn');
             if (!btn) return;
-            btn.textContent = window._ttsActive ? 'STOP' : 'LISTEN';
+            const icon = window._ttsActive ? 'icon-stop' : 'icon-headphones';
+            const label = window._ttsActive ? 'Stop' : 'Listen';
+            btn.innerHTML = `<svg class="w-4 h-4"><use href="#${icon}"/></svg>`;
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
             btn.className = window._ttsActive
-                ? 'text-[10px] font-bold px-2 py-1 rounded-md border border-red-400 text-red-500 hover:bg-red-50 transition-colors'
-                : 'text-[10px] font-bold px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
+                ? 'p-1.5 rounded-md border border-red-400 text-red-500 hover:bg-red-50 transition-colors'
+                : 'p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
         }
 
         // --- VIEW MODE ---
         window.toggleViewMode = () => {
             window._viewMode = window._viewMode === 'list' ? 'card' : 'list';
-            document.getElementById('view-density-toggle').textContent = window._viewMode === 'card' ? 'CARD' : 'LIST';
+            const btn = document.getElementById('view-density-toggle');
+            if (btn) {
+                const icon = window._viewMode === 'card' ? 'icon-grid' : 'icon-list';
+                const label = window._viewMode === 'card' ? 'Card view (switch to List)' : 'List view (switch to Card)';
+                btn.innerHTML = `<svg class="w-4 h-4"><use href="#${icon}"/></svg>`;
+                btn.title = label;
+                btn.setAttribute('aria-label', label);
+            }
             renderTimeline();
             try { localStorage.setItem('newsreader_viewmode', window._viewMode); } catch(e) { console.warn('Storage error:', e.message); }
         };
@@ -5171,22 +5228,32 @@
             [b, shareBtn, ttsBtn, unreadBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
             if (!hasArticle) return;
 
-            const BASE = 'text-[10px] font-bold px-2 py-1 rounded-md border transition-colors cursor-pointer';
+            const BASE = 'p-1.5 rounded-md border transition-colors cursor-pointer';
             if (window.currentArticle.unread) {
-                unreadBtn.textContent = 'MARK READ';
+                unreadBtn.title = 'Mark Read';
+                unreadBtn.setAttribute('aria-label', 'Mark Read');
+                unreadBtn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-check"/></svg>';
                 unreadBtn.className = `${BASE} border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30`;
             } else {
-                unreadBtn.textContent = 'MARK UNREAD';
+                unreadBtn.title = 'Mark Unread';
+                unreadBtn.setAttribute('aria-label', 'Mark Unread');
+                unreadBtn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-mark-unread"/></svg>';
                 unreadBtn.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
             }
             if (window.currentSmartFeed === 'read-later') {
-                b.textContent = "REMOVE FROM READ LATER";
+                b.title = 'Remove from Read Later';
+                b.setAttribute('aria-label', 'Remove from Read Later');
+                b.innerHTML = '<svg class="w-4 h-4"><use href="#icon-bookmark-x"/></svg>';
                 b.className = `${BASE} border-red-500 text-red-500 hover:bg-red-50`;
             } else if (window.currentArticle.readLater) {
-                b.textContent = "SAVED TO READ LATER";
+                b.title = 'Saved to Read Later';
+                b.setAttribute('aria-label', 'Saved to Read Later');
+                b.innerHTML = '<svg class="w-4 h-4"><use href="#icon-bookmark-filled"/></svg>';
                 b.className = `${BASE} border-green-500 text-green-500 bg-green-50`;
             } else {
-                b.textContent = "READ LATER";
+                b.title = 'Read Later';
+                b.setAttribute('aria-label', 'Read Later');
+                b.innerHTML = '<svg class="w-4 h-4"><use href="#icon-bookmark"/></svg>';
                 b.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
             }
         };
@@ -6225,10 +6292,14 @@ window.toggleUnreadManual = () => {
                 // 5. Restore UI Modes
                 try {
                     const vm = localStorage.getItem('newsreader_viewmode');
-                    if (vm === 'card') { 
-                        window._viewMode = 'card'; 
-                        const btn = document.getElementById('view-density-toggle'); 
-                        if (btn) btn.textContent = 'CARD'; 
+                    if (vm === 'card') {
+                        window._viewMode = 'card';
+                        const btn = document.getElementById('view-density-toggle');
+                        if (btn) {
+                            btn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-grid"/></svg>';
+                            btn.title = 'Card view (switch to List)';
+                            btn.setAttribute('aria-label', 'Card view (switch to List)');
+                        }
                     }
                     
                     if (localStorage.getItem('newsreader_showemptycats') === '1') {
