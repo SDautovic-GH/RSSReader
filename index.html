@@ -455,9 +455,6 @@
         @media (max-width: 900px) {
             /* On mobile, pull-to-refresh replaces the explicit refresh button. */
             #header-refresh-btn { display: none !important; }
-            /* Recently Read count adds noise on mobile where vertical space is at a
-               premium and the row already reads clearly without it. Keep on desktop. */
-            #badge-recently-read { display: none !important; }
             #app-container { flex-direction: column; }
             #sidebar-pane, #timeline-pane, #viewer-pane, #resizer {
                 display: none !important;
@@ -1527,7 +1524,6 @@
                     </button>
                     <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" oncontextmenu="showFolderContextMenu(event,'smart','recently-read')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> History</span>
-                        <span id="badge-recently-read" class="feed-badge mob-archive-count text-gray-500 dark:text-gray-500 hidden">0</span>
                     </button>
                 </div>
                 <!-- Category folders card -->
@@ -4540,47 +4536,15 @@
         function updateBadges() {
             const allUnread = window.articles.filter(a => a.unread).length;
             const readLaterCount = window.articles.filter(a => a.readLater).length;
-            const recentlyReadCount = Array.isArray(window._readArchiveCache) ? window._readArchiveCache.length : null;
 
             const badgeAll = document.getElementById('badge-all');
             const badgeReadLater = document.getElementById('badge-read-later');
-            const badgeRecently = document.getElementById('badge-recently-read');
 
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
-            if (badgeRecently) {
-                if (recentlyReadCount === null || recentlyReadCount === 0) {
-                    badgeRecently.classList.add('hidden');
-                } else {
-                    badgeRecently.textContent = recentlyReadCount;
-                    badgeRecently.classList.remove('hidden');
-                }
-            }
 
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
         }
-        // Async refresher: on first load, the in-memory _readArchiveCache may not be
-        // populated yet. Pull the 30-day count from IDB once and call updateBadges so
-        // the Recently Read pill appears without waiting for the user to open search.
-        (function primeRecentlyReadCount() {
-            const tryLoad = () => {
-                if (!window.appDB || typeof window.appDB.getRecentlyRead !== 'function') {
-                    return setTimeout(tryLoad, 500);
-                }
-                window.appDB.getRecentlyRead(30).then(list => {
-                    if (Array.isArray(list)) {
-                        if (!Array.isArray(window._readArchiveCache)) window._readArchiveCache = list;
-                        if (typeof window.updateBadges === 'function') window.updateBadges();
-                    }
-                }).catch(() => {});
-            };
-            // Wait until DOM/scripts have settled; updateBadges depends on the badge DOM.
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => setTimeout(tryLoad, 400));
-            } else {
-                setTimeout(tryLoad, 400);
-            }
-        })();
 
         // --- OPML & FEED CONFIG ---
         window.importSubscriptions = async (event) => {
@@ -6866,7 +6830,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v72';
+const CACHE_NAME = 'rss-reader-v73';
 const APP_SHELL = [
     '/',
     'index.html'
