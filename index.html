@@ -4096,20 +4096,6 @@
         };
 
         // --- SIDEBAR UI & FILTERING ---
-        // Stable per-category color: hash the category name to a fixed palette so
-        // the same category always paints the same dot across sessions. Colors are
-        // tuned for dark mode legibility; intentionally skipping pure blue so the
-        // dots don't fight with the unread-count blue accent.
-        const _CATEGORY_DOT_PALETTE = [
-            '#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e',
-            '#14b8a6', '#06b6d4', '#8b5cf6', '#ec4899', '#f43f5e'
-        ];
-        function getCategoryDotColor(cat) {
-            let h = 0;
-            const s = String(cat || '');
-            for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-            return _CATEGORY_DOT_PALETTE[Math.abs(h) % _CATEGORY_DOT_PALETTE.length];
-        }
         let _lastFeedRenderKey = '';
         function renderFeeds() {
             const list = document.getElementById('feed-list');
@@ -4170,9 +4156,8 @@
                                     `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`
                                 }
                             </button>
-                            <button onclick="setCategoryFilter('${sCat}')" class="flex-1 text-left outline-none truncate flex items-center gap-2">
-                                <span class="category-dot" style="width:8px;height:8px;border-radius:50%;background:${getCategoryDotColor(cat)};display:inline-block;flex-shrink:0;"></span>
-                                <span class="truncate">${esc(formattedCat)}</span>
+                            <button onclick="setCategoryFilter('${sCat}')" class="flex-1 text-left outline-none truncate">
+                                <span>${esc(formattedCat)}</span>
                             </button>
                             <div class="flex items-center space-x-2 flex-shrink-0">
                                 ${total > 0 ? `<span class="mob-unread-count text-blue-500 dark:text-blue-400">${total}</span>` : ''}
@@ -6772,7 +6757,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v63';
+const CACHE_NAME = 'rss-reader-v64';
 const APP_SHELL = [
     '/',
     'index.html'
