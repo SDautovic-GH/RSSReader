@@ -6995,24 +6995,43 @@ window.toggleUnreadManual = () => {
             };
             document.addEventListener('readLaterBucket:change', syncReadLaterFromBucket);
             // First hydrate: if the bucket is empty but legacy Set has items,
-            // backfill the bucket from the in-memory article cache and read
-            // archive. Items we can't find content for go in as link-only stubs
-            // so they still appear (and sync) — they'll fill in next time the
-            // user opens that article from a live feed.
+            // backfill ONLY items we have full article content for (in the rolling
+            // cache or 30-day read archive). Items we can't find stay in the
+            // legacy link Set; they'll get a real bucket entry next time they
+            // appear in a live feed and the user re-saves. We never write link-
+            // only stubs — they look like garbage in the UI ("title" = URL,
+            // date = 1970).
+            //
+            // Also: clean up any pre-existing stub items left by an earlier
+            // migration build that did create stubs. Detection: title === link
+            // (that was the stub signature) AND no timestamp.
             document.addEventListener('readLaterBucket:ready', async () => {
                 if (!window.readLaterBucket) return;
+
+                // Stub cleanup (idempotent — no stubs ⇒ no-op, no toast)
+                const stubs = window.readLaterBucket.list().filter(r =>
+                    (!r.title || r.title === r.link) && !r.timestamp
+                );
+                if (stubs.length > 0) {
+                    for (const s of stubs) await window.readLaterBucket.remove(s.link);
+                    window.showToast(`Cleaned up ${stubs.length} placeholder item${stubs.length === 1 ? '' : 's'}`);
+                }
+
+                // Backfill only items with full content available
                 if (window.readLaterBucket.size() === 0 && window._readLaterLinks && window._readLaterLinks.size > 0) {
-                    const links = Array.from(window._readLaterLinks);
                     const byLink = new Map();
                     (window.articles || []).forEach(a => { if (a.link && !byLink.has(a.link)) byLink.set(a.link, a); });
                     if (Array.isArray(window._readArchiveCache)) {
                         window._readArchiveCache.forEach(r => { if (r.link && !byLink.has(r.link)) byLink.set(r.link, r); });
                     }
-                    for (const link of links) {
-                        const src = byLink.get(link) || { link, title: link, source: '', excerpt: '', body: '', author: '', timestamp: null, feedUrl: '' };
+                    let migrated = 0;
+                    for (const link of window._readLaterLinks) {
+                        const src = byLink.get(link);
+                        if (!src) continue;
                         await window.readLaterBucket.add(src);
+                        migrated++;
                     }
-                    if (links.length > 0) window.showToast(`Synced ${links.length} Read Later item${links.length === 1 ? '' : 's'} to cloud`);
+                    if (migrated > 0) window.showToast(`Synced ${migrated} Read Later item${migrated === 1 ? '' : 's'} to cloud`);
                 }
                 syncReadLaterFromBucket();
             });
@@ -7118,7 +7137,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v80';
+const CACHE_NAME = 'rss-reader-v81';
 const APP_SHELL = [
     '/',
     'index.html'
