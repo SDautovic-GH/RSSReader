@@ -1987,7 +1987,7 @@
                 });
             }
 
-            async pruneReadArchive(maxAgeDays = 90) {
+            async pruneReadArchive(maxAgeDays = 30) {
                 const cutoff = Date.now() - (maxAgeDays * 86400000);
                 const db = await this.open();
                 return new Promise((resolve, reject) => {
@@ -2450,7 +2450,10 @@
             if (!ext?.uri) return '';
             const thumb = ext.thumb ? `<img src="${bskyEsc(ext.thumb)}" class="bsky-external-thumb" loading="lazy" alt="">` : '';
             const host = (() => { try { return new URL(ext.uri).hostname; } catch(e) { return ''; } })();
-            return `<a href="${bskyEsc(ext.uri)}" target="_blank" rel="noopener noreferrer" class="bsky-external-card">${thumb}<div class="bsky-external-info">${ext.title ? `<div class="bsky-external-title">${bskyEsc(ext.title)}</div>` : ''}${ext.description ? `<div class="bsky-external-desc">${bskyEsc(ext.description)}</div>` : ''}${host ? `<div class="bsky-external-uri">${bskyEsc(host)}</div>` : ''}</div></a>`;
+            const title = ext.title ? `<div class="bsky-external-title">${bskyEsc(ext.title)}</div>` : '';
+            const desc = ext.description ? `<div class="bsky-external-desc">${bskyEsc(ext.description)}</div>` : '';
+            const hostHtml = host ? `<div class="bsky-external-uri">${bskyEsc(host)}</div>` : '';
+            return `<a href="${bskyEsc(ext.uri)}" target="_blank" rel="noopener noreferrer" class="bsky-external-card">${thumb}<div class="bsky-external-info">${title}${desc}${hostHtml}</div></a>`;
         }
 
         function renderBskyQuote(record) {
@@ -2595,7 +2598,7 @@
             return true;
         }
 
-        // Fix lazy-loaded images in feed HTML (data-src, data-lazy-src, srcset-only)
+        // Fix lazy-loaded images in feed HTML (data-src, data-lazy-src)
         function fixLazyImages(html) {
             return html
                 .replace(/<img([^>]*?)data-lazy-src=(["'])([^"']+)\2([^>]*?)>/gi, (m, pre, q, src, post) => {
@@ -3009,8 +3012,8 @@
                 }
                 if (searchScope.startsWith('cat:')) {
                     const cat = searchScope.slice(4);
-                    const sources = window.feeds.filter(f => f.category === cat).map(f => f.name);
-                    pool = pool.filter(a => sources.includes(a.source));
+                    const sources = new Set(window.feeds.filter(f => f.category === cat).map(f => f.name));
+                    pool = pool.filter(a => sources.has(a.source));
                 } else if (searchScope.startsWith('feed:')) {
                     const url = searchScope.slice(5);
                     const f = window.feeds.find(f => f.url === url);
@@ -3992,11 +3995,18 @@
         function renderFeeds() {
             const list = document.getElementById('feed-list');
             if (!list) return;
+            const unreadByUrl = {};
+            const unreadByName = {};
+            window.articles.forEach(a => {
+                if (!a.unread) return;
+                if (a.feedUrl) unreadByUrl[a.feedUrl] = (unreadByUrl[a.feedUrl] || 0) + 1;
+                else unreadByName[a.source] = (unreadByName[a.source] || 0) + 1;
+            });
             const groups = {};
             window.feeds.forEach(f => {
                 const c = f.category || 'Uncategorized';
                 if (!groups[c]) groups[c] = [];
-                f.unread = window.articles.filter(a => (a.feedUrl ? a.feedUrl === f.url : a.source === f.name) && a.unread).length;
+                f.unread = (unreadByUrl[f.url] || 0) + (unreadByName[f.name] || 0);
                 groups[c].push(f);
             });
 
@@ -4055,7 +4065,11 @@
                             const healthClass = isError ? 'feed-error' : (isStale ? 'feed-stale' : '');
                             const fav = f.favicon ? escJs(f.favicon) : '';
                             const favInvert = faviconNeedsInvert(f) ? ' favicon-invert' : '';
-                            const favicon = f.favicon ? `<span class="${getFaviconSlug(f.name)}${favInvert} inline-block w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;"></span>` : '<span class="w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
+                            const favClass = `${getFaviconSlug(f.name)}${favInvert} inline-block w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0`;
+                            const favStyle = `display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;`;
+                            const favicon = f.favicon
+                                ? `<span class="${favClass}" style="${favStyle}"></span>`
+                                : '<span class="w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
 
                             const sfName = escJs(f.name);
                             const sfId   = escJs(f.id);
@@ -4144,11 +4158,11 @@
             input.value = window._searchQuery || '';
             input.focus();
             input.select();
-            // Snapshot the read-archive (up to the maximum 90-day window)
+            // Snapshot the read-archive (up to the maximum 30-day window)
             // into a cache so search can include it without async queries
             // on every keystroke.
             if (window.appDB && typeof window.appDB.getRecentlyRead === 'function') {
-                try { window._readArchiveCache = await window.appDB.getRecentlyRead(90); }
+                try { window._readArchiveCache = await window.appDB.getRecentlyRead(30); }
                 catch(e) { window._readArchiveCache = []; }
                 // If the user is mid-typing a query, re-render with the
                 // archive now included.
@@ -5468,8 +5482,8 @@ window.toggleUnreadManual = () => {
                     window.articles.forEach(a => { if (new Date(a.timestamp) > dayAgo) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 }
             } else if (type === 'category') {
-                const sources = window.feeds.filter(f => f.category === key).map(f => f.name);
-                window.articles.forEach(a => { if (sources.includes(a.source)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
+                const sources = new Set(window.feeds.filter(f => f.category === key).map(f => f.name));
+                window.articles.forEach(a => { if (sources.has(a.source)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
             }
             saveReadState(); refreshUI();
             document.getElementById('folder-context-menu').classList.add('hidden');
@@ -5788,8 +5802,9 @@ window.toggleUnreadManual = () => {
                 const cat = feed?.category;
                 let n = 0;
                 if (cat) {
-                    const catUrls = new Set(window.feeds.filter(f => f.category === cat).map(f => f.url));
-                    const catNames = new Set(window.feeds.filter(f => f.category === cat).map(f => f.name));
+                    const catFeeds = window.feeds.filter(f => f.category === cat);
+                    const catUrls = new Set(catFeeds.map(f => f.url));
+                    const catNames = new Set(catFeeds.map(f => f.name));
                     n = window.articles.filter(a => a.unread && (a.feedUrl ? catUrls.has(a.feedUrl) : catNames.has(a.source))).length;
                 }
                 label.textContent = n > 0 ? `✓ ${n}` : '✓ Read';
@@ -5949,7 +5964,7 @@ window.toggleUnreadManual = () => {
                 // Load the read-archive cache so search reaches recently-read items
                 // that have rotated out of the in-memory article cache.
                 if (window.appDB && typeof window.appDB.getRecentlyRead === 'function') {
-                    try { window._readArchiveCache = await window.appDB.getRecentlyRead(90); }
+                    try { window._readArchiveCache = await window.appDB.getRecentlyRead(30); }
                     catch(e) { window._readArchiveCache = []; }
                 }
             } else {
@@ -6182,10 +6197,10 @@ window.toggleUnreadManual = () => {
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
                     // Prune readArchive: drop entries older than the longest window we support
-                    // (90 days, used by full-history search). Done in the background so it
+                    // (30 days, used by full-history search). Done in the background so it
                     // doesn't delay first paint.
                     if (window.appDB && typeof window.appDB.pruneReadArchive === 'function') {
-                        window.appDB.pruneReadArchive(90)
+                        window.appDB.pruneReadArchive(30)
                             .then(n => { if (n > 0) console.log(`Pruned ${n} old readArchive entries`); })
                             .catch(e => console.warn('pruneReadArchive:', e?.message));
                     }
