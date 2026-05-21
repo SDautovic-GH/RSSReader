@@ -3491,7 +3491,7 @@
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="relative px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
-                <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
+                <div class="swipe-hint swipe-hint-right">Read Later &#x2605;</div>
                 <div class="min-w-0">
                     <div class="flex items-center justify-between mb-1.5 gap-2">
                         ${a.unread ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
@@ -5601,15 +5601,24 @@ window.toggleUnreadManual = () => {
             menu.style.left = `${x}px`;
         };
 
+        // Look across all article sources (window.articles + bucket-backed views).
+        function findArticleAnywhere(id) {
+            return (window.articles || []).find(a => a.id === id)
+                || (Array.isArray(window._savedArticles) && window._savedArticles.find(a => a.id === id))
+                || (Array.isArray(window._readLaterArticles) && window._readLaterArticles.find(a => a.id === id))
+                || (Array.isArray(window._recentlyReadArticles) && window._recentlyReadArticles.find(a => a.id === id))
+                || null;
+        }
+
         window.toggleArticleUnread = (id) => {
-            const article = window.articles.find(a => a.id === id);
+            const article = findArticleAnywhere(id);
             if (!article) return;
             toggleUnread(article); saveReadState(); refreshUI(); hideContextMenu();
             maybeGoHomeIfTimelineEmpty();
         };
 
         window.toggleArticleReadLater = (id) => {
-            const article = window.articles.find(a => a.id === id);
+            const article = findArticleAnywhere(id);
             if (!article) return;
             toggleReadLater(article); saveReadLaterState(); refreshUI();
             window.showToast(article.readLater ? 'Added to Read Later' : 'Removed from Read Later');
@@ -5618,11 +5627,7 @@ window.toggleUnreadManual = () => {
         };
 
         window.toggleArticleSaved = async (id) => {
-            // Look in currentTimeline first so Saved-view items (id prefix "sv:") and
-            // History-view items (prefix "ra:") work even when they're not in the
-            // in-memory feed cache.
-            const article = (window.currentTimeline || []).find(a => a.id === id)
-                         || window.articles.find(a => a.id === id);
+            const article = findArticleAnywhere(id);
             if (!article || !article.link || !window.savedBucket) return;
             const isSaved = window.savedBucket.has(article.link);
             if (isSaved) await window.savedBucket.remove(article.link);
@@ -7149,7 +7154,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v83';
+const CACHE_NAME = 'rss-reader-v84';
 const APP_SHELL = [
     '/',
     'index.html'
