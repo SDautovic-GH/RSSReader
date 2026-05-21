@@ -337,6 +337,21 @@
             border-left: 3px solid #3b82f6 !important;
             border-left-color: #3b82f6 !important;
         }
+        /* Smart-feed row marked redundant (e.g. Today == All Unread) — visually
+           de-emphasized without hiding, so the user still knows the row exists. */
+        .smart-feed-btn.is-redundant { opacity: 0.45; }
+        .smart-feed-btn.is-redundant:hover { opacity: 0.7; }
+        .smart-feed-btn.is-redundant.active-item { opacity: 1; }
+        /* Sidebar header — small drop shadow below the existing border so the
+           header reads as elevated chrome above the scrolling card content. */
+        #sidebar-header {
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 4px 8px -4px rgba(0, 0, 0, 0.18);
+            position: relative;
+            z-index: 1;
+        }
+        .dark #sidebar-header {
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 10px -4px rgba(0, 0, 0, 0.6);
+        }
         /* Unread dot — flex sibling at the start of the source row, sits outside the truncate span.
            margin-right offsets the row's gap-2 (8px) so the visible dot↔source distance is 5px,
            without affecting source↔date spacing. */
@@ -427,6 +442,8 @@
 
         /* ===== MOBILE LAYOUT ===== */
         @media (max-width: 900px) {
+            /* On mobile, pull-to-refresh replaces the explicit refresh button. */
+            #header-refresh-btn { display: none !important; }
             #app-container { flex-direction: column; }
             #sidebar-pane, #timeline-pane, #viewer-pane, #resizer {
                 display: none !important;
@@ -1375,7 +1392,7 @@
                 <div id="ptr-spinner"></div>
                 <span id="ptr-label">Pull to refresh</span>
             </div>
-            <div class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div id="sidebar-header" class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm">
                         <svg class="w-[22px] h-[22px]"><use href="#icon-rss"/></svg>
@@ -1383,8 +1400,11 @@
                     <h1 class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
                 </div>
                 <div class="flex space-x-1">
-                    <button onclick="refreshAll()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Refresh Feeds">
+                    <button id="header-refresh-btn" onclick="refreshAll()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Refresh Feeds">
                         <svg class="h-[22px] w-[22px]"><use href="#icon-refresh"/></svg>
+                    </button>
+                    <button id="header-add-feed-btn" onclick="openAddFeedModal()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Add Feed" aria-label="Add Feed">
+                        <svg class="h-[22px] w-[22px]"><use href="#icon-plus"/></svg>
                     </button>
                     <button onclick="toggleSettings()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Settings">
                         <svg class="h-[22px] w-[22px]"><use href="#icon-settings"/></svg>
@@ -1405,10 +1425,11 @@
                     </button>
                     <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-bookmark"/></svg> Read Later</span>
-                        <span id="badge-read-later" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
+                        <span id="badge-read-later" class="feed-badge mob-saved-count text-amber-500 dark:text-amber-400 hidden">0</span>
                     </button>
                     <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" oncontextmenu="showFolderContextMenu(event,'smart','recently-read')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> Recently Read</span>
+                        <span id="badge-recently-read" class="feed-badge mob-archive-count text-gray-500 dark:text-gray-500 hidden">0</span>
                     </button>
                 </div>
                 <!-- Category folders card -->
@@ -4075,6 +4096,20 @@
         };
 
         // --- SIDEBAR UI & FILTERING ---
+        // Stable per-category color: hash the category name to a fixed palette so
+        // the same category always paints the same dot across sessions. Colors are
+        // tuned for dark mode legibility; intentionally skipping pure blue so the
+        // dots don't fight with the unread-count blue accent.
+        const _CATEGORY_DOT_PALETTE = [
+            '#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e',
+            '#14b8a6', '#06b6d4', '#8b5cf6', '#ec4899', '#f43f5e'
+        ];
+        function getCategoryDotColor(cat) {
+            let h = 0;
+            const s = String(cat || '');
+            for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+            return _CATEGORY_DOT_PALETTE[Math.abs(h) % _CATEGORY_DOT_PALETTE.length];
+        }
         let _lastFeedRenderKey = '';
         function renderFeeds() {
             const list = document.getElementById('feed-list');
@@ -4135,8 +4170,9 @@
                                     `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`
                                 }
                             </button>
-                            <button onclick="setCategoryFilter('${sCat}')" class="flex-1 text-left outline-none truncate">
-                                <span>${esc(formattedCat)}</span>
+                            <button onclick="setCategoryFilter('${sCat}')" class="flex-1 text-left outline-none truncate flex items-center gap-2">
+                                <span class="category-dot" style="width:8px;height:8px;border-radius:50%;background:${getCategoryDotColor(cat)};display:inline-block;flex-shrink:0;"></span>
+                                <span class="truncate">${esc(formattedCat)}</span>
                             </button>
                             <div class="flex items-center space-x-2 flex-shrink-0">
                                 ${total > 0 ? `<span class="mob-unread-count text-blue-500 dark:text-blue-400">${total}</span>` : ''}
@@ -4401,17 +4437,61 @@
             const allUnread = window.articles.filter(a => a.unread).length;
             const todayCount = window.articles.filter(a => (new Date(Date.now() - 86400000) < new Date(a.timestamp)) && a.unread).length;
             const readLaterCount = window.articles.filter(a => a.readLater).length;
+            // Recently-read count comes from the IDB-backed cache populated on init/login.
+            // If the cache isn't loaded yet, we just don't show a number — the async
+            // refresher below populates it shortly.
+            const recentlyReadCount = Array.isArray(window._readArchiveCache) ? window._readArchiveCache.length : null;
 
             const badgeAll = document.getElementById('badge-all');
             const badgeToday = document.getElementById('badge-today');
             const badgeReadLater = document.getElementById('badge-read-later');
+            const badgeRecently = document.getElementById('badge-recently-read');
 
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
             if (badgeToday) { badgeToday.textContent = todayCount; badgeToday.classList.toggle('hidden', todayCount === 0); }
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
+            if (badgeRecently) {
+                if (recentlyReadCount === null || recentlyReadCount === 0) {
+                    badgeRecently.classList.add('hidden');
+                } else {
+                    badgeRecently.textContent = recentlyReadCount;
+                    badgeRecently.classList.remove('hidden');
+                }
+            }
+
+            // Dim the Today row when its count equals All Unread (i.e. everything unread
+            // is also from today) — in that case Today is informationally redundant with
+            // All Unread, so we de-emphasize it without hiding the row.
+            const todayBtn = document.getElementById('feed-btn-today');
+            if (todayBtn) {
+                const redundant = todayCount > 0 && todayCount === allUnread;
+                todayBtn.classList.toggle('is-redundant', redundant);
+            }
 
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
         }
+        // Async refresher: on first load, the in-memory _readArchiveCache may not be
+        // populated yet. Pull the 30-day count from IDB once and call updateBadges so
+        // the Recently Read pill appears without waiting for the user to open search.
+        (function primeRecentlyReadCount() {
+            const tryLoad = () => {
+                if (!window.appDB || typeof window.appDB.getRecentlyRead !== 'function') {
+                    return setTimeout(tryLoad, 500);
+                }
+                window.appDB.getRecentlyRead(30).then(list => {
+                    if (Array.isArray(list)) {
+                        if (!Array.isArray(window._readArchiveCache)) window._readArchiveCache = list;
+                        if (typeof window.updateBadges === 'function') window.updateBadges();
+                    }
+                }).catch(() => {});
+            };
+            // Wait until DOM/scripts have settled; updateBadges depends on the badge DOM.
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => setTimeout(tryLoad, 400));
+            } else {
+                setTimeout(tryLoad, 400);
+            }
+        })();
 
         // --- OPML & FEED CONFIG ---
         window.importSubscriptions = async (event) => {
@@ -6692,7 +6772,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v62';
+const CACHE_NAME = 'rss-reader-v63';
 const APP_SHELL = [
     '/',
     'index.html'
