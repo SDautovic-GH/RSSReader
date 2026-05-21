@@ -180,6 +180,16 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
+        /* Social (Bluesky / Mastodon) posts use a separate preview-lines var
+           so the list can show a small clamp for news articles (4-ish lines)
+           while still revealing full microposts. */
+        .line-clamp-social {
+            display: -webkit-box;
+            -webkit-line-clamp: var(--list-preview-lines-social, 10);
+            line-clamp: var(--list-preview-lines-social, 10);
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
 
         .pane-transition {
             transition: background-color 0.2s;
@@ -260,8 +270,10 @@
             --list-preview-font-size: 1.1em;
             --view-font-size: 1.1em;
             --category-font-size: 1.15em;
-            --list-preview-lines: 10;
-            --mob-list-preview-lines: 10;
+            --list-preview-lines: 4;
+            --mob-list-preview-lines: 4;
+            --list-preview-lines-social: 10;
+            --mob-list-preview-lines-social: 10;
             --list-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --view-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --mob-feed-name-size: 1.0em;
@@ -519,6 +531,10 @@
                 -webkit-line-clamp: var(--mob-list-preview-lines, 5);
                 line-clamp: var(--mob-list-preview-lines, 5);
             }
+            .line-clamp-social {
+                -webkit-line-clamp: var(--mob-list-preview-lines-social, 10);
+                line-clamp: var(--mob-list-preview-lines-social, 10);
+            }
             /* Mobile flush-content surfaces use 12px horizontal padding */
             #article-list [data-id] { padding-left: 12px !important; padding-right: 12px !important; -webkit-user-select: none; user-select: none; }
             #reader-view { padding-left: 12px !important; padding-right: 12px !important; }
@@ -721,6 +737,82 @@
             color: #3b82f6;
         }
         #mobile-tab-bar .tab-search svg { width: 30px; height: 30px; display: block; stroke: currentColor; color: inherit; }
+
+        /* Articles tab unread badge — iOS-style red/blue pill on the icon corner.
+           Wrap positions the badge relative to the icon (not the full button). */
+        .tab-ico-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tab-icon-badge {
+            position: absolute;
+            top: -6px;
+            right: -10px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            background: #3b82f6;
+            color: #fff;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 18px;
+            text-align: center;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.9);
+            pointer-events: none;
+            tabular-nums: 1;
+        }
+
+        /* Articles long-press menu — small popover that floats above the tab bar
+           when the user long-presses the Articles tab. */
+        #mob-articles-menu {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+            background: rgba(28, 28, 32, 0.96);
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+            padding: 6px;
+            min-width: 220px;
+            z-index: 9500;
+            display: none;
+            animation: pop-in 0.14s ease-out;
+        }
+        #mob-articles-menu.is-open { display: block; }
+        #mob-articles-menu button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: transparent;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 500;
+            text-align: left;
+        }
+        #mob-articles-menu button:active { background: rgba(59, 130, 246, 0.22); }
+        #mob-articles-menu .menu-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.85; }
+        @keyframes pop-in {
+            from { opacity: 0; transform: translateX(-50%) scale(0.95); }
+            to   { opacity: 1; transform: translateX(-50%) scale(1); }
+        }
+        #mob-articles-menu-scrim {
+            position: fixed;
+            inset: 0;
+            background: transparent;
+            z-index: 9499;
+            display: none;
+        }
+        #mob-articles-menu-scrim.is-open { display: block; }
 
         /* Reader tab progress ring (viewer mode) */
         #mob-tab-reader .tab-progress-ring {
@@ -1606,7 +1698,10 @@
                 <span class="tab-label">Home</span>
             </button>
             <button id="mob-tab-articles" type="button" class="tab-btn" onclick="onArticlesTabClick()">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2M7 16h6M7 8h6v4H7z"/></svg>
+                <span class="tab-ico-wrap">
+                    <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2M7 16h6M7 8h6v4H7z"/></svg>
+                    <span id="mob-tab-articles-badge" class="tab-icon-badge hidden" aria-hidden="true">0</span>
+                </span>
                 <span class="tab-label">Articles</span>
             </button>
             <button id="mob-tab-reader" type="button" class="tab-btn" onclick="onReaderTabClick()">
@@ -1622,6 +1717,16 @@
             </button>
         </div>
     </nav>
+    <!-- Articles long-press popover menu (mobile). Triggered by holding the
+         Articles tab. Contains Mark-All-Read for now; structured to add more
+         actions later (Mark Today Read, etc.) without restructuring. -->
+    <div id="mob-articles-menu-scrim" onclick="closeArticlesMenu()"></div>
+    <div id="mob-articles-menu" role="menu" aria-label="Articles actions">
+        <button type="button" onclick="closeArticlesMenu(); markAllRead({ withUndo: true });">
+            <svg class="menu-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>Mark all read</span>
+        </button>
+    </div>
     <!-- MOBILE SEARCH SHEET -->
     <div id="mobile-search-sheet" aria-hidden="true">
         <div class="search-inner">
@@ -1855,9 +1960,16 @@
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Preview Lines</span>
-                                <span class="settings-value" id="lines-val">10 Lines</span>
+                                <span class="settings-value" id="lines-val">4 Lines</span>
                             </div>
-                            <input type="range" min="2" max="15" value="10" id="lines-slider" class="settings-range" oninput="updateLines(this.value)">
+                            <input type="range" min="2" max="15" value="4" id="lines-slider" class="settings-range" oninput="updateLines(this.value)">
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <span class="settings-item-label">Social Preview Lines (Bluesky/Mastodon)</span>
+                                <span class="settings-value" id="lines-social-val">10 Lines</span>
+                            </div>
+                            <input type="range" min="2" max="20" value="10" id="lines-social-slider" class="settings-range" oninput="updateLinesSocial(this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -3344,7 +3456,7 @@
                 : '';
             const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
             const previewCls = isBsky
-                ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-custom dynamic-list-preview'
+                ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-social dynamic-list-preview'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="relative px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
@@ -5145,6 +5257,17 @@
             saveTypographyPrefs();
         };
 
+        // Social (Bluesky / Mastodon) preview lines — independent slider so
+        // microposts can show fully while news articles stay compact.
+        window.updateLinesSocial = (v) => {
+            const cssVar = isMobile() ? '--mob-list-preview-lines-social' : '--list-preview-lines-social';
+            document.documentElement.style.setProperty(cssVar, v);
+            const label = document.getElementById('lines-social-val');
+            if (label) label.textContent = `${v} Lines`;
+            renderTimeline();
+            saveTypographyPrefs();
+        };
+
         window.updateFontFamily = (t, f) => {
             loadActiveFont(f);
             if (t === 'both') {
@@ -5697,6 +5820,7 @@ window.toggleUnreadManual = () => {
             const preview         = splitSave('shared-preview-slider',            'sharedPreviewDesktop',     'sharedPreviewMobile');
             const previewLH       = splitSave('shared-preview-line-height-slider','previewLineHeightDesktop', 'previewLineHeightMobile');
             const previewLines    = splitSave('lines-slider',                     'previewLinesDesktop',      'previewLinesMobile');
+            const previewLinesSoc = splitSave('lines-social-slider',              'previewLinesSocialDesktop','previewLinesSocialMobile');
             try {
                 localStorage.setItem('newsreader_prefs', JSON.stringify({
                     sharedFeedName:     get('shared-feed-name-slider'),
@@ -5714,6 +5838,7 @@ window.toggleUnreadManual = () => {
                     ...preview,
                     ...previewLH,
                     ...previewLines,
+                    ...previewLinesSoc,
                     dedupByTitle:       window._dedupByTitle || false,
                 }));
             } catch(e) { console.warn('Storage error:', e.message); }
@@ -5782,6 +5907,17 @@ window.toggleUnreadManual = () => {
             if (activeLines) {
                 const el = document.getElementById('lines-slider'); if (el) el.value = activeLines;
                 const lb = document.getElementById('lines-val');    if (lb) lb.textContent = `${activeLines} Lines`;
+            }
+
+            // Social preview lines — independent per-device value, same shape as above.
+            const linesSocDesk = prefs.previewLinesSocialDesktop;
+            const linesSocMob  = prefs.previewLinesSocialMobile;
+            if (linesSocDesk) root.style.setProperty('--list-preview-lines-social', linesSocDesk);
+            if (linesSocMob)  root.style.setProperty('--mob-list-preview-lines-social', linesSocMob);
+            const activeLinesSoc = mob ? linesSocMob : linesSocDesk;
+            if (activeLinesSoc) {
+                const el = document.getElementById('lines-social-slider'); if (el) el.value = activeLinesSoc;
+                const lb = document.getElementById('lines-social-val');    if (lb) lb.textContent = `${activeLinesSoc} Lines`;
             }
 
             const font = prefs.font || prefs.listFont || prefs.viewFont;
@@ -5972,30 +6108,31 @@ window.toggleUnreadManual = () => {
             const label = document.getElementById('mob-tab-reader-label');
             if (!btn || !label) return;
             btn.classList.remove('reader-progress');
-            if (window._mobilePane === 'timeline') {
+            // Reader tab label is stable — it's a navigation target, not a counter.
+            // Mark-all-read lives on the Articles tab via long-press now; per-view
+            // unread counts surface as a badge on the Articles tab icon instead.
+            label.textContent = 'Reader';
+            // Keep the Articles tab unread badge in sync from the same update path.
+            const artBadge = document.getElementById('mob-tab-articles-badge');
+            if (artBadge) {
                 const n = (window.currentTimeline || window.articles || []).filter(a => a.unread).length;
-                label.textContent = n > 0 ? `✓ ${n}` : '✓ Read';
-            } else if (window._mobilePane === 'viewer') {
-                // Show count of unread articles in the current article's category folder.
-                // Just the number — keeps the label short enough to fit the pill segment.
-                const cur = window.currentArticle;
-                const feed = cur ? window.feeds.find(f => (cur.feedUrl ? f.url === cur.feedUrl : f.name === cur.source)) : null;
-                const cat = feed?.category;
-                let n = 0;
-                if (cat) {
-                    const catFeeds = window.feeds.filter(f => f.category === cat);
-                    const catUrls = new Set(catFeeds.map(f => f.url));
-                    const catNames = new Set(catFeeds.map(f => f.name));
-                    n = window.articles.filter(a => a.unread && (a.feedUrl ? catUrls.has(a.feedUrl) : catNames.has(a.source))).length;
+                if (n > 0) {
+                    artBadge.textContent = n > 99 ? '99+' : String(n);
+                    artBadge.classList.remove('hidden');
+                } else {
+                    artBadge.classList.add('hidden');
                 }
-                label.textContent = n > 0 ? `✓ ${n}` : '✓ Read';
-            } else {
-                label.textContent = 'Reader';
             }
         }
         window.updateReaderTabMode = updateReaderTabMode;
 
         window.onArticlesTabClick = () => {
+            // Long-press just fired and opened the menu — swallow the synthetic
+            // click that follows the touchend.
+            if (window._mobArticlesMenuJustOpened) {
+                window._mobArticlesMenuJustOpened = false;
+                return;
+            }
             const fromPane = window._mobilePane;
             // From Reader, just go back to Articles — preserve whatever filter was active.
             if (fromPane === 'viewer') {
@@ -6012,11 +6149,63 @@ window.toggleUnreadManual = () => {
             setMobilePane('timeline');
         };
 
+        // --- Articles tab long-press menu ---
+        // Holding the Articles tab opens a small popover with Mark All Read.
+        // 500ms hold threshold; finger movement > ~10px cancels (so a scroll
+        // gesture started near the tab doesn't accidentally trigger the menu).
+        window.openArticlesMenu = () => {
+            const menu = document.getElementById('mob-articles-menu');
+            const scrim = document.getElementById('mob-articles-menu-scrim');
+            if (!menu || !scrim) return;
+            menu.classList.add('is-open');
+            scrim.classList.add('is-open');
+            window._mobArticlesMenuJustOpened = true;
+            // Haptic feedback on supported platforms (iOS Safari ignores this,
+            // but Android Chrome and most PWA wrappers honor it).
+            if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+        };
+        window.closeArticlesMenu = () => {
+            const menu = document.getElementById('mob-articles-menu');
+            const scrim = document.getElementById('mob-articles-menu-scrim');
+            if (menu) menu.classList.remove('is-open');
+            if (scrim) scrim.classList.remove('is-open');
+        };
+        (function bindArticlesTabLongPress() {
+            const btn = document.getElementById('mob-tab-articles');
+            if (!btn) return;
+            let timer = null;
+            let startX = 0, startY = 0;
+            const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+            const onStart = (e) => {
+                const t = e.touches ? e.touches[0] : e;
+                startX = t.clientX; startY = t.clientY;
+                cancel();
+                timer = setTimeout(() => {
+                    timer = null;
+                    window.openArticlesMenu();
+                }, 500);
+            };
+            const onMove = (e) => {
+                if (!timer) return;
+                const t = e.touches ? e.touches[0] : e;
+                if (Math.hypot(t.clientX - startX, t.clientY - startY) > 10) cancel();
+            };
+            btn.addEventListener('touchstart', onStart, { passive: true });
+            btn.addEventListener('touchmove',  onMove,  { passive: true });
+            btn.addEventListener('touchend',   cancel,  { passive: true });
+            btn.addEventListener('touchcancel', cancel, { passive: true });
+            // Desktop testing convenience: right-click also opens the menu.
+            btn.addEventListener('contextmenu', (e) => { e.preventDefault(); window.openArticlesMenu(); });
+        })();
+
         window.onReaderTabClick = () => {
             const pane = window._mobilePane;
             if (pane === 'timeline') {
-                // Single-tap Mark Read from Articles → mark all + go Home + show Undo toast
-                window.markAllRead({ withUndo: true });
+                // From Articles, single-tap Reader returns to the viewer pane
+                // (the article currently selected, or the empty/select-an-article
+                // state if none). Mark-all-read moved to long-press on the
+                // Articles tab — see #mob-tab-articles handlers.
+                setMobilePane('viewer');
                 return;
             }
             if (pane === 'viewer') {
@@ -6305,6 +6494,7 @@ window.toggleUnreadManual = () => {
             { sliderId: 'shared-preview-slider',          labelId: 'shared-preview-val',          deskKey: 'sharedPreviewDesktop',     mobKey: 'sharedPreviewMobile',     fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('preview', v) },
             { sliderId: 'shared-preview-line-height-slider', labelId: 'shared-preview-line-height-val', deskKey: 'previewLineHeightDesktop', mobKey: 'previewLineHeightMobile', fmt: v => `${parseFloat((v/10).toFixed(1))}`,  apply: v => updateSharedSize('previewLineHeight', v) },
             { sliderId: 'lines-slider',                   labelId: 'lines-val',                   deskKey: 'previewLinesDesktop',      mobKey: 'previewLinesMobile',      fmt: v => `${v} Lines`,                         apply: v => updateLines(v) },
+            { sliderId: 'lines-social-slider',            labelId: 'lines-social-val',            deskKey: 'previewLinesSocialDesktop',mobKey: 'previewLinesSocialMobile',fmt: v => `${v} Lines`,                         apply: v => updateLinesSocial(v) },
         ];
         function reseedPerDeviceSliders() {
             try {
@@ -6762,7 +6952,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v67';
+const CACHE_NAME = 'rss-reader-v68';
 const APP_SHELL = [
     '/',
     'index.html'
