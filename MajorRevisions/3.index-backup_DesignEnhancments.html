@@ -61,7 +61,9 @@
         /* Count badge inside the active feed row reads as white — unselected rows
            keep their blue-400 tint so the number stays visually subordinate. */
         .smart-feed-btn.active-item .feed-badge,
-        .smart-feed-btn.active-item .mob-unread-count {
+        .smart-feed-btn.active-item .mob-unread-count,
+        .active-item .mob-unread-count,
+        .active-item .text-gray-400 {
             color: #ffffff !important;
         }
 
@@ -351,11 +353,6 @@
             border-left: 3px solid #3b82f6 !important;
             border-left-color: #3b82f6 !important;
         }
-        /* Smart-feed row marked redundant (e.g. Today == All Unread) — visually
-           de-emphasized without hiding, so the user still knows the row exists. */
-        .smart-feed-btn.is-redundant { opacity: 0.45; }
-        .smart-feed-btn.is-redundant:hover { opacity: 0.7; }
-        .smart-feed-btn.is-redundant.active-item { opacity: 1; }
         /* Sidebar header — small drop shadow below the existing border so the
            header reads as elevated chrome above the scrolling card content. */
         #sidebar-header {
@@ -458,9 +455,6 @@
         @media (max-width: 900px) {
             /* On mobile, pull-to-refresh replaces the explicit refresh button. */
             #header-refresh-btn { display: none !important; }
-            /* Recently Read count adds noise on mobile where vertical space is at a
-               premium and the row already reads clearly without it. Keep on desktop. */
-            #badge-recently-read { display: none !important; }
             #app-container { flex-direction: column; }
             #sidebar-pane, #timeline-pane, #viewer-pane, #resizer {
                 display: none !important;
@@ -694,6 +688,15 @@
             user-select: none;
             font-family: inherit;
         }
+        /* iOS Safari fires its native Copy/Translate callout on long-press if any
+           descendant (SVG, label span) is touch-callout-eligible — these props
+           don't inherit, so re-apply them to the entire subtree. */
+        #mobile-tab-bar .tab-btn,
+        #mobile-tab-bar .tab-btn * {
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
         #mobile-tab-bar .tab-btn .tab-ico { width: 22px; height: 22px; display: block; stroke: currentColor; color: inherit; }
         #mobile-tab-bar .tab-btn .tab-label {
             font-size: 11px;
@@ -762,7 +765,7 @@
             text-align: center;
             box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.9);
             pointer-events: none;
-            tabular-nums: 1;
+            font-variant-numeric: tabular-nums;
         }
 
         /* Articles long-press menu — small popover that floats above the tab bar
@@ -1334,8 +1337,7 @@
         }
         #list-position-pill.visible { opacity: 1; }
         @media (max-width: 900px) {
-            /* On mobile, lift above the floating bottom tab bar (~96px tall + safe-area) */
-            #list-position-pill { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); right: 14px; }
+            #list-position-pill { display: none !important; }
         }
 
         /* ===== PULL-TO-REFRESH ===== */
@@ -1396,9 +1398,6 @@
             <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 9l-7 7-7-7"/>
             </symbol>
-            <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-            </symbol>
             <symbol id="icon-bookmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
             </symbol>
@@ -1435,6 +1434,12 @@
             </symbol>
             <symbol id="icon-bookmark-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M9 8l6 6M15 8l-6 6"/>
+            </symbol>
+            <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </symbol>
+            <symbol id="icon-star-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </symbol>
             <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
@@ -1513,20 +1518,18 @@
                 <!-- Smart Feeds card -->
                 <div id="smart-feeds-card" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
                     <button id="feed-btn-all" onclick="setSmartFeed('all')" oncontextmenu="showFolderContextMenu(event,'smart','all')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 active-item">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> All Unread</span>
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> Unread</span>
                         <span id="badge-all" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
-                    </button>
-                    <button id="feed-btn-today" onclick="setSmartFeed('today')" oncontextmenu="showFolderContextMenu(event,'smart','today')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-calendar"/></svg> Today</span>
-                        <span id="badge-today" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
                     </button>
                     <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-bookmark"/></svg> Read Later</span>
                         <span id="badge-read-later" class="feed-badge mob-saved-count text-amber-500 dark:text-amber-400 hidden">0</span>
                     </button>
+                    <button id="feed-btn-saved" onclick="setSmartFeed('saved')" oncontextmenu="showFolderContextMenu(event,'smart','saved')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-star"/></svg> Saved</span>
+                    </button>
                     <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" oncontextmenu="showFolderContextMenu(event,'smart','recently-read')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> Recently Read</span>
-                        <span id="badge-recently-read" class="feed-badge mob-archive-count text-gray-500 dark:text-gray-500 hidden">0</span>
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> History</span>
                     </button>
                 </div>
                 <!-- Category folders card -->
@@ -1540,7 +1543,7 @@
             <div id="timeline-header" class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
                     <div id="timeline-count-group" class="flex items-center">
-                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap text-[15px] font-semibold tabular-nums">Mark Read · 0</button>
+                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read" class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap text-[15px] font-normal tabular-nums">Mark Read · 0</button>
                         <span id="dedup-badge" class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
                     <!-- Desktop Search Input -->
@@ -1565,7 +1568,7 @@
                 </button>
             </div>
 
-            <div id="article-list" class="flex-1 overflow-y-auto no-scrollbar"></div>
+            <div id="article-list" class="flex-1 overflow-y-auto"></div>
             <!-- Floating position pill — fades in on scroll -->
             <div id="list-position-pill" aria-hidden="true">1 / 1</div>
         </section>
@@ -1595,6 +1598,10 @@
                         <!-- Dynamic Read Later Action Button -->
                         <button id="read-later-action-btn" onclick="handleReadLaterAction()" title="Read Later" aria-label="Read Later" class="hidden p-1.5 rounded-md border transition-colors">
                             <svg class="w-4 h-4"><use href="#icon-bookmark"/></svg>
+                        </button>
+                        <!-- Saved Toggle Button -->
+                        <button id="saved-action-btn" onclick="handleSavedAction()" title="Save" aria-label="Save" class="hidden p-1.5 rounded-md border transition-colors">
+                            <svg class="w-4 h-4"><use href="#icon-star"/></svg>
                         </button>
                     </div>
                     <!-- View mode toggle: List / Card -->
@@ -1674,7 +1681,7 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <span class="text-base">All Read</span>
                 </button>
-                <button onclick="handleReadLaterAction()" class="flex flex-col items-center justify-center px-3 py-1 text-gray-500 hover:text-blue-500" title="Save for Later">
+                <button onclick="handleReadLaterAction()" class="flex flex-col items-center justify-center px-3 py-1 text-gray-500 hover:text-blue-500" title="Add to Read Later">
                     <svg class="w-6 h-6"><use href="#icon-bookmark"/></svg>
                     <span class="text-base">Later</span>
                 </button>
@@ -1735,9 +1742,9 @@
                 <button class="search-close" type="button" onclick="closeSearchSheet()">Done</button>
             </div>
             <div class="search-smart">
-                <button class="search-smart-btn" type="button" onclick="searchSmart('all')">All Unread</button>
-                <button class="search-smart-btn" type="button" onclick="searchSmart('today')">Today</button>
+                <button class="search-smart-btn" type="button" onclick="searchSmart('all')">Unread</button>
                 <button class="search-smart-btn" type="button" onclick="searchSmart('later')">Read Later</button>
+                <button class="search-smart-btn" type="button" onclick="searchSmart('saved')">Saved</button>
             </div>
             <div id="mobile-search-results" class="search-results"></div>
         </div>
@@ -1884,6 +1891,15 @@
                             <select id="pref-sort-order" onchange="renderTimeline()" class="settings-input">
                                 <option value="asc" selected>Oldest Published First</option>
                                 <option value="desc">Newest Published First</option>
+                            </select>
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <label class="settings-item-label">History window</label>
+                            <select id="pref-recently-read-days" onchange="updateRecentlyReadDays(this.value)" class="settings-input">
+                                <option value="7">Last 7 days</option>
+                                <option value="30" selected>Last 30 days</option>
+                                <option value="60">Last 60 days</option>
+                                <option value="90">Last 90 days</option>
                             </select>
                         </div>
                         <div class="settings-row">
@@ -2152,7 +2168,7 @@
         class RSSReaderDB {
             constructor() {
                 this.dbName = 'RSSReaderDB';
-                this.version = 3;
+                this.version = 4;
                 this.db = null;
             }
 
@@ -2172,12 +2188,21 @@
                         if (!db.objectStoreNames.contains('feeds')) db.createObjectStore('feeds', { keyPath: 'url' });
                         if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata');
                         if (!db.objectStoreNames.contains('favicons')) db.createObjectStore('favicons');
-                        // v3: per-article snapshot of every read article, retained independently
-                        // of the rolling articles cache so the "Recently Read" smart folder
-                        // (and search) can reach back beyond what's currently in memory.
                         if (!db.objectStoreNames.contains('readArchive')) {
                             const ra = db.createObjectStore('readArchive', { keyPath: 'link' });
                             ra.createIndex('readAt', 'readAt', { unique: false });
+                        }
+                        // v4: per-user durable buckets — Read Later (transient queue) and Saved
+                        // (permanent keepsake). Each row stores the full article snapshot so
+                        // items survive feed removal and rolling cache eviction. Firestore is
+                        // the source of truth; IDB is the local mirror.
+                        if (!db.objectStoreNames.contains('readLaterItems')) {
+                            const rl = db.createObjectStore('readLaterItems', { keyPath: 'link' });
+                            rl.createIndex('addedAt', 'addedAt', { unique: false });
+                        }
+                        if (!db.objectStoreNames.contains('savedItems')) {
+                            const sv = db.createObjectStore('savedItems', { keyPath: 'link' });
+                            sv.createIndex('addedAt', 'addedAt', { unique: false });
                         }
                     };
                     request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
@@ -3043,16 +3068,20 @@
             const inFolder = !!window.currentCategoryFilter;
             const inSource = !!window.currentSourceFilter;
             const isReadLater = window.currentSmartFeed === 'read-later';
-            const isToday = window.currentSmartFeed === 'today';
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
+            const isSaved = window.currentSmartFeed === 'saved';
             let headline, subtext, showRefresh = true;
             if (!hasFeeds) {
                 headline = 'No feeds yet';
                 subtext = 'Add your first feed from Settings → Feeds to get started.';
                 showRefresh = false;
+            } else if (isSaved) {
+                headline = 'Nothing saved yet';
+                subtext = 'Tap the star on any article to keep it here for future reference. Saved items sync across your devices.';
+                showRefresh = false;
             } else if (isRecentlyRead) {
-                headline = 'No recent reads';
-                subtext = `Articles you've read in the last ${RECENTLY_READ_DAYS} days will appear here.`;
+                headline = 'No history yet';
+                subtext = `Articles you've read in the last ${getRecentlyReadDays()} days will appear here.`;
             } else if (isReadLater) {
                 headline = 'No saved articles';
                 subtext = 'Tap the bookmark on any article to save it for later.';
@@ -3062,9 +3091,6 @@
             } else if (inSource) {
                 headline = 'All caught up';
                 subtext = `No unread articles from ${esc(window.currentSourceFilter)}.`;
-            } else if (isToday) {
-                headline = 'Nothing new today';
-                subtext = 'Pull down to refresh, or check back later.';
             } else {
                 headline = 'All caught up';
                 subtext = "You've read everything. Pull down to refresh.";
@@ -3187,16 +3213,20 @@
             if (!list) return;
 
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
-            const sortOrder = window.currentSmartFeed === 'today' || isRecentlyRead
+            const isSaved = window.currentSmartFeed === 'saved';
+            // Read Later sources from the durable bucket when it's populated so
+            // items survive feed removal and rolling cache eviction. Falls back
+            // to the legacy in-memory filter while the bucket is still hydrating.
+            const isReadLaterBucketed = window.currentSmartFeed === 'read-later'
+                && Array.isArray(window._readLaterArticles);
+            const sortOrder = (isRecentlyRead || isSaved || isReadLaterBucketed)
                 ? 'desc'
                 : (document.getElementById('pref-sort-order')?.value || 'asc');
 
-            // Recently-read has its own pre-loaded source (from IndexedDB
-            // readArchive). All other smart feeds work off the in-memory
-            // article cache.
             let filtered = isRecentlyRead
                 ? (window._recentlyReadArticles || [])
-                : window.articles;
+                : (isSaved ? (window._savedArticles || [])
+                    : (isReadLaterBucketed ? (window._readLaterArticles || []) : window.articles));
 
             // If searching, scan title/source/excerpt across the chosen scope.
             // Scope and read-state pre-filter the pool; then the query string
@@ -3206,7 +3236,7 @@
             const searchScope = document.getElementById('desk-search-scope')?.value || 'all';
             const searchReadState = document.getElementById('desk-search-readstate')?.value || 'all';
             const searchActive = !!window._searchQuery || searchScope !== 'all' || searchReadState !== 'all';
-            if (searchActive && !isRecentlyRead) {
+            if (searchActive && !isRecentlyRead && !isSaved && !isReadLaterBucketed) {
                 // Start with in-memory cache (~500 most-recent), then merge in
                 // the read-archive snapshot loaded by openDeskSearch so search
                 // covers the full 90-day read history. In-memory wins on dup
@@ -3254,13 +3284,10 @@
                     );
                 }
                 filtered = pool;
-            } else if (!isRecentlyRead) {
+            } else if (!isRecentlyRead && !isSaved && !isReadLaterBucketed) {
                 // Apply normal filters
                 if (window.currentSmartFeed === 'all') {
                     filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
-                } else if (window.currentSmartFeed === 'today') {
-                    const dayAgo = new Date(Date.now() - 86400000);
-                    filtered = filtered.filter(a => new Date(a.timestamp) > dayAgo || window._pinnedArticleIds.has(a.id));
                 } else if (window.currentSmartFeed === 'read-later') {
                     filtered = filtered.filter(a => a.readLater || window._pinnedArticleIds.has(a.id));
                 }
@@ -3274,9 +3301,13 @@
             }
 
             filtered.sort((a, b) => {
-                // Recently-read sorts by when WE read it, not by publish time.
+                // Recently-read sorts by when WE read it; Saved/Read-Later by when added.
                 if (isRecentlyRead) {
                     const diff = (a.readAt || 0) - (b.readAt || 0);
+                    return sortOrder === 'desc' ? -diff : diff;
+                }
+                if (isSaved || isReadLaterBucketed) {
+                    const diff = new Date(a.addedAt || 0).getTime() - new Date(b.addedAt || 0).getTime();
                     return sortOrder === 'desc' ? -diff : diff;
                 }
                 const diff = (a._ts || new Date(a.timestamp).getTime()) - (b._ts || new Date(b.timestamp).getTime());
@@ -3460,7 +3491,7 @@
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="relative px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
-                <div class="swipe-hint swipe-hint-right">Save Later &#x2605;</div>
+                <div class="swipe-hint swipe-hint-right">Read Later &#x2605;</div>
                 <div class="min-w-0">
                     <div class="flex items-center justify-between mb-1.5 gap-2">
                         ${a.unread ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
@@ -3555,7 +3586,7 @@
                     rightHint.style.opacity = 0;
                     _t.card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.18}) 50%, rgba(37,99,235,${progress * 0.06}) 100%)`;
                 } else if (dx > 8) {
-                    // Swiping right → Save for Later
+                    // Swiping right → Add to Read Later
                     const progress = Math.min(1, absDx / SWIPE_THRESHOLD);
                     rightHint.style.opacity = progress * 0.9;
                     leftHint.style.opacity = 0;
@@ -3607,10 +3638,10 @@
                     window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
                     maybeGoHomeIfTimelineEmpty();
                 } else {
-                    // Right swipe → Toggle Save for Later
+                    // Right swipe → Toggle Read Later
                     toggleReadLater(article); saveReadLaterState();
                     refreshUI();
-                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
+                    window.showToast(article.readLater ? 'Added to Read Later' : 'Removed from Read Later');
                     maybeGoHomeIfTimelineEmpty();
                 }
             }, { passive: true });
@@ -3704,11 +3735,18 @@
         }
 
         window.selectArticle = function(id) {
-            // Recently-read items live in their own list (window._recentlyReadArticles)
-            // and aren't in window.articles, so look there too.
+            // Bucket-backed views (Saved, Read Later) and the History view keep
+            // their own synthetic article lists with prefixed IDs (sv:, rl:, ra:)
+            // that aren't in window.articles. Search them all.
             let article = window.articles.find(a => a.id === id);
             if (!article && Array.isArray(window._recentlyReadArticles)) {
                 article = window._recentlyReadArticles.find(a => a.id === id);
+            }
+            if (!article && Array.isArray(window._savedArticles)) {
+                article = window._savedArticles.find(a => a.id === id);
+            }
+            if (!article && Array.isArray(window._readLaterArticles)) {
+                article = window._readLaterArticles.find(a => a.id === id);
             }
             if (!article) return;
 
@@ -4179,6 +4217,13 @@
             article.readLater = !article.readLater;
             if (article.readLater) window._readLaterLinks.add(article.link);
             else window._readLaterLinks.delete(article.link);
+            // Mirror the change into the durable cross-device bucket. Errors are
+            // swallowed inside the bucket; the local Set + localStorage path still
+            // provides offline-correct behavior even if the cloud write fails.
+            if (window.readLaterBucket) {
+                if (article.readLater) window.readLaterBucket.add(article);
+                else                   window.readLaterBucket.remove(article.link);
+            }
         }
 
         // --- MARK READ BULK ---
@@ -4266,7 +4311,7 @@
                          ondragover="handleCategoryDragOver(event, '${sCat}')"
                          ondragleave="handleCategoryDragLeave(event)"
                          ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
-                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="w-full px-4 text-gray-400 flex items-center justify-between hover:bg-white/5 dynamic-category-text">
+                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="w-full px-4 text-gray-400 flex items-center justify-between hover:bg-white/5 dynamic-category-text${window.currentCategoryFilter === sCat && !window.currentSourceFilter && window.currentSmartFeed === 'all' ? ' active-item' : ''}">
                             <button onclick="toggleCategory('${sCat}')" class="flex items-center gap-2 outline-none flex-shrink-0 mr-2 opacity-60 hover:opacity-100 transition-opacity">
                                 ${isCollapsed ?
                                     `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>` :
@@ -4301,7 +4346,7 @@
                             <button draggable="true"
                                 ondragstart="handleFeedDragStart(event, '${sfId}')"
                                 ondragend="event.target && event.target.classList && event.target.classList.remove('opacity-40')"
-                                onclick="setSourceFilter('${sfName}')" oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')" class="w-full flex items-center justify-between pl-9 pr-3 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 outline-none cursor-grab active:cursor-grabbing dynamic-category-text">
+                                onclick="setSourceFilter('${sfName}')" oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')" class="w-full flex items-center justify-between pl-9 pr-3 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 outline-none cursor-grab active:cursor-grabbing dynamic-category-text${window.currentSourceFilter === f.name ? ' active-item' : ''}">
                                 <span class="flex items-center truncate pr-2">
                                     ${favicon}<span class="truncate ${healthClass}">${esc(f.name)}</span>
                                 </span>
@@ -4341,8 +4386,8 @@
             updateBadges();
         }
 
-        window.setCategoryFilter = (cat) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
-        window.setSourceFilter = (source) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
+        window.setCategoryFilter = (cat) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
+        window.setSourceFilter = (source) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
         window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
 
         // --- DESKTOP SEARCH HELPERS ---
@@ -4537,63 +4582,16 @@
 
         function updateBadges() {
             const allUnread = window.articles.filter(a => a.unread).length;
-            const todayCount = window.articles.filter(a => (new Date(Date.now() - 86400000) < new Date(a.timestamp)) && a.unread).length;
             const readLaterCount = window.articles.filter(a => a.readLater).length;
-            // Recently-read count comes from the IDB-backed cache populated on init/login.
-            // If the cache isn't loaded yet, we just don't show a number — the async
-            // refresher below populates it shortly.
-            const recentlyReadCount = Array.isArray(window._readArchiveCache) ? window._readArchiveCache.length : null;
 
             const badgeAll = document.getElementById('badge-all');
-            const badgeToday = document.getElementById('badge-today');
             const badgeReadLater = document.getElementById('badge-read-later');
-            const badgeRecently = document.getElementById('badge-recently-read');
 
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
-            if (badgeToday) { badgeToday.textContent = todayCount; badgeToday.classList.toggle('hidden', todayCount === 0); }
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
-            if (badgeRecently) {
-                if (recentlyReadCount === null || recentlyReadCount === 0) {
-                    badgeRecently.classList.add('hidden');
-                } else {
-                    badgeRecently.textContent = recentlyReadCount;
-                    badgeRecently.classList.remove('hidden');
-                }
-            }
-
-            // Dim the Today row when its count equals All Unread (i.e. everything unread
-            // is also from today) — in that case Today is informationally redundant with
-            // All Unread, so we de-emphasize it without hiding the row.
-            const todayBtn = document.getElementById('feed-btn-today');
-            if (todayBtn) {
-                const redundant = todayCount > 0 && todayCount === allUnread;
-                todayBtn.classList.toggle('is-redundant', redundant);
-            }
 
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
         }
-        // Async refresher: on first load, the in-memory _readArchiveCache may not be
-        // populated yet. Pull the 30-day count from IDB once and call updateBadges so
-        // the Recently Read pill appears without waiting for the user to open search.
-        (function primeRecentlyReadCount() {
-            const tryLoad = () => {
-                if (!window.appDB || typeof window.appDB.getRecentlyRead !== 'function') {
-                    return setTimeout(tryLoad, 500);
-                }
-                window.appDB.getRecentlyRead(30).then(list => {
-                    if (Array.isArray(list)) {
-                        if (!Array.isArray(window._readArchiveCache)) window._readArchiveCache = list;
-                        if (typeof window.updateBadges === 'function') window.updateBadges();
-                    }
-                }).catch(() => {});
-            };
-            // Wait until DOM/scripts have settled; updateBadges depends on the badge DOM.
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => setTimeout(tryLoad, 400));
-            } else {
-                setTimeout(tryLoad, 400);
-            }
-        })();
 
         // --- OPML & FEED CONFIG ---
         window.importSubscriptions = async (event) => {
@@ -4692,19 +4690,36 @@
         };
 
         // --- UI ACTIONS ---
-        // "Recently Read" smart folder window — items read in the last N days.
-        const RECENTLY_READ_DAYS = 7;
+        function getRecentlyReadDays() {
+            try {
+                const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                const v = parseInt(prefs.recentlyReadDays, 10);
+                if ([7, 30, 60, 90].includes(v)) return v;
+            } catch(e) {}
+            return 30;
+        }
+        window.updateRecentlyReadDays = (v) => {
+            const days = parseInt(v, 10);
+            if (![7, 30, 60, 90].includes(days)) return;
+            try {
+                const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                prefs.recentlyReadDays = String(days);
+                localStorage.setItem('newsreader_prefs', JSON.stringify(prefs));
+            } catch(e) {}
+            if (window.currentSmartFeed === 'recently-read') setSmartFeed('recently-read');
+        };
         window.setSmartFeed = async (type) => {
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
             const btn = document.getElementById('feed-btn-' + type);
             if (btn) btn.classList.add('active-item');
+            renderFeeds();
             if (isMobile()) setMobilePane('timeline');
             if (type === 'recently-read') {
                 try {
                     const archived = (window.appDB && typeof window.appDB.getRecentlyRead === 'function')
-                        ? await window.appDB.getRecentlyRead(RECENTLY_READ_DAYS)
+                        ? await window.appDB.getRecentlyRead(getRecentlyReadDays())
                         : [];
                     // Re-shape archive records into article-shaped objects so
                     // renderTimeline / selectArticle don't need special-casing.
@@ -4725,6 +4740,50 @@
                 } catch(e) { console.warn('getRecentlyRead failed:', e); window._recentlyReadArticles = []; }
             } else {
                 window._recentlyReadArticles = null;
+            }
+            if (type === 'saved') {
+                const items = (window.savedBucket && typeof window.savedBucket.list === 'function')
+                    ? window.savedBucket.list()
+                    : [];
+                window._savedArticles = items.map(r => ({
+                    id: 'sv:' + r.link,
+                    link: r.link,
+                    title: r.title,
+                    source: r.source,
+                    feedUrl: r.feedUrl,
+                    excerpt: r.excerpt,
+                    body: r.body || '',
+                    author: r.author || '',
+                    timestamp: r.timestamp,
+                    addedAt: r.addedAt,
+                    unread: !window._readLinks.has(r.link),
+                    readLater: window._readLaterLinks ? window._readLaterLinks.has(r.link) : false,
+                    saved: true,
+                }));
+            } else {
+                window._savedArticles = null;
+            }
+            if (type === 'read-later') {
+                const items = (window.readLaterBucket && typeof window.readLaterBucket.list === 'function')
+                    ? window.readLaterBucket.list()
+                    : [];
+                window._readLaterArticles = items.map(r => ({
+                    id: 'rl:' + r.link,
+                    link: r.link,
+                    title: r.title,
+                    source: r.source,
+                    feedUrl: r.feedUrl,
+                    excerpt: r.excerpt,
+                    body: r.body || '',
+                    author: r.author || '',
+                    timestamp: r.timestamp,
+                    addedAt: r.addedAt,
+                    unread: !window._readLinks.has(r.link),
+                    readLater: true,
+                    saved: window.savedBucket ? window.savedBucket.has(r.link) : false,
+                }));
+            } else {
+                window._readLaterArticles = null;
             }
             renderTimeline();
         };
@@ -4953,7 +5012,7 @@
                 } else {
                     toggleReadLater(article); saveReadLaterState();
                     refreshUI();
-                    window.showToast(article.readLater ? '🔖 Saved for Later' : 'Removed from Later');
+                    window.showToast(article.readLater ? 'Added to Read Later' : 'Removed from Read Later');
                 }
             });
         })();
@@ -5392,10 +5451,29 @@
                 document.getElementById('empty-state').classList.remove('hidden');
                 window.currentArticle = null;
             } else {
-                window.showToast(window.currentArticle.readLater ? "Saved to Read Later" : "Removed from Read Later");
+                window.showToast(window.currentArticle.readLater ? "Added to Read Later" : "Removed from Read Later");
             }
             refreshUI();
             updateActionButton();
+        };
+
+        window.handleSavedAction = async () => {
+            const art = window.currentArticle;
+            if (!art || !art.link || !window.savedBucket) return;
+            const wasSaved = window.savedBucket.has(art.link);
+            if (wasSaved) await window.savedBucket.remove(art.link);
+            else          await window.savedBucket.add(art);
+            if (window.currentSmartFeed === 'saved' && wasSaved) {
+                window.showToast("Unsaved");
+                document.getElementById('article-content').classList.add('hidden');
+                document.getElementById('empty-state').classList.remove('hidden');
+                window.currentArticle = null;
+                setSmartFeed('saved');
+            } else {
+                window.showToast(wasSaved ? "Unsaved" : "Saved");
+                if (window.currentSmartFeed === 'saved') setSmartFeed('saved');
+                else updateActionButton();
+            }
         };
 
         window.updateActionButton = () => {
@@ -5403,8 +5481,9 @@
             const shareBtn = document.getElementById('share-btn');
             const ttsBtn = document.getElementById('tts-btn');
             const unreadBtn = document.getElementById('unread-action-btn');
+            const savedBtn = document.getElementById('saved-action-btn');
             const hasArticle = !!window.currentArticle;
-            [b, shareBtn, ttsBtn, unreadBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            [b, shareBtn, ttsBtn, unreadBtn, savedBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
             if (!hasArticle) return;
 
             const BASE = 'p-1.5 rounded-md border transition-colors cursor-pointer';
@@ -5425,15 +5504,30 @@
                 b.innerHTML = '<svg class="w-4 h-4"><use href="#icon-bookmark-x"/></svg>';
                 b.className = `${BASE} border-red-500 text-red-500 hover:bg-red-50`;
             } else if (window.currentArticle.readLater) {
-                b.title = 'Saved to Read Later';
-                b.setAttribute('aria-label', 'Saved to Read Later');
+                b.title = 'Remove from Read Later';
+                b.setAttribute('aria-label', 'Remove from Read Later');
                 b.innerHTML = '<svg class="w-4 h-4"><use href="#icon-bookmark-filled"/></svg>';
                 b.className = `${BASE} border-green-500 text-green-500 bg-green-50`;
             } else {
-                b.title = 'Read Later';
-                b.setAttribute('aria-label', 'Read Later');
+                b.title = 'Add to Read Later';
+                b.setAttribute('aria-label', 'Add to Read Later');
                 b.innerHTML = '<svg class="w-4 h-4"><use href="#icon-bookmark"/></svg>';
                 b.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
+            }
+            // Saved button — separate state from Read Later.
+            if (savedBtn) {
+                const isSaved = !!(window.savedBucket && window.currentArticle.link && window.savedBucket.has(window.currentArticle.link));
+                if (isSaved) {
+                    savedBtn.title = 'Unsave';
+                    savedBtn.setAttribute('aria-label', 'Unsave');
+                    savedBtn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-star-filled"/></svg>';
+                    savedBtn.className = `${BASE} border-amber-500 text-amber-500 bg-amber-50 dark:bg-amber-900/20`;
+                } else {
+                    savedBtn.title = 'Save';
+                    savedBtn.setAttribute('aria-label', 'Save');
+                    savedBtn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-star"/></svg>';
+                    savedBtn.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
+                }
             }
         };
 
@@ -5454,7 +5548,7 @@
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
-            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter) || window.currentSmartFeed === 'today';
+            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter);
             const inFolderOrSource = !!(window.currentCategoryFilter || window.currentSourceFilter);
             const remainingUnread = window.articles.filter(a => a.unread).length;
             if (isMobile()) {
@@ -5480,15 +5574,22 @@ window.toggleUnreadManual = () => {
         window.showArticleContextMenu = (e, id) => {
             e.preventDefault();
             window.contextMenuArticleId = id;
-            const article = (window.articles || []).find(a => a.id === id);
+            // Look across all article sources — Saved (sv:), Read Later (rl:),
+            // History (ra:) live outside window.articles.
+            const article = (window.articles || []).find(a => a.id === id)
+                || (Array.isArray(window._savedArticles) && window._savedArticles.find(a => a.id === id))
+                || (Array.isArray(window._readLaterArticles) && window._readLaterArticles.find(a => a.id === id))
+                || (Array.isArray(window._recentlyReadArticles) && window._recentlyReadArticles.find(a => a.id === id));
             const idx = (window.currentTimeline || []).findIndex(a => a.id === id);
             const total = (window.currentTimeline || []).length;
             const btnClass = "w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700";
             const readLabel = article?.unread ? 'Mark Read' : 'Mark Unread';
-            const laterLabel = article?.readLater ? 'Remove from Read Later' : 'Save for Later';
+            const laterLabel = article?.readLater ? 'Remove from Read Later' : 'Add to Read Later';
+            const savedLabel = (window.savedBucket && article?.link && window.savedBucket.has(article.link)) ? 'Unsave' : 'Save';
             const sid = escJs(id);
             let items = `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             items += `<button onclick="toggleArticleReadLater('${sid}')" class="${btnClass}">${laterLabel}</button>`;
+            items += `<button onclick="toggleArticleSaved('${sid}')" class="${btnClass}">${savedLabel}</button>`;
             if (idx > 0)         items += `<button onclick="markAboveRead()" class="${btnClass}">Mark Above Read</button>`;
             if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
             const menu = document.getElementById('article-context-menu');
@@ -5500,20 +5601,44 @@ window.toggleUnreadManual = () => {
             menu.style.left = `${x}px`;
         };
 
+        // Look across all article sources (window.articles + bucket-backed views).
+        function findArticleAnywhere(id) {
+            return (window.articles || []).find(a => a.id === id)
+                || (Array.isArray(window._savedArticles) && window._savedArticles.find(a => a.id === id))
+                || (Array.isArray(window._readLaterArticles) && window._readLaterArticles.find(a => a.id === id))
+                || (Array.isArray(window._recentlyReadArticles) && window._recentlyReadArticles.find(a => a.id === id))
+                || null;
+        }
+
         window.toggleArticleUnread = (id) => {
-            const article = window.articles.find(a => a.id === id);
+            const article = findArticleAnywhere(id);
             if (!article) return;
             toggleUnread(article); saveReadState(); refreshUI(); hideContextMenu();
             maybeGoHomeIfTimelineEmpty();
         };
 
         window.toggleArticleReadLater = (id) => {
-            const article = window.articles.find(a => a.id === id);
+            const article = findArticleAnywhere(id);
             if (!article) return;
             toggleReadLater(article); saveReadLaterState(); refreshUI();
-            window.showToast(article.readLater ? 'Saved for Later' : 'Removed from Read Later');
+            window.showToast(article.readLater ? 'Added to Read Later' : 'Removed from Read Later');
             hideContextMenu();
             maybeGoHomeIfTimelineEmpty();
+        };
+
+        window.toggleArticleSaved = async (id) => {
+            const article = findArticleAnywhere(id);
+            if (!article || !article.link || !window.savedBucket) return;
+            const isSaved = window.savedBucket.has(article.link);
+            if (isSaved) await window.savedBucket.remove(article.link);
+            else        await window.savedBucket.add(article);
+            window.showToast(isSaved ? 'Unsaved' : 'Saved');
+            hideContextMenu();
+            if (window.currentSmartFeed === 'saved') {
+                setSmartFeed('saved');
+            } else {
+                refreshUI();
+            }
         };
 
         // --- ARTICLE LIST TOUCH INTERACTIONS ---
@@ -5701,9 +5826,6 @@ window.toggleUnreadManual = () => {
             if (type === 'smart') {
                 if (key === 'all') {
                     window.articles.forEach(a => { if (a.unread) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
-                } else if (key === 'today') {
-                    const dayAgo = new Date(Date.now() - 86400000);
-                    window.articles.forEach(a => { if (new Date(a.timestamp) > dayAgo) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
                 }
             } else if (type === 'category') {
                 const sources = new Set(window.feeds.filter(f => f.category === key).map(f => f.name));
@@ -5850,6 +5972,7 @@ window.toggleUnreadManual = () => {
             }
 
             if (prefs.sortOrder) { const el = document.getElementById('pref-sort-order'); if (el) el.value = prefs.sortOrder; }
+            if (prefs.recentlyReadDays) { const el = document.getElementById('pref-recently-read-days'); if (el) el.value = prefs.recentlyReadDays; }
             if (prefs.autoRefresh) { const el = document.getElementById('pref-auto-refresh'); if (el) el.value = prefs.autoRefresh; }
             // App Zoom — apply both desktop and mobile values to their CSS vars,
             // then seed the slider from whichever matches the current viewport.
@@ -6275,16 +6398,27 @@ window.toggleUnreadManual = () => {
                 container.innerHTML = '';
                 return;
             }
-            // Combine in-memory articles with the read-archive snapshot so search
-            // reaches articles already rotated out of the rolling cache.
+            // Combine in-memory articles with the read-archive snapshot AND the
+            // Saved / Read Later buckets so search reaches everything the user
+            // can possibly remember — even items already rotated out of the
+            // rolling cache or kept indefinitely in a bucket.
             const seen = new Set();
             const list = [];
-            for (const a of (window.articles || [])) { if (!seen.has(a.link)) { seen.add(a.link); list.push(a); } }
+            const pushIfNew = (a) => {
+                if (!a || !a.link || seen.has(a.link)) return;
+                seen.add(a.link);
+                list.push(a);
+            };
+            for (const a of (window.articles || [])) pushIfNew(a);
+            if (window.savedBucket) {
+                window.savedBucket.list().forEach(r => pushIfNew({ id: 'sv:' + r.link, ...r, unread: !window._readLinks.has(r.link) }));
+            }
+            if (window.readLaterBucket) {
+                window.readLaterBucket.list().forEach(r => pushIfNew({ id: 'rl:' + r.link, ...r, unread: !window._readLinks.has(r.link), readLater: true }));
+            }
             if (Array.isArray(window._readArchiveCache)) {
                 for (const r of window._readArchiveCache) {
-                    if (seen.has(r.link)) continue;
-                    seen.add(r.link);
-                    list.push({
+                    pushIfNew({
                         id: 'ra:' + r.link,
                         link: r.link,
                         title: r.title,
@@ -6341,15 +6475,17 @@ window.toggleUnreadManual = () => {
             const list = window.articles || [];
             let filtered;
             if (which === 'all') filtered = list.filter(a => a.unread);
-            else if (which === 'today') {
-                const now = new Date();
-                const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-                filtered = list.filter(a => {
-                    if (!a.timestamp) return false;
-                    const t = new Date(a.timestamp);
-                    return t.getFullYear() === y && t.getMonth() === m && t.getDate() === d;
-                });
-            } else if (which === 'later') filtered = list.filter(a => a.readLater);
+            else if (which === 'later') {
+                // Prefer the bucket so items survived feed removal / cache eviction.
+                filtered = window.readLaterBucket
+                    ? window.readLaterBucket.list().map(r => ({ id: 'rl:' + r.link, ...r }))
+                    : list.filter(a => a.readLater);
+            }
+            else if (which === 'saved') {
+                filtered = window.savedBucket
+                    ? window.savedBucket.list().map(r => ({ id: 'sv:' + r.link, ...r }))
+                    : [];
+            }
             else filtered = list;
             filtered = filtered.slice(0, 80);
             if (!filtered.length) {
@@ -6846,6 +6982,152 @@ window.toggleUnreadManual = () => {
             syncCloudReadState();
             syncCloudUiPrefs();
             setupCloudSaveFunctions();
+            createBucket({ collectionName: 'readLater', storeName: 'readLaterItems', globalName: 'readLaterBucket' });
+            createBucket({ collectionName: 'saved',     storeName: 'savedItems',     globalName: 'savedBucket'     });
+
+            // Refresh dependent UI when bucket contents change (other-device sync,
+            // or local add/remove via the Save button / context menu).
+            const onSavedChange = () => {
+                if (window.currentSmartFeed === 'saved' && typeof window.setSmartFeed === 'function') {
+                    window.setSmartFeed('saved');
+                }
+                if (typeof window.updateActionButton === 'function') window.updateActionButton();
+            };
+            document.addEventListener('savedBucket:change', onSavedChange);
+            document.addEventListener('savedBucket:ready', onSavedChange);
+
+            // Read Later bucket: keep the in-memory link Set in lockstep with the
+            // bucket so existing code (article filtering, badges, swipe gestures)
+            // continues to work transparently. Also refresh the Read Later view.
+            const syncReadLaterFromBucket = () => {
+                if (!window.readLaterBucket) return;
+                const next = new Set(window.readLaterBucket.list().map(r => r.link));
+                window._readLaterLinks = next;
+                window.articles.forEach(a => { a.readLater = next.has(a.link); });
+                try { localStorage.setItem('newsreader_readlater', JSON.stringify(Array.from(next))); } catch(e) {}
+                if (window.currentSmartFeed === 'read-later' && typeof window.setSmartFeed === 'function') {
+                    window.setSmartFeed('read-later');
+                }
+                if (typeof window.refreshUI === 'function') window.refreshUI();
+            };
+            document.addEventListener('readLaterBucket:change', syncReadLaterFromBucket);
+            // First hydrate: if the bucket is empty but legacy Set has items,
+            // backfill ONLY items we have full article content for (in the rolling
+            // cache or 30-day read archive). Items we can't find stay in the
+            // legacy link Set; they'll get a real bucket entry next time they
+            // appear in a live feed and the user re-saves. We never write link-
+            // only stubs — they look like garbage in the UI ("title" = URL,
+            // date = 1970).
+            //
+            // Also: clean up any pre-existing stub items left by an earlier
+            // migration build that did create stubs. Detection: title === link
+            // (that was the stub signature) AND no timestamp.
+            document.addEventListener('readLaterBucket:ready', async () => {
+                if (!window.readLaterBucket) return;
+
+                // Stub cleanup (idempotent — no stubs ⇒ no-op, no toast)
+                const stubs = window.readLaterBucket.list().filter(r =>
+                    (!r.title || r.title === r.link) && !r.timestamp
+                );
+                if (stubs.length > 0) {
+                    for (const s of stubs) await window.readLaterBucket.remove(s.link);
+                    window.showToast(`Cleaned up ${stubs.length} placeholder item${stubs.length === 1 ? '' : 's'}`);
+                }
+
+                // Backfill only items with full content available
+                if (window.readLaterBucket.size() === 0 && window._readLaterLinks && window._readLaterLinks.size > 0) {
+                    const byLink = new Map();
+                    (window.articles || []).forEach(a => { if (a.link && !byLink.has(a.link)) byLink.set(a.link, a); });
+                    if (Array.isArray(window._readArchiveCache)) {
+                        window._readArchiveCache.forEach(r => { if (r.link && !byLink.has(r.link)) byLink.set(r.link, r); });
+                    }
+                    let migrated = 0;
+                    for (const link of window._readLaterLinks) {
+                        const src = byLink.get(link);
+                        if (!src) continue;
+                        await window.readLaterBucket.add(src);
+                        migrated++;
+                    }
+                    if (migrated > 0) window.showToast(`Synced ${migrated} Read Later item${migrated === 1 ? '' : 's'} to cloud`);
+                }
+                syncReadLaterFromBucket();
+            });
+        }
+
+        // Durable per-user item bucket (Read Later, Saved). Firestore is source of
+        // truth; IDB store is the local mirror kept live via onSnapshot. Each item
+        // doc is the full article snapshot so the bucket survives feed removal and
+        // rolling cache eviction.
+        function createBucket({ collectionName, storeName, globalName }) {
+            const colRef = collection(db, 'artifacts', APP_ID, 'users', userId, collectionName);
+            const linkToId = (link) => link.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 200);
+
+            const api = {
+                _links: new Set(),  // in-memory link set for fast has() checks
+                _items: new Map(),  // link → item snapshot
+
+                async add(article) {
+                    if (!userId || !article || !article.link) return;
+                    const item = {
+                        link: article.link,
+                        title: article.title || '',
+                        source: article.source || '',
+                        feedUrl: article.feedUrl || '',
+                        excerpt: article.excerpt || '',
+                        body: article.body || '',
+                        author: article.author || '',
+                        timestamp: article.timestamp || null,
+                        addedAt: new Date().toISOString(),
+                    };
+                    api._links.add(item.link);
+                    api._items.set(item.link, item);
+                    try { await window.appDB.put(storeName, item); } catch(e) { console.warn(`${storeName} IDB put:`, e?.message); }
+                    try { await setDoc(doc(colRef, linkToId(item.link)), item); }
+                    catch(e) { console.warn(`${collectionName} cloud add:`, e?.message); }
+                },
+
+                async remove(link) {
+                    if (!userId || !link) return;
+                    api._links.delete(link);
+                    api._items.delete(link);
+                    try { await window.appDB.delete(storeName, link); } catch(e) { console.warn(`${storeName} IDB delete:`, e?.message); }
+                    try { await deleteDoc(doc(colRef, linkToId(link))); }
+                    catch(e) { console.warn(`${collectionName} cloud remove:`, e?.message); }
+                },
+
+                has(link) { return api._links.has(link); },
+                get(link) { return api._items.get(link); },
+                list() { return Array.from(api._items.values()); },
+                size() { return api._links.size; },
+            };
+
+            // Hydrate from IDB first so has()/list() work before the Firestore stream lands.
+            window.appDB.getAll(storeName).then(rows => {
+                if (Array.isArray(rows)) {
+                    rows.forEach(r => { api._links.add(r.link); api._items.set(r.link, r); });
+                    document.dispatchEvent(new CustomEvent(`${globalName}:ready`));
+                }
+            }).catch(e => console.warn(`${storeName} hydrate:`, e?.message));
+
+            // Live sync from Firestore.
+            onSnapshot(colRef, (snap) => {
+                snap.docChanges().forEach(change => {
+                    const data = change.doc.data();
+                    if (!data || !data.link) return;
+                    if (change.type === 'removed') {
+                        api._links.delete(data.link);
+                        api._items.delete(data.link);
+                        window.appDB.delete(storeName, data.link).catch(() => {});
+                    } else {
+                        api._links.add(data.link);
+                        api._items.set(data.link, data);
+                        window.appDB.put(storeName, data).catch(() => {});
+                    }
+                });
+                document.dispatchEvent(new CustomEvent(`${globalName}:change`));
+            }, e => console.warn(`${collectionName} subscribe:`, e?.message));
+
+            window[globalName] = api;
         }
 
         window.saveFeeds = async (newFeeds) => {
@@ -6872,7 +7154,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v69';
+const CACHE_NAME = 'rss-reader-v84';
 const APP_SHELL = [
     '/',
     'index.html'
