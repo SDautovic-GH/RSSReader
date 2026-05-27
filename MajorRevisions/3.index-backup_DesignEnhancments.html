@@ -2439,9 +2439,18 @@
         ];
 
         // Warm the primary Cloudflare Worker on app load so the first pull-to-refresh
-        // doesn't eat a 3-5s cold start and time out half the feeds.
-        (function warmPrimaryProxy() {
-            try { fetch(PRIMARY_PROXY_ORIGIN + '/', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch(e) {}
+        // doesn't eat a 3-5s cold start. iOS PWA: no-cors HEAD often gets dropped or
+        // completes after the user's pull, leaving the first refresh to bear the cold
+        // start. A real GET against a tiny feed forces the Worker to fully spin up.
+        // Exposed as window._proxyWarmReady so PTR can await it.
+        window._proxyWarmReady = (function warmPrimaryProxy() {
+            try {
+                // Use a small, fast, reliably-CORS feed as the warmup target.
+                const warmUrl = PRIMARY_PROXY_ORIGIN + '/?url=' + encodeURIComponent('https://hnrss.org/frontpage');
+                return fetch(warmUrl, { cache: 'no-store', signal: AbortSignal.timeout(10000) })
+                    .then(r => r.ok ? r.text() : null)
+                    .catch(() => null);
+            } catch(e) { return Promise.resolve(null); }
         })();
 
         async function fetchWithProxyFallback(feedUrl) {
@@ -4789,12 +4798,33 @@
         };
 
         async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 30) {
-            const promises = [];
-            for (let i = 0; i < feeds.length; i++) {
-                promises.push(fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground));
-                if (i < feeds.length - 1) await new Promise(r => setTimeout(r, delayMs));
+            // Wait for the proxy warmup to finish before launching the batch. On the
+            // first refresh this prevents N parallel fetches from all colliding with
+            // a cold Cloudflare Worker — which on iOS PWAs is enough memory pressure
+            // to make WebKit silently kill the app.
+            if (window._proxyWarmReady && typeof window._proxyWarmReady.then === 'function') {
+                try { await window._proxyWarmReady; } catch(e) {}
             }
-            await Promise.allSettled(promises);
+
+            // Concurrency cap: iOS Safari (especially as a standalone PWA) chokes
+            // when XML parsing + DOMPurify sanitize runs in parallel across N feeds.
+            // 3 in-flight is the sweet spot — fast enough to feel snappy, light
+            // enough that the WebKit process doesn't get OOM-killed on first launch.
+            const CONCURRENCY = 3;
+            let idx = 0;
+            const worker = async () => {
+                while (idx < feeds.length) {
+                    const i = idx++;
+                    try {
+                        await fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground);
+                    } catch(e) { /* fetchRecentArticles already logs */ }
+                    if (idx < feeds.length) await new Promise(r => setTimeout(r, delayMs));
+                }
+            };
+            const workers = [];
+            for (let w = 0; w < Math.min(CONCURRENCY, feeds.length); w++) workers.push(worker());
+            await Promise.all(workers);
+
             // Background fetches don't trigger a full timeline/sidebar refresh per-feed
             // (only the visible source filter re-renders inside fetchRecentArticles).
             // After the batch completes, refresh once so the header counter and sidebar
