@@ -3635,7 +3635,13 @@
 
                 const id = t.card.getAttribute('data-id');
                 if (!id) return;
-                const article = window.articles.find(a => a.id === id);
+                // Use findArticleAnywhere so swipes work in the Saved / Read Later /
+                // Recently Read smart folders (those render from separate buckets,
+                // not window.articles). Defined lower in the file but hoisted as a
+                // function declaration.
+                const article = (typeof findArticleAnywhere === 'function')
+                    ? findArticleAnywhere(id)
+                    : window.articles.find(a => a.id === id);
                 if (!article) return;
 
                 article._excerptHtml = null;
@@ -5617,10 +5623,11 @@ window.toggleUnreadManual = () => {
             const laterLabel = article?.readLater ? 'Remove from Read Later' : 'Add to Read Later';
             const savedLabel = (window.savedBucket && article?.link && window.savedBucket.has(article.link)) ? 'Unsave' : 'Save';
             const sid = escJs(id);
-            let items = `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
+            let items = '';
+            if (idx > 0)         items += `<button onclick="markAboveRead()" class="${btnClass}">Mark Above Read</button>`;
+            items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             items += `<button onclick="toggleArticleReadLater('${sid}')" class="${btnClass}">${laterLabel}</button>`;
             items += `<button onclick="toggleArticleSaved('${sid}')" class="${btnClass}">${savedLabel}</button>`;
-            if (idx > 0)         items += `<button onclick="markAboveRead()" class="${btnClass}">Mark Above Read</button>`;
             if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
             const menu = document.getElementById('article-context-menu');
             menu.innerHTML = items;
