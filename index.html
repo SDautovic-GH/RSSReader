@@ -3635,7 +3635,13 @@
 
                 const id = t.card.getAttribute('data-id');
                 if (!id) return;
-                const article = window.articles.find(a => a.id === id);
+                // Use findArticleAnywhere so swipes work in the Saved / Read Later /
+                // Recently Read smart folders (those render from separate buckets,
+                // not window.articles). Defined lower in the file but hoisted as a
+                // function declaration.
+                const article = (typeof findArticleAnywhere === 'function')
+                    ? findArticleAnywhere(id)
+                    : window.articles.find(a => a.id === id);
                 if (!article) return;
 
                 article._excerptHtml = null;
