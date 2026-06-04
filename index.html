@@ -476,6 +476,7 @@
             }
             #resizer { display: none !important; }
             #mobile-tab-bar { display: flex !important; }
+            #ptr-hint { display: flex !important; }
             #sidebar-pane.mobile-active { flex-direction: column; }
             /* Hide desktop toolbar equivalents on mobile */
             #prev-article-btn, #next-article-btn,
@@ -589,6 +590,32 @@
         /* Mobile tab bar — h-20 = 80px */
         #mobile-tab-bar { display: none; }
         #mobile-reader-bar { display: none; }
+        /* Pull-to-refresh hint is mobile-only — desktop sidebar has no PTR gesture */
+        #ptr-hint { display: none; }
+        /* Rounded "track" housing the down-arrow — echoes the native PTR slot. */
+        #ptr-hint-track {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 9999px;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.22);
+            color: #4493f8;
+        }
+        #ptr-hint-track svg {
+            width: 18px;
+            height: 18px;
+            animation: ptr-hint-pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes ptr-hint-pulse {
+            0%, 100% { transform: translateY(-2px); opacity: 0.65; }
+            50%      { transform: translateY(3px);  opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #ptr-hint-track svg { animation: none; transform: none; opacity: 0.9; }
+        }
         /* ===== DESKTOP FLOATING ARTICLE NAV =====
            Positioned to sit just to the right of the reader content column
            (max-w-2xl = 42rem, left-anchored with lg:ml-8 + lg:p-6 padding),
@@ -1534,6 +1561,16 @@
                 </div>
                 <!-- Category folders card -->
                 <div id="feed-list" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm"></div>
+                <!-- Pull-to-refresh hint (mobile only) — sits below the category folders.
+                     The Home/sidebar pane has the PTR gesture; this animated cue signals it.
+                     Down-arrow housed in a rounded track that pulses downward, echoing the
+                     native iOS/Android PTR slot. -->
+                <div id="ptr-hint" class="flex flex-col items-center justify-center gap-2 pt-5 pb-2 select-none">
+                    <span id="ptr-hint-track" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                    </span>
+                    <span class="text-[11px] font-medium text-gray-500">Pull to refresh</span>
+                </div>
             </div>
 
         </aside>
@@ -3102,18 +3139,10 @@
                         <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
                         Refresh
                     </button>` : '';
-            // On mobile, refreshable empty states show a downward chevron instead of
-            // the "done" checkmark — the check contradicts "pull down to refresh", and
-            // the chevron signals the pull gesture (which only exists on mobile/touch).
-            // Non-refreshable states (No feeds / Saved / History) keep the checkmark
-            // since pulling wouldn't help there.
-            const icon = showRefresh
-                ? `<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>`
-                : `<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>`;
             return `
                 <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
-                        ${icon}
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
                     </div>
                     <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">${esc(headline)}</h2>
                     <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">${esc(subtext)}</p>
