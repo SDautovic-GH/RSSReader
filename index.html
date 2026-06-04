@@ -2082,6 +2082,9 @@
             <!-- Footer -->
             <div class="p-4 border-t border-gray-200 dark:border-gray-700">
                 <button onclick="toggleSettings()" class="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold active:scale-95 transition-all">Done</button>
+                <!-- Build stamp — lets you confirm at a glance whether the freshly-loaded
+                     page is the new code or a stale service-worker cache. -->
+                <p id="build-stamp" class="text-center text-[11px] text-gray-400 mt-3 select-text">RSS Reader</p>
             </div>
         </div>
     </div>
@@ -6747,10 +6750,21 @@ window.toggleUnreadManual = () => {
         });
 
         // --- ASYNC STARTUP SEQUENCE ---
+        // Build identifier — keep in lockstep with CACHE_NAME in the service worker
+        // below. The settings footer shows this so you can instantly tell whether the
+        // page you're looking at is the new code or a stale SW-cached copy.
+        window.APP_BUILD = 'v85';
+
         (async function initApp() {
             try {
-                console.log('App: Starting initialization...');
-                
+                console.log('App: Starting initialization... build', window.APP_BUILD);
+
+                // Stamp the build into the settings footer.
+                try {
+                    const stamp = document.getElementById('build-stamp');
+                    if (stamp) stamp.textContent = `RSS Reader · ${window.APP_BUILD}`;
+                } catch(e) {}
+
                 // 1. Initial UI Setup (Synchronous)
                 if (isMobile()) setMobilePane('sidebar');
                 
@@ -7393,28 +7407,40 @@ self.addEventListener('fetch', e => {
                         // mobile this can serve the stale cached index.html indefinitely.
                         // Calling update() makes it re-evaluate now.
                         try { reg.update(); } catch (e) {}
+
+                        // A newer SW (= newer cached bytes) is ready. Auto-reload so mobile
+                        // picks up the new page without the user clearing cache (which they
+                        // can't easily do on a phone) — but ONLY when it won't interrupt
+                        // active reading. Otherwise show a gentle toast + defer.
+                        const onNewWorkerReady = () => {
+                            const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
+                            const safeToReload = document.hidden || !isReading;
+                            if (safeToReload && !sessionStorage.getItem('sw-reloaded')) {
+                                sessionStorage.setItem('sw-reloaded', '1');
+                                window.location.reload();
+                            } else if (window.showToast) {
+                                window._swUpdateReady = true;
+                                window.showToast("Update available — reload to apply.", false, true);
+                            }
+                        };
+
+                        // Case A: a new worker installs during this session.
                         reg.addEventListener('updatefound', () => {
                             const newWorker = reg.installing;
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // A newer SW (= newer cached bytes) is ready. Auto-reload
-                                    // so mobile picks up the new page without the user clearing
-                                    // cache (which they can't easily do on a phone) — but ONLY
-                                    // when it won't interrupt active reading. Otherwise fall
-                                    // back to a gentle toast the user can act on when ready.
-                                    const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
-                                    const safeToReload = document.hidden || !isReading;
-                                    if (safeToReload && !sessionStorage.getItem('sw-reloaded')) {
-                                        sessionStorage.setItem('sw-reloaded', '1');
-                                        window.location.reload();
-                                    } else if (window.showToast) {
-                                        // Mid-read: don't yank the page. Offer a manual reload.
-                                        window._swUpdateReady = true;
-                                        window.showToast("Update available — reload to apply.", false, true);
-                                    }
+                                    onNewWorkerReady();
                                 }
                             });
                         });
+
+                        // Case B: a worker is ALREADY installed-and-waiting from a prior
+                        // visit (updatefound won't fire again). This is the case that left
+                        // stuck PWAs serving stale pages indefinitely. Tell it to take over
+                        // and reload when it does.
+                        if (reg.waiting && navigator.serviceWorker.controller) {
+                            onNewWorkerReady();
+                        }
                         // If an update was deferred because the user was reading, apply it
                         // the moment they leave the article / background the app.
                         const applyDeferredUpdate = () => {
