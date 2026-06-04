@@ -7371,17 +7371,35 @@ self.addEventListener('fetch', e => {
                 navigator.serviceWorker.register(swUrl, { scope: '/' })
                     .then(reg => {
                         console.log('RSS Reader: SW registered successfully');
-                        // Optional: Check for updates automatically
+                        // Force an immediate update check. Because the SW is registered
+                        // from an ephemeral blob: URL (a new one every load), the browser's
+                        // normal "did the script change?" heuristic is unreliable — on
+                        // mobile this can serve the stale cached index.html indefinitely.
+                        // Calling update() makes it re-evaluate now.
+                        try { reg.update(); } catch (e) {}
                         reg.addEventListener('updatefound', () => {
                             const newWorker = reg.installing;
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    if (window.showToast) window.showToast("Update available! Reload to apply.", false, true);
+                                    // A newer SW (= newer cached bytes) is ready. Auto-reload
+                                    // ONCE so mobile picks up the new page without the user
+                                    // needing to clear cache (which they can't easily do on a
+                                    // phone). The flag guards against a reload loop.
+                                    if (!sessionStorage.getItem('sw-reloaded')) {
+                                        sessionStorage.setItem('sw-reloaded', '1');
+                                        window.location.reload();
+                                    }
                                 }
                             });
                         });
                     })
                     .catch(err => console.warn('RSS Reader: SW registration failed:', err));
+
+                // When the controlling SW changes (new version activated), clear the
+                // one-shot reload guard so the next genuine update can auto-reload again.
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    sessionStorage.removeItem('sw-reloaded');
+                });
             } catch (err) {
                 console.warn('RSS Reader: Failed to create SW Blob:', err);
             }
