@@ -7382,16 +7382,35 @@ self.addEventListener('fetch', e => {
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                     // A newer SW (= newer cached bytes) is ready. Auto-reload
-                                    // ONCE so mobile picks up the new page without the user
-                                    // needing to clear cache (which they can't easily do on a
-                                    // phone). The flag guards against a reload loop.
-                                    if (!sessionStorage.getItem('sw-reloaded')) {
+                                    // so mobile picks up the new page without the user clearing
+                                    // cache (which they can't easily do on a phone) — but ONLY
+                                    // when it won't interrupt active reading. Otherwise fall
+                                    // back to a gentle toast the user can act on when ready.
+                                    const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
+                                    const safeToReload = document.hidden || !isReading;
+                                    if (safeToReload && !sessionStorage.getItem('sw-reloaded')) {
                                         sessionStorage.setItem('sw-reloaded', '1');
                                         window.location.reload();
+                                    } else if (window.showToast) {
+                                        // Mid-read: don't yank the page. Offer a manual reload.
+                                        window._swUpdateReady = true;
+                                        window.showToast("Update available — reload to apply.", false, true);
                                     }
                                 }
                             });
                         });
+                        // If an update was deferred because the user was reading, apply it
+                        // the moment they leave the article / background the app.
+                        const applyDeferredUpdate = () => {
+                            if (!window._swUpdateReady) return;
+                            const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
+                            if ((document.hidden || !isReading) && !sessionStorage.getItem('sw-reloaded')) {
+                                sessionStorage.setItem('sw-reloaded', '1');
+                                window.location.reload();
+                            }
+                        };
+                        document.addEventListener('visibilitychange', applyDeferredUpdate);
+                        window.addEventListener('pageshow', applyDeferredUpdate);
                     })
                     .catch(err => console.warn('RSS Reader: SW registration failed:', err));
 
