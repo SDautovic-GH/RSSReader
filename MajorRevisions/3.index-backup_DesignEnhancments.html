@@ -476,6 +476,7 @@
             }
             #resizer { display: none !important; }
             #mobile-tab-bar { display: flex !important; }
+            #ptr-hint { display: flex !important; }
             #sidebar-pane.mobile-active { flex-direction: column; }
             /* Hide desktop toolbar equivalents on mobile */
             #prev-article-btn, #next-article-btn,
@@ -589,6 +590,40 @@
         /* Mobile tab bar — h-20 = 80px */
         #mobile-tab-bar { display: none; }
         #mobile-reader-bar { display: none; }
+        /* Pull-to-refresh hint is mobile-only — desktop sidebar has no PTR gesture */
+        #ptr-hint { display: none; }
+        /* It's a <button> (tap = refresh) — strip native button chrome so it reads
+           as the same plain hint, and add a brief press feedback on the pill. */
+        #ptr-hint {
+            background: none;
+            border: none;
+            padding-left: 0;
+            padding-right: 0;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            font: inherit;
+        }
+        #ptr-hint:active #ptr-hint-track {
+            background: rgba(59,130,246,0.22);
+            transform: scale(0.94);
+        }
+        /* Rounded "track" housing the down-arrow — echoes the native PTR slot. */
+        #ptr-hint-track {
+            transition: background 0.12s ease, transform 0.12s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 9999px;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.22);
+            color: #4493f8;
+        }
+        #ptr-hint-track svg {
+            width: 18px;
+            height: 18px;
+        }
         /* ===== DESKTOP FLOATING ARTICLE NAV =====
            Positioned to sit just to the right of the reader content column
            (max-w-2xl = 42rem, left-anchored with lg:ml-8 + lg:p-6 padding),
@@ -1534,6 +1569,16 @@
                 </div>
                 <!-- Category folders card -->
                 <div id="feed-list" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm"></div>
+                <!-- Pull-to-refresh hint (mobile only) — sits below the category folders.
+                     The Home/sidebar pane has the PTR gesture; this animated cue signals it.
+                     Down-arrow housed in a rounded track that pulses downward, echoing the
+                     native iOS/Android PTR slot. -->
+                <button id="ptr-hint" type="button" onclick="refreshAll()" aria-label="Refresh feeds" class="flex flex-col items-center justify-center gap-2 pt-5 pb-2 w-full select-none">
+                    <span id="ptr-hint-track" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                    </span>
+                    <span class="text-[11px] font-medium text-gray-500">Tap or pull to refresh</span>
+                </button>
             </div>
 
         </aside>
@@ -2037,6 +2082,9 @@
             <!-- Footer -->
             <div class="p-4 border-t border-gray-200 dark:border-gray-700">
                 <button onclick="toggleSettings()" class="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold active:scale-95 transition-all">Done</button>
+                <!-- Build stamp — lets you confirm at a glance whether the freshly-loaded
+                     page is the new code or a stale service-worker cache. -->
+                <p id="build-stamp" class="text-center text-[11px] text-gray-400 mt-3 select-text">RSS Reader</p>
             </div>
         </div>
     </div>
@@ -3025,7 +3073,9 @@
                     renderTimeline(true);
                     renderFeeds();
                 }
-                saveArticleCache();
+                // Note: saveArticleCache() is NOT called per-feed. fetchAllStaggered
+                // coalesces it into a single write after the whole batch completes —
+                // a per-feed write storm (40x heavy IDB serialize) is a mobile OOM risk.
             } catch (e) {
                 console.warn(`Feed fetch failed [${sourceName}]:`, e.message);
                 if (!window._feedHealth[feedUrl]) window._feedHealth[feedUrl] = { lastSuccess: null, errorCount: 0 };
@@ -3711,10 +3761,14 @@
                 if (wasReady && !_loading) {
                     _loading = true;
                     window.showToast('Refreshing feeds...', false, true);
-                    fetchAllStaggered(window.feeds).then(() => {
+                    // Background semantics: one refreshUI() at the end instead of a
+                    // per-feed render storm. maxItems capped on mobile to shrink the
+                    // allocation burst. Routed through the shared in-flight guard so a
+                    // concurrent auto-refresh/first-snapshot fetch can't stack on top.
+                    window.runFullRefresh({ isBackground: true, maxItems: 15 }).then((ran) => {
                         _loading = false;
                         window.hideToast();
-                        window.showToast('Feeds refreshed');
+                        if (ran) window.showToast('Feeds refreshed');
                     });
                 }
             };
@@ -4812,24 +4866,37 @@
                 try { await window._proxyWarmReady; } catch(e) {}
             }
 
-            // Concurrency cap: iOS Safari (especially as a standalone PWA) chokes
-            // when XML parsing + DOMPurify sanitize runs in parallel across N feeds.
-            // 3 in-flight is the sweet spot — fast enough to feel snappy, light
-            // enough that the WebKit process doesn't get OOM-killed on first launch.
-            const CONCURRENCY = 3;
-            let idx = 0;
-            const worker = async () => {
-                while (idx < feeds.length) {
-                    const i = idx++;
+            // Bounded worker pool instead of firing every feed at once. The old
+            // "push all promises, allSettled" approach put N DOMParser trees +
+            // N DOMPurify.sanitize runs + N response buffers in flight simultaneously,
+            // which spikes renderer memory and OOM-crashes the tab on mobile when the
+            // feed list is large. Capping concurrency keeps the peak flat regardless
+            // of feed count, at the cost of a slightly longer (but smoother) refresh.
+            // iOS Safari (standalone PWA) chokes hardest, so cap it tighter there.
+            const list = (feeds || []).slice();
+            const CONCURRENCY = isMobile() ? 3 : 6;
+            let next = 0;
+
+            async function worker() {
+                while (next < list.length) {
+                    const i = next++;
+                    const f = list[i];
                     try {
-                        await fetchRecentArticles(feeds[i].url, feeds[i].name, maxItems, isBackground);
-                    } catch(e) { /* fetchRecentArticles already logs */ }
-                    if (idx < feeds.length) await new Promise(r => setTimeout(r, delayMs));
+                        await fetchRecentArticles(f.url, f.name, maxItems, isBackground);
+                    } catch (e) { /* fetchRecentArticles already swallows its own errors */ }
+                    // Small stagger between a worker's successive feeds smooths the
+                    // proxy load without serializing the whole batch.
+                    if (next < list.length) await new Promise(r => setTimeout(r, delayMs));
                 }
-            };
+            }
+
             const workers = [];
-            for (let w = 0; w < Math.min(CONCURRENCY, feeds.length); w++) workers.push(worker());
-            await Promise.all(workers);
+            for (let w = 0; w < Math.min(CONCURRENCY, list.length); w++) workers.push(worker());
+            await Promise.allSettled(workers);
+
+            // Coalesced cache write — one heavy IDB serialize for the whole batch
+            // instead of one per feed (see fetchRecentArticles).
+            await saveArticleCache();
 
             // Background fetches don't trigger a full timeline/sidebar refresh per-feed
             // (only the visible source filter re-renders inside fetchRecentArticles).
@@ -4839,22 +4906,73 @@
             if (isBackground) refreshUI();
         }
 
+        // Single shared in-flight guard for full-feed refreshes. PTR, the header
+        // refresh button, the auto-refresh timer, and the Firestore first-snapshot
+        // fetch can otherwise fire overlapping full-fetch storms, doubling the peak
+        // memory and triggering the intermittent mobile crash. runFullRefresh()
+        // serializes them: a second caller is dropped while one is active, and the
+        // flag is always cleared in finally() so a hung/timed-out fetch can't wedge it.
+        window._refreshInFlight = false;
+        window.runFullRefresh = async (opts = {}) => {
+            if (window._refreshInFlight) return false;
+            window._refreshInFlight = true;
+            // TEMP perf instrumentation (Chrome only) — confirms the concurrency cap
+            // actually flattened the memory peak. Remove after on-device verification.
+            const _mem = () => (performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB' : 'n/a');
+            const _t0 = performance.now();
+            console.log(`[refresh] start heap=${_mem()} feeds=${(window.feeds||[]).length} bg=${!!opts.isBackground} cap=${opts.maxItems ?? 'none'}`);
+            try {
+                await fetchAllStaggered(window.feeds, opts.maxItems ?? null, opts.isBackground ?? false);
+                console.log(`[refresh] done  heap=${_mem()} took=${Math.round(performance.now() - _t0)}ms`);
+                return true;
+            } finally {
+                window._refreshInFlight = false;
+            }
+        };
+
         window.refreshAll = () => {
             window.showToast("Refreshing feeds...", false, true);
-            fetchAllStaggered(window.feeds).then(() => {
+            window.runFullRefresh().then((ran) => {
                 window.hideToast();
-                window.showToast("Feeds refreshed");
+                if (ran) window.showToast("Feeds refreshed");
             });
         };
 
         // --- AUTO REFRESH ---
+        // Battery/data helpers. navigator.connection is non-standard (Chromium/Android
+        // only — absent on iOS Safari), so every read is guarded and defaults to the
+        // permissive case when the API is missing.
+        window._isDataSaver = () => {
+            try { return !!(navigator.connection && navigator.connection.saveData); } catch(e) { return false; }
+        };
+        window._isMeteredConnection = () => {
+            try {
+                const c = navigator.connection;
+                if (!c) return false;
+                if (c.saveData) return true;
+                // 2g/slow-2g are treated as metered/slow — skip background fetch storms.
+                return c.effectiveType === '2g' || c.effectiveType === 'slow-2g';
+            } catch(e) { return false; }
+        };
+
         window.updateAutoRefresh = (minutes) => {
             if (window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
             saveTypographyPrefs();
-            const mins = parseInt(minutes);
+            let mins = parseInt(minutes);
+            // On mobile, clamp aggressive intervals up to a 15-min floor. Frequent
+            // radio wakes are one of the biggest mobile battery costs, and an RSS
+            // reader gains little from sub-15-min polling. Desktop keeps the user's
+            // chosen interval. The stored/displayed preference is left untouched —
+            // this only affects the effective timer cadence.
+            if (mins > 0 && isMobile() && mins < 15) mins = 15;
             if (mins > 0) {
                 window._autoRefreshTimer = setInterval(() => {
-                    fetchAllStaggered(window.feeds, null, true);
+                    // Don't fire while backgrounded (radio + CPU wake for content the
+                    // user isn't viewing — the visibility-resume refresh covers the gap)
+                    // or on a Data-Saver / metered connection.
+                    if (document.hidden) return;
+                    if (window._isMeteredConnection()) return;
+                    window.runFullRefresh({ isBackground: true });
                 }, mins * 60 * 1000);
             }
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
@@ -5593,11 +5711,11 @@
                     // Suppress acknowledgment toast — unread items still remain in other folders.
                 } else {
                     if (!opts.suppressToast) window.showToast('Marked all read — fetching new items...');
-                    fetchAllStaggered(window.feeds);
+                    window.runFullRefresh();
                 }
             } else if (isSmartFeedWithFetch) {
                 if (!opts.suppressToast) window.showToast('Marked all read — fetching new items...');
-                fetchAllStaggered(window.feeds);
+                window.runFullRefresh();
             } else if (remainingUnread === 0) {
                 if (!opts.suppressToast) window.showToast('Marked all read');
             }
@@ -5751,7 +5869,9 @@ window.toggleUnreadManual = () => {
                         const feed = window.feeds.find(f => f.name === window.currentSourceFilter);
                         if (feed) fetchRecentArticles(feed.url, feed.name, null, true);
                     } else {
-                        fetchAllStaggered(window.feeds, null, true);
+                        // Timeline-pane pull-to-refresh — same guarded full-refresh path
+                        // as the sidebar PTR so the two can't stack a double storm.
+                        window.runFullRefresh({ isBackground: true, maxItems: 15 });
                     }
                 }
             }, { passive: true });
@@ -6562,6 +6682,10 @@ window.toggleUnreadManual = () => {
             _faviconImageCache[url] = img;
         }
         function preloadAllFavicons() {
+            // On Data-Saver, skip the eager favicon prefetch storm — favicons are
+            // cosmetic and still load lazily when feed rows render. Saves a burst of
+            // image requests (data + battery) on every load/sync.
+            if (window._isDataSaver && window._isDataSaver()) return;
             window.feeds.forEach(f => { if (f.favicon) preloadFavicon(f.favicon); });
         }
 
@@ -6619,25 +6743,53 @@ window.toggleUnreadManual = () => {
             }
         }, { passive: true });
 
-        setInterval(() => { renderFeeds(); updateBadges?.(); }, 60000);
+        // Relative timestamps ("2h ago") and unread badges only matter while the
+        // app is on-screen. Skipping this tick when hidden eliminates a per-minute
+        // full-sidebar rebuild + badge recalc that would otherwise wake the CPU
+        // forever in the background — a steady battery drain for zero user benefit.
+        // The visibilitychange handler below does one catch-up render on return.
+        setInterval(() => {
+            if (document.hidden) return;
+            renderFeeds();
+            updateBadges?.();
+        }, 60000);
 
         let _hiddenAt = 0;
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 _hiddenAt = Date.now();
             } else {
+                // Catch-up render on return: refresh the timestamps/badges that the
+                // gated tick skipped while hidden.
+                renderFeeds();
+                updateBadges?.();
                 if (_hiddenAt && Date.now() - _hiddenAt > 5 * 60 * 1000) {
-                    if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
+                    // Skip the auto resume-fetch on a metered/Data-Saver connection;
+                    // the user can still pull-to-refresh manually if they want it.
+                    if (window.feeds.length > 0 && !window._isMeteredConnection()) {
+                        window.runFullRefresh({ isBackground: true });
+                    }
                 }
                 _hiddenAt = 0;
             }
         });
 
         // --- ASYNC STARTUP SEQUENCE ---
+        // Build identifier — keep in lockstep with CACHE_NAME in the service worker
+        // below. The settings footer shows this so you can instantly tell whether the
+        // page you're looking at is the new code or a stale SW-cached copy.
+        window.APP_BUILD = 'v85';
+
         (async function initApp() {
             try {
-                console.log('App: Starting initialization...');
-                
+                console.log('App: Starting initialization... build', window.APP_BUILD);
+
+                // Stamp the build into the settings footer.
+                try {
+                    const stamp = document.getElementById('build-stamp');
+                    if (stamp) stamp.textContent = `RSS Reader · ${window.APP_BUILD}`;
+                } catch(e) {}
+
                 // 1. Initial UI Setup (Synchronous)
                 if (isMobile()) setMobilePane('sidebar');
                 
@@ -6726,7 +6878,7 @@ window.toggleUnreadManual = () => {
                 if (window.feeds.length > 0) {
                     console.log('App: Starting background fetch...');
                     window._localFetchTimer = setTimeout(() => {
-                        if (window.feeds.length > 0) fetchAllStaggered(window.feeds, null, true);
+                        if (window.feeds.length > 0) window.runFullRefresh({ isBackground: true });
                     }, 4000);
                 }
 
@@ -6897,7 +7049,10 @@ window.toggleUnreadManual = () => {
                     updateEmptyState();
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
-                        fetchAllStaggered(dbFeeds, null, true);
+                        // window.feeds === dbFeeds here (assigned just above). Route
+                        // through the shared guard so this doesn't stack on top of a
+                        // PTR pull or the auto-refresh timer fired moments earlier.
+                        window.runFullRefresh({ isBackground: true });
                     }
                 }
                 document.getElementById('sync-status').textContent = `☁ ${userEmail}`;
@@ -7191,7 +7346,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v84';
+const CACHE_NAME = 'rss-reader-v85';
 const APP_SHELL = [
     '/',
     'index.html'
@@ -7271,17 +7426,66 @@ self.addEventListener('fetch', e => {
                 navigator.serviceWorker.register(swUrl, { scope: '/' })
                     .then(reg => {
                         console.log('RSS Reader: SW registered successfully');
-                        // Optional: Check for updates automatically
+                        // Force an immediate update check. Because the SW is registered
+                        // from an ephemeral blob: URL (a new one every load), the browser's
+                        // normal "did the script change?" heuristic is unreliable — on
+                        // mobile this can serve the stale cached index.html indefinitely.
+                        // Calling update() makes it re-evaluate now.
+                        try { reg.update(); } catch (e) {}
+
+                        // A newer SW (= newer cached bytes) is ready. Auto-reload so mobile
+                        // picks up the new page without the user clearing cache (which they
+                        // can't easily do on a phone) — but ONLY when it won't interrupt
+                        // active reading. Otherwise show a gentle toast + defer.
+                        const onNewWorkerReady = () => {
+                            const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
+                            const safeToReload = document.hidden || !isReading;
+                            if (safeToReload && !sessionStorage.getItem('sw-reloaded')) {
+                                sessionStorage.setItem('sw-reloaded', '1');
+                                window.location.reload();
+                            } else if (window.showToast) {
+                                window._swUpdateReady = true;
+                                window.showToast("Update available — reload to apply.", false, true);
+                            }
+                        };
+
+                        // Case A: a new worker installs during this session.
                         reg.addEventListener('updatefound', () => {
                             const newWorker = reg.installing;
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    if (window.showToast) window.showToast("Update available! Reload to apply.", false, true);
+                                    onNewWorkerReady();
                                 }
                             });
                         });
+
+                        // Case B: a worker is ALREADY installed-and-waiting from a prior
+                        // visit (updatefound won't fire again). This is the case that left
+                        // stuck PWAs serving stale pages indefinitely. Tell it to take over
+                        // and reload when it does.
+                        if (reg.waiting && navigator.serviceWorker.controller) {
+                            onNewWorkerReady();
+                        }
+                        // If an update was deferred because the user was reading, apply it
+                        // the moment they leave the article / background the app.
+                        const applyDeferredUpdate = () => {
+                            if (!window._swUpdateReady) return;
+                            const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
+                            if ((document.hidden || !isReading) && !sessionStorage.getItem('sw-reloaded')) {
+                                sessionStorage.setItem('sw-reloaded', '1');
+                                window.location.reload();
+                            }
+                        };
+                        document.addEventListener('visibilitychange', applyDeferredUpdate);
+                        window.addEventListener('pageshow', applyDeferredUpdate);
                     })
                     .catch(err => console.warn('RSS Reader: SW registration failed:', err));
+
+                // When the controlling SW changes (new version activated), clear the
+                // one-shot reload guard so the next genuine update can auto-reload again.
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    sessionStorage.removeItem('sw-reloaded');
+                });
             } catch (err) {
                 console.warn('RSS Reader: Failed to create SW Blob:', err);
             }
