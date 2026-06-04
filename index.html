@@ -3102,10 +3102,19 @@
                         <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
                         Refresh
                     </button>` : '';
+            // On mobile, refreshable empty states show a downward chevron instead of
+            // the "done" checkmark — the check contradicts "pull down to refresh", and
+            // the chevron signals the pull gesture (which only exists on mobile/touch).
+            // Non-refreshable states (No feeds / Saved / History) keep the checkmark
+            // since pulling wouldn't help there.
+            const showPullHint = showRefresh && isMobile();
+            const icon = showPullHint
+                ? `<svg class="w-8 h-8"><use href="#icon-chevron-down"/></svg>`
+                : `<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>`;
             return `
                 <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                        ${icon}
                     </div>
                     <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">${esc(headline)}</h2>
                     <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">${esc(subtext)}</p>
