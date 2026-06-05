@@ -3766,21 +3766,29 @@
                 if (!_pt) return;
                 const wasReady = !_pt.cancelled && indicator.classList.contains('ptr-ready');
                 _pt = null;
-                indicator.style.top = '-56px';
-                indicator.classList.remove('ptr-visible', 'ptr-ready');
-                label.textContent = 'Pull to refresh';
+                indicator.classList.remove('ptr-ready');
                 if (wasReady && !_loading) {
                     _loading = true;
-                    window.showToast('Refreshing feeds...', false, true);
+                    // Keep the top indicator pinned + spinning as the SOLE feedback
+                    // during the fetch (no toast — the user asked for no notifications).
+                    indicator.style.top = '0px';
+                    indicator.classList.add('ptr-visible', 'ptr-loading');
+                    label.textContent = 'Refreshing...';
                     // Background semantics: one refreshUI() at the end instead of a
                     // per-feed render storm. maxItems capped on mobile to shrink the
                     // allocation burst. Routed through the shared in-flight guard so a
                     // concurrent auto-refresh/first-snapshot fetch can't stack on top.
-                    window.runFullRefresh({ isBackground: true, maxItems: 15 }).then((ran) => {
+                    window.runFullRefresh({ isBackground: true, maxItems: 15 }).then(() => {
                         _loading = false;
-                        window.hideToast();
-                        if (ran) window.showToast('Feeds refreshed');
+                        indicator.style.top = '-56px';
+                        indicator.classList.remove('ptr-visible', 'ptr-loading');
+                        label.textContent = 'Pull to refresh';
                     });
+                } else {
+                    // Not a refresh (cancelled / didn't cross threshold) — just retract.
+                    indicator.style.top = '-56px';
+                    indicator.classList.remove('ptr-visible');
+                    label.textContent = 'Pull to refresh';
                 }
             };
             const cancel = () => {
@@ -4944,18 +4952,9 @@
         };
 
         window.refreshAll = () => {
-            // When the timeline is empty, the full-screen "Refreshing feeds" spinner is
-            // the feedback — skip the toast to avoid a redundant double signal. When
-            // articles are already showing (no spinner), the toast is the only feedback,
-            // so keep it.
-            const spinnerWillShow = _lastTimelineKey === '__empty__';
-            if (!spinnerWillShow) window.showToast("Refreshing feeds...", false, true);
-            window.runFullRefresh().then((ran) => {
-                if (!spinnerWillShow) {
-                    window.hideToast();
-                    if (ran) window.showToast("Feeds refreshed");
-                }
-            });
+            // No refresh toasts (user preference). Feedback is the in-timeline spinner
+            // when empty; when articles are showing, new items simply appear in place.
+            window.runFullRefresh();
         };
 
         // --- AUTO REFRESH ---
@@ -5881,13 +5880,10 @@ window.toggleUnreadManual = () => {
 
                 if (dy > 120 && absDy > absDx * 3 && list.scrollTop <= 4) {
                     window._pinnedArticleIds.clear();
-                    // If the timeline is empty, the refresh spinner (rendered below)
-                    // is the feedback — skip the redundant 'Updated' toast. When
-                    // articles are showing, keep the toast as the only cue.
-                    const spinnerWillShow = _lastTimelineKey === '__empty__';
+                    // No refresh toast (user preference) — the in-timeline spinner is
+                    // the feedback when empty; otherwise new items appear in place.
                     renderTimeline();
                     renderFeeds();
-                    if (!spinnerWillShow) window.showToast('Updated');
                     if (window.currentSourceFilter) {
                         const feed = window.feeds.find(f => f.name === window.currentSourceFilter);
                         if (feed) fetchRecentArticles(feed.url, feed.name, null, true);
@@ -5919,7 +5915,7 @@ window.toggleUnreadManual = () => {
 
         window.refreshSingleFeed = () => {
             if (!window._feedContextUrl) return;
-            window.showToast(`Refreshing ${window._feedContextName}...`);
+            // No refresh toast (user preference) — new items appear in place.
             fetchRecentArticles(window._feedContextUrl, window._feedContextName);
             document.getElementById('feed-context-menu').classList.add('hidden');
         };
@@ -6806,7 +6802,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 96;
+        window.APP_BUILD = 97;
 
         (async function initApp() {
             try {
@@ -7374,7 +7370,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v96';
+const CACHE_NAME = 'rss-reader-v97';
 const APP_SHELL = [
     '/',
     'index.html'
