@@ -3112,6 +3112,21 @@
             if (_timelineTopObserver) { _timelineTopObserver.disconnect(); _timelineTopObserver = null; }
         }
 
+        // Shown in the timeline area while a refresh is running and there are no
+        // articles to display yet (e.g. triggered from the "All caught up" empty
+        // state). Gives clear in-progress feedback instead of a static empty screen.
+        function renderTimelineRefreshing() {
+            return `
+                <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                        <svg class="w-8 h-8" style="animation: ptr-spin 0.8s linear infinite;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#icon-refresh"/></svg>
+                    </div>
+                    <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">Refreshing feeds</h2>
+                    <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">Checking your sources for new articles...</p>
+                </div>
+            `;
+        }
+
         function renderTimelineEmptyState() {
             const hasFeeds = (window.feeds || []).length > 0;
             const inFolder = !!window.currentCategoryFilter;
@@ -3166,11 +3181,18 @@
             listEl.classList.toggle('card-view', window._viewMode === 'card');
 
             if (filtered.length === 0) {
-                if (_lastTimelineKey !== '__empty__') {
-                    _lastTimelineKey = '__empty__';
+                // While a refresh is running with nothing to show yet, render the
+                // in-progress view instead of "All caught up" so the user gets
+                // feedback. Keyed separately so it re-renders back to empty/articles
+                // when the refresh finishes.
+                const emptyKey = window._refreshInFlight ? '__refreshing__' : '__empty__';
+                if (_lastTimelineKey !== emptyKey) {
+                    _lastTimelineKey = emptyKey;
                     hideSkeletons();
                     _disconnectSentinels();
-                    listEl.innerHTML = renderTimelineEmptyState();
+                    listEl.innerHTML = window._refreshInFlight
+                        ? renderTimelineRefreshing()
+                        : renderTimelineEmptyState();
                 }
                 return;
             }
@@ -4898,11 +4920,26 @@
         window.runFullRefresh = async (opts = {}) => {
             if (window._refreshInFlight) return false;
             window._refreshInFlight = true;
+            // If the timeline is currently showing an empty state, immediately swap it
+            // to the "Refreshing feeds" spinner so the user sees the refresh took hold
+            // (otherwise they stare at "All caught up" until articles arrive). Keyed so
+            // the end-of-refresh refreshUI()/render returns to articles or empty.
+            if (_lastTimelineKey === '__empty__') {
+                _lastTimelineKey = '';
+                renderTimeline(true);
+            }
             try {
                 await fetchAllStaggered(window.feeds, opts.maxItems ?? null, opts.isBackground ?? false);
                 return true;
             } finally {
                 window._refreshInFlight = false;
+                // If we were showing the refreshing spinner and still have nothing to
+                // display, force one render so it returns to "All caught up" instead of
+                // spinning forever.
+                if (_lastTimelineKey === '__refreshing__') {
+                    _lastTimelineKey = '';
+                    renderTimeline(true);
+                }
             }
         };
 
@@ -6758,7 +6795,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 94;
+        window.APP_BUILD = 95;
 
         (async function initApp() {
             try {
@@ -7326,7 +7363,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v94';
+const CACHE_NAME = 'rss-reader-v95';
 const APP_SHELL = [
     '/',
     'index.html'
