@@ -2360,7 +2360,14 @@
         }
         window.appDB = new RSSReaderDB();
 
-        // Helper: URL to Links — walks text nodes only, never touches attributes
+        // Helper: URL to Links - walks text nodes only, never touches attributes.
+        // SECURITY: linkify is NOT a sanitizer and its output is NOT safe to render
+        // raw. The tmp.innerHTML assignment below is on an inert <template> (its
+        // content is a detached fragment - scripts never run, nothing renders). Both
+        // callers neutralize input/output: the preview path passes esc()'d text, and
+        // the article-body path wraps the result in DOMPurify.sanitize() before it
+        // reaches a live innerHTML. Any NEW caller MUST keep that contract - esc() the
+        // input or DOMPurify the output before rendering, or it becomes a real XSS.
         function linkify(html) {
             const tmp = document.createElement('template');
             tmp.innerHTML = html;
@@ -2404,6 +2411,12 @@
         // Needed for RSS feeds that wrap titles/excerpts in CDATA — the XML parser does not
         // decode entities inside CDATA, so we end up with literal "&#8217;" text.
         // Loops up to 3 times to handle double-encoded values like "&amp;quot;" → "&quot;" → '"'.
+        // SECURITY: this is the standard, safe HTML-entity-decode idiom, NOT an XSS
+        // sink. _entityDecoder is a <textarea> whose content model is raw text only -
+        // the browser decodes entities (&amp; -> &, &#8217; -> ') but never executes
+        // scripts or renders markup placed in it, and the element is never inserted
+        // into the DOM. We read the decoded text back via .value. Do not "fix" this to
+        // textContent - that would break entity decoding, which is the whole purpose.
         const _entityDecoder = document.createElement('textarea');
         function decodeEntities(str) {
             if (!str || str.indexOf('&') === -1) return str;
@@ -6731,7 +6744,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 91;
+        window.APP_BUILD = 92;
 
         (async function initApp() {
             try {
@@ -7299,7 +7312,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v91';
+const CACHE_NAME = 'rss-reader-v92';
 const APP_SHELL = [
     '/',
     'index.html'
