@@ -276,17 +276,22 @@ try {
     & git diff --quiet HEAD -- "index.html" 2>$null
     $indexChanged = ($LASTEXITCODE -ne 0)
     if ($indexChanged -and (Test-Path $IndexPath)) {
-        $html = Get-Content $IndexPath -Raw
+        # CRITICAL: read as UTF-8 explicitly. Get-Content -Raw on Windows PowerShell
+        # reads using the system ANSI codepage (Windows-1252), which corrupts every
+        # multi-byte UTF-8 char (em-dashes, ✕/✓, arrows) on the way in — then the
+        # UTF-8 write below bakes the mojibake back to disk. Decoding the raw bytes as
+        # UTF-8 (matching the write) keeps the round-trip byte-clean.
+        $utf8 = New-Object System.Text.UTF8Encoding($false)
+        $html = $utf8.GetString([System.IO.File]::ReadAllBytes($IndexPath))
         $m = [regex]::Match($html, "rss-reader-v(\d+)")
         if ($m.Success) {
             $cur = [int]$m.Groups[1].Value
             $next = $cur + 1
-            # Bump CACHE_NAME (all occurrences are the same literal, but replace the
-            # canonical 'rss-reader-vNN' token) and APP_BUILD in one pass.
+            # Bump CACHE_NAME and APP_BUILD in one pass.
             $html = $html -replace "rss-reader-v$cur\b", "rss-reader-v$next"
             $html = $html -replace "(window\.APP_BUILD\s*=\s*)$cur\b", "`${1}$next"
-            # Write UTF-8 without BOM to keep the file byte-clean.
-            [System.IO.File]::WriteAllText($IndexPath, $html, (New-Object System.Text.UTF8Encoding($false)))
+            # Write UTF-8 without BOM, matching the read encoding above.
+            [System.IO.File]::WriteAllText($IndexPath, $html, $utf8)
             Write-Host "Auto-bumped cache version: v$cur -> v$next"
         }
         else {

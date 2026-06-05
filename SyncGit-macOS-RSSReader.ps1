@@ -170,14 +170,17 @@ try {
     & git diff --quiet HEAD -- "index.html" 2>$null
     $indexChanged = ($LASTEXITCODE -ne 0)
     if ($indexChanged -and (Test-Path $IndexPath)) {
-        $html = Get-Content $IndexPath -Raw
+        # Read+write as UTF-8 explicitly (never Get-Content -Raw, which uses the ANSI
+        # codepage and corrupts multi-byte chars). See Windows sync script for detail.
+        $utf8 = New-Object System.Text.UTF8Encoding($false)
+        $html = $utf8.GetString([System.IO.File]::ReadAllBytes($IndexPath))
         $m = [regex]::Match($html, "rss-reader-v(\d+)")
         if ($m.Success) {
             $cur = [int]$m.Groups[1].Value
             $next = $cur + 1
             $html = $html -replace "rss-reader-v$cur\b", "rss-reader-v$next"
             $html = $html -replace "(window\.APP_BUILD\s*=\s*)$cur\b", "`${1}$next"
-            [System.IO.File]::WriteAllText($IndexPath, $html, (New-Object System.Text.UTF8Encoding($false)))
+            [System.IO.File]::WriteAllText($IndexPath, $html, $utf8)
             Write-Host "Auto-bumped cache version: v$cur -> v$next"
         }
         else {
