@@ -4319,6 +4319,11 @@
                 if (a.feedUrl) unreadByUrl[a.feedUrl] = (unreadByUrl[a.feedUrl] || 0) + 1;
                 else unreadByName[a.source] = (unreadByName[a.source] || 0) + 1;
             });
+            // NOTE: this groups+unread pass is intentionally NOT cached. It computes
+            // each feed's LIVE unread count (changes on every read/scroll), which also
+            // feeds the renderKey guard below - so it must run fresh. window.feeds is
+            // small (dozens), so this is cheap; the expensive DOM rebuild further down
+            // IS guarded by _lastFeedRenderKey and skipped when nothing visible changed.
             const groups = {};
             window.feeds.forEach(f => {
                 const c = f.category || 'Uncategorized';
@@ -6118,6 +6123,10 @@ window.toggleUnreadManual = () => {
         // --- ARTICLE CACHE ---
         async function saveArticleCache() {
             // Keep the limit but increase it significantly (IndexedDB can handle thousands)
+            // NOTE: the leading .slice() is a REQUIRED defensive copy - .sort() mutates
+            // in place, and window.articles is the live global the timeline/navigation
+            // read. Do NOT "optimize" it away by sorting in place; that reorders the
+            // whole app's article list. The trailing .slice(0, 2000) caps history.
             const cache = window.articles
                 .slice()
                 .sort((a, b) => (b._ts || 0) - (a._ts || 0))
@@ -6744,7 +6753,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 92;
+        window.APP_BUILD = 93;
 
         (async function initApp() {
             try {
@@ -7312,7 +7321,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v92';
+const CACHE_NAME = 'rss-reader-v93';
 const APP_SHELL = [
     '/',
     'index.html'
