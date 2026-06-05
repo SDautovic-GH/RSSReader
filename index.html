@@ -3384,7 +3384,12 @@
                 filtered = filtered.filter(a => { const nt = normTitle(a.title); return !nt || exactWinners.has(a); });
 
                 // Pass 2: fuzzy cluster. Pre-tokenize, then for each article find the first earlier
-                // cluster head it matches. Pairwise within a sliding 24h window — cheap for normal feed sizes.
+                // cluster head it matches. Pairwise within a sliding 24h window - cheap for normal feed sizes.
+                // NOTE: tokenization MUST be eager here - buildDocFreq() below needs every
+                // document's tokens upfront to compute corpus-wide document frequency, and
+                // each tokens[i] is reused by index across the O(n*clusters) match loop.
+                // "Lazy" per-comparison tokenization would break buildDocFreq and re-tokenize
+                // the same title repeatedly (slower, not faster).
                 const tokens = filtered.map(a => dedupTokens(a.title));
                 const df = buildDocFreq(tokens);
                 const dates = filtered.map(a => {
@@ -6753,7 +6758,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 93;
+        window.APP_BUILD = 94;
 
         (async function initApp() {
             try {
@@ -7321,7 +7326,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v93';
+const CACHE_NAME = 'rss-reader-v94';
 const APP_SHELL = [
     '/',
     'index.html'
