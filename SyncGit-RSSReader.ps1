@@ -261,6 +261,39 @@ try {
         & git add --force -- $f.Name 2>$null
     }
 
+    # ============================================
+    # AUTO-BUMP service-worker cache version.
+    # The SW caches index.html stale-while-revalidate; if CACHE_NAME doesn't change
+    # when the file changes, returning users (esp. installed PWAs) keep serving the
+    # OLD page. Bumping by hand was error-prone and easy to forget. Here we detect an
+    # uncommitted change to index.html and auto-increment BOTH the SW cache key
+    # (CACHE_NAME = 'rss-reader-vNN') and the user-facing build stamp (APP_BUILD = NN)
+    # in lockstep, so the version can never lag the code again.
+    # ============================================
+    $IndexPath = Join-Path $RepoPath "index.html"
+    # Decide via diff-against-HEAD (working tree AND index), so the earlier force-add
+    # staging can't mask or fake a change. Non-zero exit from either diff = changed.
+    & git diff --quiet HEAD -- "index.html" 2>$null
+    $indexChanged = ($LASTEXITCODE -ne 0)
+    if ($indexChanged -and (Test-Path $IndexPath)) {
+        $html = Get-Content $IndexPath -Raw
+        $m = [regex]::Match($html, "rss-reader-v(\d+)")
+        if ($m.Success) {
+            $cur = [int]$m.Groups[1].Value
+            $next = $cur + 1
+            # Bump CACHE_NAME (all occurrences are the same literal, but replace the
+            # canonical 'rss-reader-vNN' token) and APP_BUILD in one pass.
+            $html = $html -replace "rss-reader-v$cur\b", "rss-reader-v$next"
+            $html = $html -replace "(window\.APP_BUILD\s*=\s*)$cur\b", "`${1}$next"
+            # Write UTF-8 without BOM to keep the file byte-clean.
+            [System.IO.File]::WriteAllText($IndexPath, $html, (New-Object System.Text.UTF8Encoding($false)))
+            Write-Host "Auto-bumped cache version: v$cur -> v$next"
+        }
+        else {
+            Write-Host "WARNING: index.html changed but no 'rss-reader-vNN' token found - cache NOT bumped."
+        }
+    }
+
     # Commit any local changes (now safely on top of latest origin)
     $needsPush = $false
     Invoke-GitChecked -Arguments @("add", "-A") -ActionDescription "Stage RSSReader changes"

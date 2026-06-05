@@ -163,6 +163,28 @@ try {
         & git add --force -- $f.FullName 2>$null
     }
 
+    # Auto-bump SW cache version when index.html changed (see Windows sync script
+    # for the full rationale). Keeps CACHE_NAME + APP_BUILD in lockstep so returning
+    # users never get served a stale page.
+    $IndexPath = Join-Path $RepoPath "index.html"
+    & git diff --quiet HEAD -- "index.html" 2>$null
+    $indexChanged = ($LASTEXITCODE -ne 0)
+    if ($indexChanged -and (Test-Path $IndexPath)) {
+        $html = Get-Content $IndexPath -Raw
+        $m = [regex]::Match($html, "rss-reader-v(\d+)")
+        if ($m.Success) {
+            $cur = [int]$m.Groups[1].Value
+            $next = $cur + 1
+            $html = $html -replace "rss-reader-v$cur\b", "rss-reader-v$next"
+            $html = $html -replace "(window\.APP_BUILD\s*=\s*)$cur\b", "`${1}$next"
+            [System.IO.File]::WriteAllText($IndexPath, $html, (New-Object System.Text.UTF8Encoding($false)))
+            Write-Host "Auto-bumped cache version: v$cur -> v$next"
+        }
+        else {
+            Write-Host "WARNING: index.html changed but no 'rss-reader-vNN' token found - cache NOT bumped."
+        }
+    }
+
     # Commit any local changes (now safely on top of latest origin)
     Invoke-GitChecked -Arguments @("add", "-A") -ActionDescription "Stage RSSReader changes"
     $postPullChanges = & git status --porcelain 2>$null
@@ -192,11 +214,13 @@ catch {
 Write-Section "Calculating repository size..."
 
 $WorkingSize = (Get-ChildItem $RepoPath -Recurse -File -Force | Measure-Object -Property Length -Sum).Sum
-$WorkingSizeMB = [math]::Round(($WorkingSize ?? 0) / 1MB, 2)
+if (-not $WorkingSize) { $WorkingSize = 0 }
+$WorkingSizeMB = [math]::Round($WorkingSize / 1MB, 2)
 
 $GitFolder = Join-Path $RepoPath ".git"
 $GitSize = (Get-ChildItem $GitFolder -Recurse -File -Force | Measure-Object -Property Length -Sum).Sum
-$GitSizeMB = [math]::Round(($GitSize ?? 0) / 1MB, 2)
+if (-not $GitSize) { $GitSize = 0 }
+$GitSizeMB = [math]::Round($GitSize / 1MB, 2)
 
 Write-Host "Repo Working Size : $WorkingSizeMB MB"
 Write-Host "Git History Size  : $GitSizeMB MB"
