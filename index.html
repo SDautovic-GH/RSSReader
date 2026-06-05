@@ -614,10 +614,24 @@
             border: 1px solid rgba(59,130,246,0.22);
             color: #4493f8;
         }
-        #ptr-hint-track svg {
+        #ptr-hint-track svg.ptr-hint-arrow {
             width: 22px;
             height: 22px;
         }
+        /* Spinner ring shown in place of the arrow while a refresh is running. */
+        #ptr-hint-track .ptr-hint-spinner {
+            display: none;
+            width: 22px;
+            height: 22px;
+            border: 2.5px solid rgba(59,130,246,0.3);
+            border-top-color: #4493f8;
+            border-radius: 50%;
+            animation: ptr-spin 0.7s linear infinite;
+        }
+        #ptr-hint.is-refreshing .ptr-hint-arrow { display: none; }
+        #ptr-hint.is-refreshing .ptr-hint-spinner { display: block; }
+        /* While refreshing, don't shrink on tap (it's busy, not pressable). */
+        #ptr-hint.is-refreshing:active #ptr-hint-track { transform: none; background: rgba(59,130,246,0.12); }
         /* ===== DESKTOP FLOATING ARTICLE NAV =====
            Positioned to sit just to the right of the reader content column
            (max-w-2xl = 42rem, left-anchored with lg:ml-8 + lg:p-6 padding),
@@ -1564,9 +1578,11 @@
                      native iOS/Android PTR slot. -->
                 <button id="ptr-hint" type="button" onclick="refreshAll()" aria-label="Refresh feeds" class="flex flex-col items-center justify-center gap-2 pt-5 pb-2 w-full select-none">
                     <span id="ptr-hint-track" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                        <!-- Down-arrow (idle) and spinner ring (refreshing) - CSS swaps them via .is-refreshing -->
+                        <svg class="ptr-hint-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                        <span class="ptr-hint-spinner"></span>
                     </span>
-                    <span class="text-[11px] font-medium text-gray-500">Tap or pull to refresh</span>
+                    <span id="ptr-hint-label" class="text-[11px] font-medium text-gray-500">Tap or pull to refresh</span>
                 </button>
             </div>
 
@@ -3766,29 +3782,22 @@
                 if (!_pt) return;
                 const wasReady = !_pt.cancelled && indicator.classList.contains('ptr-ready');
                 _pt = null;
-                indicator.classList.remove('ptr-ready');
+                // Retract the top pull indicator immediately. The in-progress feedback
+                // is the #ptr-hint arrow circle (below the folders) spinning - driven by
+                // runFullRefresh - so we don't pin/spin this top bar (it overlapped the
+                // logo header and duplicated the feedback).
+                indicator.style.top = '-56px';
+                indicator.classList.remove('ptr-visible', 'ptr-ready');
+                label.textContent = 'Pull to refresh';
                 if (wasReady && !_loading) {
                     _loading = true;
-                    // Keep the top indicator pinned + spinning as the SOLE feedback
-                    // during the fetch (no toast — the user asked for no notifications).
-                    indicator.style.top = '0px';
-                    indicator.classList.add('ptr-visible', 'ptr-loading');
-                    label.textContent = 'Refreshing...';
                     // Background semantics: one refreshUI() at the end instead of a
                     // per-feed render storm. maxItems capped on mobile to shrink the
                     // allocation burst. Routed through the shared in-flight guard so a
                     // concurrent auto-refresh/first-snapshot fetch can't stack on top.
                     window.runFullRefresh({ isBackground: true, maxItems: 15 }).then(() => {
                         _loading = false;
-                        indicator.style.top = '-56px';
-                        indicator.classList.remove('ptr-visible', 'ptr-loading');
-                        label.textContent = 'Pull to refresh';
                     });
-                } else {
-                    // Not a refresh (cancelled / didn't cross threshold) — just retract.
-                    indicator.style.top = '-56px';
-                    indicator.classList.remove('ptr-visible');
-                    label.textContent = 'Pull to refresh';
                 }
             };
             const cancel = () => {
@@ -4925,9 +4934,20 @@
         // serializes them: a second caller is dropped while one is active, and the
         // flag is always cleared in finally() so a hung/timed-out fetch can't wedge it.
         window._refreshInFlight = false;
+        // Toggle the Home/sidebar "Tap or pull to refresh" hint into its spinning state.
+        // The element the user actually touched (the arrow circle) becomes the spinner -
+        // no separate top bar, no logo collision.
+        const _setHintRefreshing = (on) => {
+            const hint = document.getElementById('ptr-hint');
+            const label = document.getElementById('ptr-hint-label');
+            if (!hint) return;
+            hint.classList.toggle('is-refreshing', on);
+            if (label) label.textContent = on ? 'Refreshing...' : 'Tap or pull to refresh';
+        };
         window.runFullRefresh = async (opts = {}) => {
             if (window._refreshInFlight) return false;
             window._refreshInFlight = true;
+            _setHintRefreshing(true);
             // If the timeline is currently showing an empty state, immediately swap it
             // to the "Refreshing feeds" spinner so the user sees the refresh took hold
             // (otherwise they stare at "All caught up" until articles arrive). Keyed so
@@ -4941,6 +4961,7 @@
                 return true;
             } finally {
                 window._refreshInFlight = false;
+                _setHintRefreshing(false);
                 // If we were showing the refreshing spinner and still have nothing to
                 // display, force one render so it returns to "All caught up" instead of
                 // spinning forever.
@@ -6802,7 +6823,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 97;
+        window.APP_BUILD = 98;
 
         (async function initApp() {
             try {
@@ -7370,7 +7391,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v97';
+const CACHE_NAME = 'rss-reader-v98';
 const APP_SHELL = [
     '/',
     'index.html'
