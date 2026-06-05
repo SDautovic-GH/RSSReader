@@ -4890,14 +4890,8 @@
         window.runFullRefresh = async (opts = {}) => {
             if (window._refreshInFlight) return false;
             window._refreshInFlight = true;
-            // TEMP perf instrumentation (Chrome only) — confirms the concurrency cap
-            // actually flattened the memory peak. Remove after on-device verification.
-            const _mem = () => (performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB' : 'n/a');
-            const _t0 = performance.now();
-            console.log(`[refresh] start heap=${_mem()} feeds=${(window.feeds||[]).length} bg=${!!opts.isBackground} cap=${opts.maxItems ?? 'none'}`);
             try {
                 await fetchAllStaggered(window.feeds, opts.maxItems ?? null, opts.isBackground ?? false);
-                console.log(`[refresh] done  heap=${_mem()} took=${Math.round(performance.now() - _t0)}ms`);
                 return true;
             } finally {
                 window._refreshInFlight = false;
@@ -6752,7 +6746,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 89;
+        window.APP_BUILD = 90;
 
         (async function initApp() {
             try {
@@ -7320,7 +7314,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v89';
+const CACHE_NAME = 'rss-reader-v90';
 const APP_SHELL = [
     '/',
     'index.html'
