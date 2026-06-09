@@ -4381,6 +4381,9 @@
             // skips the DOM re-render so the folder visually stays put.
             const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|')
                 + '||' + (window._categoryOrder || []).join(',');
+            // Always repaint the Settings feed list — it's driven by accountStates.local,
+            // which the renderKey guard below does not track.
+            renderLocalFeedList();
             if (renderKey === _lastFeedRenderKey) {
                 updateBadges();
                 return;
@@ -4456,33 +4459,41 @@
                 `;
             }).join('');
 
-            const localList = document.getElementById('local-feed-list');
-            if (localList) {
-                const feeds = window.accountStates.local || [];
-                if (feeds.length === 0) {
-                    localList.innerHTML = `<div class="text-center py-8 text-gray-400 text-[14px]">No feeds yet. Tap <span class="font-semibold text-blue-500">Add Feed</span> to get started.</div>`;
-                } else {
-                    localList.innerHTML = feeds.map((f) => {
-                        const sfId = escJs(f.id);
-                        return `
-                        <div class="feed-row">
-                            <div class="min-w-0 flex-1">
-                                <div class="feed-row-name truncate">${esc(f.name)}</div>
-                                <div class="feed-row-cat truncate">${esc(f.category || 'Uncategorized')}</div>
-                            </div>
-                            <div class="feed-row-actions">
-                                <button onclick="openEditFeedModal('${sfId}')" class="feed-row-action edit" title="Edit">
-                                    <svg class="w-4 h-4"><use href="#icon-pencil"/></svg>
-                                </button>
-                                <button onclick="removeLocalFeed('${sfId}')" class="feed-row-action remove" title="Remove">
-                                    <svg class="w-4 h-4"><use href="#icon-trash"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                    `}).join('');
-                }
-            }
             updateBadges();
+        }
+
+        // Renders the Settings > Feeds list (#local-feed-list) from
+        // window.accountStates.local. Kept separate from renderFeeds()'s sidebar
+        // render and called BEFORE its _lastFeedRenderKey early-return guard, because
+        // that guard is keyed only off window.feeds — adding/removing a local feed
+        // could otherwise short-circuit renderFeeds() before this list repaints,
+        // leaving a newly added feed invisible in Settings until reopen/reload.
+        function renderLocalFeedList() {
+            const localList = document.getElementById('local-feed-list');
+            if (!localList) return;
+            const feeds = window.accountStates.local || [];
+            if (feeds.length === 0) {
+                localList.innerHTML = `<div class="text-center py-8 text-gray-400 text-[14px]">No feeds yet. Tap <span class="font-semibold text-blue-500">Add Feed</span> to get started.</div>`;
+                return;
+            }
+            localList.innerHTML = feeds.map((f) => {
+                const sfId = escJs(f.id);
+                return `
+                <div class="feed-row">
+                    <div class="min-w-0 flex-1">
+                        <div class="feed-row-name truncate">${esc(f.name)}</div>
+                        <div class="feed-row-cat truncate">${esc(f.category || 'Uncategorized')}</div>
+                    </div>
+                    <div class="feed-row-actions">
+                        <button onclick="openEditFeedModal('${sfId}')" class="feed-row-action edit" title="Edit">
+                            <svg class="w-4 h-4"><use href="#icon-pencil"/></svg>
+                        </button>
+                        <button onclick="removeLocalFeed('${sfId}')" class="feed-row-action remove" title="Remove">
+                            <svg class="w-4 h-4"><use href="#icon-trash"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `}).join('');
         }
 
         window.setCategoryFilter = (cat) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
@@ -6823,7 +6834,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 98;
+        window.APP_BUILD = 99;
 
         (async function initApp() {
             try {
@@ -7391,7 +7402,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v98';
+const CACHE_NAME = 'rss-reader-v99';
 const APP_SHELL = [
     '/',
     'index.html'
