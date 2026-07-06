@@ -5792,10 +5792,16 @@ window.toggleUnreadManual = () => {
             const laterLabel = article?.readLater ? 'Remove from Read Later' : 'Add to Read Later';
             const savedLabel = (window.savedBucket && article?.link && window.savedBucket.has(article.link)) ? 'Unsave' : 'Save';
             const sid = escJs(id);
-            let items = `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
+            const divider = `<div class="my-1 border-t border-gray-200 dark:border-gray-700"></div>`;
+            // Order follows real usage frequency: Mark Above Read (most used) sits
+            // at the finger, then Read Later, then Save. Lower-frequency toggles
+            // (Mark Read/Unread, Mark Below Read) drop below a divider.
+            let items = '';
+            if (idx > 0)         items += `<button onclick="markAboveRead()" class="${btnClass}">Mark Above Read</button>`;
             items += `<button onclick="toggleArticleReadLater('${sid}')" class="${btnClass}">${laterLabel}</button>`;
             items += `<button onclick="toggleArticleSaved('${sid}')" class="${btnClass}">${savedLabel}</button>`;
-            if (idx > 0)         items += `<button onclick="markAboveRead()" class="${btnClass}">Mark Above Read</button>`;
+            items += divider;
+            items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
             const menu = document.getElementById('article-context-menu');
             menu.innerHTML = items;
@@ -6415,6 +6421,10 @@ window.toggleUnreadManual = () => {
             menu.classList.add('is-open');
             scrim.classList.add('is-open');
             window._mobArticlesMenuJustOpened = true;
+            // Clear any UA text selection the long-press may have started before
+            // our selectstart guard caught it, so the menu never floats over a
+            // "select all" highlight.
+            try { window.getSelection?.().removeAllRanges(); } catch (e) {}
             // Haptic feedback on supported platforms (iOS Safari ignores this,
             // but Android Chrome and most PWA wrappers honor it).
             if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
@@ -6449,6 +6459,12 @@ window.toggleUnreadManual = () => {
             btn.addEventListener('touchmove',  onMove,  { passive: true });
             btn.addEventListener('touchend',   cancel,  { passive: true });
             btn.addEventListener('touchcancel', cancel, { passive: true });
+            // Kill the native "select all in nearest block" that some engines
+            // start on long-press before user-select:none resolves. Scoped to
+            // the whole tab bar so no bottom-bar button can ever start a
+            // selection; the CSS user-select:none stays as the primary guard.
+            const bar = document.getElementById('mobile-tab-bar') || btn;
+            bar.addEventListener('selectstart', (e) => e.preventDefault());
             // Desktop testing convenience: right-click also opens the menu.
             btn.addEventListener('contextmenu', (e) => { e.preventDefault(); window.openArticlesMenu(); });
         })();
@@ -6834,7 +6850,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 100;
+        window.APP_BUILD = 101;
 
         (async function initApp() {
             try {
@@ -7402,7 +7418,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v100';
+const CACHE_NAME = 'rss-reader-v101';
 const APP_SHELL = [
     '/',
     'index.html'
