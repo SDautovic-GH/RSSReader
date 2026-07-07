@@ -426,22 +426,6 @@
         .feed-stale::after { background: #f59e0b; }
         .feed-error::after { background: #ef4444; }
 
-        /* Top Stories coverage badge — "N feeds" pill showing how many of the user's
-           own feeds ran the story. Compact, brand-blue, flex-shrink-proof. */
-        .cover-badge {
-            flex-shrink: 0;
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
-            padding: 1px 6px;
-            border-radius: 999px;
-            color: #2563eb;
-            background: rgba(37, 99, 235, 0.14);
-            white-space: nowrap;
-        }
-        .dark .cover-badge { color: #93b4f8; background: rgba(59, 130, 246, 0.18); }
-
         /* Empty smart feed (Read Later / Saved with 0 items) — dimmed so it doesn't
            compete visually with a populated one. Hover restores full opacity. */
         .smart-feed-btn.smart-empty { opacity: 0.45; }
@@ -1592,10 +1576,6 @@
             <div class="flex-1 overflow-y-auto p-3 no-scrollbar space-y-3">
                 <!-- Smart Feeds card -->
                 <div id="smart-feeds-card" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
-                    <button id="feed-btn-top" onclick="setSmartFeed('top')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8"/><path d="M21 8v5h-5"/></svg> Top Stories</span>
-                        <span id="badge-top" class="feed-badge text-blue-400 hidden">0</span>
-                    </button>
                     <button id="feed-btn-all" onclick="setSmartFeed('all')" oncontextmenu="showFolderContextMenu(event,'smart','all')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 active-item">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> Unread</span>
                         <span id="badge-all" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
@@ -2725,70 +2705,6 @@
             }
         }
 
-        // --- TOP STORIES ---
-        // Surfaces UNREAD articles that broke across MULTIPLE of the user's own feeds
-        // in the last 24h, ranked by how many distinct feeds covered the story. This is
-        // an "importance by your-own-consensus" signal — deliberately independent of the
-        // memeorandum source rank (which is US-politics-biased) and of the dedup DISPLAY
-        // toggle. It runs its own clustering over the unread pool so it works regardless
-        // of whether the user has dedup filtering on.
-        //   minSources: a story must appear in at least this many distinct feeds to qualify.
-        // Returns an array of the surviving (best) article per qualifying cluster, each
-        // stamped with _clusterSize (distinct-source count), sorted by size desc then recency.
-        window.computeTopStories = (minSources = 2) => {
-            const now = Date.now();
-            const WINDOW = _DEDUP_WINDOW_MS;
-            // Unread + within window. Guard bad timestamps to "now" so undated items
-            // still cluster (same fallback the dedup pass uses).
-            const pool = (window.articles || []).filter(a => {
-                if (!a.unread) return false;
-                const t = a.timestamp ? Date.parse(a.timestamp) : NaN;
-                const ts = Number.isFinite(t) ? t : now;
-                return (now - ts) <= WINDOW;
-            });
-            if (pool.length === 0) return [];
-
-            const tokens = pool.map(a => dedupTokens(a.title));
-            const df = buildDocFreq(tokens);
-            const dates = pool.map(a => {
-                const t = a.timestamp ? Date.parse(a.timestamp) : NaN;
-                return Number.isFinite(t) ? t : now;
-            });
-            const clusters = []; // { headIdx, memberIdxs: [] }
-            for (let i = 0; i < pool.length; i++) {
-                if (!tokens[i].all.size) continue;
-                let matched = -1;
-                for (let c = clusters.length - 1; c >= 0; c--) {
-                    const headIdx = clusters[c].headIdx;
-                    if (Math.abs(dates[i] - dates[headIdx]) > WINDOW) break;
-                    if (isSameStory(tokens[i], tokens[headIdx], dates[i], dates[headIdx], df)) { matched = c; break; }
-                }
-                if (matched === -1) clusters.push({ headIdx: i, memberIdxs: [i] });
-                else clusters[matched].memberIdxs.push(i);
-            }
-
-            const out = [];
-            for (const cl of clusters) {
-                const distinct = new Set(cl.memberIdxs.map(mi => pool[mi].source));
-                if (distinct.size < minSources) continue;
-                // Winner within the cluster: lowest source rank, ties -> newest.
-                let bestI = cl.memberIdxs[0];
-                let bestRank = getSourceRank(pool[bestI]);
-                let bestDate = dates[bestI];
-                for (let k = 1; k < cl.memberIdxs.length; k++) {
-                    const j = cl.memberIdxs[k];
-                    const r = getSourceRank(pool[j]);
-                    if (r < bestRank || (r === bestRank && dates[j] > bestDate)) { bestI = j; bestRank = r; bestDate = dates[j]; }
-                }
-                const winner = pool[bestI];
-                winner._clusterSize = distinct.size;
-                out.push(winner);
-            }
-            out.sort((a, b) => (b._clusterSize - a._clusterSize)
-                || ((b._ts || Date.parse(b.timestamp) || 0) - (a._ts || Date.parse(a.timestamp) || 0)));
-            return out;
-        };
-
         window.toggleDedupByTitle = () => {
             window._dedupByTitle = !window._dedupByTitle;
             const btn = document.getElementById('dedup-title-toggle');
@@ -3255,15 +3171,10 @@
             const isReadLater = window.currentSmartFeed === 'read-later';
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             const isSaved = window.currentSmartFeed === 'saved';
-            const isTop = window.currentSmartFeed === 'top';
             let headline, subtext, showRefresh = true;
             if (!hasFeeds) {
                 headline = 'No feeds yet';
                 subtext = 'Add your first feed from Settings → Feeds to get started.';
-                showRefresh = false;
-            } else if (isTop) {
-                headline = 'No top stories yet';
-                subtext = 'Stories that break across two or more of your feeds in the last 24 hours show up here, ranked by how widely they were covered.';
                 showRefresh = false;
             } else if (isSaved) {
                 headline = 'Nothing saved yet';
@@ -3409,7 +3320,6 @@
             const list = document.getElementById('article-list');
             if (!list) return;
 
-            const isTop = window.currentSmartFeed === 'top';
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             const isSaved = window.currentSmartFeed === 'saved';
             // Read Later sources from the durable bucket when it's populated so
@@ -3421,17 +3331,11 @@
                 ? 'desc'
                 : (document.getElementById('pref-sort-order')?.value || 'asc');
 
-            let filtered = isTop
-                ? window.computeTopStories(2)
-                : (isRecentlyRead
-                    ? (window._recentlyReadArticles || [])
-                    : (isSaved ? (window._savedArticles || [])
-                        : (isReadLaterBucketed ? (window._readLaterArticles || []) : window.articles)));
+            let filtered = isRecentlyRead
+                ? (window._recentlyReadArticles || [])
+                : (isSaved ? (window._savedArticles || [])
+                    : (isReadLaterBucketed ? (window._readLaterArticles || []) : window.articles));
 
-            // Top Stories arrives pre-clustered, pre-ranked, and pre-sorted from
-            // computeTopStories(); skip the normal search/filter/sort/dedup pipeline
-            // (it would re-sort by recency and re-run dedup over an already-deduped set).
-            if (!isTop) {
             // If searching, scan title/source/excerpt across the chosen scope.
             // Scope and read-state pre-filter the pool; then the query string
             // narrows it. Even an empty query string with non-default scope
@@ -3576,7 +3480,7 @@
                 // Pick a winner per cluster: lowest Memeorandum rank wins; ties (and unranked) → newest.
                 const keepIdx = new Set();
                 for (const cl of clusters) {
-                    if (cl.memberIdxs.length === 1) { filtered[cl.memberIdxs[0]]._clusterSize = 1; keepIdx.add(cl.memberIdxs[0]); continue; }
+                    if (cl.memberIdxs.length === 1) { keepIdx.add(cl.memberIdxs[0]); continue; }
                     let bestI = cl.memberIdxs[0];
                     let bestRank = getSourceRank(filtered[bestI]);
                     let bestDate = dates[bestI];
@@ -3587,11 +3491,6 @@
                             bestI = j; bestRank = r; bestDate = dates[j];
                         }
                     }
-                    // Stamp coverage count on the survivor so the Top Stories feed
-                    // and its "N feeds" badge can read it. Count DISTINCT sources,
-                    // not raw members, so one feed posting twice doesn't inflate it.
-                    const distinctSources = new Set(cl.memberIdxs.map(mi => filtered[mi].source));
-                    filtered[bestI]._clusterSize = distinctSources.size;
                     keepIdx.add(bestI);
                 }
                 filtered = filtered.filter((_, i) => !tokens[i].all.size || keepIdx.has(i));
@@ -3606,14 +3505,6 @@
                 } else {
                     dedupBadge.classList.add('hidden');
                 }
-            }
-            } // end if(!isTop)
-
-            // Top Stories: reflect the coverage badge on the timeline header instead
-            // of the DEDUPED pill (which doesn't apply to a pre-deduped set).
-            if (isTop) {
-                const dedupBadge = document.getElementById('dedup-badge');
-                if (dedupBadge) dedupBadge.classList.add('hidden');
             }
             window.currentTimeline = filtered;
             if (!window._navigating) window._navSnapshot = filtered.slice();
@@ -3685,12 +3576,6 @@
 
             const saId = escJs(a.id);
 
-            // Coverage badge — only in the Top Stories feed, only for multi-source
-            // stories. Shows how many distinct feeds ran the story.
-            const coverBadge = (window.currentSmartFeed === 'top' && a._clusterSize >= 2)
-                ? `<span class="cover-badge">${a._clusterSize} feeds</span>`
-                : '';
-
             if (window._viewMode === 'card') {
                 return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
                     <div class="swipe-hint swipe-hint-left"><span>&#x2713; Mark Read</span></div>
@@ -3700,7 +3585,6 @@
                         <div class="flex items-center text-[10px] mb-1">
                             ${a.unread ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>' : ''}
                             ${favicon}<span class="font-bold uppercase truncate text-blue-400 dark:text-blue-300">${esc(a.source)}</span>
-                            ${coverBadge}
                             <span class="ml-auto flex-shrink-0 text-gray-500 dark:text-gray-500">${getRelativeTime(a.timestamp)}</span>
                         </div>
                         <h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${esc(a.title)}</h3>
@@ -3725,7 +3609,6 @@
                     <div class="flex items-center justify-between mb-1.5 gap-2">
                         ${a.unread ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
                         <span class="list-source-label font-bold text-blue-400 dark:text-blue-300 uppercase truncate mr-2 flex-1 min-w-0">${favicon}${esc(sourceLabel)}</span>
-                        ${coverBadge}
                         <span class="list-date-label text-[11px] text-gray-500 dark:text-gray-500 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                     </div>
                     ${titleHtml}
@@ -4865,34 +4748,8 @@
             if (btnReadLater) btnReadLater.classList.toggle('smart-empty', readLaterCount === 0);
             if (btnSaved) btnSaved.classList.toggle('smart-empty', savedCount === 0);
 
-            updateTopBadge(allUnread);
-
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
             updateHeaderStatus();
-        }
-
-        // Top Stories count for the sidebar badge. computeTopStories() runs a clustering
-        // pass, and updateBadges() fires often (every read/scroll), so memoize on a cheap
-        // signature: the unread set can only change the top set if its count or its newest
-        // item's timestamp changes. Also dims the button when there are no top stories.
-        let _topBadgeMemo = { sig: null, count: 0 };
-        function updateTopBadge(allUnread) {
-            const badge = document.getElementById('badge-top');
-            const btn = document.getElementById('feed-btn-top');
-            if (!badge && !btn) return;
-            let newest = 0;
-            for (const a of window.articles) {
-                if (!a.unread) continue;
-                const t = a._ts || Date.parse(a.timestamp) || 0;
-                if (t > newest) newest = t;
-            }
-            const sig = `${allUnread}:${newest}`;
-            if (sig !== _topBadgeMemo.sig) {
-                _topBadgeMemo = { sig, count: window.computeTopStories(2).length };
-            }
-            const count = _topBadgeMemo.count;
-            if (badge) { badge.textContent = count; badge.classList.toggle('hidden', count === 0); }
-            if (btn) btn.classList.toggle('smart-empty', count === 0);
         }
 
         // --- HEADER LIVE STATUS LINE ---
