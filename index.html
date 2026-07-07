@@ -4749,7 +4749,7 @@
             if (btnSaved) btnSaved.classList.toggle('smart-empty', savedCount === 0);
 
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
-            updateHeaderStatus(allUnread);
+            updateHeaderStatus();
         }
 
         // --- HEADER LIVE STATUS LINE ---
@@ -4768,15 +4768,13 @@
             const d = Math.round(h / 24);
             return `${d}d ago`;
         }
-        window.updateHeaderStatus = (allUnread) => {
+        window.updateHeaderStatus = () => {
             const el = document.getElementById('header-status');
             if (!el) return;
-            if (typeof allUnread !== 'number') {
-                allUnread = (window.articles || []).filter(a => a.unread).length;
-            }
+            // Unread count lives in the Unread smart feed — don't duplicate it here.
+            // The header's job is the freshness signal nothing else shows.
             const rel = formatRelativeTime(window._lastRefreshAt);
-            const unreadPart = allUnread > 0 ? `${allUnread} unread` : 'All read';
-            el.textContent = rel ? `${unreadPart} · updated ${rel}` : unreadPart;
+            el.textContent = rel ? `Updated ${rel}` : '';
         };
         // Tick the relative time so "just now" ages to "1m ago" without a refresh.
         setInterval(() => { if (window._lastRefreshAt) window.updateHeaderStatus(); }, 60000);
@@ -6931,7 +6929,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 102;
+        window.APP_BUILD = 103;
 
         (async function initApp() {
             try {
@@ -7501,7 +7499,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v102';
+const CACHE_NAME = 'rss-reader-v103';
 const APP_SHELL = [
     '/',
     'index.html'
