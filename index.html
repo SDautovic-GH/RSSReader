@@ -426,6 +426,22 @@
         .feed-stale::after { background: #f59e0b; }
         .feed-error::after { background: #ef4444; }
 
+        /* Empty smart feed (Read Later / Saved with 0 items) — dimmed so it doesn't
+           compete visually with a populated one. Hover restores full opacity. */
+        .smart-feed-btn.smart-empty { opacity: 0.45; }
+        .smart-feed-btn.smart-empty:hover { opacity: 0.75; }
+
+        /* Rolled-up folder health dot: a collapsed category whose feed is failing
+           shows a small dot on the header so you don't have to expand to notice. */
+        .cat-health-dot {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .cat-health-dot.is-error { background: #ef4444; }
+        .cat-health-dot.is-stale { background: #f59e0b; }
+
 
         /* Card view */
         #article-list.card-view .article-card {
@@ -1533,11 +1549,16 @@
                 <span id="ptr-label">Pull to refresh</span>
             </div>
             <div id="sidebar-header" class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <div class="flex items-center space-x-2">
-                    <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm">
+                <div class="flex items-center space-x-2 min-w-0">
+                    <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm flex-shrink-0">
                         <svg class="w-[22px] h-[22px]"><use href="#icon-rss"/></svg>
                     </div>
-                    <h1 class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
+                    <div class="flex flex-col min-w-0 leading-none">
+                        <h1 class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
+                        <!-- Live status: unread total + last-updated relative time. Populated by
+                             updateHeaderStatus() on every updateBadges() and refresh completion. -->
+                        <span id="header-status" class="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap truncate mt-0.5"></span>
+                    </div>
                 </div>
                 <div class="flex space-x-1">
                     <button id="header-refresh-btn" onclick="refreshAll()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Refresh Feeds">
@@ -4379,7 +4400,11 @@
             // Include category order — without it, reordering folders updates
             // _categoryOrder but produces an identical key, and the early-return
             // skips the DOM re-render so the folder visually stays put.
-            const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|')
+            const renderKey = window.feeds.map(f => {
+                    const h = window._feedHealth[f.url];
+                    const hk = h ? `${h.errorCount >= 3 ? 'e' : ''}${h.lastSuccess && (Date.now() - h.lastSuccess > 7 * 86400000) ? 's' : ''}` : '';
+                    return `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}:${hk}`;
+                }).join('|')
                 + '||' + (window._categoryOrder || []).join(',');
             // Always repaint the Settings feed list — it's driven by accountStates.local,
             // which the renderKey guard below does not track.
@@ -4401,6 +4426,19 @@
                 if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = true;
                 const isCollapsed = window.collapsedCategories[cat];
                 const formattedCat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+
+                // Roll feed health up to the folder header so a failing feed is visible
+                // even while the folder is collapsed. Error (>=3 fails) wins over stale.
+                let folderHealth = '';
+                for (const f of feeds) {
+                    const h = window._feedHealth[f.url];
+                    if (!h) continue;
+                    if (h.errorCount >= 3) { folderHealth = 'is-error'; break; }
+                    if (h.lastSuccess && (Date.now() - h.lastSuccess > 7 * 86400000)) folderHealth = 'is-stale';
+                }
+                const healthDot = folderHealth
+                    ? `<span class="cat-health-dot ${folderHealth}" title="${folderHealth === 'is-error' ? 'A feed in this folder is failing' : 'A feed in this folder is stale'}"></span>`
+                    : '';
 
                 // Security: ensure 'cat' is safe for use in event handlers (e.g. escaping single quotes)
                 const sCat = escJs(cat);
@@ -4424,6 +4462,7 @@
                                 <span>${esc(formattedCat)}</span>
                             </button>
                             <div class="flex items-center space-x-2 flex-shrink-0">
+                                ${healthDot}
                                 ${total > 0 ? `<span class="mob-unread-count text-blue-500 dark:text-blue-400">${total}</span>` : ''}
                             </div>
                         </div>
@@ -4700,8 +4739,47 @@
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
 
+            // Dim empty Read Later / Saved smart feeds (always-visible, unlike category
+            // folders which hide when read). History is a rolling window — never dimmed.
+            const savedCount = (window.savedBucket && typeof window.savedBucket.list === 'function')
+                ? window.savedBucket.list().length : 0;
+            const btnReadLater = document.getElementById('feed-btn-read-later');
+            const btnSaved = document.getElementById('feed-btn-saved');
+            if (btnReadLater) btnReadLater.classList.toggle('smart-empty', readLaterCount === 0);
+            if (btnSaved) btnSaved.classList.toggle('smart-empty', savedCount === 0);
+
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
+            updateHeaderStatus(allUnread);
         }
+
+        // --- HEADER LIVE STATUS LINE ---
+        // Compact "N unread · updated 3m ago" subtitle under the RSS Reader title.
+        // Reuses the unread total updateBadges() already computed; the timestamp is
+        // window._lastRefreshAt, set when runFullRefresh() completes.
+        function formatRelativeTime(ts) {
+            if (!ts) return null;
+            const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+            if (s < 45)   return 'just now';
+            if (s < 90)   return '1m ago';
+            const m = Math.round(s / 60);
+            if (m < 60)   return `${m}m ago`;
+            const h = Math.round(m / 60);
+            if (h < 24)   return `${h}h ago`;
+            const d = Math.round(h / 24);
+            return `${d}d ago`;
+        }
+        window.updateHeaderStatus = (allUnread) => {
+            const el = document.getElementById('header-status');
+            if (!el) return;
+            if (typeof allUnread !== 'number') {
+                allUnread = (window.articles || []).filter(a => a.unread).length;
+            }
+            const rel = formatRelativeTime(window._lastRefreshAt);
+            const unreadPart = allUnread > 0 ? `${allUnread} unread` : 'All read';
+            el.textContent = rel ? `${unreadPart} · updated ${rel}` : unreadPart;
+        };
+        // Tick the relative time so "just now" ages to "1m ago" without a refresh.
+        setInterval(() => { if (window._lastRefreshAt) window.updateHeaderStatus(); }, 60000);
 
         // --- OPML & FEED CONFIG ---
         window.importSubscriptions = async (event) => {
@@ -4972,6 +5050,9 @@
                 return true;
             } finally {
                 window._refreshInFlight = false;
+                // Stamp last-updated for the header status line, then refresh it.
+                window._lastRefreshAt = Date.now();
+                window.updateHeaderStatus?.();
                 _setHintRefreshing(false);
                 // If we were showing the refreshing spinner and still have nothing to
                 // display, force one render so it returns to "All caught up" instead of
@@ -6850,7 +6931,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 101;
+        window.APP_BUILD = 102;
 
         (async function initApp() {
             try {
@@ -7256,6 +7337,8 @@ window.toggleUnreadManual = () => {
                     window.setSmartFeed('saved');
                 }
                 if (typeof window.updateActionButton === 'function') window.updateActionButton();
+                // Keep the empty-Saved dim state in sync when items are saved/unsaved.
+                if (typeof updateBadges === 'function') updateBadges();
             };
             document.addEventListener('savedBucket:change', onSavedChange);
             document.addEventListener('savedBucket:ready', onSavedChange);
@@ -7418,7 +7501,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v101';
+const CACHE_NAME = 'rss-reader-v102';
 const APP_SHELL = [
     '/',
     'index.html'
