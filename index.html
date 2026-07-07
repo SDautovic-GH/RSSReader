@@ -2175,9 +2175,9 @@
 
     <!-- FOLDER CONTEXT MENU -->
     <div id="folder-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-base">
-        <button onclick="markFolderRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
-        <button onclick="renameFolderFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Rename</button>
-        <button onclick="deleteFolderFromContext()" class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete Folder & Feeds</button>
+        <button id="fc-mark-read" onclick="markFolderRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
+        <button id="fc-rename" onclick="renameFolderFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Rename</button>
+        <button id="fc-delete" onclick="deleteFolderFromContext()" class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete Folder &amp; Feeds</button>
     </div>
 
     <!-- FEED CONTEXT MENU -->
@@ -6108,6 +6108,26 @@ window.toggleUnreadManual = () => {
             window.folderContextType = type;
             window.folderContextKey = key;
             const menu = document.getElementById('folder-context-menu');
+
+            // Show only the actions that apply to what was long-pressed:
+            //  - category folder: Mark All Read, Rename, Delete
+            //  - 'all' (Unread) smart feed: Mark All Read only (no per-folder
+            //    rename/delete). Note: "Mark All Unread" is deliberately absent —
+            //    the default view shows only unread items and markFolderRead()
+            //    archives them, so a bulk un-read has no coherent target.
+            //  - other smart feeds (Read Later / Saved / History): nothing applies,
+            //    so the menu has nothing to offer -> don't open.
+            const isCategory = (type === 'category');
+            const isAllUnread = (type === 'smart' && key === 'all');
+            const show = (id, on) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('hidden', !on);
+            };
+            show('fc-mark-read', isCategory || isAllUnread);
+            show('fc-rename',    isCategory);
+            show('fc-delete',    isCategory);
+            if (!isCategory && !isAllUnread) return; // nothing to show
+
             menu.classList.remove('hidden');
             menu.style.top = `${e.pageY}px`;
             menu.style.left = `${e.pageX}px`;
@@ -6929,7 +6949,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 103;
+        window.APP_BUILD = 104;
 
         (async function initApp() {
             try {
@@ -7499,7 +7519,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v103';
+const CACHE_NAME = 'rss-reader-v104';
 const APP_SHELL = [
     '/',
     'index.html'
