@@ -2228,6 +2228,24 @@
         window._pinnedArticleIds = new Set();
 
         window._feedHealth = {};
+        // Restore the persisted 'slow' set so the very FIRST refresh of a session already
+        // orders known-slow feeds last (health is otherwise in-memory and would reset each
+        // load, re-stalling the first refresh). Only the slow flag is persisted — errorCount
+        // and lastSuccess are session-scoped and recomputed live.
+        (function restoreFeedHealth() {
+            try {
+                const slowUrls = JSON.parse(localStorage.getItem('newsreader_slow_feeds') || '[]');
+                if (Array.isArray(slowUrls)) {
+                    for (const url of slowUrls) window._feedHealth[url] = { lastSuccess: null, errorCount: 0, slow: true };
+                }
+            } catch(e) { console.warn('restoreFeedHealth:', e.message); }
+        })();
+        window._persistFeedHealth = () => {
+            try {
+                const slowUrls = Object.keys(window._feedHealth).filter(u => window._feedHealth[u] && window._feedHealth[u].slow);
+                localStorage.setItem('newsreader_slow_feeds', JSON.stringify(slowUrls));
+            } catch(e) { console.warn('persistFeedHealth:', e.message); }
+        };
         window._viewMode = 'list';
         window._ttsActive = false;
         window._categoryOrder = [];
@@ -2528,6 +2546,11 @@
             try { fetch(PRIMARY_PROXY_ORIGIN + '/', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch(e) {}
         })();
 
+        // Returns { text, proxyIndex } on success (proxyIndex = which proxy in PROXIES
+        // won, 0 = primary), or { text: null, proxyIndex: -1 } if all failed. The
+        // proxyIndex lets the caller mark a feed "slow" when it needed a fallback, so
+        // the self-healing queue can push chronically-slow feeds to the back and stop
+        // them stalling the healthy first wave (see fetchAllStaggered).
         async function fetchWithProxyFallback(feedUrl) {
             for (let i = 0; i < PROXIES.length; i++) {
                 const proxyFn = PROXIES[i];
@@ -2548,12 +2571,12 @@
                     }
                     if (!xmlText) continue;
                     const trimmed = xmlText.trim().replace(/^\uFEFF/, '');
-                    if (trimmed.startsWith('<')) return trimmed;
+                    if (trimmed.startsWith('<')) return { text: trimmed, proxyIndex: i };
                 } catch(e) {
                     console.warn(`Proxy failed [${proxyFn(feedUrl).split('?')[0]}]:`, e.message);
                 }
             }
-            return null;
+            return { text: null, proxyIndex: -1 };
         }
 
         // --- TITLE DEDUPLICATION ---
@@ -2943,7 +2966,7 @@
                 // fall through to RSS on failure
             }
             try {
-                const xmlText = await fetchWithProxyFallback(feedUrl);
+                const { text: xmlText, proxyIndex } = await fetchWithProxyFallback(feedUrl);
                 if (!xmlText) throw new Error('All proxies failed');
 
                 const parser = new DOMParser();
@@ -2957,7 +2980,16 @@
 
                 if (entries.length === 0) throw new Error('No items');
 
-                window._feedHealth[feedUrl] = { lastSuccess: Date.now(), errorCount: 0 };
+                // Preserve any prior 'slow' flag, then update it: a feed that had to fall
+                // back past the primary proxy (proxyIndex > 0) is chronically slow — the
+                // primary is blocked/stubbed for it (e.g. Cloudflare bot protection), so the
+                // fetch ate a fallback timeout. fetchAllStaggered pushes such feeds to the
+                // back of the queue so they never stall the healthy first wave.
+                window._feedHealth[feedUrl] = {
+                    lastSuccess: Date.now(),
+                    errorCount: 0,
+                    slow: proxyIndex > 0,
+                };
                 const feedObj = window.feeds.find(f => f.url === feedUrl);
                 // Load favicon from local cache first
                 if (feedObj && !feedObj.favicon) {
@@ -3107,6 +3139,9 @@
                 console.warn(`Feed fetch failed [${sourceName}]:`, e.message);
                 if (!window._feedHealth[feedUrl]) window._feedHealth[feedUrl] = { lastSuccess: null, errorCount: 0 };
                 window._feedHealth[feedUrl].errorCount = (window._feedHealth[feedUrl].errorCount || 0) + 1;
+                // A feed that failed all proxies (or timed out) is slow — send it to the
+                // back of the queue next refresh so it can't stall the healthy feeds.
+                window._feedHealth[feedUrl].slow = true;
             }
         }
 
@@ -4981,7 +5016,18 @@
             // which spikes renderer memory and OOM-crashes the tab on mobile when the
             // feed list is large. Capping concurrency keeps the peak flat regardless
             // of feed count, at the cost of a slightly longer (but smoother) refresh.
-            const list = (feeds || []).slice();
+            // Self-healing order: feeds previously flagged 'slow' (primary proxy blocked,
+            // or all proxies failed/timed out — e.g. Cloudflare-protected feeds) go to the
+            // BACK of the queue. The healthy majority then fills the first wave and completes
+            // fast; a known-slow feed can only stall a worker after the good feeds are done,
+            // so it no longer creates the mid-refresh pause. Order within each group is
+            // preserved. First run (no health data yet) leaves order unchanged.
+            const all = (feeds || []).slice();
+            const fast = [], slow = [];
+            for (const f of all) {
+                (window._feedHealth[f.url] && window._feedHealth[f.url].slow ? slow : fast).push(f);
+            }
+            const list = fast.concat(slow);
             const CONCURRENCY = isMobile() ? 3 : 6;
             let next = 0;
 
@@ -5005,6 +5051,9 @@
             // Coalesced cache write — one heavy IDB serialize for the whole batch
             // instead of one per feed (see fetchRecentArticles).
             await saveArticleCache();
+
+            // Persist the slow-feed set so next session's first refresh is already ordered.
+            window._persistFeedHealth?.();
 
             // Background fetches don't trigger a full timeline/sidebar refresh per-feed
             // (only the visible source filter re-renders inside fetchRecentArticles).
@@ -6949,7 +6998,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 105;
+        window.APP_BUILD = 106;
 
         (async function initApp() {
             try {
@@ -7519,7 +7568,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v105';
+const CACHE_NAME = 'rss-reader-v106';
 const APP_SHELL = [
     '/',
     'index.html'
