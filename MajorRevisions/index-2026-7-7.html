@@ -756,6 +756,16 @@
             -webkit-user-select: none !important;
             user-select: none !important;
         }
+        /* While a tab long-press is in flight, iOS Safari would otherwise root
+           its selection loupe on the article block BEHIND the bar. Freeze
+           selection page-wide for the duration of the hold; the JS removes this
+           class ~350ms after touchend so article text stays copyable normally. */
+        body.tabbar-longpress,
+        body.tabbar-longpress * {
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
         #mobile-tab-bar .tab-btn .tab-ico { width: 22px; height: 22px; display: block; stroke: currentColor; color: inherit; }
         #mobile-tab-bar .tab-btn .tab-label {
             font-size: 11px;
@@ -6571,8 +6581,12 @@ window.toggleUnreadManual = () => {
             window._mobArticlesMenuJustOpened = true;
             // Clear any UA text selection the long-press may have started before
             // our selectstart guard caught it, so the menu never floats over a
-            // "select all" highlight.
-            try { window.getSelection?.().removeAllRanges(); } catch (e) {}
+            // "select all" highlight. Chrome extends the selection asynchronously
+            // after the long-press concludes, so clear now AND on the next couple
+            // of frames to catch the late extension.
+            const clearSel = () => { try { window.getSelection?.().removeAllRanges(); } catch (e) {} };
+            clearSel();
+            requestAnimationFrame(() => { clearSel(); requestAnimationFrame(clearSel); });
             // Haptic feedback on supported platforms (iOS Safari ignores this,
             // but Android Chrome and most PWA wrappers honor it).
             if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
@@ -6588,31 +6602,80 @@ window.toggleUnreadManual = () => {
             if (!btn) return;
             let timer = null;
             let startX = 0, startY = 0;
-            const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+            // True from touchstart on the tab until a short grace period after
+            // touchend. Android Chrome starts the page "select all" gesture at
+            // the DOCUMENT level (not on the bar) AFTER the long-press fires, so
+            // a bar-scoped selectstart guard never sees it. While this flag is
+            // up we swallow selectstart everywhere, so no long-press on the tab
+            // can ever start a selection on the article list behind the bar.
+            // Normal taps elsewhere leave the flag down, so article text stays
+            // selectable/copyable.
+            let suppressing = false;
+            let releaseTimer = null;
+            const armSuppress = () => {
+                suppressing = true;
+                document.body.classList.add('tabbar-longpress');
+                if (releaseTimer) { clearTimeout(releaseTimer); releaseTimer = null; }
+            };
+            const disarmSuppress = () => {
+                // Keep suppressing briefly after release — Chrome extends the
+                // selection on the touchend/up that concludes the long-press,
+                // and iOS settles its gesture state a beat late too.
+                if (releaseTimer) clearTimeout(releaseTimer);
+                releaseTimer = setTimeout(() => {
+                    suppressing = false;
+                    document.body.classList.remove('tabbar-longpress');
+                    releaseTimer = null;
+                }, 350);
+            };
+            const cancel = () => {
+                if (timer) { clearTimeout(timer); timer = null; }
+                disarmSuppress();
+            };
             const onStart = (e) => {
                 const t = e.touches ? e.touches[0] : e;
                 startX = t.clientX; startY = t.clientY;
-                cancel();
+                if (timer) { clearTimeout(timer); timer = null; }
+                armSuppress();
                 timer = setTimeout(() => {
                     timer = null;
                     window.openArticlesMenu();
                 }, 500);
             };
             const onMove = (e) => {
-                if (!timer) return;
+                if (!timer) {
+                    // Long-press already fired: keep eating touchmove so iOS
+                    // can't promote the stationary hold into a selection drag.
+                    if (suppressing && e.cancelable) e.preventDefault();
+                    return;
+                }
                 const t = e.touches ? e.touches[0] : e;
-                if (Math.hypot(t.clientX - startX, t.clientY - startY) > 10) cancel();
+                if (Math.hypot(t.clientX - startX, t.clientY - startY) > 10) {
+                    cancel();
+                } else if (e.cancelable) {
+                    // Within the hold slop: cancel the default so iOS Safari
+                    // never starts its selection loupe / callout gesture. iOS
+                    // only honors this on a NON-passive touchmove listener —
+                    // this is the actual iOS root cause; user-select:none alone
+                    // does not stop the loupe on the block behind the bar.
+                    e.preventDefault();
+                }
             };
+            // touchmove is non-passive so preventDefault() actually suppresses
+            // iOS Safari's native long-press selection. touchstart stays passive
+            // (scroll perf; nothing to cancel there).
             btn.addEventListener('touchstart', onStart, { passive: true });
-            btn.addEventListener('touchmove',  onMove,  { passive: true });
+            btn.addEventListener('touchmove',  onMove,  { passive: false });
             btn.addEventListener('touchend',   cancel,  { passive: true });
             btn.addEventListener('touchcancel', cancel, { passive: true });
-            // Kill the native "select all in nearest block" that some engines
-            // start on long-press before user-select:none resolves. Scoped to
-            // the whole tab bar so no bottom-bar button can ever start a
-            // selection; the CSS user-select:none stays as the primary guard.
-            const bar = document.getElementById('mobile-tab-bar') || btn;
-            bar.addEventListener('selectstart', (e) => e.preventDefault());
+            // DOCUMENT-level guard: kill any selection that tries to start while
+            // a tab long-press is in flight, regardless of which element the UA
+            // roots it on. Belt-and-braces alongside the touchmove preventDefault
+            // (Android roots the selection at document; the CSS user-select:none
+            // and removeAllRanges() in openArticlesMenu back this up).
+            document.addEventListener('selectstart', (e) => {
+                if (suppressing) e.preventDefault();
+            });
             // Desktop testing convenience: right-click also opens the menu.
             btn.addEventListener('contextmenu', (e) => { e.preventDefault(); window.openArticlesMenu(); });
         })();
@@ -6998,7 +7061,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 106;
+        window.APP_BUILD = 107;
 
         (async function initApp() {
             try {
@@ -7568,7 +7631,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v106';
+const CACHE_NAME = 'rss-reader-v107';
 const APP_SHELL = [
     '/',
     'index.html'
