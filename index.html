@@ -5077,9 +5077,20 @@
         // refresh button, the auto-refresh timer, and the Firestore first-snapshot
         // fetch can otherwise fire overlapping full-fetch storms, doubling the peak
         // memory and triggering the intermittent mobile crash. runFullRefresh()
-        // serializes them: a second caller is dropped while one is active, and the
-        // flag is always cleared in finally() so a hung/timed-out fetch can't wedge it.
+        // serializes them so only ONE fetch batch is ever in flight, and the flag
+        // is always cleared in finally() so a hung/timed-out fetch can't wedge it.
+        //
+        // COALESCE (not drop): a request that arrives mid-flight is remembered via
+        // _refreshPending and run exactly once after the current batch completes,
+        // rather than being silently discarded. This fixes the "open shows a few
+        // items, manual refresh shows many more" bug: on startup the local 4s timer
+        // and the Firestore first-snapshot both fire runFullRefresh; the loser used
+        // to be dropped, so feeds that landed with the snapshot (or slow feeds that
+        // timed out on the first pass) never got fetched until the user refreshed by
+        // hand. Now the deferred pass runs automatically. The pending request keeps
+        // the WIDEST scope (maxItems:null beats a capped 15) so nothing is truncated.
         window._refreshInFlight = false;
+        window._refreshPending = null; // null = nothing queued; else the opts to run next
         // Toggle the Home/sidebar "Tap or pull to refresh" hint into its spinning state.
         // The element the user actually touched (the arrow circle) becomes the spinner -
         // no separate top bar, no logo collision.
@@ -5091,7 +5102,31 @@
             if (label) label.textContent = on ? 'Refreshing...' : 'Tap or pull to refresh';
         };
         window.runFullRefresh = async (opts = {}) => {
-            if (window._refreshInFlight) return false;
+            if (window._refreshInFlight) {
+                // Coalesce: remember that another pass is wanted and run it when the
+                // current one finishes. Merge scope so the queued pass is at least as
+                // broad as any request seen while busy — an uncapped request (full
+                // fetch) must not be narrowed by a later maxItems-capped one.
+                const prev = window._refreshPending;
+                // Normalize each request's cap: absent -> null (treat a request with no
+                // maxItems as uncapped, matching runFullRefresh's own `?? null` default).
+                const prevMax = prev ? (prev.maxItems ?? null) : undefined; // undefined = no queued request yet
+                const newMax = opts.maxItems ?? null;
+                // null (uncapped) always wins; if both are capped, keep the larger cap.
+                let mergedMax;
+                if (prevMax === undefined) mergedMax = newMax;
+                else if (prevMax === null || newMax === null) mergedMax = null;
+                else mergedMax = Math.max(prevMax, newMax);
+                window._refreshPending = {
+                    ...(prev || {}),
+                    ...opts,
+                    maxItems: mergedMax,
+                    // Foreground wins: if either the queued or the new request is
+                    // foreground, run the coalesced pass as foreground.
+                    isBackground: (opts.isBackground ?? true) && (prev ? (prev.isBackground ?? true) : true),
+                };
+                return false;
+            }
             window._refreshInFlight = true;
             _setHintRefreshing(true);
             // If the timeline is currently showing an empty state, immediately swap it
@@ -5117,6 +5152,14 @@
                 if (_lastTimelineKey === '__refreshing__') {
                     _lastTimelineKey = '';
                     renderTimeline(true);
+                }
+                // Drain a coalesced request that arrived while this batch was running.
+                // Deferred to a fresh microtask so _refreshInFlight is observably false
+                // before re-entry and we don't grow the stack on repeated coalescing.
+                if (window._refreshPending) {
+                    const nextOpts = window._refreshPending;
+                    window._refreshPending = null;
+                    Promise.resolve().then(() => window.runFullRefresh(nextOpts));
                 }
             }
         };
@@ -7061,7 +7104,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 107;
+        window.APP_BUILD = 108;
 
         (async function initApp() {
             try {
@@ -7631,7 +7674,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v107';
+const CACHE_NAME = 'rss-reader-v108';
 const APP_SHELL = [
     '/',
     'index.html'
