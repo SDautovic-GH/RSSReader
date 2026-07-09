@@ -7104,7 +7104,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 108;
+        window.APP_BUILD = 109;
 
         (async function initApp() {
             try {
@@ -7201,10 +7201,28 @@ window.toggleUnreadManual = () => {
                 updateEmptyState();
 
                 // 7. Start Background Sync
+                //
+                // Startup has TWO possible fetch triggers, and exactly ONE should run:
+                //   (a) this 4s fallback timer, using the locally-restored feed list, and
+                //   (b) the Firestore first-snapshot (syncCloudFeeds), using the synced list.
+                // Whichever happens first claims the startup fetch via _startupFetchDone.
+                // The snapshot cancels this timer when it wins the race; if the snapshot is
+                // slow and this timer already ran, the snapshot re-fetches ONLY when it
+                // actually brought different feeds (see syncCloudFeeds). This is the design
+                // fix for the old two-full-batches behavior — one fetch in the common case.
+                window._startupFetchDone = false;
                 if (window.feeds.length > 0) {
                     console.log('App: Starting background fetch...');
                     window._localFetchTimer = setTimeout(() => {
-                        if (window.feeds.length > 0) window.runFullRefresh({ isBackground: true });
+                        window._localFetchTimer = null;
+                        if (window._startupFetchDone) return;      // snapshot already fetched
+                        if (window.feeds.length > 0) {
+                            window._startupFetchDone = true;
+                            // Remember which feeds this pass covered, so a later snapshot can
+                            // tell whether it needs to fetch anything new.
+                            window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
+                            window.runFullRefresh({ isBackground: true });
+                        }
                     }, 4000);
                 }
 
@@ -7375,10 +7393,28 @@ window.toggleUnreadManual = () => {
                     updateEmptyState();
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
-                        // window.feeds === dbFeeds here (assigned just above). Route
-                        // through the shared guard so this doesn't stack on top of a
-                        // PTR pull or the auto-refresh timer fired moments earlier.
-                        window.runFullRefresh({ isBackground: true });
+                        // The local 4s fallback timer was already cancelled at the top of
+                        // this handler (runs on every snapshot). window.feeds === dbFeeds
+                        // here (assigned just above).
+                        // Fetch on startup ONLY when there's real work to do:
+                        //   - no startup fetch has run yet (we won the race, or the timer's
+                        //     feed list was empty), OR
+                        //   - the synced feed set differs from what the local pass fetched
+                        //     (the cloud brought feeds this device didn't have locally).
+                        // Otherwise the local pass already fetched these exact feeds seconds
+                        // ago and a second full batch would be pure waste. This is the design
+                        // fix for "two full fetch batches on open".
+                        const syncedKey = window.feeds.map(f => f.url).sort().join('|');
+                        const alreadyCovered = window._startupFetchDone
+                            && window._lastFetchedFeedKey === syncedKey;
+                        if (!alreadyCovered) {
+                            window._startupFetchDone = true;
+                            window._lastFetchedFeedKey = syncedKey;
+                            // Shared guard still applies (coalesces against a PTR/auto-refresh
+                            // that may have fired in the same instant) — belt-and-braces, but
+                            // the common path is now a single fetch.
+                            window.runFullRefresh({ isBackground: true });
+                        }
                     }
                 }
                 document.getElementById('sync-status').textContent = `☁ ${userEmail}`;
@@ -7674,7 +7710,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v108';
+const CACHE_NAME = 'rss-reader-v109';
 const APP_SHELL = [
     '/',
     'index.html'
