@@ -42,7 +42,7 @@
         /* Final Fixes: Settings UX and Scrolling */
         .hidden { display: none !important; }
         .overflow-y-auto { overflow-y: auto !important; }
-        #settings-panel-feeds, #settings-panel-prefs { max-height: 70vh !important; padding-top: 2rem !important; }
+        #settings-panel-feeds, #settings-panel-prefs { max-height: 70vh !important; padding-top: 1.25rem !important; }
         .dark #settings-modal button:hover { background-color: rgba(255,255,255,0.08) !important; color: white !important; }
         #settings-modal button:hover { background-color: rgba(0,0,0,0.05); }
 
@@ -322,13 +322,6 @@
             display: none;
         }
 
-        .animate-pulse-fast {
-            animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
-        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -433,6 +426,22 @@
         .feed-stale::after { background: #f59e0b; }
         .feed-error::after { background: #ef4444; }
 
+        /* Empty smart feed (Read Later / Saved with 0 items) — dimmed so it doesn't
+           compete visually with a populated one. Hover restores full opacity. */
+        .smart-feed-btn.smart-empty { opacity: 0.45; }
+        .smart-feed-btn.smart-empty:hover { opacity: 0.75; }
+
+        /* Rolled-up folder health dot: a collapsed category whose feed is failing
+           shows a small dot on the header so you don't have to expand to notice. */
+        .cat-health-dot {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .cat-health-dot.is-error { background: #ef4444; }
+        .cat-health-dot.is-stale { background: #f59e0b; }
+
 
         /* Card view */
         #article-list.card-view .article-card {
@@ -453,6 +462,21 @@
 
         /* ===== MOBILE LAYOUT ===== */
         @media (max-width: 900px) {
+            /* Body is the positioning anchor for the bottom tab bar + its popovers
+               (menu, scrim, search sheet) — they are position:absolute, NOT fixed,
+               because standalone WebKit mis-anchors the fixed viewport under the
+               user's 115% Page Zoom (see #mobile-tab-bar). 100dvh tracks the real
+               glass in the PWA and the dynamic toolbar in Safari-in-browser. */
+            body { position: relative; height: 100vh; height: 100dvh; }
+            /* Chain the whole mobile layout off body's height instead of viewport
+               units. During the standalone-WebKit desync (see #mobile-tab-bar) BOTH
+               the fixed viewport AND dvh re-resolve ~79px short (v118 proved dvh
+               desyncs too: the layout-anchored bar rode dvh down by the same gap).
+               body's height gets locked to a healthy PIXEL value by
+               lockMobileLayoutHeight() in the PWA; px never re-resolves, so
+               everything below stays glass-true. In Safari/desktop body stays on
+               CSS dvh and 100% chains behave identically to the old units. */
+            #app-container { height: 100%; }
             /* On mobile, pull-to-refresh replaces the explicit refresh button. */
             #header-refresh-btn { display: none !important; }
             #app-container { flex-direction: column; }
@@ -465,8 +489,10 @@
                 display: flex !important;
                 width: 100% !important;
                 flex: none !important;
-                height: 100vh;
-                height: 100dvh;
+                /* 100% of #app-container (itself 100% of body) — NOT 100vh/100dvh.
+                   Viewport units re-resolve short during the WebKit desync; the
+                   percentage chain keys everything off body's locked height. */
+                height: 100%;
             }
             /* Content scrolls under the floating bar — reserve enough padding so last items clear the pill */
             #article-list,
@@ -597,8 +623,9 @@
         #ptr-hint {
             background: none;
             border: none;
-            padding-left: 0;
-            padding-right: 0;
+            /* Generous vertical padding so the whole region (not just the circle) is a
+               comfortable tap target — keeps the effective hit area >= 44px tall. */
+            padding: 0.5rem 0;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             font: inherit;
@@ -613,17 +640,31 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 38px;
-            height: 38px;
+            width: 48px;
+            height: 48px;
             border-radius: 9999px;
             background: rgba(59,130,246,0.12);
             border: 1px solid rgba(59,130,246,0.22);
             color: #4493f8;
         }
-        #ptr-hint-track svg {
-            width: 18px;
-            height: 18px;
+        #ptr-hint-track svg.ptr-hint-arrow {
+            width: 22px;
+            height: 22px;
         }
+        /* Spinner ring shown in place of the arrow while a refresh is running. */
+        #ptr-hint-track .ptr-hint-spinner {
+            display: none;
+            width: 22px;
+            height: 22px;
+            border: 2.5px solid rgba(59,130,246,0.3);
+            border-top-color: #4493f8;
+            border-radius: 50%;
+            animation: ptr-spin 0.7s linear infinite;
+        }
+        #ptr-hint.is-refreshing .ptr-hint-arrow { display: none; }
+        #ptr-hint.is-refreshing .ptr-hint-spinner { display: block; }
+        /* While refreshing, don't shrink on tap (it's busy, not pressable). */
+        #ptr-hint.is-refreshing:active #ptr-hint-track { transform: none; background: rgba(59,130,246,0.12); }
         /* ===== DESKTOP FLOATING ARTICLE NAV =====
            Positioned to sit just to the right of the reader content column
            (max-w-2xl = 42rem, left-anchored with lg:ml-8 + lg:p-6 padding),
@@ -668,9 +709,19 @@
         }
 
         /* ===== APPLE MUSIC-STYLE MOBILE BOTTOM BAR ===== */
+        /* position:absolute (anchored to the 100dvh body), NOT fixed. Under the
+           user's intentional Safari Page Zoom (115%, applies in the PWA too),
+           standalone WebKit repeatedly mis-anchors the FIXED-position viewport
+           after the image lightbox closes — the bar floated ~79 CSS px above the
+           real screen bottom while normal in-flow layout (100dvh panes) kept
+           painting the full glass correctly (verified via on-device diagnostics,
+           builds 112-115). Anchoring to page layout instead of the fixed viewport
+           sidesteps the desync entirely. Body scroll is permanently hidden and the
+           panes scroll internally, so absolute-in-body behaves identically to
+           fixed in every healthy state. */
         #mobile-tab-bar {
             display: none;
-            position: fixed;
+            position: absolute;
             left: 0; right: 0;
             bottom: 0;
             z-index: 50;
@@ -728,6 +779,16 @@
            don't inherit, so re-apply them to the entire subtree. */
         #mobile-tab-bar .tab-btn,
         #mobile-tab-bar .tab-btn * {
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
+        /* While a tab long-press is in flight, iOS Safari would otherwise root
+           its selection loupe on the article block BEHIND the bar. Freeze
+           selection page-wide for the duration of the hold; the JS removes this
+           class ~350ms after touchend so article text stays copyable normally. */
+        body.tabbar-longpress,
+        body.tabbar-longpress * {
             -webkit-touch-callout: none !important;
             -webkit-user-select: none !important;
             user-select: none !important;
@@ -806,7 +867,7 @@
         /* Articles long-press menu — small popover that floats above the tab bar
            when the user long-presses the Articles tab. */
         #mob-articles-menu {
-            position: fixed;
+            position: absolute; /* track the layout-anchored tab bar, not the fixed viewport */
             left: 50%;
             transform: translateX(-50%);
             bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
@@ -844,7 +905,7 @@
             to   { opacity: 1; transform: translateX(-50%) scale(1); }
         }
         #mob-articles-menu-scrim {
-            position: fixed;
+            position: absolute; /* body is 100dvh on mobile, so inset:0 still covers the glass */
             inset: 0;
             background: transparent;
             z-index: 9499;
@@ -872,7 +933,7 @@
         /* Search sheet above bar */
         #mobile-search-sheet {
             display: none !important;
-            position: fixed !important;
+            position: absolute !important; /* track the layout-anchored tab bar */
             left: 0; right: 0;
             bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
             z-index: 49;
@@ -1198,11 +1259,6 @@
             font-size: 14px; font-weight: 600; text-transform: uppercase;
             letter-spacing: 0.06em; color: #94a3b8;
             margin-bottom: 10px; padding: 0 4px;
-        }
-        .settings-group-label {
-            font-size: 13px; font-weight: 800; text-transform: uppercase;
-            letter-spacing: 0.08em; color: #4493f8;
-            margin-bottom: 12px; margin-top: 4px;
         }
         .settings-item label, .settings-item .settings-item-label {
             font-size: 15px; font-weight: 500; color: #f0f6fc;
@@ -1530,11 +1586,16 @@
                 <span id="ptr-label">Pull to refresh</span>
             </div>
             <div id="sidebar-header" class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <div class="flex items-center space-x-2">
-                    <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm">
+                <div class="flex items-center space-x-2 min-w-0">
+                    <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm flex-shrink-0">
                         <svg class="w-[22px] h-[22px]"><use href="#icon-rss"/></svg>
                     </div>
-                    <h1 class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
+                    <div class="flex flex-col min-w-0 leading-none">
+                        <h1 class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">RSS Reader</h1>
+                        <!-- Live status: unread total + last-updated relative time. Populated by
+                             updateHeaderStatus() on every updateBadges() and refresh completion. -->
+                        <span id="header-status" class="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap truncate mt-0.5"></span>
+                    </div>
                 </div>
                 <div class="flex space-x-1">
                     <button id="header-refresh-btn" onclick="refreshAll()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Refresh Feeds">
@@ -1575,9 +1636,11 @@
                      native iOS/Android PTR slot. -->
                 <button id="ptr-hint" type="button" onclick="refreshAll()" aria-label="Refresh feeds" class="flex flex-col items-center justify-center gap-2 pt-5 pb-2 w-full select-none">
                     <span id="ptr-hint-track" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                        <!-- Down-arrow (idle) and spinner ring (refreshing) - CSS swaps them via .is-refreshing -->
+                        <svg class="ptr-hint-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                        <span class="ptr-hint-spinner"></span>
                     </span>
-                    <span class="text-[11px] font-medium text-gray-500">Tap or pull to refresh</span>
+                    <span id="ptr-hint-label" class="text-[11px] font-medium text-gray-500">Tap or pull to refresh</span>
                 </button>
             </div>
 
@@ -1830,13 +1893,13 @@
     </div>
 
     <!-- SETTINGS MODAL -->
-    <div id="settings-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
-        <div class="bg-white dark:bg-gray-800 w-full rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 animate-in zoom-in duration-200 flex flex-col" style="max-width: 480px; max-height: 90vh">
+    <div id="settings-modal" onclick="if(event.target===event.currentTarget)toggleSettings()" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
+        <div class="bg-white dark:bg-gray-800 w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700 animate-in zoom-in duration-200 flex flex-col" style="max-width: 480px; max-height: 90vh">
 
             <!-- Header -->
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
                 <h2 class="font-bold text-lg">App Settings</h2>
-                <button onclick="toggleSettings()" class="text-gray-400 hover:text-gray-600 p-1">✕</button>
+                <button onclick="toggleSettings()" aria-label="Close settings" style="font-size:1.6rem;line-height:1" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 -mr-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">✕</button>
             </div>
 
             <!-- Tabs -->
@@ -1854,9 +1917,9 @@
             <!-- Tab: Feeds -->
             <div id="settings-panel-feeds" class="px-5 pt-8 pb-6 overflow-y-auto flex-1 no-scrollbar">
                 <div class="flex items-center justify-between mb-4">
-                    <button onclick="openAddFeedModal()" class="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-[14px] font-semibold hover:bg-blue-700 active:scale-95 transition-all shadow-sm">
+                    <button onclick="openAddFeedModal()" class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-[14px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 active:scale-95 transition-all">
                         <svg class="w-4 h-4"><use href="#icon-plus"/></svg>
-                        Add Feed
+                        Add feed
                     </button>
                     <div>
                         <button id="feeds-overflow-trigger" onclick="toggleFeedsOverflow(event)" class="p-2 rounded-lg text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700" title="More">
@@ -2079,13 +2142,10 @@
 
             </div>
 
-            <!-- Footer -->
-            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-                <button onclick="toggleSettings()" class="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold active:scale-95 transition-all">Done</button>
-                <!-- Build stamp — lets you confirm at a glance whether the freshly-loaded
-                     page is the new code or a stale service-worker cache. -->
-                <p id="build-stamp" class="text-center text-[11px] text-gray-400 mt-3 select-text">RSS Reader</p>
-            </div>
+            <!-- No footer slab — the header ✕ and tapping the backdrop both close the
+                 modal, so a full-width Done button was redundant chrome eating prime
+                 space. Build stamp lives as a quiet line at the bottom of the card. -->
+            <p id="build-stamp" class="text-center text-[11px] text-gray-400 dark:text-gray-500 py-3 select-text">RSS Reader</p>
         </div>
     </div>
 
@@ -2152,9 +2212,9 @@
 
     <!-- FOLDER CONTEXT MENU -->
     <div id="folder-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-base">
-        <button onclick="markFolderRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
-        <button onclick="renameFolderFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Rename</button>
-        <button onclick="deleteFolderFromContext()" class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete Folder & Feeds</button>
+        <button id="fc-mark-read" onclick="markFolderRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
+        <button id="fc-rename" onclick="renameFolderFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Rename</button>
+        <button id="fc-delete" onclick="deleteFolderFromContext()" class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete Folder &amp; Feeds</button>
     </div>
 
     <!-- FEED CONTEXT MENU -->
@@ -2205,6 +2265,24 @@
         window._pinnedArticleIds = new Set();
 
         window._feedHealth = {};
+        // Restore the persisted 'slow' set so the very FIRST refresh of a session already
+        // orders known-slow feeds last (health is otherwise in-memory and would reset each
+        // load, re-stalling the first refresh). Only the slow flag is persisted — errorCount
+        // and lastSuccess are session-scoped and recomputed live.
+        (function restoreFeedHealth() {
+            try {
+                const slowUrls = JSON.parse(localStorage.getItem('newsreader_slow_feeds') || '[]');
+                if (Array.isArray(slowUrls)) {
+                    for (const url of slowUrls) window._feedHealth[url] = { lastSuccess: null, errorCount: 0, slow: true };
+                }
+            } catch(e) { console.warn('restoreFeedHealth:', e.message); }
+        })();
+        window._persistFeedHealth = () => {
+            try {
+                const slowUrls = Object.keys(window._feedHealth).filter(u => window._feedHealth[u] && window._feedHealth[u].slow);
+                localStorage.setItem('newsreader_slow_feeds', JSON.stringify(slowUrls));
+            } catch(e) { console.warn('persistFeedHealth:', e.message); }
+        };
         window._viewMode = 'list';
         window._ttsActive = false;
         window._categoryOrder = [];
@@ -2374,7 +2452,14 @@
         }
         window.appDB = new RSSReaderDB();
 
-        // Helper: URL to Links — walks text nodes only, never touches attributes
+        // Helper: URL to Links - walks text nodes only, never touches attributes.
+        // SECURITY: linkify is NOT a sanitizer and its output is NOT safe to render
+        // raw. The tmp.innerHTML assignment below is on an inert <template> (its
+        // content is a detached fragment - scripts never run, nothing renders). Both
+        // callers neutralize input/output: the preview path passes esc()'d text, and
+        // the article-body path wraps the result in DOMPurify.sanitize() before it
+        // reaches a live innerHTML. Any NEW caller MUST keep that contract - esc() the
+        // input or DOMPurify the output before rendering, or it becomes a real XSS.
         function linkify(html) {
             const tmp = document.createElement('template');
             tmp.innerHTML = html;
@@ -2418,6 +2503,12 @@
         // Needed for RSS feeds that wrap titles/excerpts in CDATA — the XML parser does not
         // decode entities inside CDATA, so we end up with literal "&#8217;" text.
         // Loops up to 3 times to handle double-encoded values like "&amp;quot;" → "&quot;" → '"'.
+        // SECURITY: this is the standard, safe HTML-entity-decode idiom, NOT an XSS
+        // sink. _entityDecoder is a <textarea> whose content model is raw text only -
+        // the browser decodes entities (&amp; -> &, &#8217; -> ') but never executes
+        // scripts or renders markup placed in it, and the element is never inserted
+        // into the DOM. We read the decoded text back via .value. Do not "fix" this to
+        // textContent - that would break entity decoding, which is the whole purpose.
         const _entityDecoder = document.createElement('textarea');
         function decodeEntities(str) {
             if (!str || str.indexOf('&') === -1) return str;
@@ -2487,20 +2578,16 @@
         ];
 
         // Warm the primary Cloudflare Worker on app load so the first pull-to-refresh
-        // doesn't eat a 3-5s cold start. iOS PWA: no-cors HEAD often gets dropped or
-        // completes after the user's pull, leaving the first refresh to bear the cold
-        // start. A real GET against a tiny feed forces the Worker to fully spin up.
-        // Exposed as window._proxyWarmReady so PTR can await it.
-        window._proxyWarmReady = (function warmPrimaryProxy() {
-            try {
-                // Use a small, fast, reliably-CORS feed as the warmup target.
-                const warmUrl = PRIMARY_PROXY_ORIGIN + '/?url=' + encodeURIComponent('https://hnrss.org/frontpage');
-                return fetch(warmUrl, { cache: 'no-store', signal: AbortSignal.timeout(10000) })
-                    .then(r => r.ok ? r.text() : null)
-                    .catch(() => null);
-            } catch(e) { return Promise.resolve(null); }
+        // doesn't eat a 3-5s cold start and time out half the feeds.
+        (function warmPrimaryProxy() {
+            try { fetch(PRIMARY_PROXY_ORIGIN + '/', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch(e) {}
         })();
 
+        // Returns { text, proxyIndex } on success (proxyIndex = which proxy in PROXIES
+        // won, 0 = primary), or { text: null, proxyIndex: -1 } if all failed. The
+        // proxyIndex lets the caller mark a feed "slow" when it needed a fallback, so
+        // the self-healing queue can push chronically-slow feeds to the back and stop
+        // them stalling the healthy first wave (see fetchAllStaggered).
         async function fetchWithProxyFallback(feedUrl) {
             for (let i = 0; i < PROXIES.length; i++) {
                 const proxyFn = PROXIES[i];
@@ -2521,12 +2608,12 @@
                     }
                     if (!xmlText) continue;
                     const trimmed = xmlText.trim().replace(/^\uFEFF/, '');
-                    if (trimmed.startsWith('<')) return trimmed;
+                    if (trimmed.startsWith('<')) return { text: trimmed, proxyIndex: i };
                 } catch(e) {
                     console.warn(`Proxy failed [${proxyFn(feedUrl).split('?')[0]}]:`, e.message);
                 }
             }
-            return null;
+            return { text: null, proxyIndex: -1 };
         }
 
         // --- TITLE DEDUPLICATION ---
@@ -2916,7 +3003,7 @@
                 // fall through to RSS on failure
             }
             try {
-                const xmlText = await fetchWithProxyFallback(feedUrl);
+                const { text: xmlText, proxyIndex } = await fetchWithProxyFallback(feedUrl);
                 if (!xmlText) throw new Error('All proxies failed');
 
                 const parser = new DOMParser();
@@ -2930,7 +3017,16 @@
 
                 if (entries.length === 0) throw new Error('No items');
 
-                window._feedHealth[feedUrl] = { lastSuccess: Date.now(), errorCount: 0 };
+                // Preserve any prior 'slow' flag, then update it: a feed that had to fall
+                // back past the primary proxy (proxyIndex > 0) is chronically slow — the
+                // primary is blocked/stubbed for it (e.g. Cloudflare bot protection), so the
+                // fetch ate a fallback timeout. fetchAllStaggered pushes such feeds to the
+                // back of the queue so they never stall the healthy first wave.
+                window._feedHealth[feedUrl] = {
+                    lastSuccess: Date.now(),
+                    errorCount: 0,
+                    slow: proxyIndex > 0,
+                };
                 const feedObj = window.feeds.find(f => f.url === feedUrl);
                 // Load favicon from local cache first
                 if (feedObj && !feedObj.favicon) {
@@ -3080,6 +3176,9 @@
                 console.warn(`Feed fetch failed [${sourceName}]:`, e.message);
                 if (!window._feedHealth[feedUrl]) window._feedHealth[feedUrl] = { lastSuccess: null, errorCount: 0 };
                 window._feedHealth[feedUrl].errorCount = (window._feedHealth[feedUrl].errorCount || 0) + 1;
+                // A feed that failed all proxies (or timed out) is slow — send it to the
+                // back of the queue next refresh so it can't stall the healthy feeds.
+                window._feedHealth[feedUrl].slow = true;
             }
         }
 
@@ -3120,6 +3219,21 @@
         function _disconnectSentinels() {
             if (_timelineObserver) { _timelineObserver.disconnect(); _timelineObserver = null; }
             if (_timelineTopObserver) { _timelineTopObserver.disconnect(); _timelineTopObserver = null; }
+        }
+
+        // Shown in the timeline area while a refresh is running and there are no
+        // articles to display yet (e.g. triggered from the "All caught up" empty
+        // state). Gives clear in-progress feedback instead of a static empty screen.
+        function renderTimelineRefreshing() {
+            return `
+                <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                        <svg class="w-8 h-8" style="animation: ptr-spin 0.8s linear infinite;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#icon-refresh"/></svg>
+                    </div>
+                    <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">Refreshing feeds</h2>
+                    <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">Checking your sources for new articles...</p>
+                </div>
+            `;
         }
 
         function renderTimelineEmptyState() {
@@ -3176,11 +3290,18 @@
             listEl.classList.toggle('card-view', window._viewMode === 'card');
 
             if (filtered.length === 0) {
-                if (_lastTimelineKey !== '__empty__') {
-                    _lastTimelineKey = '__empty__';
+                // While a refresh is running with nothing to show yet, render the
+                // in-progress view instead of "All caught up" so the user gets
+                // feedback. Keyed separately so it re-renders back to empty/articles
+                // when the refresh finishes.
+                const emptyKey = window._refreshInFlight ? '__refreshing__' : '__empty__';
+                if (_lastTimelineKey !== emptyKey) {
+                    _lastTimelineKey = emptyKey;
                     hideSkeletons();
                     _disconnectSentinels();
-                    listEl.innerHTML = renderTimelineEmptyState();
+                    listEl.innerHTML = window._refreshInFlight
+                        ? renderTimelineRefreshing()
+                        : renderTimelineEmptyState();
                 }
                 return;
             }
@@ -3394,7 +3515,12 @@
                 filtered = filtered.filter(a => { const nt = normTitle(a.title); return !nt || exactWinners.has(a); });
 
                 // Pass 2: fuzzy cluster. Pre-tokenize, then for each article find the first earlier
-                // cluster head it matches. Pairwise within a sliding 24h window — cheap for normal feed sizes.
+                // cluster head it matches. Pairwise within a sliding 24h window - cheap for normal feed sizes.
+                // NOTE: tokenization MUST be eager here - buildDocFreq() below needs every
+                // document's tokens upfront to compute corpus-wide document frequency, and
+                // each tokens[i] is reused by index across the O(n*clusters) match loop.
+                // "Lazy" per-comparison tokenization would break buildDocFreq and re-tokenize
+                // the same title repeatedly (slower, not faster).
                 const tokens = filtered.map(a => dedupTokens(a.title));
                 const df = buildDocFreq(tokens);
                 const dates = filtered.map(a => {
@@ -3685,13 +3811,7 @@
 
                 const id = t.card.getAttribute('data-id');
                 if (!id) return;
-                // Use findArticleAnywhere so swipes work in the Saved / Read Later /
-                // Recently Read smart folders (those render from separate buckets,
-                // not window.articles). Defined lower in the file but hoisted as a
-                // function declaration.
-                const article = (typeof findArticleAnywhere === 'function')
-                    ? findArticleAnywhere(id)
-                    : window.articles.find(a => a.id === id);
+                const article = window.articles.find(a => a.id === id);
                 if (!article) return;
 
                 article._excerptHtml = null;
@@ -3755,20 +3875,21 @@
                 if (!_pt) return;
                 const wasReady = !_pt.cancelled && indicator.classList.contains('ptr-ready');
                 _pt = null;
+                // Retract the top pull indicator immediately. The in-progress feedback
+                // is the #ptr-hint arrow circle (below the folders) spinning - driven by
+                // runFullRefresh - so we don't pin/spin this top bar (it overlapped the
+                // logo header and duplicated the feedback).
                 indicator.style.top = '-56px';
                 indicator.classList.remove('ptr-visible', 'ptr-ready');
                 label.textContent = 'Pull to refresh';
                 if (wasReady && !_loading) {
                     _loading = true;
-                    window.showToast('Refreshing feeds...', false, true);
                     // Background semantics: one refreshUI() at the end instead of a
                     // per-feed render storm. maxItems capped on mobile to shrink the
                     // allocation burst. Routed through the shared in-flight guard so a
                     // concurrent auto-refresh/first-snapshot fetch can't stack on top.
-                    window.runFullRefresh({ isBackground: true, maxItems: 15 }).then((ran) => {
+                    window.runFullRefresh({ isBackground: true, maxItems: 15 }).then(() => {
                         _loading = false;
-                        window.hideToast();
-                        if (ran) window.showToast('Feeds refreshed');
                     });
                 }
             };
@@ -4081,9 +4202,6 @@
                             initBodyImages(bodyEl);
                             article.body = sanitized;
                             article._fullBodyLoaded = true;
-                            window._articleTotalMinutes = Math.max(1, Math.ceil(fullWordCount / 200));
-                            const readTimeEl = document.getElementById('read-time');
-                            if (readTimeEl) readTimeEl.textContent = `~${window._articleTotalMinutes} min read`;
                             // Body just got replaced with a much longer extracted version —
                             // snap back to the top so the reader doesn't appear mid-article.
                             const readerEl = document.getElementById('reader-view');
@@ -4338,6 +4456,11 @@
                 if (a.feedUrl) unreadByUrl[a.feedUrl] = (unreadByUrl[a.feedUrl] || 0) + 1;
                 else unreadByName[a.source] = (unreadByName[a.source] || 0) + 1;
             });
+            // NOTE: this groups+unread pass is intentionally NOT cached. It computes
+            // each feed's LIVE unread count (changes on every read/scroll), which also
+            // feeds the renderKey guard below - so it must run fresh. window.feeds is
+            // small (dozens), so this is cheap; the expensive DOM rebuild further down
+            // IS guarded by _lastFeedRenderKey and skipped when nothing visible changed.
             const groups = {};
             window.feeds.forEach(f => {
                 const c = f.category || 'Uncategorized';
@@ -4349,8 +4472,15 @@
             // Include category order — without it, reordering folders updates
             // _categoryOrder but produces an identical key, and the early-return
             // skips the DOM re-render so the folder visually stays put.
-            const renderKey = window.feeds.map(f => `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}`).join('|')
+            const renderKey = window.feeds.map(f => {
+                    const h = window._feedHealth[f.url];
+                    const hk = h ? `${h.errorCount >= 3 ? 'e' : ''}${h.lastSuccess && (Date.now() - h.lastSuccess > 7 * 86400000) ? 's' : ''}` : '';
+                    return `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}:${hk}`;
+                }).join('|')
                 + '||' + (window._categoryOrder || []).join(',');
+            // Always repaint the Settings feed list — it's driven by accountStates.local,
+            // which the renderKey guard below does not track.
+            renderLocalFeedList();
             if (renderKey === _lastFeedRenderKey) {
                 updateBadges();
                 return;
@@ -4368,6 +4498,19 @@
                 if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = true;
                 const isCollapsed = window.collapsedCategories[cat];
                 const formattedCat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+
+                // Roll feed health up to the folder header so a failing feed is visible
+                // even while the folder is collapsed. Error (>=3 fails) wins over stale.
+                let folderHealth = '';
+                for (const f of feeds) {
+                    const h = window._feedHealth[f.url];
+                    if (!h) continue;
+                    if (h.errorCount >= 3) { folderHealth = 'is-error'; break; }
+                    if (h.lastSuccess && (Date.now() - h.lastSuccess > 7 * 86400000)) folderHealth = 'is-stale';
+                }
+                const healthDot = folderHealth
+                    ? `<span class="cat-health-dot ${folderHealth}" title="${folderHealth === 'is-error' ? 'A feed in this folder is failing' : 'A feed in this folder is stale'}"></span>`
+                    : '';
 
                 // Security: ensure 'cat' is safe for use in event handlers (e.g. escaping single quotes)
                 const sCat = escJs(cat);
@@ -4391,6 +4534,7 @@
                                 <span>${esc(formattedCat)}</span>
                             </button>
                             <div class="flex items-center space-x-2 flex-shrink-0">
+                                ${healthDot}
                                 ${total > 0 ? `<span class="mob-unread-count text-blue-500 dark:text-blue-400">${total}</span>` : ''}
                             </div>
                         </div>
@@ -4426,33 +4570,41 @@
                 `;
             }).join('');
 
-            const localList = document.getElementById('local-feed-list');
-            if (localList) {
-                const feeds = window.accountStates.local || [];
-                if (feeds.length === 0) {
-                    localList.innerHTML = `<div class="text-center py-8 text-gray-400 text-[14px]">No feeds yet. Tap <span class="font-semibold text-blue-500">Add Feed</span> to get started.</div>`;
-                } else {
-                    localList.innerHTML = feeds.map((f) => {
-                        const sfId = escJs(f.id);
-                        return `
-                        <div class="feed-row">
-                            <div class="min-w-0 flex-1">
-                                <div class="feed-row-name truncate">${esc(f.name)}</div>
-                                <div class="feed-row-cat truncate">${esc(f.category || 'Uncategorized')}</div>
-                            </div>
-                            <div class="feed-row-actions">
-                                <button onclick="openEditFeedModal('${sfId}')" class="feed-row-action edit" title="Edit">
-                                    <svg class="w-4 h-4"><use href="#icon-pencil"/></svg>
-                                </button>
-                                <button onclick="removeLocalFeed('${sfId}')" class="feed-row-action remove" title="Remove">
-                                    <svg class="w-4 h-4"><use href="#icon-trash"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                    `}).join('');
-                }
-            }
             updateBadges();
+        }
+
+        // Renders the Settings > Feeds list (#local-feed-list) from
+        // window.accountStates.local. Kept separate from renderFeeds()'s sidebar
+        // render and called BEFORE its _lastFeedRenderKey early-return guard, because
+        // that guard is keyed only off window.feeds — adding/removing a local feed
+        // could otherwise short-circuit renderFeeds() before this list repaints,
+        // leaving a newly added feed invisible in Settings until reopen/reload.
+        function renderLocalFeedList() {
+            const localList = document.getElementById('local-feed-list');
+            if (!localList) return;
+            const feeds = window.accountStates.local || [];
+            if (feeds.length === 0) {
+                localList.innerHTML = `<div class="text-center py-8 text-gray-400 text-[14px]">No feeds yet. Tap <span class="font-semibold text-blue-500">Add Feed</span> to get started.</div>`;
+                return;
+            }
+            localList.innerHTML = feeds.map((f) => {
+                const sfId = escJs(f.id);
+                return `
+                <div class="feed-row">
+                    <div class="min-w-0 flex-1">
+                        <div class="feed-row-name truncate">${esc(f.name)}</div>
+                        <div class="feed-row-cat truncate">${esc(f.category || 'Uncategorized')}</div>
+                    </div>
+                    <div class="feed-row-actions">
+                        <button onclick="openEditFeedModal('${sfId}')" class="feed-row-action edit" title="Edit">
+                            <svg class="w-4 h-4"><use href="#icon-pencil"/></svg>
+                        </button>
+                        <button onclick="removeLocalFeed('${sfId}')" class="feed-row-action remove" title="Remove">
+                            <svg class="w-4 h-4"><use href="#icon-trash"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `}).join('');
         }
 
         window.setCategoryFilter = (cat) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
@@ -4659,8 +4811,45 @@
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
 
+            // Dim empty Read Later / Saved smart feeds (always-visible, unlike category
+            // folders which hide when read). History is a rolling window — never dimmed.
+            const savedCount = (window.savedBucket && typeof window.savedBucket.list === 'function')
+                ? window.savedBucket.list().length : 0;
+            const btnReadLater = document.getElementById('feed-btn-read-later');
+            const btnSaved = document.getElementById('feed-btn-saved');
+            if (btnReadLater) btnReadLater.classList.toggle('smart-empty', readLaterCount === 0);
+            if (btnSaved) btnSaved.classList.toggle('smart-empty', savedCount === 0);
+
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
+            updateHeaderStatus();
         }
+
+        // --- HEADER LIVE STATUS LINE ---
+        // Compact "N unread · updated 3m ago" subtitle under the RSS Reader title.
+        // Reuses the unread total updateBadges() already computed; the timestamp is
+        // window._lastRefreshAt, set when runFullRefresh() completes.
+        function formatRelativeTime(ts) {
+            if (!ts) return null;
+            const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+            if (s < 45)   return 'just now';
+            if (s < 90)   return '1m ago';
+            const m = Math.round(s / 60);
+            if (m < 60)   return `${m}m ago`;
+            const h = Math.round(m / 60);
+            if (h < 24)   return `${h}h ago`;
+            const d = Math.round(h / 24);
+            return `${d}d ago`;
+        }
+        window.updateHeaderStatus = () => {
+            const el = document.getElementById('header-status');
+            if (!el) return;
+            // Unread count lives in the Unread smart feed — don't duplicate it here.
+            // The header's job is the freshness signal nothing else shows.
+            const rel = formatRelativeTime(window._lastRefreshAt);
+            el.textContent = rel ? `Updated ${rel}` : '';
+        };
+        // Tick the relative time so "just now" ages to "1m ago" without a refresh.
+        setInterval(() => { if (window._lastRefreshAt) window.updateHeaderStatus(); }, 60000);
 
         // --- OPML & FEED CONFIG ---
         window.importSubscriptions = async (event) => {
@@ -4858,22 +5047,24 @@
         };
 
         async function fetchAllStaggered(feeds, maxItems = null, isBackground = false, delayMs = 30) {
-            // Wait for the proxy warmup to finish before launching the batch. On the
-            // first refresh this prevents N parallel fetches from all colliding with
-            // a cold Cloudflare Worker — which on iOS PWAs is enough memory pressure
-            // to make WebKit silently kill the app.
-            if (window._proxyWarmReady && typeof window._proxyWarmReady.then === 'function') {
-                try { await window._proxyWarmReady; } catch(e) {}
-            }
-
             // Bounded worker pool instead of firing every feed at once. The old
             // "push all promises, allSettled" approach put N DOMParser trees +
             // N DOMPurify.sanitize runs + N response buffers in flight simultaneously,
             // which spikes renderer memory and OOM-crashes the tab on mobile when the
             // feed list is large. Capping concurrency keeps the peak flat regardless
             // of feed count, at the cost of a slightly longer (but smoother) refresh.
-            // iOS Safari (standalone PWA) chokes hardest, so cap it tighter there.
-            const list = (feeds || []).slice();
+            // Self-healing order: feeds previously flagged 'slow' (primary proxy blocked,
+            // or all proxies failed/timed out — e.g. Cloudflare-protected feeds) go to the
+            // BACK of the queue. The healthy majority then fills the first wave and completes
+            // fast; a known-slow feed can only stall a worker after the good feeds are done,
+            // so it no longer creates the mid-refresh pause. Order within each group is
+            // preserved. First run (no health data yet) leaves order unchanged.
+            const all = (feeds || []).slice();
+            const fast = [], slow = [];
+            for (const f of all) {
+                (window._feedHealth[f.url] && window._feedHealth[f.url].slow ? slow : fast).push(f);
+            }
+            const list = fast.concat(slow);
             const CONCURRENCY = isMobile() ? 3 : 6;
             let next = 0;
 
@@ -4898,6 +5089,9 @@
             // instead of one per feed (see fetchRecentArticles).
             await saveArticleCache();
 
+            // Persist the slow-feed set so next session's first refresh is already ordered.
+            window._persistFeedHealth?.();
+
             // Background fetches don't trigger a full timeline/sidebar refresh per-feed
             // (only the visible source filter re-renders inside fetchRecentArticles).
             // After the batch completes, refresh once so the header counter and sidebar
@@ -4910,32 +5104,97 @@
         // refresh button, the auto-refresh timer, and the Firestore first-snapshot
         // fetch can otherwise fire overlapping full-fetch storms, doubling the peak
         // memory and triggering the intermittent mobile crash. runFullRefresh()
-        // serializes them: a second caller is dropped while one is active, and the
-        // flag is always cleared in finally() so a hung/timed-out fetch can't wedge it.
+        // serializes them so only ONE fetch batch is ever in flight, and the flag
+        // is always cleared in finally() so a hung/timed-out fetch can't wedge it.
+        //
+        // COALESCE (not drop): a request that arrives mid-flight is remembered via
+        // _refreshPending and run exactly once after the current batch completes,
+        // rather than being silently discarded. This fixes the "open shows a few
+        // items, manual refresh shows many more" bug: on startup the local 4s timer
+        // and the Firestore first-snapshot both fire runFullRefresh; the loser used
+        // to be dropped, so feeds that landed with the snapshot (or slow feeds that
+        // timed out on the first pass) never got fetched until the user refreshed by
+        // hand. Now the deferred pass runs automatically. The pending request keeps
+        // the WIDEST scope (maxItems:null beats a capped 15) so nothing is truncated.
         window._refreshInFlight = false;
+        window._refreshPending = null; // null = nothing queued; else the opts to run next
+        // Toggle the Home/sidebar "Tap or pull to refresh" hint into its spinning state.
+        // The element the user actually touched (the arrow circle) becomes the spinner -
+        // no separate top bar, no logo collision.
+        const _setHintRefreshing = (on) => {
+            const hint = document.getElementById('ptr-hint');
+            const label = document.getElementById('ptr-hint-label');
+            if (!hint) return;
+            hint.classList.toggle('is-refreshing', on);
+            if (label) label.textContent = on ? 'Refreshing...' : 'Tap or pull to refresh';
+        };
         window.runFullRefresh = async (opts = {}) => {
-            if (window._refreshInFlight) return false;
+            if (window._refreshInFlight) {
+                // Coalesce: remember that another pass is wanted and run it when the
+                // current one finishes. Merge scope so the queued pass is at least as
+                // broad as any request seen while busy — an uncapped request (full
+                // fetch) must not be narrowed by a later maxItems-capped one.
+                const prev = window._refreshPending;
+                // Normalize each request's cap: absent -> null (treat a request with no
+                // maxItems as uncapped, matching runFullRefresh's own `?? null` default).
+                const prevMax = prev ? (prev.maxItems ?? null) : undefined; // undefined = no queued request yet
+                const newMax = opts.maxItems ?? null;
+                // null (uncapped) always wins; if both are capped, keep the larger cap.
+                let mergedMax;
+                if (prevMax === undefined) mergedMax = newMax;
+                else if (prevMax === null || newMax === null) mergedMax = null;
+                else mergedMax = Math.max(prevMax, newMax);
+                window._refreshPending = {
+                    ...(prev || {}),
+                    ...opts,
+                    maxItems: mergedMax,
+                    // Foreground wins: if either the queued or the new request is
+                    // foreground, run the coalesced pass as foreground.
+                    isBackground: (opts.isBackground ?? true) && (prev ? (prev.isBackground ?? true) : true),
+                };
+                return false;
+            }
             window._refreshInFlight = true;
-            // TEMP perf instrumentation (Chrome only) — confirms the concurrency cap
-            // actually flattened the memory peak. Remove after on-device verification.
-            const _mem = () => (performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB' : 'n/a');
-            const _t0 = performance.now();
-            console.log(`[refresh] start heap=${_mem()} feeds=${(window.feeds||[]).length} bg=${!!opts.isBackground} cap=${opts.maxItems ?? 'none'}`);
+            _setHintRefreshing(true);
+            // If the timeline is currently showing an empty state, immediately swap it
+            // to the "Refreshing feeds" spinner so the user sees the refresh took hold
+            // (otherwise they stare at "All caught up" until articles arrive). Keyed so
+            // the end-of-refresh refreshUI()/render returns to articles or empty.
+            if (_lastTimelineKey === '__empty__') {
+                _lastTimelineKey = '';
+                renderTimeline(true);
+            }
             try {
                 await fetchAllStaggered(window.feeds, opts.maxItems ?? null, opts.isBackground ?? false);
-                console.log(`[refresh] done  heap=${_mem()} took=${Math.round(performance.now() - _t0)}ms`);
                 return true;
             } finally {
                 window._refreshInFlight = false;
+                // Stamp last-updated for the header status line, then refresh it.
+                window._lastRefreshAt = Date.now();
+                window.updateHeaderStatus?.();
+                _setHintRefreshing(false);
+                // If we were showing the refreshing spinner and still have nothing to
+                // display, force one render so it returns to "All caught up" instead of
+                // spinning forever.
+                if (_lastTimelineKey === '__refreshing__') {
+                    _lastTimelineKey = '';
+                    renderTimeline(true);
+                }
+                // Drain a coalesced request that arrived while this batch was running.
+                // Deferred to a fresh microtask so _refreshInFlight is observably false
+                // before re-entry and we don't grow the stack on repeated coalescing.
+                if (window._refreshPending) {
+                    const nextOpts = window._refreshPending;
+                    window._refreshPending = null;
+                    Promise.resolve().then(() => window.runFullRefresh(nextOpts));
+                }
             }
         };
 
         window.refreshAll = () => {
-            window.showToast("Refreshing feeds...", false, true);
-            window.runFullRefresh().then((ran) => {
-                window.hideToast();
-                if (ran) window.showToast("Feeds refreshed");
-            });
+            // No refresh toasts (user preference). Feedback is the in-timeline spinner
+            // when empty; when articles are showing, new items simply appear in place.
+            window.runFullRefresh();
         };
 
         // --- AUTO REFRESH ---
@@ -5466,6 +5725,52 @@
         window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
         window.openExternal = () => { if(window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
+        // ===== STANDALONE LAYOUT-HEIGHT LOCK =====
+        // In the Home Screen app under the user's 115% Page Zoom, WebKit's ENTIRE
+        // reported viewport family lies (fixed viewport, dvh, AND innerHeight -- the
+        // app can even LAUNCH with all of them under-reporting, e.g. 653 vs a true
+        // 706 CSS px) while the glass keeps painting full-height. So the mobile
+        // layout never touches a viewport measurement: body's height is COMPUTED
+        // from the only inputs that never lied in any on-device capture -- the
+        // hardware screen size and the user's Page Zoom scale -- and everything
+        // (app-container, panes, tab bar) chains off body via percentages/absolute
+        // positioning. Pixel heights never re-resolve, so WebKit's lies have nothing
+        // left to move. Standalone-only (Safari chrome makes the viewport
+        // legitimately dynamic; CSS dvh serves it) and portrait-only (rotation
+        // resets the desync anyway).
+        (function lockMobileLayoutHeight() {
+            // Detect via both APIs: this app is manifest-installed (display:standalone).
+            const isStandalone = navigator.standalone === true
+                || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+            window._lockState = { on: isStandalone, h: 0 };   // surfaced by the status chip
+            if (!isStandalone) return;
+            // Do NOT learn the height from innerHeight -- v119/v120 proved the app can
+            // LAUNCH already desynced (chip showed innerHeight=653 from the first read
+            // while the glass is 706), so any learned value can be a memorized lie.
+            // The only inputs that never lied across every on-device capture are the
+            // hardware screen size (812pt, constant) and the user's Page Zoom scale
+            // (1.15, constant unless they change Settings): true glass height in CSS px
+            // = screen.height / scale (verified: healthy capture innerH was exactly
+            // 812/1.15 = 706). Compute it; never measure it.
+            const apply = () => {
+                if (!window.matchMedia('(orientation: portrait)').matches) {
+                    document.body.style.height = '';     // landscape: CSS dvh rules
+                    window._lockState.h = 0;
+                    return;
+                }
+                const scale = (window.visualViewport && window.visualViewport.scale) || 1;
+                const glassH = Math.round(Math.max(screen.width, screen.height) / scale);
+                document.body.style.height = glassH + 'px';
+                window._lockState.h = glassH;
+            };
+            window.addEventListener('resize', apply);
+            window.addEventListener('orientationchange', () => { setTimeout(apply, 120); setTimeout(apply, 500); });
+            // The desync doesn't reliably fire resize; a cheap 2.5s re-check also
+            // catches a heal (bigger innerHeight) if the app ever launches desynced.
+            setInterval(apply, 2500);
+            apply();
+        })();
+
         // ===== IMAGE LIGHTBOX =====
         (function() {
             const lb      = document.getElementById('img-lightbox');
@@ -5741,11 +6046,16 @@ window.toggleUnreadManual = () => {
             const laterLabel = article?.readLater ? 'Remove from Read Later' : 'Add to Read Later';
             const savedLabel = (window.savedBucket && article?.link && window.savedBucket.has(article.link)) ? 'Unsave' : 'Save';
             const sid = escJs(id);
+            const divider = `<div class="my-1 border-t border-gray-200 dark:border-gray-700"></div>`;
+            // Order follows real usage frequency: Mark Above Read (most used) sits
+            // at the finger, then Read Later, then Save. Lower-frequency toggles
+            // (Mark Read/Unread, Mark Below Read) drop below a divider.
             let items = '';
             if (idx > 0)         items += `<button onclick="markAboveRead()" class="${btnClass}">Mark Above Read</button>`;
-            items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             items += `<button onclick="toggleArticleReadLater('${sid}')" class="${btnClass}">${laterLabel}</button>`;
             items += `<button onclick="toggleArticleSaved('${sid}')" class="${btnClass}">${savedLabel}</button>`;
+            items += divider;
+            items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
             const menu = document.getElementById('article-context-menu');
             menu.innerHTML = items;
@@ -5862,9 +6172,10 @@ window.toggleUnreadManual = () => {
 
                 if (dy > 120 && absDy > absDx * 3 && list.scrollTop <= 4) {
                     window._pinnedArticleIds.clear();
+                    // No refresh toast (user preference) — the in-timeline spinner is
+                    // the feedback when empty; otherwise new items appear in place.
                     renderTimeline();
                     renderFeeds();
-                    window.showToast('Updated');
                     if (window.currentSourceFilter) {
                         const feed = window.feeds.find(f => f.name === window.currentSourceFilter);
                         if (feed) fetchRecentArticles(feed.url, feed.name, null, true);
@@ -5896,7 +6207,7 @@ window.toggleUnreadManual = () => {
 
         window.refreshSingleFeed = () => {
             if (!window._feedContextUrl) return;
-            window.showToast(`Refreshing ${window._feedContextName}...`);
+            // No refresh toast (user preference) — new items appear in place.
             fetchRecentArticles(window._feedContextUrl, window._feedContextName);
             document.getElementById('feed-context-menu').classList.add('hidden');
         };
@@ -5972,6 +6283,26 @@ window.toggleUnreadManual = () => {
             window.folderContextType = type;
             window.folderContextKey = key;
             const menu = document.getElementById('folder-context-menu');
+
+            // Show only the actions that apply to what was long-pressed:
+            //  - category folder: Mark All Read, Rename, Delete
+            //  - 'all' (Unread) smart feed: Mark All Read only (no per-folder
+            //    rename/delete). Note: "Mark All Unread" is deliberately absent —
+            //    the default view shows only unread items and markFolderRead()
+            //    archives them, so a bulk un-read has no coherent target.
+            //  - other smart feeds (Read Later / Saved / History): nothing applies,
+            //    so the menu has nothing to offer -> don't open.
+            const isCategory = (type === 'category');
+            const isAllUnread = (type === 'smart' && key === 'all');
+            const show = (id, on) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('hidden', !on);
+            };
+            show('fc-mark-read', isCategory || isAllUnread);
+            show('fc-rename',    isCategory);
+            show('fc-delete',    isCategory);
+            if (!isCategory && !isAllUnread) return; // nothing to show
+
             menu.classList.remove('hidden');
             menu.style.top = `${e.pageY}px`;
             menu.style.left = `${e.pageX}px`;
@@ -6153,6 +6484,10 @@ window.toggleUnreadManual = () => {
         // --- ARTICLE CACHE ---
         async function saveArticleCache() {
             // Keep the limit but increase it significantly (IndexedDB can handle thousands)
+            // NOTE: the leading .slice() is a REQUIRED defensive copy - .sort() mutates
+            // in place, and window.articles is the live global the timeline/navigation
+            // read. Do NOT "optimize" it away by sorting in place; that reorders the
+            // whole app's article list. The trailing .slice(0, 2000) caps history.
             const cache = window.articles
                 .slice()
                 .sort((a, b) => (b._ts || 0) - (a._ts || 0))
@@ -6360,6 +6695,14 @@ window.toggleUnreadManual = () => {
             menu.classList.add('is-open');
             scrim.classList.add('is-open');
             window._mobArticlesMenuJustOpened = true;
+            // Clear any UA text selection the long-press may have started before
+            // our selectstart guard caught it, so the menu never floats over a
+            // "select all" highlight. Chrome extends the selection asynchronously
+            // after the long-press concludes, so clear now AND on the next couple
+            // of frames to catch the late extension.
+            const clearSel = () => { try { window.getSelection?.().removeAllRanges(); } catch (e) {} };
+            clearSel();
+            requestAnimationFrame(() => { clearSel(); requestAnimationFrame(clearSel); });
             // Haptic feedback on supported platforms (iOS Safari ignores this,
             // but Android Chrome and most PWA wrappers honor it).
             if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
@@ -6375,25 +6718,80 @@ window.toggleUnreadManual = () => {
             if (!btn) return;
             let timer = null;
             let startX = 0, startY = 0;
-            const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+            // True from touchstart on the tab until a short grace period after
+            // touchend. Android Chrome starts the page "select all" gesture at
+            // the DOCUMENT level (not on the bar) AFTER the long-press fires, so
+            // a bar-scoped selectstart guard never sees it. While this flag is
+            // up we swallow selectstart everywhere, so no long-press on the tab
+            // can ever start a selection on the article list behind the bar.
+            // Normal taps elsewhere leave the flag down, so article text stays
+            // selectable/copyable.
+            let suppressing = false;
+            let releaseTimer = null;
+            const armSuppress = () => {
+                suppressing = true;
+                document.body.classList.add('tabbar-longpress');
+                if (releaseTimer) { clearTimeout(releaseTimer); releaseTimer = null; }
+            };
+            const disarmSuppress = () => {
+                // Keep suppressing briefly after release — Chrome extends the
+                // selection on the touchend/up that concludes the long-press,
+                // and iOS settles its gesture state a beat late too.
+                if (releaseTimer) clearTimeout(releaseTimer);
+                releaseTimer = setTimeout(() => {
+                    suppressing = false;
+                    document.body.classList.remove('tabbar-longpress');
+                    releaseTimer = null;
+                }, 350);
+            };
+            const cancel = () => {
+                if (timer) { clearTimeout(timer); timer = null; }
+                disarmSuppress();
+            };
             const onStart = (e) => {
                 const t = e.touches ? e.touches[0] : e;
                 startX = t.clientX; startY = t.clientY;
-                cancel();
+                if (timer) { clearTimeout(timer); timer = null; }
+                armSuppress();
                 timer = setTimeout(() => {
                     timer = null;
                     window.openArticlesMenu();
                 }, 500);
             };
             const onMove = (e) => {
-                if (!timer) return;
+                if (!timer) {
+                    // Long-press already fired: keep eating touchmove so iOS
+                    // can't promote the stationary hold into a selection drag.
+                    if (suppressing && e.cancelable) e.preventDefault();
+                    return;
+                }
                 const t = e.touches ? e.touches[0] : e;
-                if (Math.hypot(t.clientX - startX, t.clientY - startY) > 10) cancel();
+                if (Math.hypot(t.clientX - startX, t.clientY - startY) > 10) {
+                    cancel();
+                } else if (e.cancelable) {
+                    // Within the hold slop: cancel the default so iOS Safari
+                    // never starts its selection loupe / callout gesture. iOS
+                    // only honors this on a NON-passive touchmove listener —
+                    // this is the actual iOS root cause; user-select:none alone
+                    // does not stop the loupe on the block behind the bar.
+                    e.preventDefault();
+                }
             };
+            // touchmove is non-passive so preventDefault() actually suppresses
+            // iOS Safari's native long-press selection. touchstart stays passive
+            // (scroll perf; nothing to cancel there).
             btn.addEventListener('touchstart', onStart, { passive: true });
-            btn.addEventListener('touchmove',  onMove,  { passive: true });
+            btn.addEventListener('touchmove',  onMove,  { passive: false });
             btn.addEventListener('touchend',   cancel,  { passive: true });
             btn.addEventListener('touchcancel', cancel, { passive: true });
+            // DOCUMENT-level guard: kill any selection that tries to start while
+            // a tab long-press is in flight, regardless of which element the UA
+            // roots it on. Belt-and-braces alongside the touchmove preventDefault
+            // (Android roots the selection at document; the CSS user-select:none
+            // and removeAllRanges() in openArticlesMenu back this up).
+            document.addEventListener('selectstart', (e) => {
+                if (suppressing) e.preventDefault();
+            });
             // Desktop testing convenience: right-click also opens the menu.
             btn.addEventListener('contextmenu', (e) => { e.preventDefault(); window.openArticlesMenu(); });
         })();
@@ -6775,10 +7173,11 @@ window.toggleUnreadManual = () => {
         });
 
         // --- ASYNC STARTUP SEQUENCE ---
-        // Build identifier — keep in lockstep with CACHE_NAME in the service worker
-        // below. The settings footer shows this so you can instantly tell whether the
-        // page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 'v85';
+        // Build identifier — keep the number in lockstep with CACHE_NAME's vNN in the
+        // service worker below. It's a build counter (cache-buster), not a semantic
+        // version, so the footer labels it "build N". Lets you tell at a glance whether
+        // the page you're looking at is the new code or a stale SW-cached copy.
+        window.APP_BUILD = 122;
 
         (async function initApp() {
             try {
@@ -6787,7 +7186,7 @@ window.toggleUnreadManual = () => {
                 // Stamp the build into the settings footer.
                 try {
                     const stamp = document.getElementById('build-stamp');
-                    if (stamp) stamp.textContent = `RSS Reader · ${window.APP_BUILD}`;
+                    if (stamp) stamp.textContent = `RSS Reader · build ${window.APP_BUILD}`;
                 } catch(e) {}
 
                 // 1. Initial UI Setup (Synchronous)
@@ -6875,10 +7274,28 @@ window.toggleUnreadManual = () => {
                 updateEmptyState();
 
                 // 7. Start Background Sync
+                //
+                // Startup has TWO possible fetch triggers, and exactly ONE should run:
+                //   (a) this 4s fallback timer, using the locally-restored feed list, and
+                //   (b) the Firestore first-snapshot (syncCloudFeeds), using the synced list.
+                // Whichever happens first claims the startup fetch via _startupFetchDone.
+                // The snapshot cancels this timer when it wins the race; if the snapshot is
+                // slow and this timer already ran, the snapshot re-fetches ONLY when it
+                // actually brought different feeds (see syncCloudFeeds). This is the design
+                // fix for the old two-full-batches behavior — one fetch in the common case.
+                window._startupFetchDone = false;
                 if (window.feeds.length > 0) {
                     console.log('App: Starting background fetch...');
                     window._localFetchTimer = setTimeout(() => {
-                        if (window.feeds.length > 0) window.runFullRefresh({ isBackground: true });
+                        window._localFetchTimer = null;
+                        if (window._startupFetchDone) return;      // snapshot already fetched
+                        if (window.feeds.length > 0) {
+                            window._startupFetchDone = true;
+                            // Remember which feeds this pass covered, so a later snapshot can
+                            // tell whether it needs to fetch anything new.
+                            window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
+                            window.runFullRefresh({ isBackground: true });
+                        }
                     }, 4000);
                 }
 
@@ -7049,10 +7466,28 @@ window.toggleUnreadManual = () => {
                     updateEmptyState();
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
-                        // window.feeds === dbFeeds here (assigned just above). Route
-                        // through the shared guard so this doesn't stack on top of a
-                        // PTR pull or the auto-refresh timer fired moments earlier.
-                        window.runFullRefresh({ isBackground: true });
+                        // The local 4s fallback timer was already cancelled at the top of
+                        // this handler (runs on every snapshot). window.feeds === dbFeeds
+                        // here (assigned just above).
+                        // Fetch on startup ONLY when there's real work to do:
+                        //   - no startup fetch has run yet (we won the race, or the timer's
+                        //     feed list was empty), OR
+                        //   - the synced feed set differs from what the local pass fetched
+                        //     (the cloud brought feeds this device didn't have locally).
+                        // Otherwise the local pass already fetched these exact feeds seconds
+                        // ago and a second full batch would be pure waste. This is the design
+                        // fix for "two full fetch batches on open".
+                        const syncedKey = window.feeds.map(f => f.url).sort().join('|');
+                        const alreadyCovered = window._startupFetchDone
+                            && window._lastFetchedFeedKey === syncedKey;
+                        if (!alreadyCovered) {
+                            window._startupFetchDone = true;
+                            window._lastFetchedFeedKey = syncedKey;
+                            // Shared guard still applies (coalesces against a PTR/auto-refresh
+                            // that may have fired in the same instant) — belt-and-braces, but
+                            // the common path is now a single fetch.
+                            window.runFullRefresh({ isBackground: true });
+                        }
                     }
                 }
                 document.getElementById('sync-status').textContent = `☁ ${userEmail}`;
@@ -7184,6 +7619,8 @@ window.toggleUnreadManual = () => {
                     window.setSmartFeed('saved');
                 }
                 if (typeof window.updateActionButton === 'function') window.updateActionButton();
+                // Keep the empty-Saved dim state in sync when items are saved/unsaved.
+                if (typeof updateBadges === 'function') updateBadges();
             };
             document.addEventListener('savedBucket:change', onSavedChange);
             document.addEventListener('savedBucket:ready', onSavedChange);
@@ -7346,7 +7783,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v85';
+const CACHE_NAME = 'rss-reader-v122';
 const APP_SHELL = [
     '/',
     'index.html'
