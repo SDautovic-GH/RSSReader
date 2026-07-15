@@ -112,11 +112,6 @@
             opacity: 0; pointer-events: none;
             transition: opacity 0.18s ease;
             overflow: hidden;
-            /* The overlay itself swallows all touch/scroll so the list behind
-               can't move — this replaces the body overflow:hidden scroll-lock
-               that used to trigger iOS Safari's fixed-bottom-bar reflow bug. */
-            touch-action: none;
-            overscroll-behavior: contain;
         }
         #img-lightbox.open { opacity: 1; pointer-events: all; }
         #img-lightbox img {
@@ -5735,30 +5730,52 @@
                 _ty = Math.max(-maxTy, Math.min(maxTy, _ty));
             }
 
+            // iOS standalone PWA (WKWebView) leaves the fixed bottom tab bar stuck at a
+            // stale position after the full-screen lightbox overlay (position:fixed;
+            // inset:0) is dismissed — it floats well above the screen bottom until a
+            // device rotation (which forces a full relayout) snaps it back. Reproduces
+            // on a plain open->close with no zoom, so it's the overlay show/hide toggling
+            // compositing, not the pinch transform. Replicate the rotate's relayout for
+            // the bar: detach it from layout and force a synchronous reflow so it
+            // re-resolves bottom:0 against the current viewport, then nudge its
+            // compositing layer (the pill's backdrop-filter + the lightbox image's
+            // will-change promote layers iOS can mis-place). display uses
+            // setProperty(...,'important') because the mobile media query sets
+            // `display:flex !important`, which a plain inline style cannot override.
+            function reanchorMobileBar() {
+                const bar = document.getElementById('mobile-tab-bar');
+                if (!bar) return;
+                bar.style.setProperty('display', 'none', 'important');
+                void bar.offsetHeight;               // force reflow while detached
+                bar.style.removeProperty('display'); // back to the CSS-driven flex
+                bar.style.transform = 'translateZ(0)';
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    bar.style.transform = '';
+                }));
+            }
+
             function openLightbox(src) {
                 lbImg.src = src;
                 resetTransform(false);
                 lb.classList.add('open');
-                // Desktop only: lock body scroll behind the overlay. On mobile the
-                // body is NOT the scroller (panes are 100dvh; #article-list /
-                // #reader-view scroll internally), so this toggle does nothing
-                // useful there — and toggling body overflow is precisely what makes
-                // iOS Safari recompute 100dvh + safe-area and leave the fixed bottom
-                // tab bar floating above the screen bottom after close. The overlay's
-                // own touch-action:none stops the list behind from scrolling instead.
-                if (!isMobile()) document.body.style.overflow = 'hidden';
+                document.body.style.overflow = 'hidden';
                 lbHint.style.opacity = '1';
                 setTimeout(() => { lbHint.style.opacity = '0'; }, 2200);
             }
 
             function closeLightbox() {
                 lb.classList.remove('open');
-                // Always clear (not gated on isMobile) so a viewport rotation across
-                // the mobile breakpoint while open can't strand a desktop-set lock.
-                // Setting '' when already '' is a no-op, so this never triggers the
-                // iOS reflow on mobile where we never set it.
                 document.body.style.overflow = '';
-                setTimeout(() => { lbImg.src = ''; resetTransform(false); }, 200);
+                // Re-anchor the fixed bottom bar (see reanchorMobileBar). Run now and
+                // again after the 200ms fade completes — during the fade the overlay
+                // still covers the bar, so the reflow is invisible; the post-fade call
+                // is the one that sticks once the overlay is fully gone.
+                reanchorMobileBar();
+                setTimeout(() => {
+                    lbImg.src = '';
+                    resetTransform(false);
+                    reanchorMobileBar();
+                }, 200);
             }
 
             lbImg.addEventListener('touchstart', (e) => {
@@ -7120,7 +7137,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 110;
+        window.APP_BUILD = 111;
 
         (async function initApp() {
             try {
@@ -7726,7 +7743,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v110';
+const CACHE_NAME = 'rss-reader-v111';
 const APP_SHELL = [
     '/',
     'index.html'
