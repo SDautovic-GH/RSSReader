@@ -3,7 +3,7 @@
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RSS Reader">
@@ -5832,6 +5832,37 @@
             // the very first interaction (not only after a lightbox close).
             try { showBarDiag(); } catch (e) {}
 
+            // --- Pin the mobile tab bar to the PHYSICAL screen bottom even when iOS is
+            // stuck at a >1 visual-viewport zoom. That zoom shrinks window.innerHeight, so
+            // a plain `bottom:0` fixed bar lands ABOVE the real screen bottom, leaving a
+            // black gap. The uncovered strip, in CSS px, is exactly:
+            //     screen.height / visualViewport.scale - innerHeight - visualViewport.offsetTop
+            // Translate the bar down by that — but only while genuinely zoomed (scale>1.01),
+            // so devices sitting at scale 1 with a legit browser-chrome inset are untouched.
+            // Verified against on-device diagnostics: Home innerH=706 -> gap~0 (no shift);
+            // article innerH=627 -> gap~79 (bar pushed down 79px to the true bottom). ---
+            (function pinTabBarBottom() {
+                const vv = window.visualViewport;
+                const update = () => {
+                    const bar = document.getElementById('mobile-tab-bar');
+                    if (!bar) return;
+                    const scale = (vv && vv.scale) || 1;
+                    if (scale <= 1.01) { bar.style.transform = ''; return; }
+                    const offTop = (vv && vv.offsetTop) || 0;
+                    const gap = (screen.height / scale) - window.innerHeight - offTop;
+                    bar.style.transform = gap > 0.5 ? ('translateY(' + gap.toFixed(1) + 'px)') : '';
+                };
+                if (vv) {
+                    vv.addEventListener('resize', update);
+                    vv.addEventListener('scroll', update);
+                }
+                window.addEventListener('resize', update);
+                window.addEventListener('orientationchange', () => { update(); setTimeout(update, 300); });
+                update();
+                [150, 500, 1200].forEach(t => setTimeout(update, t));
+                window._pinTabBarBottom = update;  // let other code re-pin after pane changes
+            })();
+
             function openLightbox(src) {
                 lbImg.src = src;
                 resetTransform(false);
@@ -6947,6 +6978,10 @@ window.toggleUnreadManual = () => {
                     }
                 }
             }
+            // Re-pin the tab bar: switching panes can change innerHeight while the
+            // page is stuck-zoomed, which is when the bar would otherwise drift up.
+            try { window._pinTabBarBottom?.(); } catch (e) {}
+            requestAnimationFrame(() => { try { window._pinTabBarBottom?.(); } catch (e) {} });
         };
 
         // --- MOBILE SEARCH SHEET ---
@@ -7208,7 +7243,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 114;
+        window.APP_BUILD = 115;
 
         (async function initApp() {
             try {
@@ -7814,7 +7849,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v114';
+const CACHE_NAME = 'rss-reader-v115';
 const APP_SHELL = [
     '/',
     'index.html'
