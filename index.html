@@ -5726,47 +5726,42 @@
         window.openExternal = () => { if(window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
         // ===== STANDALONE LAYOUT-HEIGHT LOCK =====
-        // In the Home Screen app under the user's 115% Page Zoom, WebKit repeatedly
-        // shrinks its ENTIRE reported viewport family (fixed viewport, dvh, and
-        // innerHeight all drop 706 -> 627 CSS px on this device) after the image
-        // lightbox closes, while the glass keeps painting full-height. Every
-        // viewport-derived anchor therefore follows the lie -- but the lie only ever
-        // UNDER-reports, and innerHeight measures the true 706 whenever the app is
-        // healthy (launch, post-rotation). So: lock body's height to the largest
-        // innerHeight ever observed for the current orientation, in PIXELS. Pixel
-        // heights never re-resolve, the monotonic max can only converge to the
-        // truth, and the whole mobile layout (app-container, panes, tab bar) chains
-        // off body via percentages/absolute positioning. Guards: standalone-only
-        // (Safari chrome makes innerHeight legitimately variable), portrait-only
-        // (rotation resets the desync anyway; stale mid-rotation reads would poison
-        // a landscape max), clamped to the physically-possible glass height so an
-        // over-report can never push the bar off-screen (the v117 failure mode).
+        // In the Home Screen app under the user's 115% Page Zoom, WebKit's ENTIRE
+        // reported viewport family lies (fixed viewport, dvh, AND innerHeight -- the
+        // app can even LAUNCH with all of them under-reporting, e.g. 653 vs a true
+        // 706 CSS px) while the glass keeps painting full-height. So the mobile
+        // layout never touches a viewport measurement: body's height is COMPUTED
+        // from the only inputs that never lied in any on-device capture -- the
+        // hardware screen size and the user's Page Zoom scale -- and everything
+        // (app-container, panes, tab bar) chains off body via percentages/absolute
+        // positioning. Pixel heights never re-resolve, so WebKit's lies have nothing
+        // left to move. Standalone-only (Safari chrome makes the viewport
+        // legitimately dynamic; CSS dvh serves it) and portrait-only (rotation
+        // resets the desync anyway).
         (function lockMobileLayoutHeight() {
-            // Home Screen app detection MUST use both APIs: this app is installed via
-            // a manifest with display:standalone (line ~15), and manifest-installed
-            // iOS web apps can report navigator.standalone=false even while running
-            // standalone -- gating on navigator.standalone alone silently skipped
-            // this whole lock in v119 (the bar behaved exactly like v118's dvh bug).
+            // Detect via both APIs: this app is manifest-installed (display:standalone).
             const isStandalone = navigator.standalone === true
                 || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
             window._lockState = { on: isStandalone, h: 0 };   // surfaced by the status chip
             if (!isStandalone) return;
-            let maxH = 0, lastScale = 0;
+            // Do NOT learn the height from innerHeight -- v119/v120 proved the app can
+            // LAUNCH already desynced (chip showed innerHeight=653 from the first read
+            // while the glass is 706), so any learned value can be a memorized lie.
+            // The only inputs that never lied across every on-device capture are the
+            // hardware screen size (812pt, constant) and the user's Page Zoom scale
+            // (1.15, constant unless they change Settings): true glass height in CSS px
+            // = screen.height / scale (verified: healthy capture innerH was exactly
+            // 812/1.15 = 706). Compute it; never measure it.
             const apply = () => {
                 if (!window.matchMedia('(orientation: portrait)').matches) {
                     document.body.style.height = '';     // landscape: CSS dvh rules
+                    window._lockState.h = 0;
                     return;
                 }
                 const scale = (window.visualViewport && window.visualViewport.scale) || 1;
-                // Page Zoom changed mid-session: the old max belongs to a different
-                // glass height -- re-learn from scratch so the bar can never be
-                // anchored BELOW the new, smaller glass.
-                if (scale !== lastScale) { lastScale = scale; maxH = 0; }
-                const glassMax = Math.ceil(Math.max(screen.width, screen.height) / scale) + 2;
-                const h = Math.min(window.innerHeight, glassMax);
-                if (h > maxH) maxH = h;
-                if (maxH > 0) document.body.style.height = maxH + 'px';
-                window._lockState.h = maxH;
+                const glassH = Math.round(Math.max(screen.width, screen.height) / scale);
+                document.body.style.height = glassH + 'px';
+                window._lockState.h = glassH;
             };
             window.addEventListener('resize', apply);
             window.addEventListener('orientationchange', () => { setTimeout(apply, 120); setTimeout(apply, 500); });
@@ -7214,7 +7209,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 120;
+        window.APP_BUILD = 121;
 
         (async function initApp() {
             try {
@@ -7820,7 +7815,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v120';
+const CACHE_NAME = 'rss-reader-v121';
 const APP_SHELL = [
     '/',
     'index.html'
