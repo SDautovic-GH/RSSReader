@@ -5778,6 +5778,32 @@
             }
             window.showBarDiag = showBarDiag;  // also callable manually from anywhere
 
+            // ROOT-CAUSE FIX for the tab-bar shift: iOS zooms the whole PAGE (visual
+            // viewport) during a lightbox pinch/double-tap even though the viewport meta
+            // says user-scalable=no + maximum-scale=1 — WebKit violates that constraint
+            // on gesture, and does NOT reset afterward. Because position:fixed sticks to
+            // the (now-zoomed, panned) layout viewport, the bottom bar renders mid-screen
+            // until a rotate/relaunch re-clamps the scale. Diagnostic confirmed vvScale=1.15
+            // in the broken state. Fix = force the scale back to 1.0 by re-clamping the
+            // meta: momentarily raise maximum-scale, then set it back to 1.0 on the next
+            // frame — the attribute CHANGE makes WebKit re-apply the clamp and snap the
+            // current zoom down. Re-setting the same value it already holds does nothing,
+            // hence the up-then-down toggle.
+            const _VP_CLAMPED  = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+            const _VP_RELEASED = 'width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=no, viewport-fit=cover';
+            function resetPageZoom() {
+                const vp = document.querySelector('meta[name=viewport]');
+                if (!vp) return;
+                vp.setAttribute('content', _VP_RELEASED);
+                requestAnimationFrame(() => vp.setAttribute('content', _VP_CLAMPED));
+            }
+            // Belt-and-braces: stop iOS native pinch-zoom before it can start. These
+            // gesture events are iOS-only and independent of the lightbox's own touch-
+            // based pinch (which reads touches[0]/[1]), so cancelling them here disables
+            // accidental page zoom without affecting in-lightbox image zoom.
+            ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt =>
+                document.addEventListener(evt, (e) => e.preventDefault(), { passive: false }));
+
             function openLightbox(src) {
                 lbImg.src = src;
                 resetTransform(false);
@@ -5790,8 +5816,13 @@
             function closeLightbox() {
                 lb.classList.remove('open');
                 document.body.style.overflow = '';
-                setTimeout(() => { lbImg.src = ''; resetTransform(false); }, 200);
-                // TEMP: surface live geometry so we can see the stale value on-device.
+                resetPageZoom();                     // snap any accidental page zoom back to 1.0
+                setTimeout(() => {
+                    lbImg.src = '';
+                    resetTransform(false);
+                    resetPageZoom();                 // again post-fade in case iOS re-applied
+                }, 200);
+                // TEMP: live geometry so we can confirm vvScale returns to 1.00 on-device.
                 showBarDiag();
             }
 
@@ -7154,7 +7185,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 112;
+        window.APP_BUILD = 113;
 
         (async function initApp() {
             try {
@@ -7760,7 +7791,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v112';
+const CACHE_NAME = 'rss-reader-v113';
 const APP_SHELL = [
     '/',
     'index.html'
