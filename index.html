@@ -468,6 +468,15 @@
                user's 115% Page Zoom (see #mobile-tab-bar). 100dvh tracks the real
                glass in the PWA and the dynamic toolbar in Safari-in-browser. */
             body { position: relative; height: 100vh; height: 100dvh; }
+            /* Chain the whole mobile layout off body's height instead of viewport
+               units. During the standalone-WebKit desync (see #mobile-tab-bar) BOTH
+               the fixed viewport AND dvh re-resolve ~79px short (v118 proved dvh
+               desyncs too: the layout-anchored bar rode dvh down by the same gap).
+               body's height gets locked to a healthy PIXEL value by
+               lockMobileLayoutHeight() in the PWA; px never re-resolves, so
+               everything below stays glass-true. In Safari/desktop body stays on
+               CSS dvh and 100% chains behave identically to the old units. */
+            #app-container { height: 100%; }
             /* On mobile, pull-to-refresh replaces the explicit refresh button. */
             #header-refresh-btn { display: none !important; }
             #app-container { flex-direction: column; }
@@ -480,8 +489,10 @@
                 display: flex !important;
                 width: 100% !important;
                 flex: none !important;
-                height: 100vh;
-                height: 100dvh;
+                /* 100% of #app-container (itself 100% of body) — NOT 100vh/100dvh.
+                   Viewport units re-resolve short during the WebKit desync; the
+                   percentage chain keys everything off body's locked height. */
+                height: 100%;
             }
             /* Content scrolls under the floating bar — reserve enough padding so last items clear the pill */
             #article-list,
@@ -5714,6 +5725,48 @@
         window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
         window.openExternal = () => { if(window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
+        // ===== STANDALONE LAYOUT-HEIGHT LOCK =====
+        // In the Home Screen app under the user's 115% Page Zoom, WebKit repeatedly
+        // shrinks its ENTIRE reported viewport family (fixed viewport, dvh, and
+        // innerHeight all drop 706 -> 627 CSS px on this device) after the image
+        // lightbox closes, while the glass keeps painting full-height. Every
+        // viewport-derived anchor therefore follows the lie -- but the lie only ever
+        // UNDER-reports, and innerHeight measures the true 706 whenever the app is
+        // healthy (launch, post-rotation). So: lock body's height to the largest
+        // innerHeight ever observed for the current orientation, in PIXELS. Pixel
+        // heights never re-resolve, the monotonic max can only converge to the
+        // truth, and the whole mobile layout (app-container, panes, tab bar) chains
+        // off body via percentages/absolute positioning. Guards: standalone-only
+        // (Safari chrome makes innerHeight legitimately variable), portrait-only
+        // (rotation resets the desync anyway; stale mid-rotation reads would poison
+        // a landscape max), clamped to the physically-possible glass height so an
+        // over-report can never push the bar off-screen (the v117 failure mode).
+        (function lockMobileLayoutHeight() {
+            if (navigator.standalone !== true) return;   // iOS Home Screen app only
+            let maxH = 0, lastScale = 0;
+            const apply = () => {
+                if (!window.matchMedia('(orientation: portrait)').matches) {
+                    document.body.style.height = '';     // landscape: CSS dvh rules
+                    return;
+                }
+                const scale = (window.visualViewport && window.visualViewport.scale) || 1;
+                // Page Zoom changed mid-session: the old max belongs to a different
+                // glass height -- re-learn from scratch so the bar can never be
+                // anchored BELOW the new, smaller glass.
+                if (scale !== lastScale) { lastScale = scale; maxH = 0; }
+                const glassMax = Math.ceil(Math.max(screen.width, screen.height) / scale) + 2;
+                const h = Math.min(window.innerHeight, glassMax);
+                if (h > maxH) maxH = h;
+                if (maxH > 0) document.body.style.height = maxH + 'px';
+            };
+            window.addEventListener('resize', apply);
+            window.addEventListener('orientationchange', () => { setTimeout(apply, 120); setTimeout(apply, 500); });
+            // The desync doesn't reliably fire resize; a cheap 2.5s re-check also
+            // catches a heal (bigger innerHeight) if the app ever launches desynced.
+            setInterval(apply, 2500);
+            apply();
+        })();
+
         // ===== IMAGE LIGHTBOX =====
         (function() {
             const lb      = document.getElementById('img-lightbox');
@@ -7120,7 +7173,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 118;
+        window.APP_BUILD = 119;
 
         (async function initApp() {
             try {
@@ -7726,7 +7779,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v118';
+const CACHE_NAME = 'rss-reader-v119';
 const APP_SHELL = [
     '/',
     'index.html'
