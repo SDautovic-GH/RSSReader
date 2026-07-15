@@ -5730,12 +5730,35 @@
                 _ty = Math.max(-maxTy, Math.min(maxTy, _ty));
             }
 
-            // TEMP DIAGNOSTIC (remove once the bar-shift bug is root-caused). Shows a
-            // live readout at the TOP of the screen so it's visible even when the tab
-            // bar is displaced. Capture it in the broken state (right after closing an
-            // image) AND after rotating the device (which fixes the bar) — the values
-            // that change between those two screenshots pinpoint the stale geometry.
-            // Tap the readout to dismiss it.
+            // TEMP DIAGNOSTIC v2 (remove once root-caused). Persistent top-of-screen
+            // readout that ATTRIBUTES page-zoom changes: whenever visualViewport.scale
+            // changes, it logs which touch/gesture event + element fired immediately
+            // before, so a single screenshot names the exact trigger. Tap to dismiss.
+            let _lastEvtInfo = 'none';
+            const _describe = (t) => {
+                if (!t || !t.tagName) return '?';
+                let s = t.tagName.toLowerCase();
+                if (t.id) s += '#' + t.id;
+                else if (typeof t.className === 'string' && t.className.trim())
+                    s += '.' + t.className.trim().split(/\s+/)[0];
+                return s;
+            };
+            ['touchstart', 'touchend', 'dblclick', 'gesturestart', 'gesturechange'].forEach(ev =>
+                document.addEventListener(ev, (e) => {
+                    const n = e.touches ? e.touches.length : 0;
+                    _lastEvtInfo = ev + (n ? '(' + n + ')' : '') + ' on ' + _describe(e.target);
+                }, { passive: true, capture: true }));
+            const _zoomLog = [];
+            if (window.visualViewport) {
+                const onVV = () => {
+                    _zoomLog.unshift('scale->' + window.visualViewport.scale.toFixed(2)
+                        + ' after ' + _lastEvtInfo);
+                    if (_zoomLog.length > 6) _zoomLog.length = 6;
+                };
+                window.visualViewport.addEventListener('resize', onVV);
+                window.visualViewport.addEventListener('scroll', onVV);
+            }
+
             function showBarDiag() {
                 let box = document.getElementById('bar-diag');
                 if (!box) {
@@ -5770,6 +5793,9 @@
                         cs ? ('pos=' + cs.position + '  cssBottom=' + cs.bottom + '  padBot=' + cs.paddingBottom) : '',
                         cs ? ('transform=' + (cs.transform === 'none' ? 'none' : cs.transform)) : '',
                         r  ? ('>>> gapBelowBar = ' + Math.round(window.innerHeight - r.bottom) + 'px') : '',
+                        '--- zoom log (newest first) ---',
+                        ...(_zoomLog.length ? _zoomLog : ['(no scale changes yet)']),
+                        'lastEvt: ' + _lastEvtInfo,
                     ];
                     box.textContent = lines.filter(Boolean).join('\n');
                     requestAnimationFrame(probe);
@@ -5778,31 +5804,33 @@
             }
             window.showBarDiag = showBarDiag;  // also callable manually from anywhere
 
-            // ROOT-CAUSE FIX for the tab-bar shift: iOS zooms the whole PAGE (visual
-            // viewport) during a lightbox pinch/double-tap even though the viewport meta
-            // says user-scalable=no + maximum-scale=1 — WebKit violates that constraint
-            // on gesture, and does NOT reset afterward. Because position:fixed sticks to
-            // the (now-zoomed, panned) layout viewport, the bottom bar renders mid-screen
-            // until a rotate/relaunch re-clamps the scale. Diagnostic confirmed vvScale=1.15
-            // in the broken state. Fix = force the scale back to 1.0 by re-clamping the
-            // meta: momentarily raise maximum-scale, then set it back to 1.0 on the next
-            // frame — the attribute CHANGE makes WebKit re-apply the clamp and snap the
-            // current zoom down. Re-setting the same value it already holds does nothing,
-            // hence the up-then-down toggle.
-            const _VP_CLAMPED  = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-            const _VP_RELEASED = 'width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=no, viewport-fit=cover';
-            function resetPageZoom() {
-                const vp = document.querySelector('meta[name=viewport]');
-                if (!vp) return;
-                vp.setAttribute('content', _VP_RELEASED);
-                requestAnimationFrame(() => vp.setAttribute('content', _VP_CLAMPED));
-            }
-            // Belt-and-braces: stop iOS native pinch-zoom before it can start. These
-            // gesture events are iOS-only and independent of the lightbox's own touch-
-            // based pinch (which reads touches[0]/[1]), so cancelling them here disables
-            // accidental page zoom without affecting in-lightbox image zoom.
+            // Stop iOS native pinch-zoom before it can start. These gesture events are
+            // iOS-only and independent of the lightbox's own touch-based pinch (which
+            // reads touches[0]/[1]), so cancelling them disables accidental page zoom
+            // without affecting in-lightbox image zoom. (The meta-based resetPageZoom
+            // trick was removed: WKWebView reads the viewport meta only at load and
+            // ignores runtime changes, so it had no effect — confirmed on-device.)
             ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt =>
                 document.addEventListener(evt, (e) => e.preventDefault(), { passive: false }));
+            // LIKELY FIX: kill iOS double-tap-to-zoom on the PAGE. It survives
+            // user-scalable=no in a standalone PWA and produces exactly the small
+            // "zoom-to-fit-element" scales we measured (1.15). Cancel the 2nd tap of a
+            // rapid double-tap — but skip the lightbox (it runs its own double-tap zoom)
+            // and interactive controls (so fast successive button taps still register).
+            let _lastTapEnd = 0;
+            document.addEventListener('touchend', (e) => {
+                const now = Date.now();
+                if (now - _lastTapEnd <= 320) {
+                    const t = e.target;
+                    const skip = t && t.closest && t.closest(
+                        '#img-lightbox, button, a, input, textarea, select, [role="button"], [contenteditable]');
+                    if (!skip && e.cancelable) e.preventDefault();
+                }
+                _lastTapEnd = now;
+            }, { passive: false });
+            // Start the diagnostic immediately so the zoom log captures the trigger from
+            // the very first interaction (not only after a lightbox close).
+            try { showBarDiag(); } catch (e) {}
 
             function openLightbox(src) {
                 lbImg.src = src;
@@ -5816,13 +5844,8 @@
             function closeLightbox() {
                 lb.classList.remove('open');
                 document.body.style.overflow = '';
-                resetPageZoom();                     // snap any accidental page zoom back to 1.0
-                setTimeout(() => {
-                    lbImg.src = '';
-                    resetTransform(false);
-                    resetPageZoom();                 // again post-fade in case iOS re-applied
-                }, 200);
-                // TEMP: live geometry so we can confirm vvScale returns to 1.00 on-device.
+                setTimeout(() => { lbImg.src = ''; resetTransform(false); }, 200);
+                // Diagnostic is already running from startup; ensure it's visible.
                 showBarDiag();
             }
 
@@ -7185,7 +7208,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 113;
+        window.APP_BUILD = 114;
 
         (async function initApp() {
             try {
@@ -7791,7 +7814,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v113';
+const CACHE_NAME = 'rss-reader-v114';
 const APP_SHELL = [
     '/',
     'index.html'
