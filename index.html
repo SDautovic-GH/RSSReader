@@ -5771,38 +5771,6 @@
             apply();
         })();
 
-        // TEMP status chip (remove once the bar fix is confirmed): one line, anchored
-        // to the LAYOUT (absolute in body, not fixed -- fixed is the thing that lies),
-        // proving on a single screenshot: build, whether standalone detection passed,
-        // whether the height lock engaged and at what value, and the live geometry.
-        // Tap to dismiss.
-        (function statusChip() {
-            if (window.innerWidth > 900) return;   // mobile only
-            const chip = document.createElement('div');
-            chip.style.cssText = 'position:absolute;top:calc(4px + env(safe-area-inset-top,0px));left:4px;'
-                + 'z-index:99999;background:rgba(0,0,0,0.85);color:#0f0;'
-                + 'font:10px/1.3 ui-monospace,monospace;padding:3px 6px;border-radius:6px;pointer-events:auto;';
-            chip.addEventListener('click', () => { chip._stop = true; chip.remove(); });
-            document.body.appendChild(chip);
-            const tick = () => {
-                if (chip._stop || !chip.isConnected) return;
-                const bar = document.getElementById('mobile-tab-bar');
-                const r = bar ? bar.getBoundingClientRect() : null;
-                const vv = window.visualViewport;
-                const ls = window._lockState || {};
-                chip.textContent = 'b' + (window.APP_BUILD || '?')
-                    + ' sa:' + (navigator.standalone === true ? 'n' : '-')
-                          + ((window.matchMedia && matchMedia('(display-mode: standalone)').matches) ? 'm' : '-')
-                    + ' lock:' + (ls.on ? (ls.h || 0) : 'OFF')
-                    + ' bodyH:' + (document.body.style.height || 'css')
-                    + ' inH:' + window.innerHeight
-                    + (vv ? ' vv:' + Math.round(vv.height) + '@' + vv.scale.toFixed(2) : '')
-                    + (r ? ' barB:' + Math.round(r.bottom) : '');
-                setTimeout(tick, 1000);
-            };
-            tick();
-        })();
-
         // ===== IMAGE LIGHTBOX =====
         (function() {
             const lb      = document.getElementById('img-lightbox');
@@ -7209,7 +7177,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 121;
+        window.APP_BUILD = 122;
 
         (async function initApp() {
             try {
@@ -7815,7 +7783,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v121';
+const CACHE_NAME = 'rss-reader-v122';
 const APP_SHELL = [
     '/',
     'index.html'
