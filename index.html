@@ -5730,29 +5730,53 @@
                 _ty = Math.max(-maxTy, Math.min(maxTy, _ty));
             }
 
-            // iOS standalone PWA (WKWebView) leaves the fixed bottom tab bar stuck at a
-            // stale position after the full-screen lightbox overlay (position:fixed;
-            // inset:0) is dismissed — it floats well above the screen bottom until a
-            // device rotation (which forces a full relayout) snaps it back. Reproduces
-            // on a plain open->close with no zoom, so it's the overlay show/hide toggling
-            // compositing, not the pinch transform. Replicate the rotate's relayout for
-            // the bar: detach it from layout and force a synchronous reflow so it
-            // re-resolves bottom:0 against the current viewport, then nudge its
-            // compositing layer (the pill's backdrop-filter + the lightbox image's
-            // will-change promote layers iOS can mis-place). display uses
-            // setProperty(...,'important') because the mobile media query sets
-            // `display:flex !important`, which a plain inline style cannot override.
-            function reanchorMobileBar() {
-                const bar = document.getElementById('mobile-tab-bar');
-                if (!bar) return;
-                bar.style.setProperty('display', 'none', 'important');
-                void bar.offsetHeight;               // force reflow while detached
-                bar.style.removeProperty('display'); // back to the CSS-driven flex
-                bar.style.transform = 'translateZ(0)';
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                    bar.style.transform = '';
-                }));
+            // TEMP DIAGNOSTIC (remove once the bar-shift bug is root-caused). Shows a
+            // live readout at the TOP of the screen so it's visible even when the tab
+            // bar is displaced. Capture it in the broken state (right after closing an
+            // image) AND after rotating the device (which fixes the bar) — the values
+            // that change between those two screenshots pinpoint the stale geometry.
+            // Tap the readout to dismiss it.
+            function showBarDiag() {
+                let box = document.getElementById('bar-diag');
+                if (!box) {
+                    box = document.createElement('div');
+                    box.id = 'bar-diag';
+                    box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
+                        + 'background:rgba(0,0,0,0.9);color:#0f0;font:11px/1.35 ui-monospace,monospace;'
+                        + 'white-space:pre;padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px;'
+                        + 'pointer-events:auto;-webkit-user-select:text;user-select:text;';
+                    box.addEventListener('click', () => { box._stop = true; box.remove(); });
+                    document.body.appendChild(box);
+                }
+                box._stop = false;
+                const probe = () => {
+                    if (box._stop || !box.isConnected) return;
+                    const bar = document.getElementById('mobile-tab-bar');
+                    const r  = bar ? bar.getBoundingClientRect() : null;
+                    const cs = bar ? getComputedStyle(bar) : null;
+                    const vv = window.visualViewport;
+                    const de = document.documentElement;
+                    const lines = [
+                        'TAP TO DISMISS   build ' + (window.APP_BUILD || '?'),
+                        'innerH=' + window.innerHeight + '  innerW=' + window.innerWidth,
+                        'docClientH=' + de.clientHeight + '  scrollY=' + Math.round(window.scrollY),
+                        'screenH=' + screen.height + '  availH=' + screen.availHeight,
+                        vv ? ('vvH=' + Math.round(vv.height) + '  vvOffTop=' + Math.round(vv.offsetTop)
+                               + '  vvPageTop=' + Math.round(vv.pageTop) + '  vvScale=' + vv.scale.toFixed(2))
+                           : 'visualViewport=n/a',
+                        '--- tab bar ---',
+                        r  ? ('rectTop=' + Math.round(r.top) + '  rectBot=' + Math.round(r.bottom)
+                               + '  H=' + Math.round(r.height)) : 'bar element MISSING',
+                        cs ? ('pos=' + cs.position + '  cssBottom=' + cs.bottom + '  padBot=' + cs.paddingBottom) : '',
+                        cs ? ('transform=' + (cs.transform === 'none' ? 'none' : cs.transform)) : '',
+                        r  ? ('>>> gapBelowBar = ' + Math.round(window.innerHeight - r.bottom) + 'px') : '',
+                    ];
+                    box.textContent = lines.filter(Boolean).join('\n');
+                    requestAnimationFrame(probe);
+                };
+                probe();
             }
+            window.showBarDiag = showBarDiag;  // also callable manually from anywhere
 
             function openLightbox(src) {
                 lbImg.src = src;
@@ -5766,16 +5790,9 @@
             function closeLightbox() {
                 lb.classList.remove('open');
                 document.body.style.overflow = '';
-                // Re-anchor the fixed bottom bar (see reanchorMobileBar). Run now and
-                // again after the 200ms fade completes — during the fade the overlay
-                // still covers the bar, so the reflow is invisible; the post-fade call
-                // is the one that sticks once the overlay is fully gone.
-                reanchorMobileBar();
-                setTimeout(() => {
-                    lbImg.src = '';
-                    resetTransform(false);
-                    reanchorMobileBar();
-                }, 200);
+                setTimeout(() => { lbImg.src = ''; resetTransform(false); }, 200);
+                // TEMP: surface live geometry so we can see the stale value on-device.
+                showBarDiag();
             }
 
             lbImg.addEventListener('touchstart', (e) => {
@@ -7137,7 +7154,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 111;
+        window.APP_BUILD = 112;
 
         (async function initApp() {
             try {
@@ -7743,7 +7760,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v111';
+const CACHE_NAME = 'rss-reader-v112';
 const APP_SHELL = [
     '/',
     'index.html'
