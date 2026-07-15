@@ -462,6 +462,12 @@
 
         /* ===== MOBILE LAYOUT ===== */
         @media (max-width: 900px) {
+            /* Body is the positioning anchor for the bottom tab bar + its popovers
+               (menu, scrim, search sheet) — they are position:absolute, NOT fixed,
+               because standalone WebKit mis-anchors the fixed viewport under the
+               user's 115% Page Zoom (see #mobile-tab-bar). 100dvh tracks the real
+               glass in the PWA and the dynamic toolbar in Safari-in-browser. */
+            body { position: relative; height: 100vh; height: 100dvh; }
             /* On mobile, pull-to-refresh replaces the explicit refresh button. */
             #header-refresh-btn { display: none !important; }
             #app-container { flex-direction: column; }
@@ -692,9 +698,19 @@
         }
 
         /* ===== APPLE MUSIC-STYLE MOBILE BOTTOM BAR ===== */
+        /* position:absolute (anchored to the 100dvh body), NOT fixed. Under the
+           user's intentional Safari Page Zoom (115%, applies in the PWA too),
+           standalone WebKit repeatedly mis-anchors the FIXED-position viewport
+           after the image lightbox closes — the bar floated ~79 CSS px above the
+           real screen bottom while normal in-flow layout (100dvh panes) kept
+           painting the full glass correctly (verified via on-device diagnostics,
+           builds 112-115). Anchoring to page layout instead of the fixed viewport
+           sidesteps the desync entirely. Body scroll is permanently hidden and the
+           panes scroll internally, so absolute-in-body behaves identically to
+           fixed in every healthy state. */
         #mobile-tab-bar {
             display: none;
-            position: fixed;
+            position: absolute;
             left: 0; right: 0;
             bottom: 0;
             z-index: 50;
@@ -840,7 +856,7 @@
         /* Articles long-press menu — small popover that floats above the tab bar
            when the user long-presses the Articles tab. */
         #mob-articles-menu {
-            position: fixed;
+            position: absolute; /* track the layout-anchored tab bar, not the fixed viewport */
             left: 50%;
             transform: translateX(-50%);
             bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
@@ -878,7 +894,7 @@
             to   { opacity: 1; transform: translateX(-50%) scale(1); }
         }
         #mob-articles-menu-scrim {
-            position: fixed;
+            position: absolute; /* body is 100dvh on mobile, so inset:0 still covers the glass */
             inset: 0;
             background: transparent;
             z-index: 9499;
@@ -906,7 +922,7 @@
         /* Search sheet above bar */
         #mobile-search-sheet {
             display: none !important;
-            position: fixed !important;
+            position: absolute !important; /* track the layout-anchored tab bar */
             left: 0; right: 0;
             bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
             z-index: 49;
@@ -5698,53 +5714,6 @@
         window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
         window.openExternal = () => { if(window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
-        // ===== iOS PWA BOTTOM-BAR PIN =====
-        // The user runs Safari Page Zoom at 115% by choice (per-site setting; it also
-        // applies inside the Home Screen app, reported as visualViewport.scale=1.15).
-        // Under zoom != 100%, standalone WebKit sometimes shrinks its REPORTED visual
-        // viewport after the full-screen image lightbox closes: measured on-device,
-        // innerHeight/visualViewport.height drop 706 -> 627 CSS px while the glass
-        // still paints edge-to-edge, so the bottom:0 tab bar renders ~79 CSS px above
-        // the physical screen bottom until a rotation forces relayout. Every geometry
-        // API agrees with the WRONG viewport (bar rect bottom == innerHeight even in
-        // the broken state), so the shortfall can't be read off the bar -- but in
-        // standalone there is no browser chrome, so the true glass height in CSS px
-        // is exactly screen.height / visualViewport.scale. Verified against both
-        // captured states: Home 812/1.15 - 706 = 0 (no correction), broken reader
-        // pane 812/1.15 - 627 = 79 (the exact visible displacement). We translate the
-        // bar down by that measured shortfall and clear it as soon as WebKit heals.
-        // STRICT scoping -- every guard exists to prevent a v115-style regression:
-        //   - navigator.standalone only: Safari-in-browser has real chrome that makes
-        //     innerHeight legitimately small; it must never be compensated.
-        //   - portrait only: rotation resets the bug anyway, and screen.height
-        //     orientation semantics aren't worth trusting in landscape.
-        //   - no editable focused: the keyboard legitimately shrinks the viewport.
-        //   - 1..120px band: anything larger is a keyboard/legit resize, not the bug.
-        (function pinBarToGlassBottom() {
-            if (navigator.standalone !== true) return;   // iOS Home Screen app only
-            const vv = window.visualViewport;
-            if (!vv) return;
-            const update = () => {
-                const bar = document.getElementById('mobile-tab-bar');
-                if (!bar) return;
-                const ae = document.activeElement;
-                const typing = !!ae && (/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) || ae.isContentEditable);
-                const portrait = window.matchMedia('(orientation: portrait)').matches;
-                const gap = screen.height / (vv.scale || 1) - (vv.offsetTop + vv.height);
-                const apply = portrait && !typing && gap > 1 && gap < 120;
-                bar.style.transform = apply ? `translateY(${gap.toFixed(1)}px)` : '';
-            };
-            vv.addEventListener('resize', update);
-            vv.addEventListener('scroll', update);
-            window.addEventListener('orientationchange', () => { update(); setTimeout(update, 400); });
-            // The desync doesn't reliably fire a visualViewport resize event, so also
-            // poll cheaply (a handful of property reads every 2s -- negligible) and
-            // let the known trigger paths re-check immediately via _pinBarUpdate.
-            setInterval(update, 2000);
-            window._pinBarUpdate = update;
-            update();
-        })();
-
         // ===== IMAGE LIGHTBOX =====
         (function() {
             const lb      = document.getElementById('img-lightbox');
@@ -5790,14 +5759,6 @@
                 lb.classList.remove('open');
                 document.body.style.overflow = '';
                 setTimeout(() => { lbImg.src = ''; resetTransform(false); }, 200);
-                // Closing this overlay is the trigger for the standalone viewport
-                // desync (see pinBarToGlassBottom) -- re-measure now and again after
-                // the fade/relayout settles. No-op outside the iOS PWA.
-                if (window._pinBarUpdate) {
-                    window._pinBarUpdate();
-                    setTimeout(window._pinBarUpdate, 300);
-                    setTimeout(window._pinBarUpdate, 900);
-                }
             }
 
             lbImg.addEventListener('touchstart', (e) => {
@@ -6898,9 +6859,6 @@ window.toggleUnreadManual = () => {
                     }
                 }
             }
-            // Pane switches are where the desynced viewport becomes visible --
-            // re-check the standalone bottom-bar pin (no-op outside the iOS PWA).
-            if (window._pinBarUpdate) requestAnimationFrame(window._pinBarUpdate);
         };
 
         // --- MOBILE SEARCH SHEET ---
@@ -7162,7 +7120,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 117;
+        window.APP_BUILD = 118;
 
         (async function initApp() {
             try {
@@ -7768,7 +7726,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v117';
+const CACHE_NAME = 'rss-reader-v118';
 const APP_SHELL = [
     '/',
     'index.html'
