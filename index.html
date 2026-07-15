@@ -3,7 +3,7 @@
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RSS Reader">
@@ -5730,139 +5730,6 @@
                 _ty = Math.max(-maxTy, Math.min(maxTy, _ty));
             }
 
-            // TEMP DIAGNOSTIC v2 (remove once root-caused). Persistent top-of-screen
-            // readout that ATTRIBUTES page-zoom changes: whenever visualViewport.scale
-            // changes, it logs which touch/gesture event + element fired immediately
-            // before, so a single screenshot names the exact trigger. Tap to dismiss.
-            let _lastEvtInfo = 'none';
-            const _describe = (t) => {
-                if (!t || !t.tagName) return '?';
-                let s = t.tagName.toLowerCase();
-                if (t.id) s += '#' + t.id;
-                else if (typeof t.className === 'string' && t.className.trim())
-                    s += '.' + t.className.trim().split(/\s+/)[0];
-                return s;
-            };
-            ['touchstart', 'touchend', 'dblclick', 'gesturestart', 'gesturechange'].forEach(ev =>
-                document.addEventListener(ev, (e) => {
-                    const n = e.touches ? e.touches.length : 0;
-                    _lastEvtInfo = ev + (n ? '(' + n + ')' : '') + ' on ' + _describe(e.target);
-                }, { passive: true, capture: true }));
-            const _zoomLog = [];
-            if (window.visualViewport) {
-                const onVV = () => {
-                    _zoomLog.unshift('scale->' + window.visualViewport.scale.toFixed(2)
-                        + ' after ' + _lastEvtInfo);
-                    if (_zoomLog.length > 6) _zoomLog.length = 6;
-                };
-                window.visualViewport.addEventListener('resize', onVV);
-                window.visualViewport.addEventListener('scroll', onVV);
-            }
-
-            function showBarDiag() {
-                let box = document.getElementById('bar-diag');
-                if (!box) {
-                    box = document.createElement('div');
-                    box.id = 'bar-diag';
-                    box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
-                        + 'background:rgba(0,0,0,0.9);color:#0f0;font:11px/1.35 ui-monospace,monospace;'
-                        + 'white-space:pre;padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px;'
-                        + 'pointer-events:auto;-webkit-user-select:text;user-select:text;';
-                    box.addEventListener('click', () => { box._stop = true; box.remove(); });
-                    document.body.appendChild(box);
-                }
-                box._stop = false;
-                const probe = () => {
-                    if (box._stop || !box.isConnected) return;
-                    const bar = document.getElementById('mobile-tab-bar');
-                    const r  = bar ? bar.getBoundingClientRect() : null;
-                    const cs = bar ? getComputedStyle(bar) : null;
-                    const vv = window.visualViewport;
-                    const de = document.documentElement;
-                    const lines = [
-                        'TAP TO DISMISS   build ' + (window.APP_BUILD || '?'),
-                        'innerH=' + window.innerHeight + '  innerW=' + window.innerWidth,
-                        'docClientH=' + de.clientHeight + '  scrollY=' + Math.round(window.scrollY),
-                        'screenH=' + screen.height + '  availH=' + screen.availHeight,
-                        vv ? ('vvH=' + Math.round(vv.height) + '  vvOffTop=' + Math.round(vv.offsetTop)
-                               + '  vvPageTop=' + Math.round(vv.pageTop) + '  vvScale=' + vv.scale.toFixed(2))
-                           : 'visualViewport=n/a',
-                        '--- tab bar ---',
-                        r  ? ('rectTop=' + Math.round(r.top) + '  rectBot=' + Math.round(r.bottom)
-                               + '  H=' + Math.round(r.height)) : 'bar element MISSING',
-                        cs ? ('pos=' + cs.position + '  cssBottom=' + cs.bottom + '  padBot=' + cs.paddingBottom) : '',
-                        cs ? ('transform=' + (cs.transform === 'none' ? 'none' : cs.transform)) : '',
-                        r  ? ('>>> gapBelowBar = ' + Math.round(window.innerHeight - r.bottom) + 'px') : '',
-                        '--- zoom log (newest first) ---',
-                        ...(_zoomLog.length ? _zoomLog : ['(no scale changes yet)']),
-                        'lastEvt: ' + _lastEvtInfo,
-                    ];
-                    box.textContent = lines.filter(Boolean).join('\n');
-                    requestAnimationFrame(probe);
-                };
-                probe();
-            }
-            window.showBarDiag = showBarDiag;  // also callable manually from anywhere
-
-            // Stop iOS native pinch-zoom before it can start. These gesture events are
-            // iOS-only and independent of the lightbox's own touch-based pinch (which
-            // reads touches[0]/[1]), so cancelling them disables accidental page zoom
-            // without affecting in-lightbox image zoom. (The meta-based resetPageZoom
-            // trick was removed: WKWebView reads the viewport meta only at load and
-            // ignores runtime changes, so it had no effect — confirmed on-device.)
-            ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt =>
-                document.addEventListener(evt, (e) => e.preventDefault(), { passive: false }));
-            // LIKELY FIX: kill iOS double-tap-to-zoom on the PAGE. It survives
-            // user-scalable=no in a standalone PWA and produces exactly the small
-            // "zoom-to-fit-element" scales we measured (1.15). Cancel the 2nd tap of a
-            // rapid double-tap — but skip the lightbox (it runs its own double-tap zoom)
-            // and interactive controls (so fast successive button taps still register).
-            let _lastTapEnd = 0;
-            document.addEventListener('touchend', (e) => {
-                const now = Date.now();
-                if (now - _lastTapEnd <= 320) {
-                    const t = e.target;
-                    const skip = t && t.closest && t.closest(
-                        '#img-lightbox, button, a, input, textarea, select, [role="button"], [contenteditable]');
-                    if (!skip && e.cancelable) e.preventDefault();
-                }
-                _lastTapEnd = now;
-            }, { passive: false });
-            // Start the diagnostic immediately so the zoom log captures the trigger from
-            // the very first interaction (not only after a lightbox close).
-            try { showBarDiag(); } catch (e) {}
-
-            // --- Pin the mobile tab bar to the PHYSICAL screen bottom even when iOS is
-            // stuck at a >1 visual-viewport zoom. That zoom shrinks window.innerHeight, so
-            // a plain `bottom:0` fixed bar lands ABOVE the real screen bottom, leaving a
-            // black gap. The uncovered strip, in CSS px, is exactly:
-            //     screen.height / visualViewport.scale - innerHeight - visualViewport.offsetTop
-            // Translate the bar down by that — but only while genuinely zoomed (scale>1.01),
-            // so devices sitting at scale 1 with a legit browser-chrome inset are untouched.
-            // Verified against on-device diagnostics: Home innerH=706 -> gap~0 (no shift);
-            // article innerH=627 -> gap~79 (bar pushed down 79px to the true bottom). ---
-            (function pinTabBarBottom() {
-                const vv = window.visualViewport;
-                const update = () => {
-                    const bar = document.getElementById('mobile-tab-bar');
-                    if (!bar) return;
-                    const scale = (vv && vv.scale) || 1;
-                    if (scale <= 1.01) { bar.style.transform = ''; return; }
-                    const offTop = (vv && vv.offsetTop) || 0;
-                    const gap = (screen.height / scale) - window.innerHeight - offTop;
-                    bar.style.transform = gap > 0.5 ? ('translateY(' + gap.toFixed(1) + 'px)') : '';
-                };
-                if (vv) {
-                    vv.addEventListener('resize', update);
-                    vv.addEventListener('scroll', update);
-                }
-                window.addEventListener('resize', update);
-                window.addEventListener('orientationchange', () => { update(); setTimeout(update, 300); });
-                update();
-                [150, 500, 1200].forEach(t => setTimeout(update, t));
-                window._pinTabBarBottom = update;  // let other code re-pin after pane changes
-            })();
-
             function openLightbox(src) {
                 lbImg.src = src;
                 resetTransform(false);
@@ -5876,8 +5743,6 @@
                 lb.classList.remove('open');
                 document.body.style.overflow = '';
                 setTimeout(() => { lbImg.src = ''; resetTransform(false); }, 200);
-                // Diagnostic is already running from startup; ensure it's visible.
-                showBarDiag();
             }
 
             lbImg.addEventListener('touchstart', (e) => {
@@ -6978,10 +6843,6 @@ window.toggleUnreadManual = () => {
                     }
                 }
             }
-            // Re-pin the tab bar: switching panes can change innerHeight while the
-            // page is stuck-zoomed, which is when the bar would otherwise drift up.
-            try { window._pinTabBarBottom?.(); } catch (e) {}
-            requestAnimationFrame(() => { try { window._pinTabBarBottom?.(); } catch (e) {} });
         };
 
         // --- MOBILE SEARCH SHEET ---
@@ -7243,7 +7104,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 115;
+        window.APP_BUILD = 116;
 
         (async function initApp() {
             try {
@@ -7849,7 +7710,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v115';
+const CACHE_NAME = 'rss-reader-v116';
 const APP_SHELL = [
     '/',
     'index.html'
