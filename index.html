@@ -112,6 +112,11 @@
             opacity: 0; pointer-events: none;
             transition: opacity 0.18s ease;
             overflow: hidden;
+            /* The overlay itself swallows all touch/scroll so the list behind
+               can't move — this replaces the body overflow:hidden scroll-lock
+               that used to trigger iOS Safari's fixed-bottom-bar reflow bug. */
+            touch-action: none;
+            overscroll-behavior: contain;
         }
         #img-lightbox.open { opacity: 1; pointer-events: all; }
         #img-lightbox img {
@@ -5734,13 +5739,24 @@
                 lbImg.src = src;
                 resetTransform(false);
                 lb.classList.add('open');
-                document.body.style.overflow = 'hidden';
+                // Desktop only: lock body scroll behind the overlay. On mobile the
+                // body is NOT the scroller (panes are 100dvh; #article-list /
+                // #reader-view scroll internally), so this toggle does nothing
+                // useful there — and toggling body overflow is precisely what makes
+                // iOS Safari recompute 100dvh + safe-area and leave the fixed bottom
+                // tab bar floating above the screen bottom after close. The overlay's
+                // own touch-action:none stops the list behind from scrolling instead.
+                if (!isMobile()) document.body.style.overflow = 'hidden';
                 lbHint.style.opacity = '1';
                 setTimeout(() => { lbHint.style.opacity = '0'; }, 2200);
             }
 
             function closeLightbox() {
                 lb.classList.remove('open');
+                // Always clear (not gated on isMobile) so a viewport rotation across
+                // the mobile breakpoint while open can't strand a desktop-set lock.
+                // Setting '' when already '' is a no-op, so this never triggers the
+                // iOS reflow on mobile where we never set it.
                 document.body.style.overflow = '';
                 setTimeout(() => { lbImg.src = ''; resetTransform(false); }, 200);
             }
@@ -7104,7 +7120,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 109;
+        window.APP_BUILD = 110;
 
         (async function initApp() {
             try {
@@ -7710,7 +7726,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v109';
+const CACHE_NAME = 'rss-reader-v110';
 const APP_SHELL = [
     '/',
     'index.html'
