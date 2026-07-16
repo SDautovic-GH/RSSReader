@@ -585,20 +585,40 @@
                matching the home header title baseline. The article cards
                have py-4 (1rem) inside, so the list container subtracts 1rem.
                max() prevents negative padding on devices with no safe area. */
+            /* Scroll-under fade, iOS-native style. A gradient STRIP overlaid at the
+               pane top darkens only what scrolls BENEATH it — unlike the old
+               mask-image approach, which dimmed the list's top even at rest (the
+               complaint that killed it). At rest, content sits just below the strip
+               and the strip covers only the pane's own background, so it's invisible;
+               scrolling carries content under it, fading progressively while staying
+               ~20% readable beneath the clock (the 0.82 top alpha). Knobs: top alpha
+               = how hidden under the clock; the +28px = fade depth past the bar. */
+            #timeline-pane.mobile-active::before,
+            #viewer-pane.mobile-active::before {
+                content: "";
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: calc(max(env(safe-area-inset-top, 0px), 44px) + 28px);
+                z-index: 10;
+                pointer-events: none;
+                background: linear-gradient(to bottom,
+                    rgba(255,255,255,0.88) 0,
+                    rgba(255,255,255,0.60) max(env(safe-area-inset-top, 0px), 44px),
+                    rgba(255,255,255,0) 100%);
+            }
+            .dark #timeline-pane.mobile-active::before,
+            .dark #viewer-pane.mobile-active::before {
+                background: linear-gradient(to bottom,
+                    rgba(0,0,0,0.82) 0,
+                    rgba(0,0,0,0.55) max(env(safe-area-inset-top, 0px), 44px),
+                    rgba(0,0,0,0) 100%);
+            }
+            /* Content rests just below the strip; scrolling carries it underneath. */
             #timeline-pane.mobile-active #article-list {
-                padding-top: max(0px, calc(env(safe-area-inset-top, 0px) - 1rem));
-                /* Fade content as it scrolls under the iOS status bar / notch.
-                   Three-stop curve (user-tuned): transparent at y=0, ~45% visible at
-                   the status baseline so text stays readable under the clock, fully
-                   opaque at 2.4x the band (~146px). Knobs: the 0.45 alpha = how
-                   visible under the clock; the 2.4 multiplier = how deep the fade. */
-                -webkit-mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) max(env(safe-area-inset-top, 0px), 44px), #000 calc(max(env(safe-area-inset-top, 0px), 44px) * 2.4));
-                mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) max(env(safe-area-inset-top, 0px), 44px), #000 calc(max(env(safe-area-inset-top, 0px), 44px) * 2.4));
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 18px);
             }
             #viewer-pane.mobile-active #reader-view {
-                padding-top: env(safe-area-inset-top, 0px);
-                -webkit-mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) max(env(safe-area-inset-top, 0px), 44px), #000 calc(max(env(safe-area-inset-top, 0px), 44px) * 2.4));
-                mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) max(env(safe-area-inset-top, 0px), 44px), #000 calc(max(env(safe-area-inset-top, 0px), 44px) * 2.4));
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 18px);
             }
             #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
             #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
@@ -751,7 +771,10 @@
             background:
               linear-gradient(90deg, rgba(255,255,255,0.10), transparent 22%, transparent 78%, rgba(255,255,255,0.10)),
               linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0) 45%),
-              rgba(30,30,34,0.55); /* Glassy 55% -- user-picked from the transparency preview */
+              rgba(30,30,34,0.70); /* solid "bundle" look -- the 55% glassy trial read
+                                      washed-out over article text (user comparison vs
+                                      Fidelity's near-opaque pill); 0.70 is the proven
+                                      baseline. Nudge toward 0.80 for even more solid. */
             border: 1px solid rgba(255,255,255,0.10);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 40px rgba(0,0,0,0.6);
             backdrop-filter: blur(40px) saturate(1.8);
@@ -7223,7 +7246,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 134;
+        window.APP_BUILD = 135;
 
         (async function initApp() {
             try {
@@ -7829,7 +7852,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v134';
+const CACHE_NAME = 'rss-reader-v135';
 const APP_SHELL = [
     '/',
     'index.html'
