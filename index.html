@@ -588,14 +588,17 @@
             #timeline-pane.mobile-active #article-list {
                 padding-top: max(0px, calc(env(safe-area-inset-top, 0px) - 1rem));
                 /* Fade content as it scrolls under the iOS status bar / notch.
-                   Transparent at y=0, opaque at the safe-area baseline. */
-                -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 max(env(safe-area-inset-top, 0px), 44px));
-                mask-image: linear-gradient(to bottom, transparent 0, #000 max(env(safe-area-inset-top, 0px), 44px));
+                   Three-stop curve (user-tuned): transparent at y=0, ~45% visible at
+                   the status baseline so text stays readable under the clock, fully
+                   opaque at 2.4x the band (~146px). Knobs: the 0.45 alpha = how
+                   visible under the clock; the 2.4 multiplier = how deep the fade. */
+                -webkit-mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) max(env(safe-area-inset-top, 0px), 44px), #000 calc(max(env(safe-area-inset-top, 0px), 44px) * 2.4));
+                mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) max(env(safe-area-inset-top, 0px), 44px), #000 calc(max(env(safe-area-inset-top, 0px), 44px) * 2.4));
             }
             #viewer-pane.mobile-active #reader-view {
                 padding-top: env(safe-area-inset-top, 0px);
-                -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 max(env(safe-area-inset-top, 0px), 44px));
-                mask-image: linear-gradient(to bottom, transparent 0, #000 max(env(safe-area-inset-top, 0px), 44px));
+                -webkit-mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) max(env(safe-area-inset-top, 0px), 44px), #000 calc(max(env(safe-area-inset-top, 0px), 44px) * 2.4));
+                mask-image: linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) max(env(safe-area-inset-top, 0px), 44px), #000 calc(max(env(safe-area-inset-top, 0px), 44px) * 2.4));
             }
             #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
             #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
@@ -748,7 +751,7 @@
             background:
               linear-gradient(90deg, rgba(255,255,255,0.10), transparent 22%, transparent 78%, rgba(255,255,255,0.10)),
               linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0) 45%),
-              rgba(30,30,34,0.70);
+              rgba(30,30,34,0.55); /* Glassy 55% -- user-picked from the transparency preview */
             border: 1px solid rgba(255,255,255,0.10);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 40px rgba(0,0,0,0.6);
             backdrop-filter: blur(40px) saturate(1.8);
@@ -5814,57 +5817,6 @@
             sample();
         })();
 
-        // TEMP measurement chip (remove after the frame-state discriminator is
-        // confirmed). ZERO behavior change -- read-only. Adds an env() probe:
-        // env(safe-area-inset-top) comes from the compositor's actual frame
-        // placement, outside the lying viewport family. Hypothesis to verify:
-        // envT > 0  -> fullscreen frame (true height = screen/zoom = 706)
-        // envT == 0 -> frame parked below the status bar (true height = 653)
-        // Two states that report identical innerHeight need opposite corrections;
-        // this is the only in-page signal that can tell them apart. Tap to dismiss.
-        (function measureChip() {
-            if (window.innerWidth > 900) return;   // mobile only
-            var probe = document.createElement('div');
-            probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;'
-                + 'padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);';
-            document.body.appendChild(probe);
-            var chip = document.createElement('div');
-            chip.style.cssText = 'position:absolute;top:64px;left:4px;z-index:99999;'
-                + 'background:rgba(0,0,0,0.85);color:#0f0;white-space:pre;'
-                + 'font:10px/1.4 ui-monospace,monospace;padding:4px 7px;border-radius:6px;pointer-events:auto;';
-            chip.addEventListener('click', function(){ chip._stop = true; chip.remove(); });
-            document.body.appendChild(chip);
-            var tick = function(){
-                if (chip._stop || !chip.isConnected) return;
-                var cs = getComputedStyle(probe);
-                var bar = document.getElementById('mobile-tab-bar');
-                var r = bar ? bar.getBoundingClientRect() : null;
-                var vv = window.visualViewport;
-                // What does WebKit think #article-list's mask is? The computed value
-                // resolves env()/max() to real px, so this shows (a) whether the rule
-                // survived the cascade at all ('none' = it didn't) and (b) the resolved
-                // fade band. Distinguishes cascade/parse failure from a paint failure.
-                var maskTxt = '-';
-                var list = document.getElementById('article-list');
-                if (list) {
-                    var lcs = getComputedStyle(list);
-                    var mv = lcs.maskImage || lcs.webkitMaskImage
-                        || lcs.getPropertyValue('-webkit-mask-image') || '';
-                    maskTxt = (!mv || mv === 'none') ? 'NONE' : ('...' + mv.slice(-30));
-                }
-                chip.textContent = 'b' + (window.APP_BUILD || '?')
-                    + '  envT:' + cs.paddingTop + '  envB:' + cs.paddingBottom
-                    + '\nscrH:' + screen.height + '  inH:' + window.innerHeight
-                    + (vv ? ('  vv:' + Math.round(vv.height) + '@' + vv.scale.toFixed(2)
-                        + ' off:' + Math.round(vv.offsetTop)) : '')
-                    + '\nbody:' + (document.body.style.height || 'css')
-                    + (r ? ('  barB:' + Math.round(r.bottom)) : '')
-                    + '\nlistMask:' + maskTxt;
-                setTimeout(tick, 800);
-            };
-            tick();
-        })();
-
         // ===== IMAGE LIGHTBOX =====
         (function() {
             const lb      = document.getElementById('img-lightbox');
@@ -7271,7 +7223,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 133;
+        window.APP_BUILD = 134;
 
         (async function initApp() {
             try {
@@ -7877,7 +7829,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v133';
+const CACHE_NAME = 'rss-reader-v134';
 const APP_SHELL = [
     '/',
     'index.html'
