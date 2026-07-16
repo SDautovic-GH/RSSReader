@@ -815,11 +815,11 @@
            read by that inset shade plus a full-white icon/label vs the 0.82 white of
            inactive tabs. */
         #mobile-tab-bar .tab-btn.active {
-            background: rgba(0, 0, 0, 0.40);
+            background: rgba(0, 0, 0, 0.58);
             color: #ffffff;
         }
         #mobile-tab-bar .tab-btn:active { background: rgba(255,255,255,0.06); }
-        #mobile-tab-bar .tab-btn.active:active { background: rgba(0, 0, 0, 0.50); }
+        #mobile-tab-bar .tab-btn.active:active { background: rgba(0, 0, 0, 0.68); }
         #mobile-tab-bar .tab-search {
             flex: 1 1 0;
             min-width: 0;
@@ -844,7 +844,7 @@
         }
         #mobile-tab-bar .tab-search:active { background: rgba(255,255,255,0.06); }
         body.search-active #mobile-tab-bar .tab-search {
-            background: rgba(0, 0, 0, 0.40);
+            background: rgba(0, 0, 0, 0.58);
             color: #ffffff;
         }
         #mobile-tab-bar .tab-search svg { width: 30px; height: 30px; display: block; stroke: currentColor; color: inherit; }
@@ -5756,39 +5756,62 @@
                 || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
             window._lockState = { on: isStandalone, h: 0 };   // surfaced by the status chip
             if (!isStandalone) return;
-            // The true glass height is a CONSTANT: screen.height / PageZoom = 812/1.15
-            // = 706 CSS px. The only variable input is visualViewport.scale, and it
-            // lies in ONE direction only: it dips toward 1.0 during relayouts (e.g. the
-            // "Refreshing" state) but can never read HIGHER than the real zoom because
-            // pinch is disabled (user-scalable=no). So divide by the MAXIMUM scale ever
-            // observed, not the instantaneous value:
-            //   - max scale converges to the true 1.15 (seen at launch) and holds,
-            //   - a momentary dip to 1.0 leaves the max untouched  -> no over-tall body,
-            //     so the bar can never clip below the screen (the build-125 failure),
-            //   - scale never exceeds the true zoom -> height is never under-tall, so
-            //     the bar can never float above the bottom (the build-126 failure).
-            // This does NOT use innerHeight/dvh at all (both desync-unreliable).
-            let maxScale = 0;
-            const apply = () => {
+            // True glass height in CSS px = screen.height / PageZoom (e.g. 812/1.15 =
+            // 706; 812/1.20 = 677; 812/1.50 = 541 -- adapts to ANY zoom, nothing is
+            // hardcoded). The only variable input is visualViewport.scale; innerHeight
+            // and dvh are never used (both desync-unreliable). Robustness rules for the
+            // scale signal, each covering a real/possible failure:
+            //   * Downward dips (scale -> 1.0 during the "Refreshing" relayout) are the
+            //     actual bug, and are SUSTAINED (seconds), so a debounce would adopt
+            //     them and clip. We take the MAXIMUM instead -> a low reading, however
+            //     long it lasts, never lowers the baseline. (build-125 clip fixed.)
+            //   * A higher reading is adopted only after it PERSISTS (~0.9s), so a brief
+            //     upward spike can't latch the bar high, while a genuine zoom increase
+            //     (1.15 -> 1.50) still takes effect.
+            //   * Lowering the zoom (1.50 -> 1.15) can't lower a max on its own, so the
+            //     baseline is re-seeded on rotation (a settled, dip-free moment). A
+            //     zoom-out without a rotate simply adapts on the next launch -- rare,
+            //     and it never clips, only sits slightly high until then.
+            //   * scale is clamped to the valid 1.0-3.0 zoom range so a garbage read
+            //     can't produce an absurd height.
+            // Steady state is identical to the confirmed-good build 127 (seed at launch,
+            // ignore downward dips); the rules above only add safe hardening on top.
+            var maxScale = 0, upCand = 0, upCount = 0, lastH = 0;
+            var UP_HOLD = 3, EPS = 0.02;
+            const clampScale = function(x){ return Math.min(Math.max(x, 1), 3); };
+            const sample = function(){
                 if (!window.matchMedia('(orientation: portrait)').matches) {
                     document.body.style.height = '';     // landscape: CSS dvh rules
-                    window._lockState.h = 0;
+                    lastH = 0; window._lockState.h = 0;
                     return;
                 }
-                const s = (window.visualViewport && window.visualViewport.scale) || 1;
-                if (s > maxScale) maxScale = s;
+                const s = clampScale((window.visualViewport && window.visualViewport.scale) || 1);
+                if (maxScale === 0) {
+                    maxScale = s;                        // seed instantly at launch (no unstyled flash)
+                } else if (s > maxScale + EPS) {         // a HIGHER reading than the baseline
+                    if (Math.abs(s - upCand) <= EPS) { upCount++; } else { upCand = s; upCount = 1; }
+                    if (upCount >= UP_HOLD) { maxScale = s; upCount = 0; }   // adopt only if it persists
+                } else {
+                    upCand = 0; upCount = 0;             // at/below baseline: ignore (downward dips die here)
+                }
                 const glassH = Math.round(Math.max(screen.width, screen.height) / (maxScale || 1));
-                if (glassH > 0) {
+                if (glassH > 0 && glassH !== lastH) {    // write only on change (no needless reflow)
                     document.body.style.height = glassH + 'px';
-                    window._lockState.h = glassH;
+                    lastH = glassH; window._lockState.h = glassH;
                 }
             };
-            window.addEventListener('resize', apply);
-            window.addEventListener('orientationchange', () => { setTimeout(apply, 120); setTimeout(apply, 500); });
-            // Re-check periodically so the true 1.15 is captured even if the first read
-            // at launch happened to be a transient 1.0.
-            setInterval(apply, 2500);
-            apply();
+            window.addEventListener('resize', sample);
+            // Rotation is a settled, dip-free moment -> re-baseline the zoom then (the
+            // only safe place to pick up a lowered Page Zoom without risking a dip).
+            window.addEventListener('orientationchange', function(){
+                maxScale = 0; upCand = 0; upCount = 0;
+                setTimeout(sample, 120); setTimeout(sample, 500);
+            });
+            // Poll so a persisted upward zoom change is detected and to re-assert after
+            // any relayout. Cheap: a property read + arithmetic; body height is written
+            // only when the computed value actually changes.
+            setInterval(sample, 300);
+            sample();
         })();
 
         // ===== IMAGE LIGHTBOX =====
@@ -7197,7 +7220,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 127;
+        window.APP_BUILD = 128;
 
         (async function initApp() {
             try {
@@ -7803,7 +7826,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v127';
+const CACHE_NAME = 'rss-reader-v128';
 const APP_SHELL = [
     '/',
     'index.html'
