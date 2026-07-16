@@ -913,7 +913,8 @@
             color: #fff;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 14px;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+            /* inset top rim matches the bar's edge-lit glass finish */
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 12px 36px rgba(0, 0, 0, 0.55);
             padding: 6px;
             min-width: 220px;
             z-index: 9500;
@@ -934,7 +935,10 @@
             font-weight: 500;
             text-align: left;
         }
-        #mob-articles-menu button:active { background: rgba(59, 130, 246, 0.22); }
+        /* Pressed menu item uses the SAME dark recess as the bar's active tab --
+           one interaction language across the whole bottom-bar system. (The old
+           blue flash was a leftover from the blue-active era.) */
+        #mob-articles-menu button:active { background: rgba(0, 0, 0, 0.58); }
         #mob-articles-menu .menu-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.85; }
         @keyframes pop-in {
             from { opacity: 0; transform: translateX(-50%) scale(0.95); }
@@ -948,6 +952,29 @@
             display: none;
         }
         #mob-articles-menu-scrim.is-open { display: block; }
+
+        /* Dark-mode context menus (article / folder / feed) join the bottom-bar
+           material system: neutral dark glass panel instead of Tailwind's
+           blue-tinted gray-800, and the pressed/hovered item uses the same dark
+           recess as the bar's active tab. Blue stays reserved for data (unread
+           counts, links), red for destructive actions. Light mode is untouched. */
+        .dark #article-context-menu,
+        .dark #folder-context-menu,
+        .dark #feed-context-menu {
+            background: rgba(28, 28, 32, 0.96) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 36px rgba(0,0,0,0.55) !important;
+        }
+        .dark #article-context-menu button:not([class*="text-red"]):hover,
+        .dark #article-context-menu button:not([class*="text-red"]):active,
+        .dark #folder-context-menu button:not([class*="text-red"]):hover,
+        .dark #folder-context-menu button:not([class*="text-red"]):active,
+        .dark #feed-context-menu button:hover,
+        .dark #feed-context-menu button:active {
+            background: rgba(0, 0, 0, 0.58) !important;
+        }
 
         /* Reader tab progress ring (viewer mode) */
         #mob-tab-reader .tab-progress-ring {
@@ -7246,7 +7273,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 135;
+        window.APP_BUILD = 136;
 
         (async function initApp() {
             try {
@@ -7852,7 +7879,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v135';
+const CACHE_NAME = 'rss-reader-v136';
 const APP_SHELL = [
     '/',
     'index.html'
