@@ -5775,6 +5775,7 @@
             const sample = function(){
                 if (!window.matchMedia('(orientation: portrait)').matches) {
                     document.body.style.height = '';     // landscape: CSS dvh rules
+                    document.body.style.transform = '';
                     window._lockState.h = 0;
                     return;
                 }
@@ -5786,6 +5787,24 @@
                     document.body.style.height = glassH + 'px';
                     window._lockState.h = glassH;
                 }
+                // LAUNCH-OFFSET COUNTER. On some standalone launches iOS shoves the
+                // whole layout viewport DOWN by the status-bar height and never
+                // restores it -- measured on-device (build 132 chip): the bad state
+                // reports visualViewport.offsetTop = -53 CSS px while height/env/
+                // innerHeight all read healthy; barB read 706+53=759 and the header
+                // sat 53 low. That single displacement caused BOTH the clipped bar
+                // and the missing under-clock fade (content started 61pt too low to
+                // reach the status bar). offsetTop IS the displacement, not a proxy,
+                // so counter-translate body by exactly it. Negative-only: positive
+                // offsets are legitimate visual-viewport panning (keyboard) and are
+                // never countered. Healthy state reads 0 -> no transform -> this is
+                // inert everywhere the app already works. (While countering, the
+                // fixed-position lightbox anchors to the translated body -- in the
+                // rare bad state it may sit 53px high, an acceptable cosmetic trade.)
+                var off = (window.visualViewport && window.visualViewport.offsetTop) || 0;
+                document.body.style.transform = (off < -1)
+                    ? ('translateY(' + off.toFixed(1) + 'px)')
+                    : '';
             };
             window.addEventListener('resize', sample);
             window.addEventListener('orientationchange', function(){ setTimeout(sample, 120); setTimeout(sample, 500); });
@@ -7252,7 +7271,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 132;
+        window.APP_BUILD = 133;
 
         (async function initApp() {
             try {
@@ -7858,7 +7877,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v132';
+const CACHE_NAME = 'rss-reader-v133';
 const APP_SHELL = [
     '/',
     'index.html'
