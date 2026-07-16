@@ -5795,6 +5795,57 @@
             sample();
         })();
 
+        // TEMP measurement chip (remove after the frame-state discriminator is
+        // confirmed). ZERO behavior change -- read-only. Adds an env() probe:
+        // env(safe-area-inset-top) comes from the compositor's actual frame
+        // placement, outside the lying viewport family. Hypothesis to verify:
+        // envT > 0  -> fullscreen frame (true height = screen/zoom = 706)
+        // envT == 0 -> frame parked below the status bar (true height = 653)
+        // Two states that report identical innerHeight need opposite corrections;
+        // this is the only in-page signal that can tell them apart. Tap to dismiss.
+        (function measureChip() {
+            if (window.innerWidth > 900) return;   // mobile only
+            var probe = document.createElement('div');
+            probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;'
+                + 'padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);';
+            document.body.appendChild(probe);
+            var chip = document.createElement('div');
+            chip.style.cssText = 'position:absolute;top:64px;left:4px;z-index:99999;'
+                + 'background:rgba(0,0,0,0.85);color:#0f0;white-space:pre;'
+                + 'font:10px/1.4 ui-monospace,monospace;padding:4px 7px;border-radius:6px;pointer-events:auto;';
+            chip.addEventListener('click', function(){ chip._stop = true; chip.remove(); });
+            document.body.appendChild(chip);
+            var tick = function(){
+                if (chip._stop || !chip.isConnected) return;
+                var cs = getComputedStyle(probe);
+                var bar = document.getElementById('mobile-tab-bar');
+                var r = bar ? bar.getBoundingClientRect() : null;
+                var vv = window.visualViewport;
+                // What does WebKit think #article-list's mask is? The computed value
+                // resolves env()/max() to real px, so this shows (a) whether the rule
+                // survived the cascade at all ('none' = it didn't) and (b) the resolved
+                // fade band. Distinguishes cascade/parse failure from a paint failure.
+                var maskTxt = '-';
+                var list = document.getElementById('article-list');
+                if (list) {
+                    var lcs = getComputedStyle(list);
+                    var mv = lcs.maskImage || lcs.webkitMaskImage
+                        || lcs.getPropertyValue('-webkit-mask-image') || '';
+                    maskTxt = (!mv || mv === 'none') ? 'NONE' : ('...' + mv.slice(-30));
+                }
+                chip.textContent = 'b' + (window.APP_BUILD || '?')
+                    + '  envT:' + cs.paddingTop + '  envB:' + cs.paddingBottom
+                    + '\nscrH:' + screen.height + '  inH:' + window.innerHeight
+                    + (vv ? ('  vv:' + Math.round(vv.height) + '@' + vv.scale.toFixed(2)
+                        + ' off:' + Math.round(vv.offsetTop)) : '')
+                    + '\nbody:' + (document.body.style.height || 'css')
+                    + (r ? ('  barB:' + Math.round(r.bottom)) : '')
+                    + '\nlistMask:' + maskTxt;
+                setTimeout(tick, 800);
+            };
+            tick();
+        })();
+
         // ===== IMAGE LIGHTBOX =====
         (function() {
             const lb      = document.getElementById('img-lightbox');
@@ -7201,7 +7252,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 131;
+        window.APP_BUILD = 132;
 
         (async function initApp() {
             try {
@@ -7807,7 +7858,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v131';
+const CACHE_NAME = 'rss-reader-v132';
 const APP_SHELL = [
     '/',
     'index.html'
