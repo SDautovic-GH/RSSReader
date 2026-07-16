@@ -5756,24 +5756,35 @@
                 || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
             window._lockState = { on: isStandalone, h: 0 };   // surfaced by the status chip
             if (!isStandalone) return;
-            // Do NOT learn the height from innerHeight -- v119/v120 proved the app can
-            // LAUNCH already desynced (chip showed innerHeight=653 from the first read
-            // while the glass is 706), so any learned value can be a memorized lie.
-            // The only inputs that never lied across every on-device capture are the
-            // hardware screen size (812pt, constant) and the user's Page Zoom scale
-            // (1.15, constant unless they change Settings): true glass height in CSS px
-            // = screen.height / scale (verified: healthy capture innerH was exactly
-            // 812/1.15 = 706). Compute it; never measure it.
+            // Body height is COMPUTED from screen size / Page-Zoom scale (true glass =
+            // screen.height / scale = 812/1.15 = 706), NOT measured -- innerHeight/dvh
+            // desync and under-report (down to 627/653) while the glass paints full.
+            // BUT visualViewport.scale is itself not rock-steady: during a relayout
+            // (e.g. the "Refreshing" state) it can momentarily read 1.0, and then
+            // screen.height/scale = 812 -- a body ~106px too tall that shoves the bar
+            // and its labels BELOW the screen (the "shift down / clipped" failure).
+            // Guard with a hard ceiling: innerHeight can under-report but effectively
+            // never EXCEEDS the real glass, so the largest innerHeight ever observed is
+            // a safe upper bound. Cap the computed height by it -> the body can never be
+            // taller than the visible screen, so the bar can never clip off the bottom.
+            // The two bounds cap each other: the scale term stops a spurious-high
+            // innerHeight, the innerHeight ceiling stops a mis-read-low scale. Worst
+            // case degrades to a small gap (bar slightly high), never a clip.
+            let maxInner = 0;
             const apply = () => {
                 if (!window.matchMedia('(orientation: portrait)').matches) {
                     document.body.style.height = '';     // landscape: CSS dvh rules
                     window._lockState.h = 0;
                     return;
                 }
+                maxInner = Math.max(maxInner, window.innerHeight);
                 const scale = (window.visualViewport && window.visualViewport.scale) || 1;
-                const glassH = Math.round(Math.max(screen.width, screen.height) / scale);
-                document.body.style.height = glassH + 'px';
-                window._lockState.h = glassH;
+                const scaleH = Math.max(screen.width, screen.height) / scale;
+                const glassH = Math.round(Math.min(scaleH, maxInner));
+                if (glassH > 0) {
+                    document.body.style.height = glassH + 'px';
+                    window._lockState.h = glassH;
+                }
             };
             window.addEventListener('resize', apply);
             window.addEventListener('orientationchange', () => { setTimeout(apply, 120); setTimeout(apply, 500); });
@@ -7189,7 +7200,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 125;
+        window.APP_BUILD = 126;
 
         (async function initApp() {
             try {
@@ -7795,7 +7806,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v125';
+const CACHE_NAME = 'rss-reader-v126';
 const APP_SHELL = [
     '/',
     'index.html'
