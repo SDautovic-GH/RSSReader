@@ -465,18 +465,14 @@
             /* Body is the positioning anchor for the bottom tab bar + its popovers
                (menu, scrim, search sheet) — they are position:absolute, NOT fixed,
                because standalone WebKit mis-anchors the fixed viewport under the
-               user's 115% Page Zoom (see #mobile-tab-bar). 100dvh tracks the real
-               glass in the PWA and the dynamic toolbar in Safari-in-browser. */
+               user's 115% Page Zoom (see #mobile-tab-bar). Its height is pixel-locked
+               by lockMobileLayoutHeight() in the PWA so the bar's bottom:0 lands on the
+               true glass bottom. IMPORTANT: ONLY the bar anchors to this locked body.
+               The content panes keep their own 100dvh (below) — coupling them to the
+               locked height (height:100% chain) made their content stop sliding under
+               the status bar, which killed the top scroll-fade. Keeping panes on 100dvh
+               restores the fade and can't affect the bar (bar lives in body, not a pane). */
             body { position: relative; height: 100vh; height: 100dvh; }
-            /* Chain the whole mobile layout off body's height instead of viewport
-               units. During the standalone-WebKit desync (see #mobile-tab-bar) BOTH
-               the fixed viewport AND dvh re-resolve ~79px short (v118 proved dvh
-               desyncs too: the layout-anchored bar rode dvh down by the same gap).
-               body's height gets locked to a healthy PIXEL value by
-               lockMobileLayoutHeight() in the PWA; px never re-resolves, so
-               everything below stays glass-true. In Safari/desktop body stays on
-               CSS dvh and 100% chains behave identically to the old units. */
-            #app-container { height: 100%; }
             /* On mobile, pull-to-refresh replaces the explicit refresh button. */
             #header-refresh-btn { display: none !important; }
             #app-container { flex-direction: column; }
@@ -489,10 +485,12 @@
                 display: flex !important;
                 width: 100% !important;
                 flex: none !important;
-                /* 100% of #app-container (itself 100% of body) — NOT 100vh/100dvh.
-                   Viewport units re-resolve short during the WebKit desync; the
-                   percentage chain keys everything off body's locked height. */
-                height: 100%;
+                /* Content panes use the viewport directly so content slides under the
+                   status bar and the top scroll-fade (mask-image below) renders. The
+                   tab bar does NOT depend on this — it anchors to the pixel-locked
+                   body — so panes on 100dvh can't reintroduce the bar mis-position. */
+                height: 100vh;
+                height: 100dvh;
             }
             /* Content scrolls under the floating bar — reserve enough padding so last items clear the pill */
             #article-list,
@@ -7220,7 +7218,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 128;
+        window.APP_BUILD = 129;
 
         (async function initApp() {
             try {
@@ -7826,7 +7824,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v128';
+const CACHE_NAME = 'rss-reader-v129';
 const APP_SHELL = [
     '/',
     'index.html'
