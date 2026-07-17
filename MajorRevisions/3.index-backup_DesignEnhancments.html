@@ -465,18 +465,14 @@
             /* Body is the positioning anchor for the bottom tab bar + its popovers
                (menu, scrim, search sheet) — they are position:absolute, NOT fixed,
                because standalone WebKit mis-anchors the fixed viewport under the
-               user's 115% Page Zoom (see #mobile-tab-bar). 100dvh tracks the real
-               glass in the PWA and the dynamic toolbar in Safari-in-browser. */
+               user's 115% Page Zoom (see #mobile-tab-bar). Its height is pixel-locked
+               by lockMobileLayoutHeight() in the PWA so the bar's bottom:0 lands on the
+               true glass bottom. IMPORTANT: ONLY the bar anchors to this locked body.
+               The content panes keep their own 100dvh (below) — coupling them to the
+               locked height (height:100% chain) made their content stop sliding under
+               the status bar, which killed the top scroll-fade. Keeping panes on 100dvh
+               restores the fade and can't affect the bar (bar lives in body, not a pane). */
             body { position: relative; height: 100vh; height: 100dvh; }
-            /* Chain the whole mobile layout off body's height instead of viewport
-               units. During the standalone-WebKit desync (see #mobile-tab-bar) BOTH
-               the fixed viewport AND dvh re-resolve ~79px short (v118 proved dvh
-               desyncs too: the layout-anchored bar rode dvh down by the same gap).
-               body's height gets locked to a healthy PIXEL value by
-               lockMobileLayoutHeight() in the PWA; px never re-resolves, so
-               everything below stays glass-true. In Safari/desktop body stays on
-               CSS dvh and 100% chains behave identically to the old units. */
-            #app-container { height: 100%; }
             /* On mobile, pull-to-refresh replaces the explicit refresh button. */
             #header-refresh-btn { display: none !important; }
             #app-container { flex-direction: column; }
@@ -489,10 +485,12 @@
                 display: flex !important;
                 width: 100% !important;
                 flex: none !important;
-                /* 100% of #app-container (itself 100% of body) — NOT 100vh/100dvh.
-                   Viewport units re-resolve short during the WebKit desync; the
-                   percentage chain keys everything off body's locked height. */
-                height: 100%;
+                /* Content panes use the viewport directly so content slides under the
+                   status bar and the top scroll-fade (mask-image below) renders. The
+                   tab bar does NOT depend on this — it anchors to the pixel-locked
+                   body — so panes on 100dvh can't reintroduce the bar mis-position. */
+                height: 100vh;
+                height: 100dvh;
             }
             /* Content scrolls under the floating bar — reserve enough padding so last items clear the pill */
             #article-list,
@@ -587,17 +585,40 @@
                matching the home header title baseline. The article cards
                have py-4 (1rem) inside, so the list container subtracts 1rem.
                max() prevents negative padding on devices with no safe area. */
+            /* Scroll-under fade, iOS-native style. A gradient STRIP overlaid at the
+               pane top darkens only what scrolls BENEATH it — unlike the old
+               mask-image approach, which dimmed the list's top even at rest (the
+               complaint that killed it). At rest, content sits just below the strip
+               and the strip covers only the pane's own background, so it's invisible;
+               scrolling carries content under it, fading progressively while staying
+               ~20% readable beneath the clock (the 0.82 top alpha). Knobs: top alpha
+               = how hidden under the clock; the +28px = fade depth past the bar. */
+            #timeline-pane.mobile-active::before,
+            #viewer-pane.mobile-active::before {
+                content: "";
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: calc(max(env(safe-area-inset-top, 0px), 44px) + 28px);
+                z-index: 10;
+                pointer-events: none;
+                background: linear-gradient(to bottom,
+                    rgba(255,255,255,0.88) 0,
+                    rgba(255,255,255,0.60) max(env(safe-area-inset-top, 0px), 44px),
+                    rgba(255,255,255,0) 100%);
+            }
+            .dark #timeline-pane.mobile-active::before,
+            .dark #viewer-pane.mobile-active::before {
+                background: linear-gradient(to bottom,
+                    rgba(0,0,0,0.82) 0,
+                    rgba(0,0,0,0.55) max(env(safe-area-inset-top, 0px), 44px),
+                    rgba(0,0,0,0) 100%);
+            }
+            /* Content rests just below the strip; scrolling carries it underneath. */
             #timeline-pane.mobile-active #article-list {
-                padding-top: max(0px, calc(env(safe-area-inset-top, 0px) - 1rem));
-                /* Fade content as it scrolls under the iOS status bar / notch.
-                   Transparent at y=0, opaque at the safe-area baseline. */
-                -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 env(safe-area-inset-top, 0px));
-                mask-image: linear-gradient(to bottom, transparent 0, #000 env(safe-area-inset-top, 0px));
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 18px);
             }
             #viewer-pane.mobile-active #reader-view {
-                padding-top: env(safe-area-inset-top, 0px);
-                -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 env(safe-area-inset-top, 0px));
-                mask-image: linear-gradient(to bottom, transparent 0, #000 env(safe-area-inset-top, 0px));
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 18px);
             }
             #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
             #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
@@ -742,9 +763,20 @@
             height: 62px;
             padding: 6px;
             border-radius: 999px;
-            background: rgba(28,28,30,0.72);
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            /* Edge-lit glass finish: brighter at both rounded ends (90deg), a soft
+               top sheen (180deg), over the translucent base — plus an inset top-rim
+               highlight. Gives the bar the dimensional, "recognizable" glass look
+               instead of a single flat tone. (Fidelity-Trader-inspired; keeps the
+               same size, blue active tab, and 4-tab layout.) */
+            background:
+              linear-gradient(90deg, rgba(255,255,255,0.10), transparent 22%, transparent 78%, rgba(255,255,255,0.10)),
+              linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0) 45%),
+              rgba(30,30,34,0.70); /* solid "bundle" look -- the 55% glassy trial read
+                                      washed-out over article text (user comparison vs
+                                      Fidelity's near-opaque pill); 0.70 is the proven
+                                      baseline. Nudge toward 0.80 for even more solid. */
+            border: 1px solid rgba(255,255,255,0.10);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 40px rgba(0,0,0,0.6);
             backdrop-filter: blur(40px) saturate(1.8);
             -webkit-backdrop-filter: blur(40px) saturate(1.8);
             flex: 1 1 auto;
@@ -802,12 +834,16 @@
             white-space: nowrap;
             color: inherit;
         }
+        /* Active tab: a recessed dark fill in the bar's own deepest tone (a subtle
+           black darkening below the base rgb(30,30,34)), not a blue glow. Active is
+           read by that inset shade plus a full-white icon/label vs the 0.82 white of
+           inactive tabs. */
         #mobile-tab-bar .tab-btn.active {
-            background: rgba(59, 130, 246, 0.18);
-            color: #3b82f6;
+            background: rgba(0, 0, 0, 0.58);
+            color: #ffffff;
         }
         #mobile-tab-bar .tab-btn:active { background: rgba(255,255,255,0.06); }
-        #mobile-tab-bar .tab-btn.active:active { background: rgba(59, 130, 246, 0.28); }
+        #mobile-tab-bar .tab-btn.active:active { background: rgba(0, 0, 0, 0.68); }
         #mobile-tab-bar .tab-search {
             flex: 1 1 0;
             min-width: 0;
@@ -832,8 +868,8 @@
         }
         #mobile-tab-bar .tab-search:active { background: rgba(255,255,255,0.06); }
         body.search-active #mobile-tab-bar .tab-search {
-            background: rgba(59, 130, 246, 0.18);
-            color: #3b82f6;
+            background: rgba(0, 0, 0, 0.58);
+            color: #ffffff;
         }
         #mobile-tab-bar .tab-search svg { width: 30px; height: 30px; display: block; stroke: currentColor; color: inherit; }
 
@@ -877,7 +913,8 @@
             color: #fff;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 14px;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+            /* inset top rim matches the bar's edge-lit glass finish */
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 12px 36px rgba(0, 0, 0, 0.55);
             padding: 6px;
             min-width: 220px;
             z-index: 9500;
@@ -898,7 +935,10 @@
             font-weight: 500;
             text-align: left;
         }
-        #mob-articles-menu button:active { background: rgba(59, 130, 246, 0.22); }
+        /* Pressed menu item uses the SAME dark recess as the bar's active tab --
+           one interaction language across the whole bottom-bar system. (The old
+           blue flash was a leftover from the blue-active era.) */
+        #mob-articles-menu button:active { background: rgba(0, 0, 0, 0.58); }
         #mob-articles-menu .menu-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.85; }
         @keyframes pop-in {
             from { opacity: 0; transform: translateX(-50%) scale(0.95); }
@@ -912,6 +952,29 @@
             display: none;
         }
         #mob-articles-menu-scrim.is-open { display: block; }
+
+        /* Dark-mode context menus (article / folder / feed) join the bottom-bar
+           material system: neutral dark glass panel instead of Tailwind's
+           blue-tinted gray-800, and the pressed/hovered item uses the same dark
+           recess as the bar's active tab. Blue stays reserved for data (unread
+           counts, links), red for destructive actions. Light mode is untouched. */
+        .dark #article-context-menu,
+        .dark #folder-context-menu,
+        .dark #feed-context-menu {
+            background: rgba(28, 28, 32, 0.96) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 36px rgba(0,0,0,0.55) !important;
+        }
+        .dark #article-context-menu button:not([class*="text-red"]):hover,
+        .dark #article-context-menu button:not([class*="text-red"]):active,
+        .dark #folder-context-menu button:not([class*="text-red"]):hover,
+        .dark #folder-context-menu button:not([class*="text-red"]):active,
+        .dark #feed-context-menu button:hover,
+        .dark #feed-context-menu button:active {
+            background: rgba(0, 0, 0, 0.58) !important;
+        }
 
         /* Reader tab progress ring (viewer mode) */
         #mob-tab-reader .tab-progress-ring {
@@ -5744,31 +5807,64 @@
                 || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
             window._lockState = { on: isStandalone, h: 0 };   // surfaced by the status chip
             if (!isStandalone) return;
-            // Do NOT learn the height from innerHeight -- v119/v120 proved the app can
-            // LAUNCH already desynced (chip showed innerHeight=653 from the first read
-            // while the glass is 706), so any learned value can be a memorized lie.
-            // The only inputs that never lied across every on-device capture are the
-            // hardware screen size (812pt, constant) and the user's Page Zoom scale
-            // (1.15, constant unless they change Settings): true glass height in CSS px
-            // = screen.height / scale (verified: healthy capture innerH was exactly
-            // 812/1.15 = 706). Compute it; never measure it.
-            const apply = () => {
+            // True glass height in CSS px = screen.height / PageZoom (812/1.15 = 706;
+            // 812/1.20 = 677; 812/1.50 = 541 -- adapts to ANY zoom, nothing hardcoded).
+            // The only input is visualViewport.scale; innerHeight/dvh are never used
+            // (both desync-unreliable). Use the running MAXIMUM scale ever seen:
+            //   - the scale DIPS to ~1.0 during relayouts (the launch auto-refresh,
+            //     lightbox close), sustained for seconds -- max ignores every dip, so
+            //     the body never grows too tall and the bar never clips below-screen;
+            //   - scale never reads ABOVE the true Page Zoom (pinch disabled), so the
+            //     max equals the true zoom and the bar never floats high;
+            //   - max climbs to the true zoom on the FIRST clean read and adapts to
+            //     whatever the zoom actually is.
+            // NOTE: this is pure max, matching the build-127 logic the user confirmed
+            // working. A build-128 "up-spike debounce" (adopt a higher reading only
+            // after 3 in a row) is DELIBERATELY NOT here: at launch the refresh dips are
+            // interspersed with the true reading, so the debounce never saw 3-in-a-row
+            // and stuck maxScale at the 1.0 dip -> body 812 -> clipped bar. Never
+            // re-add it. (clamp to the 1-3 range is the only guard, and it's inert at 1.15.)
+            var maxScale = 0;
+            const sample = function(){
                 if (!window.matchMedia('(orientation: portrait)').matches) {
                     document.body.style.height = '';     // landscape: CSS dvh rules
+                    document.body.style.transform = '';
                     window._lockState.h = 0;
                     return;
                 }
-                const scale = (window.visualViewport && window.visualViewport.scale) || 1;
-                const glassH = Math.round(Math.max(screen.width, screen.height) / scale);
-                document.body.style.height = glassH + 'px';
-                window._lockState.h = glassH;
+                var s = (window.visualViewport && window.visualViewport.scale) || 1;
+                s = Math.min(Math.max(s, 1), 3);         // clamp to valid zoom range
+                if (s > maxScale) maxScale = s;          // PURE MAX: first clean read wins, dips ignored
+                const glassH = Math.round(Math.max(screen.width, screen.height) / (maxScale || 1));
+                if (glassH > 0) {
+                    document.body.style.height = glassH + 'px';
+                    window._lockState.h = glassH;
+                }
+                // LAUNCH-OFFSET COUNTER. On some standalone launches iOS shoves the
+                // whole layout viewport DOWN by the status-bar height and never
+                // restores it -- measured on-device (build 132 chip): the bad state
+                // reports visualViewport.offsetTop = -53 CSS px while height/env/
+                // innerHeight all read healthy; barB read 706+53=759 and the header
+                // sat 53 low. That single displacement caused BOTH the clipped bar
+                // and the missing under-clock fade (content started 61pt too low to
+                // reach the status bar). offsetTop IS the displacement, not a proxy,
+                // so counter-translate body by exactly it. Negative-only: positive
+                // offsets are legitimate visual-viewport panning (keyboard) and are
+                // never countered. Healthy state reads 0 -> no transform -> this is
+                // inert everywhere the app already works. (While countering, the
+                // fixed-position lightbox anchors to the translated body -- in the
+                // rare bad state it may sit 53px high, an acceptable cosmetic trade.)
+                var off = (window.visualViewport && window.visualViewport.offsetTop) || 0;
+                document.body.style.transform = (off < -1)
+                    ? ('translateY(' + off.toFixed(1) + 'px)')
+                    : '';
             };
-            window.addEventListener('resize', apply);
-            window.addEventListener('orientationchange', () => { setTimeout(apply, 120); setTimeout(apply, 500); });
-            // The desync doesn't reliably fire resize; a cheap 2.5s re-check also
-            // catches a heal (bigger innerHeight) if the app ever launches desynced.
-            setInterval(apply, 2500);
-            apply();
+            window.addEventListener('resize', sample);
+            window.addEventListener('orientationchange', function(){ setTimeout(sample, 120); setTimeout(sample, 500); });
+            // Poll so the true zoom is captured quickly even if the first read at launch
+            // is a transient dip (pure max adopts the true value on the next clean tick).
+            setInterval(sample, 300);
+            sample();
         })();
 
         // ===== IMAGE LIGHTBOX =====
@@ -7177,7 +7273,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 122;
+        window.APP_BUILD = 136;
 
         (async function initApp() {
             try {
@@ -7783,7 +7879,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v122';
+const CACHE_NAME = 'rss-reader-v136';
 const APP_SHELL = [
     '/',
     'index.html'
