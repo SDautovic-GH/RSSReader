@@ -467,6 +467,9 @@
             object-fit: cover;
         }
 
+        /* Context chip is mobile-only; desktop has the timeline header for context. */
+        #mob-context-chip { display: none; }
+
         /* ===== MOBILE LAYOUT ===== */
         @media (max-width: 900px) {
             /* Body is the positioning anchor for the bottom tab bar + its popovers
@@ -623,6 +626,34 @@
             /* Content rests just below the strip; scrolling carries it underneath. */
             #timeline-pane.mobile-active #article-list {
                 padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 18px);
+            }
+            /* Context chip: same glass family as the bottom bar, floats in the strip's
+               quiet zone. z-index above the fade strip (10); pointer-events none so it
+               can never eat a tap meant for the list. */
+            #mob-context-chip {
+                display: block;
+                position: absolute;
+                top: calc(env(safe-area-inset-top, 0px) + 4px);
+                left: 12px;
+                z-index: 11;
+                pointer-events: none;
+                background: rgba(255,255,255,0.85);
+                -webkit-backdrop-filter: blur(20px) saturate(1.4);
+                backdrop-filter: blur(20px) saturate(1.4);
+                border: 1px solid rgba(0,0,0,0.08);
+                border-radius: 999px;
+                padding: 4px 10px;
+                font-size: 11px; font-weight: 600;
+                color: #374151;
+                font-variant-numeric: tabular-nums;
+                letter-spacing: 0.02em;
+                max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            }
+            .dark #mob-context-chip {
+                background: rgba(28,28,32,0.85);
+                border-color: rgba(255,255,255,0.08);
+                box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+                color: rgba(255,255,255,0.85);
             }
             #viewer-pane.mobile-active #reader-view {
                 padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 18px);
@@ -1732,6 +1763,10 @@
             <div id="article-list" class="flex-1 overflow-y-auto"></div>
             <!-- Floating position pill — fades in on scroll -->
             <div id="list-position-pill" aria-hidden="true">1 / 1</div>
+            <!-- Context chip (mobile): which view this list shows + its count.
+                 Lives in the quiet zone above resting content, over the scroll-under
+                 fade strip. pointer-events:none — purely informational. -->
+            <div id="mob-context-chip" aria-hidden="true"></div>
         </section>
 
         <!-- Column Resizer -->
@@ -3679,6 +3714,13 @@
 
             const unreadCount = filtered.filter(a => a.unread).length;
             document.getElementById('timeline-count').textContent = `Mark Read · ${unreadCount}`;
+            // Mobile context chip: view name + count. Unread-style views count
+            // unread; bucket views (Saved / Read Later / History) count items.
+            const ctxChip = document.getElementById('mob-context-chip');
+            if (ctxChip) {
+                const isBucket = isRecentlyRead || isSaved || isReadLaterBucketed;
+                ctxChip.textContent = window.getViewLabel() + ' · ' + (isBucket ? filtered.length : unreadCount);
+            }
             updateBadges();
             if (typeof updateReaderTabMode === 'function') updateReaderTabMode();
         };
@@ -4693,6 +4735,18 @@
             `}).join('');
         }
 
+        // Human label for whatever the Articles list is currently showing —
+        // drives the mobile context chip (and reads the same state the filters set).
+        window.getViewLabel = () => {
+            if (window.currentSourceFilter) return window.currentSourceFilter;
+            if (window.currentCategoryFilter) return window.currentCategoryFilter;
+            switch (window.currentSmartFeed) {
+                case 'read-later':    return 'Read Later';
+                case 'saved':         return 'Saved';
+                case 'recently-read': return 'History';
+                default:              return 'Unread';
+            }
+        };
         window.setCategoryFilter = (cat) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
         window.setSourceFilter = (source) => { window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
         window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
@@ -7363,7 +7417,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 141;
+        window.APP_BUILD = 142;
 
         (async function initApp() {
             try {
@@ -7980,7 +8034,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v141';
+const CACHE_NAME = 'rss-reader-v142';
 const APP_SHELL = [
     '/',
     'index.html'
