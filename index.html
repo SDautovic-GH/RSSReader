@@ -3747,13 +3747,11 @@
 
             const unreadCount = filtered.filter(a => a.unread).length;
             document.getElementById('timeline-count').textContent = `Mark Read · ${unreadCount}`;
-            // Mobile context chip: view name + count. Unread-style views count
-            // unread; bucket views (Saved / Read Later / History) count items.
+            // Mobile context chip: view NAME only — the Articles tab badge already
+            // carries the current view's unread count, so a number here was pure
+            // duplication (user call, 2026-07-21).
             const ctxChip = document.getElementById('mob-context-chip');
-            if (ctxChip) {
-                const isBucket = isRecentlyRead || isSaved || isReadLaterBucketed;
-                ctxChip.textContent = window.getViewLabel() + ' · ' + (isBucket ? filtered.length : unreadCount);
-            }
+            if (ctxChip) ctxChip.textContent = window.getViewLabel();
             updateBadges();
             if (typeof updateReaderTabMode === 'function') updateReaderTabMode();
         };
@@ -5315,6 +5313,12 @@
                     a.unread = !window._readLinks.has(a.link);
                     a.readLater = window._readLaterLinks.has(a.link);
                 });
+            }
+
+            // The welcome placeholder (fresh-install only) must not outlive the
+            // first real content — sweep it as soon as any real article landed.
+            if (window.articles.some(a => a.source !== 'System')) {
+                window.articles = window.articles.filter(a => !(a.source === 'System' && a.link === '#'));
             }
 
             // Final render: dedup world unfrozen (fresh items now compete), all
@@ -7495,7 +7499,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 144;
+        window.APP_BUILD = 145;
 
         (async function initApp() {
             try {
@@ -7540,19 +7544,29 @@ window.toggleUnreadManual = () => {
                 } catch(e) { console.error('App: Data restore failed:', e); }
 
                 // 4. Fallback for Empty State
-                if (window.articles.length === 0) {
-                    window.articles = [{ 
-                        id: crypto.randomUUID(), 
-                        source: "System", 
-                        title: "Welcome to RSS Reader", 
-                        author: "News Team", 
-                        timestamp: new Date().toISOString(), 
-                        excerpt: "Import an OPML file or add a manual feed to get started.", 
-                        body: "Your high-performance personal news hub.", 
-                        link: "#", 
-                        unread: true, 
-                        readLater: false 
+                // Welcome placeholder ONLY on a genuinely fresh install (no feeds
+                // either). With feeds but an empty cache, the skeletons + refresh
+                // spinner are the honest state — the old feeds-present injection
+                // left a fake "SYSTEM / 5m ago" item polluting the Unread list,
+                // counting as unread and getting persisted into the cache.
+                if (window.articles.length === 0 && window.feeds.length === 0) {
+                    window.articles = [{
+                        id: crypto.randomUUID(),
+                        source: "System",
+                        title: "Welcome to RSS Reader",
+                        author: "News Team",
+                        timestamp: new Date().toISOString(),
+                        excerpt: "Import an OPML file or add a manual feed to get started.",
+                        body: "Your high-performance personal news hub.",
+                        link: "#",
+                        unread: true,
+                        readLater: false
                     }];
+                }
+                // Sweep welcome items that older builds persisted into the cache:
+                // once ANY real article exists, the placeholder must not survive.
+                if (window.articles.some(a => a.source !== 'System')) {
+                    window.articles = window.articles.filter(a => !(a.source === 'System' && a.link === '#'));
                 }
 
                 // 5. Restore UI Modes
@@ -8112,7 +8126,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v144';
+const CACHE_NAME = 'rss-reader-v145';
 const APP_SHELL = [
     '/',
     'index.html'
