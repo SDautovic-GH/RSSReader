@@ -170,8 +170,13 @@
         #article-title { color: #0f1923 !important; }
         .dark #article-title { color: #f0f6fc !important; }
         /* Preview — clearly subordinate: muted grey recedes behind the title */
-        .dynamic-list-preview { color: #1f2937 !important; }
-        .dark .dynamic-list-preview { color: #b1bac4 !important; }
+        /* Preview text one step dimmer than before (#1f2937/#b1bac4) so the title
+           owns the row. Social posts (Bluesky/Mastodon) are exempt below: their
+           "preview" IS the content and keeps full reading brightness. */
+        .dynamic-list-preview { color: #4b5563 !important; }
+        .dark .dynamic-list-preview { color: #98a2b0 !important; }
+        .line-clamp-social.dynamic-list-preview { color: #1f2937 !important; }
+        .dark .line-clamp-social.dynamic-list-preview { color: #d1d7e0 !important; }
         .dark #article-body { color: #d1d7e0 !important; }
         #article-author, #article-date { font-size: var(--article-meta-size) !important; }
 
@@ -273,7 +278,9 @@
             --view-font-size: 1.1em;
             --category-font-size: 1.15em;
             --list-preview-lines: 4;
-            --mob-list-preview-lines: 4;
+            /* Mobile default 2 lines (was 4): triage rhythm — title wins each row,
+               ~4 items per screen. User sliders still override via saved prefs. */
+            --mob-list-preview-lines: 2;
             --list-preview-lines-social: 10;
             --mob-list-preview-lines-social: 10;
             --list-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -283,7 +290,7 @@
             --mob-body-size: 1.1em;
             --mob-author-size: 1.1em;
             --list-title-em-size: 1.1em;
-            --mob-list-preview-size: 1.1em;
+            --mob-list-preview-size: 1.0em; /* one step below title (was 1.1) — triage rhythm */
             --mob-list-title-size: 1.1em;
             --line-height: 1.4;
             --mob-line-height: 1.4;
@@ -2179,6 +2186,17 @@
                             </div>
                             <input type="range" min="6" max="19" value="11" id="shared-meta-slider" class="settings-range" oninput="updateSharedSize('meta', this.value)">
                         </div>
+                    </div>
+                </div>
+
+                <!-- Reset all size/spacing sliders to the app's defaults (keeps font,
+                     theme, sort, refresh, and dedup choices). Confirm + reload. -->
+                <div>
+                    <div class="settings-list">
+                        <button type="button" onclick="resetTextSettings()"
+                            class="w-full text-left px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            Reset text sizes to defaults
+                        </button>
                     </div>
                 </div>
 
@@ -6516,6 +6534,31 @@ window.toggleUnreadManual = () => {
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
+        // Reset ONLY the size/spacing/line prefs written by saveTypographyPrefs
+        // above (keep this list in sync with it). Font, theme, sort order,
+        // auto-refresh, dedup, and app zoom survive the reset. Reload re-applies
+        // the pristine CSS :root defaults everywhere — simplest correct path.
+        window.resetTextSettings = () => {
+            if (!confirm('Reset all text sizes and spacing to defaults?')) return;
+            let prefs = {};
+            try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')) || {}; } catch(e) {}
+            const TYPO_KEYS = [
+                'sharedFeedName', 'sharedFolder', 'feedSpacing',
+                'sharedBodyDesktop', 'sharedBodyMobile',
+                'sharedArticleTitleDesktop', 'sharedArticleTitleMobile',
+                'sharedLineHeightDesktop', 'sharedLineHeightMobile',
+                'sharedMetaDesktop', 'sharedMetaMobile',
+                'sharedListTitleDesktop', 'sharedListTitleMobile',
+                'sharedPreviewDesktop', 'sharedPreviewMobile',
+                'previewLineHeightDesktop', 'previewLineHeightMobile',
+                'previewLinesDesktop', 'previewLinesMobile',
+                'previewLinesSocialDesktop', 'previewLinesSocialMobile',
+            ];
+            TYPO_KEYS.forEach(k => delete prefs[k]);
+            try { localStorage.setItem('newsreader_prefs', JSON.stringify(prefs)); } catch(e) {}
+            location.reload();
+        };
+
         function restoreTypographyPrefs() {
             let prefs;
             try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')); } catch(e) { return; }
@@ -7320,7 +7363,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 140;
+        window.APP_BUILD = 141;
 
         (async function initApp() {
             try {
@@ -7937,7 +7980,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v140';
+const CACHE_NAME = 'rss-reader-v141';
 const APP_SHELL = [
     '/',
     'index.html'
