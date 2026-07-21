@@ -2375,6 +2375,9 @@
         window._readLinks = new Set();
         window._readLaterLinks = new Set();
         window._pinnedArticleIds = new Set();
+        // Links the user EXPLICITLY toggled back to unread this session — the only
+        // legitimate removal path from the durable read store (see saveReadState).
+        window._unreadToggledLinks = new Set();
 
         window._feedHealth = {};
         // Restore the persisted 'slow' set so the very FIRST refresh of a session already
@@ -4565,8 +4568,17 @@
         function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
         function toggleUnread(article) {
             article.unread = !article.unread;
-            if (!article.unread) { window._readLinks.add(article.link); archiveReadArticle(article); }
-            else window._readLinks.delete(article.link);
+            if (!article.unread) {
+                window._readLinks.add(article.link);
+                window._unreadToggledLinks.delete(article.link);
+                archiveReadArticle(article);
+            } else {
+                window._readLinks.delete(article.link);
+                // Explicit keep-unread: exclude from the union-save AND remove the
+                // archive record so the boot self-heal can't resurrect it as read.
+                window._unreadToggledLinks.add(article.link);
+                try { window.appDB?.delete('readArchive', article.link); } catch(e) {}
+            }
         }
         function toggleReadLater(article) {
             article.readLater = !article.readLater;
@@ -6927,12 +6939,21 @@ window.toggleUnreadManual = () => {
             clearTimeout(_saveReadStateTimer);
             _saveReadStateTimer = setTimeout(async () => {
                 try {
-                    const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
+                    // UNION-based persistence: reads are only ever ADDED to the
+                    // durable store; the sole removal path is an explicit keep-unread
+                    // toggle (tracked in _unreadToggledLinks). The old version derived
+                    // read-ness from in-memory a.unread FLAGS and overwrote the store
+                    // for every loaded link — so any window where flags lagged
+                    // window._readLinks (e.g. cloud marks arriving mid-refresh with
+                    // the flag-sweep deferred) durably ERASED read history: the
+                    // "30 read articles resurrected as unread" bug (2026-07-21).
+                    // window._readLinks is the source of truth; never the flags.
                     const existing = await getStoredReadLinks();
-                    const loadedLinks = new Set(window.articles.map(a => a.link));
-                    const preserved = existing.filter(l => !loadedLinks.has(l));
-                    const merged = Array.from(new Set([...preserved, ...readLinks]));
-                    const final = merged.slice(-10000); // 2x increase in read history
+                    const merged = new Set([...existing, ...window._readLinks]);
+                    for (const l of window._unreadToggledLinks) {
+                        if (!window._readLinks.has(l)) merged.delete(l); // re-read since toggle wins
+                    }
+                    const final = Array.from(merged).slice(-10000);
                     await window.appDB.put('metadata', final, 'readLinks');
                 } catch(e) { console.warn('Read state save error:', e.message); }
             }, 500);
@@ -7499,7 +7520,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 145;
+        window.APP_BUILD = 146;
 
         (async function initApp() {
             try {
@@ -7531,6 +7552,16 @@ window.toggleUnreadManual = () => {
                     ]);
                     
                     window._readLinks = new Set(await getStoredReadLinks());
+                    // Self-heal: the readArchive independently stores every article
+                    // read in the last 30 days (it feeds the History view). Union its
+                    // links back into the read set so read-marks survive even if the
+                    // metadata store was erased or corrupted — this also recovers the
+                    // marks lost to the pre-fix flag-derived save. Explicit keep-unread
+                    // toggles delete their archive record, so they don't resurrect.
+                    try {
+                        const archived = await window.appDB.getRecentlyRead(30);
+                        (archived || []).forEach(r => { if (r && r.link) window._readLinks.add(r.link); });
+                    } catch(e) { console.warn('readArchive self-heal skipped:', e?.message); }
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
                     // Prune readArchive: drop entries older than the longest window we support
@@ -8126,7 +8157,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v145';
+const CACHE_NAME = 'rss-reader-v146';
 const APP_SHELL = [
     '/',
     'index.html'
