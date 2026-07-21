@@ -976,23 +976,6 @@
             background: rgba(0, 0, 0, 0.58) !important;
         }
 
-        /* Reader tab progress ring (viewer mode) */
-        #mob-tab-reader .tab-progress-ring {
-            display: none;
-            position: relative;
-            width: 24px; height: 24px;
-        }
-        #mob-tab-reader.reader-progress .tab-ico { display: none; }
-        #mob-tab-reader.reader-progress .tab-progress-ring { display: block; }
-        #mob-tab-reader .tab-progress-ring svg { width: 24px; height: 24px; display: block; }
-        #mob-tab-reader .tab-progress-ring .tab-progress-text {
-            position: absolute; inset: 0;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 9px; font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            color: currentColor;
-        }
-
         /* Search sheet above bar */
         #mobile-search-sheet {
             display: none !important;
@@ -1884,10 +1867,6 @@
             </button>
             <button id="mob-tab-reader" type="button" class="tab-btn" onclick="onReaderTabClick()">
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 6.5C10.5 5.5 8 5 4 5v13c4 0 6.5 0.5 8 1.5"/><path d="M12 6.5C13.5 5.5 16 5 20 5v13c-4 0-6.5 0.5-8 1.5"/><path d="M12 6.5v13"/></svg>
-                <span class="tab-progress-ring" aria-hidden="true">
-                    <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="3"/><circle id="tab-progress-circle" cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="97.39" stroke-dashoffset="97.39" transform="rotate(-90 18 18)" style="transition: stroke-dashoffset 0.15s linear;"/></svg>
-                    <span id="tab-progress-text" class="tab-progress-text"></span>
-                </span>
                 <span id="mob-tab-reader-label" class="tab-label">Reader</span>
             </button>
             <button id="mob-tab-search" type="button" class="tab-search" onclick="toggleSearchSheet()" aria-label="Search">
@@ -6805,10 +6784,11 @@ window.toggleUnreadManual = () => {
             const btn = document.getElementById('mob-tab-reader');
             const label = document.getElementById('mob-tab-reader-label');
             if (!btn || !label) return;
-            btn.classList.remove('reader-progress');
             // Reader tab label is stable — it's a navigation target, not a counter.
             // Mark-all-read lives on the Articles tab via long-press now; per-view
             // unread counts surface as a badge on the Articles tab icon instead.
+            // (The old reading-progress ring was fully removed 2026-07-21 — the
+            // browser scrollbar in the article view serves as reading progress.)
             label.textContent = 'Reader';
             // Keep the Articles tab unread badge in sync from the same update path.
             const artBadge = document.getElementById('mob-tab-articles-badge');
@@ -7340,7 +7320,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 138;
+        window.APP_BUILD = 139;
 
         (async function initApp() {
             try {
@@ -7957,7 +7937,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v138';
+const CACHE_NAME = 'rss-reader-v139';
 const APP_SHELL = [
     '/',
     'index.html'
