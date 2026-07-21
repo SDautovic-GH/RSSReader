@@ -177,6 +177,13 @@
         .dark .dynamic-list-preview { color: #98a2b0 !important; }
         .line-clamp-social.dynamic-list-preview { color: #1f2937 !important; }
         .dark .line-clamp-social.dynamic-list-preview { color: #d1d7e0 !important; }
+        /* Just-read rows pinned in place inside unread-only views ('all' smart
+           feed family): title/label dim to read as "done" — this replaces the
+           per-row unread dot there (the dot marked every row = noise; the rare
+           exception carries the mark instead). */
+        .article-read-pinned .dynamic-list-title { color: #9ca3af !important; }
+        .dark .article-read-pinned .dynamic-list-title { color: #6b7280 !important; }
+        .article-read-pinned .list-source-label { opacity: 0.6; }
         .dark #article-body { color: #d1d7e0 !important; }
         #article-author, #article-date { font-size: var(--article-meta-size) !important; }
 
@@ -3800,16 +3807,25 @@
             const selCls = selected ? 'is-active-card' : '';
             const isBsky = a.feedUrl ? isBlueskyFeed(a.feedUrl) : false;
 
+            // Mark the exception, not the default. Views under smartFeed 'all'
+            // (Unread / folder / feed) are unread-only plus just-read rows pinned
+            // in place — there the dot marked EVERY row (noise), so it's dropped
+            // and the rare just-read row is dimmed instead. Saved/Read Later are
+            // mostly-read, so the dot stays to mark the unread exception.
+            const inAllView = window.currentSmartFeed === 'all';
+            const showDot = a.unread && !inAllView;
+            const readDimCls = (!a.unread && inAllView) ? ' article-read-pinned' : '';
+
             const saId = escJs(a.id);
 
             if (window._viewMode === 'card') {
-                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                     <div class="swipe-hint swipe-hint-left"><span>&#x2713; Mark Read</span></div>
                     <div class="swipe-hint swipe-hint-right"><span>Save Later &#x2605;</span></div>
                     ${a.image ? `<img src="${esc(a.image)}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
                     <div class="p-3">
                         <div class="flex items-center text-[10px] mb-1">
-                            ${a.unread ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>' : ''}
+                            ${showDot ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>' : ''}
                             ${favicon}<span class="font-bold uppercase truncate text-blue-400 dark:text-blue-300">${esc(a.source)}</span>
                             <span class="ml-auto flex-shrink-0 text-gray-500 dark:text-gray-500">${getRelativeTime(a.timestamp)}</span>
                         </div>
@@ -3828,12 +3844,12 @@
             const previewCls = isBsky
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-social dynamic-list-preview'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
-            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="relative px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="relative px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Read Later &#x2605;</div>
                 <div class="min-w-0">
                     <div class="flex items-center justify-between mb-1.5 gap-2">
-                        ${a.unread ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
+                        ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
                         <span class="list-source-label font-bold text-gray-500 dark:text-gray-400 uppercase truncate mr-2 flex-1 min-w-0">${favicon}${esc(sourceLabel)}</span>
                         <span class="list-date-label text-[11px] text-gray-500 dark:text-gray-500 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                     </div>
@@ -7479,7 +7495,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 143;
+        window.APP_BUILD = 144;
 
         (async function initApp() {
             try {
@@ -8096,7 +8112,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v143';
+const CACHE_NAME = 'rss-reader-v144';
 const APP_SHELL = [
     '/',
     'index.html'
