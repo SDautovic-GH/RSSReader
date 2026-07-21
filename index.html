@@ -2235,6 +2235,16 @@
                     </div>
                 </div>
 
+                <!-- Feed health: feeds that haven't fetched successfully in 48h+
+                     (or are failing repeatedly this session). Populated on open by
+                     renderFeedProblems(). -->
+                <div>
+                    <h3 class="settings-section-label">Feed health</h3>
+                    <div class="settings-list" id="feed-problems-list">
+                        <div class="px-4 py-3 text-sm text-gray-400">Checking&hellip;</div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- No footer slab — the header ✕ and tapping the backdrop both close the
@@ -2366,16 +2376,32 @@
         // and lastSuccess are session-scoped and recomputed live.
         (function restoreFeedHealth() {
             try {
-                const slowUrls = JSON.parse(localStorage.getItem('newsreader_slow_feeds') || '[]');
-                if (Array.isArray(slowUrls)) {
-                    for (const url of slowUrls) window._feedHealth[url] = { lastSuccess: null, errorCount: 0, slow: true };
+                // Rich health record { url: { slow, lastSuccess } } — lastSuccess
+                // persists across sessions so "feed dead for days" is detectable
+                // (it also makes the sidebar's stale-dot work across sessions, and
+                // feeds Settings' "Feed health" list). errorCount stays session-scoped.
+                const stored = JSON.parse(localStorage.getItem('newsreader_feed_health') || 'null');
+                if (stored && typeof stored === 'object') {
+                    for (const [url, h] of Object.entries(stored)) {
+                        window._feedHealth[url] = { lastSuccess: h.lastSuccess || null, errorCount: 0, slow: !!h.slow };
+                    }
+                } else {
+                    // Migrate the legacy slow-only list once.
+                    const slowUrls = JSON.parse(localStorage.getItem('newsreader_slow_feeds') || '[]');
+                    if (Array.isArray(slowUrls)) {
+                        for (const url of slowUrls) window._feedHealth[url] = { lastSuccess: null, errorCount: 0, slow: true };
+                    }
                 }
             } catch(e) { console.warn('restoreFeedHealth:', e.message); }
         })();
         window._persistFeedHealth = () => {
             try {
-                const slowUrls = Object.keys(window._feedHealth).filter(u => window._feedHealth[u] && window._feedHealth[u].slow);
-                localStorage.setItem('newsreader_slow_feeds', JSON.stringify(slowUrls));
+                const out = {};
+                for (const [url, h] of Object.entries(window._feedHealth)) {
+                    if (!h) continue;
+                    if (h.slow || h.lastSuccess) out[url] = { slow: !!h.slow, lastSuccess: h.lastSuccess || null };
+                }
+                localStorage.setItem('newsreader_feed_health', JSON.stringify(out));
             } catch(e) { console.warn('persistFeedHealth:', e.message); }
         };
         window._viewMode = 'list';
@@ -5611,7 +5637,43 @@
             });
         })();
 
-        window.toggleSettings = () => document.getElementById('settings-modal').classList.toggle('hidden');
+        window.toggleSettings = () => {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('hidden');
+            // Refresh the Feed health list each time Settings opens.
+            if (!modal.classList.contains('hidden')) window.renderFeedProblems?.();
+        };
+
+        // "Feed health" list in Settings: feeds whose last successful fetch is
+        // >48h old (lastSuccess persists across sessions via _persistFeedHealth),
+        // or that failed 3+ times this session. Feeds with no recorded history
+        // are treated as unknown, not broken — the list earns accuracy over days.
+        window.renderFeedProblems = () => {
+            const box = document.getElementById('feed-problems-list');
+            if (!box) return;
+            const now = Date.now();
+            const probs = [];
+            for (const f of (window.feeds || [])) {
+                const h = window._feedHealth[f.url];
+                if (!h) continue;
+                const age = h.lastSuccess ? (now - h.lastSuccess) : null;
+                if (age !== null && age > 48 * 3600 * 1000) {
+                    const label = age > 2 * 86400000
+                        ? Math.round(age / 86400000) + 'd ago'
+                        : Math.round(age / 3600000) + 'h ago';
+                    probs.push({ name: f.name, detail: 'Last OK ' + label, age });
+                } else if ((h.errorCount || 0) >= 3) {
+                    probs.push({ name: f.name, detail: 'Failing this session', age: 0 });
+                }
+            }
+            probs.sort((a, b) => (b.age || 0) - (a.age || 0));
+            box.innerHTML = probs.length
+                ? probs.map(p => `<div class="px-4 py-2.5 flex items-center justify-between">
+                        <span class="text-sm text-gray-700 dark:text-gray-200 truncate mr-3">${esc(p.name)}</span>
+                        <span class="text-xs text-red-400 flex-shrink-0">${esc(p.detail)}</span>
+                    </div>`).join('')
+                : '<div class="px-4 py-3 text-sm text-gray-400">All feeds healthy</div>';
+        };
         window.toggleFeedsOverflow = (e) => {
             e.stopPropagation();
             const m = document.getElementById('feeds-overflow-menu');
@@ -7417,7 +7479,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 142;
+        window.APP_BUILD = 143;
 
         (async function initApp() {
             try {
@@ -8034,7 +8096,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v142';
+const CACHE_NAME = 'rss-reader-v143';
 const APP_SHELL = [
     '/',
     'index.html'
