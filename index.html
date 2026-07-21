@@ -3561,6 +3561,16 @@
             let dedupRemovedCount = 0;
             if (window._dedupByTitle) {
                 const before = filtered.length;
+                // Mid-refresh stability (see fetchAllStaggered): while a batch is
+                // filling the list, dedup runs only among PRE-BATCH articles — same
+                // pool as the previous render, so no visible item can change fate —
+                // and batch-fresh arrivals bypass dedup entirely until the final
+                // render (they neither get hidden nor steal a cluster win mid-fill).
+                let _ddAll = null;
+                if (window._preBatchLinks) {
+                    _ddAll = filtered;
+                    filtered = filtered.filter(a => window._preBatchLinks.has(a.link));
+                }
 
                 // Pass 1: exact normalized-title collapse (cheap, catches reposts/wire copies)
                 const bestForTitle = new Map();
@@ -3630,6 +3640,12 @@
                 }
                 filtered = filtered.filter((_, i) => !tokens[i].all.size || keepIdx.has(i));
 
+                // Restore batch-fresh articles (exempt from dedup this render) in
+                // their original sort positions.
+                if (_ddAll) {
+                    const kept = new Set(filtered);
+                    filtered = _ddAll.filter(a => !window._preBatchLinks.has(a.link) || kept.has(a));
+                }
                 dedupRemovedCount = before - filtered.length;
             }
             const dedupBadge = document.getElementById('dedup-badge');
@@ -5131,6 +5147,38 @@
             const CONCURRENCY = isMobile() ? 3 : 6;
             let next = 0;
 
+            // PROGRESSIVE RENDERING + MID-REFRESH STABILITY.
+            // The old batch-end-only render left the app looking dead for the whole
+            // fetch (10-30s), while ACCIDENTAL renders (cloud read-state snapshots)
+            // fired mid-pass and exposed half-finished state - items appeared, then
+            // vanished as render-time title-dedup collapsed early small-feed items
+            // under higher-ranked copies that arrived later. Redesign:
+            //   1. Render deliberately as feeds land, throttled to one refresh per
+            //      800ms and only when the article count actually changed.
+            //   2. Freeze title-dedup's WORLD during the batch: articles present
+            //      before the batch (window._preBatchLinks) keep deduping among
+            //      themselves exactly as the last render did, while articles that
+            //      arrive during the batch are exempt from dedup (and can't steal a
+            //      cluster win from a visible item). Nothing visible moves mid-fill;
+            //      the full dedup collapse happens ONCE, in the final render.
+            //   3. Cloud read-state arriving mid-batch updates the sets silently
+            //      (applySnap defers its render via window._readStateDirty); flags
+            //      are reconciled here just before the final render.
+            window._preBatchLinks = new Set(window.articles.map(a => a.link));
+            let _lastRenderAt = 0, _lastRef = null;
+            const progressiveRender = () => {
+                const now = Date.now();
+                if (now - _lastRenderAt < 800) return;
+                // Each feed that changed anything reassigns window.articles (the
+                // remove/re-add filter builds a new array), so a reference check is
+                // the cheap "something changed" signal — length alone misses the
+                // common swap-old-for-new case on 20-capped feeds.
+                if (window.articles === _lastRef) return;
+                _lastRenderAt = now;
+                _lastRef = window.articles;
+                refreshUI();
+            };
+
             async function worker() {
                 while (next < list.length) {
                     const i = next++;
@@ -5138,6 +5186,7 @@
                     try {
                         await fetchRecentArticles(f.url, f.name, maxItems, isBackground);
                     } catch (e) { /* fetchRecentArticles already swallows its own errors */ }
+                    progressiveRender();
                     // Small stagger between a worker's successive feeds smooths the
                     // proxy load without serializing the whole batch.
                     if (next < list.length) await new Promise(r => setTimeout(r, delayMs));
@@ -5155,12 +5204,20 @@
             // Persist the slow-feed set so next session's first refresh is already ordered.
             window._persistFeedHealth?.();
 
-            // Background fetches don't trigger a full timeline/sidebar refresh per-feed
-            // (only the visible source filter re-renders inside fetchRecentArticles).
-            // After the batch completes, refresh once so the header counter and sidebar
-            // badges reflect newly-arrived unread articles. preserveLayout=true keeps
-            // the user's scroll position.
-            if (isBackground) refreshUI();
+            // Reconcile read/readLater flags if cloud read-state landed mid-batch
+            // (applySnap deferred its render to avoid yanking items mid-refresh).
+            if (window._readStateDirty) {
+                window._readStateDirty = false;
+                window.articles.forEach(a => {
+                    a.unread = !window._readLinks.has(a.link);
+                    a.readLater = window._readLaterLinks.has(a.link);
+                });
+            }
+
+            // Final render: dedup world unfrozen (fresh items now compete), all
+            // feeds landed, flags reconciled. Runs for foreground refreshes too.
+            window._preBatchLinks = null;
+            refreshUI();
         }
 
         // Single shared in-flight guard for full-feed refreshes. PTR, the header
@@ -7273,7 +7330,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 136;
+        window.APP_BUILD = 137;
 
         (async function initApp() {
             try {
@@ -7392,7 +7449,9 @@ window.toggleUnreadManual = () => {
                             window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
                             window.runFullRefresh({ isBackground: true });
                         }
-                    }, 4000);
+                    }, 1500);  // was 4000 -- with progressive rendering the first items
+                               // can paint ~2s after fetch start, so a long grace period
+                               // for the Firestore snapshot just reads as dead air.
                 }
 
                 // Listeners
@@ -7615,6 +7674,15 @@ window.toggleUnreadManual = () => {
                     }
                 }
                 if (changed) {
+                    // A refresh batch is mid-flight: the read/readLater SETS are already
+                    // updated above (so articles fetched from here on get correct flags),
+                    // but defer the flag-sweep + render to the batch's final pass --
+                    // rendering now yanks just-arrived items out of the Unread view while
+                    // the user watches the list fill (the "items disappear" instability).
+                    if (window._refreshInFlight) {
+                        window._readStateDirty = true;
+                        return;
+                    }
                     window.articles.forEach(a => {
                         a.unread = !window._readLinks.has(a.link);
                         a.readLater = window._readLaterLinks.has(a.link);
@@ -7879,7 +7947,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v136';
+const CACHE_NAME = 'rss-reader-v137';
 const APP_SHELL = [
     '/',
     'index.html'
