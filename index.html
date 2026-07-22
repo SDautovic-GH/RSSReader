@@ -1355,6 +1355,19 @@
             font-size: 15px; font-weight: 500; color: #f0f6fc;
         }
         .settings-item-label-sm { font-size: 14px; font-weight: 500; color: #f0f6fc; }
+        /* Feed health rows — same dark-first pattern as the rest of the modal. */
+        .feed-problem-row {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; padding: 10px 16px;
+        }
+        .feed-problem-name {
+            font-size: 14px; font-weight: 500; color: #f0f6fc;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+        }
+        .feed-problem-detail { font-size: 12px; color: #f87171; flex-shrink: 0; }
+        .feed-problem-empty { font-size: 14px; color: #94a3b8; }
+        html:not(.dark) .feed-problem-name { color: #1f2937; }
+        html:not(.dark) .feed-problem-detail { color: #dc2626; }
         html:not(.dark) .settings-item-label,
         html:not(.dark) .settings-item-label-sm,
         html:not(.dark) .settings-item label { color: #1f2937; }
@@ -5699,12 +5712,15 @@
                 }
             }
             probs.sort((a, b) => (b.age || 0) - (a.age || 0));
+            // Explicit CSS classes, NOT Tailwind utilities — several utilities used
+            // here originally (dark:text-gray-200, text-red-400) are missing from
+            // the app's compiled style set, which rendered the names invisible.
             box.innerHTML = probs.length
-                ? probs.map(p => `<div class="px-4 py-2.5 flex items-center justify-between">
-                        <span class="text-sm text-gray-700 dark:text-gray-200 truncate mr-3">${esc(p.name)}</span>
-                        <span class="text-xs text-red-400 flex-shrink-0">${esc(p.detail)}</span>
+                ? probs.map(p => `<div class="feed-problem-row">
+                        <span class="feed-problem-name">${esc(p.name)}</span>
+                        <span class="feed-problem-detail">${esc(p.detail)}</span>
                     </div>`).join('')
-                : '<div class="px-4 py-3 text-sm text-gray-400">All feeds healthy</div>';
+                : '<div class="feed-problem-row"><span class="feed-problem-empty">All feeds healthy</span></div>';
         };
         window.toggleFeedsOverflow = (e) => {
             e.stopPropagation();
@@ -7520,7 +7536,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 146;
+        window.APP_BUILD = 147;
 
         (async function initApp() {
             try {
@@ -8157,7 +8173,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v146';
+const CACHE_NAME = 'rss-reader-v147';
 const APP_SHELL = [
     '/',
     'index.html'
