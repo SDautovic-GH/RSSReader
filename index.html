@@ -3662,7 +3662,17 @@
 
             // --- Title dedup (fuzzy: exact-match pass + Jaccard cluster pass within 24h) ---
             let dedupRemovedCount = 0;
-            if (window._dedupByTitle) {
+            if (window._dedupByTitle && window._preBatchLinks && window._dedupHiddenLinks) {
+                // CHEAP mid-batch path: the dedup world is FROZEN for the whole batch
+                // (pre-batch items only; batch-fresh items exempt), so the verdict
+                // from the last full run cannot change between progressive renders.
+                // Reuse it as a Set lookup instead of re-running tokenize+cluster
+                // 1-2x/second — that recompute churn was a contributor to the
+                // post-cache-clear iOS WebKit OOM crash (2026-07-22).
+                const before = filtered.length;
+                filtered = filtered.filter(a => !window._preBatchLinks.has(a.link) || !window._dedupHiddenLinks.has(a.link));
+                dedupRemovedCount = before - filtered.length;
+            } else if (window._dedupByTitle) {
                 const before = filtered.length;
                 // Mid-refresh stability (see fetchAllStaggered): while a batch is
                 // filling the list, dedup runs only among PRE-BATCH articles — same
@@ -3670,6 +3680,7 @@
                 // and batch-fresh arrivals bypass dedup entirely until the final
                 // render (they neither get hidden nor steal a cluster win mid-fill).
                 let _ddAll = null;
+                const _preDedup = filtered;
                 if (window._preBatchLinks) {
                     _ddAll = filtered;
                     filtered = filtered.filter(a => window._preBatchLinks.has(a.link));
@@ -3750,6 +3761,10 @@
                     filtered = _ddAll.filter(a => !window._preBatchLinks.has(a.link) || kept.has(a));
                 }
                 dedupRemovedCount = before - filtered.length;
+                // Record the verdict (hidden links) so mid-batch progressive renders
+                // reuse it via the cheap path above instead of recomputing.
+                const _keptLinks = new Set(filtered.map(a => a.link));
+                window._dedupHiddenLinks = new Set(_preDedup.filter(a => !_keptLinks.has(a.link)).map(a => a.link));
             }
             const dedupBadge = document.getElementById('dedup-badge');
             if (dedupBadge) {
@@ -7548,7 +7563,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 149;
+        window.APP_BUILD = 150;
 
         (async function initApp() {
             try {
@@ -7559,6 +7574,30 @@ window.toggleUnreadManual = () => {
                     const stamp = document.getElementById('build-stamp');
                     if (stamp) stamp.textContent = `RSS Reader · build ${window.APP_BUILD}`;
                 } catch(e) {}
+
+                // NEW-VERSION CHECK (replaces the old SW updatefound auto-reload —
+                // see the note in the SW registration block). One HEAD request with
+                // a cache-busting query (bypasses the SW cache) compares the deploy's
+                // ETag with the last one seen. Reload at most once per session, HERE,
+                // before any heavy startup work — never mid-refresh. Offline or slow
+                // (>3s): skip silently and start normally.
+                try {
+                    const ETAG_KEY = 'newsreader_last_etag';
+                    const ctl = new AbortController();
+                    const tid = setTimeout(() => ctl.abort(), 3000);
+                    const res = await fetch('index.html?vchk=' + Math.random().toString(36).slice(2), {
+                        method: 'HEAD', cache: 'no-store', signal: ctl.signal
+                    });
+                    clearTimeout(tid);
+                    const etag = res.headers.get('ETag') || res.headers.get('Last-Modified') || '';
+                    const prev = localStorage.getItem(ETAG_KEY);
+                    if (etag) localStorage.setItem(ETAG_KEY, etag);
+                    if (etag && prev && etag !== prev && !sessionStorage.getItem('sw-reloaded')) {
+                        sessionStorage.setItem('sw-reloaded', '1');
+                        location.reload();
+                        return;   // abandon this boot; the reloaded page takes over
+                    }
+                } catch (e) { /* offline/slow — never block startup */ }
 
                 // 1. Initial UI Setup (Synchronous)
                 if (isMobile()) setMobilePane('sidebar');
@@ -8185,7 +8224,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v149';
+const CACHE_NAME = 'rss-reader-v150';
 const APP_SHELL = [
     '/',
     'index.html'
@@ -8272,59 +8311,20 @@ self.addEventListener('fetch', e => {
                         // Calling update() makes it re-evaluate now.
                         try { reg.update(); } catch (e) {}
 
-                        // A newer SW (= newer cached bytes) is ready. Auto-reload so mobile
-                        // picks up the new page without the user clearing cache (which they
-                        // can't easily do on a phone) — but ONLY when it won't interrupt
-                        // active reading. Otherwise show a gentle toast + defer.
-                        const onNewWorkerReady = () => {
-                            const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
-                            const safeToReload = document.hidden || !isReading;
-                            if (safeToReload && !sessionStorage.getItem('sw-reloaded')) {
-                                sessionStorage.setItem('sw-reloaded', '1');
-                                window.location.reload();
-                            } else if (window.showToast) {
-                                window._swUpdateReady = true;
-                                window.showToast("Update available — reload to apply.", false, true);
-                            }
-                        };
-
-                        // Case A: a new worker installs during this session.
-                        reg.addEventListener('updatefound', () => {
-                            const newWorker = reg.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    onNewWorkerReady();
-                                }
-                            });
-                        });
-
-                        // Case B: a worker is ALREADY installed-and-waiting from a prior
-                        // visit (updatefound won't fire again). This is the case that left
-                        // stuck PWAs serving stale pages indefinitely. Tell it to take over
-                        // and reload when it does.
-                        if (reg.waiting && navigator.serviceWorker.controller) {
-                            onNewWorkerReady();
-                        }
-                        // If an update was deferred because the user was reading, apply it
-                        // the moment they leave the article / background the app.
-                        const applyDeferredUpdate = () => {
-                            if (!window._swUpdateReady) return;
-                            const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
-                            if ((document.hidden || !isReading) && !sessionStorage.getItem('sw-reloaded')) {
-                                sessionStorage.setItem('sw-reloaded', '1');
-                                window.location.reload();
-                            }
-                        };
-                        document.addEventListener('visibilitychange', applyDeferredUpdate);
-                        window.addEventListener('pageshow', applyDeferredUpdate);
+                        // DELIBERATELY NO 'updatefound -> auto reload' machinery here.
+                        // The SW registers from a fresh blob: URL every load, so the
+                        // browser fired updatefound on EVERY session — real update or
+                        // not — and the old handler self-reloaded the app mid-startup.
+                        // That was the hidden double cold boot (refresh runs, page
+                        // reloads, items vanish, everything refetches) and, after a
+                        // Safari cache clear, enough back-to-back memory churn to
+                        // crash iOS WebKit ("A problem repeatedly occurred").
+                        // New-version pickup now happens via the ETag check at the
+                        // top of initApp: at most one reload per session, BEFORE any
+                        // heavy startup work, and only when the deployed site
+                        // actually changed.
                     })
                     .catch(err => console.warn('RSS Reader: SW registration failed:', err));
-
-                // When the controlling SW changes (new version activated), clear the
-                // one-shot reload guard so the next genuine update can auto-reload again.
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    sessionStorage.removeItem('sw-reloaded');
-                });
             } catch (err) {
                 console.warn('RSS Reader: Failed to create SW Blob:', err);
             }
