@@ -170,9 +170,23 @@
         #article-title { color: #0f1923 !important; }
         .dark #article-title { color: #f0f6fc !important; }
         /* Preview — clearly subordinate: muted grey recedes behind the title */
-        .dynamic-list-preview { color: #1f2937 !important; }
-        .dark .dynamic-list-preview { color: #b1bac4 !important; }
-        .dark #article-body { color: #d1d7e0 !important; }
+        /* Preview text one step dimmer than before (#1f2937/#b1bac4) so the title
+           owns the row. Social posts (Bluesky/Mastodon) are exempt below: their
+           "preview" IS the content and keeps full reading brightness. */
+        /* Preview brightness restored ~2 shades (user: too dim) — the triage
+           hierarchy is carried by the smaller size + 2-line clamp, not dimness. */
+        .dynamic-list-preview { color: #374151 !important; }
+        .dark .dynamic-list-preview { color: #aeb8c5 !important; }
+        .line-clamp-social.dynamic-list-preview { color: #1f2937 !important; }
+        .dark .line-clamp-social.dynamic-list-preview { color: #e3e9f0 !important; }
+        /* Just-read rows pinned in place inside unread-only views ('all' smart
+           feed family): title/label dim to read as "done" — this replaces the
+           per-row unread dot there (the dot marked every row = noise; the rare
+           exception carries the mark instead). */
+        .article-read-pinned .dynamic-list-title { color: #9ca3af !important; }
+        .dark .article-read-pinned .dynamic-list-title { color: #6b7280 !important; }
+        .article-read-pinned .list-source-label { opacity: 0.6; }
+        .dark #article-body { color: #e3e9f0 !important; } /* was #d1d7e0 — brightened ~2 shades (user: too dim) */
         #article-author, #article-date { font-size: var(--article-meta-size) !important; }
 
         .line-clamp-custom {
@@ -273,7 +287,9 @@
             --view-font-size: 1.1em;
             --category-font-size: 1.15em;
             --list-preview-lines: 4;
-            --mob-list-preview-lines: 4;
+            /* Mobile default 2 lines (was 4): triage rhythm — title wins each row,
+               ~4 items per screen. User sliders still override via saved prefs. */
+            --mob-list-preview-lines: 2;
             --list-preview-lines-social: 10;
             --mob-list-preview-lines-social: 10;
             --list-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -283,7 +299,7 @@
             --mob-body-size: 1.1em;
             --mob-author-size: 1.1em;
             --list-title-em-size: 1.1em;
-            --mob-list-preview-size: 1.1em;
+            --mob-list-preview-size: 1.0em; /* one step below title (was 1.1) — triage rhythm */
             --mob-list-title-size: 1.1em;
             --line-height: 1.4;
             --mob-line-height: 1.4;
@@ -593,6 +609,14 @@
                scrolling carries content under it, fading progressively while staying
                ~20% readable beneath the clock (the 0.82 top alpha). Knobs: top alpha
                = how hidden under the clock; the +28px = fade depth past the bar. */
+            /* Frosted material (Safari-style): backdrop-filter blurs content passing
+               beneath, a whisper of dim steadies the clock, the mask feathers the
+               blur out with no hard edge. Dims tuned LIGHTER than the first attempt
+               (0.25 -> 0.15 dark top) per user direction — the blur carries the
+               look, content stays clearly visible under the clock. Timeline note:
+               the crash loop predated this material (crashes began 07-21, this
+               shipped 07-22), so it is NOT the crash suspect; the boot memory
+               spike (full-record archive read) was fixed separately. */
             #timeline-pane.mobile-active::before,
             #viewer-pane.mobile-active::before {
                 content: "";
@@ -601,24 +625,30 @@
                 height: calc(max(env(safe-area-inset-top, 0px), 44px) + 28px);
                 z-index: 10;
                 pointer-events: none;
+                -webkit-backdrop-filter: blur(14px) saturate(1.3);
+                backdrop-filter: blur(14px) saturate(1.3);
                 background: linear-gradient(to bottom,
-                    rgba(255,255,255,0.88) 0,
-                    rgba(255,255,255,0.60) max(env(safe-area-inset-top, 0px), 44px),
+                    rgba(255,255,255,0.30) 0,
+                    rgba(255,255,255,0.12) 60%,
                     rgba(255,255,255,0) 100%);
+                -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 45%, transparent 100%);
+                mask-image: linear-gradient(to bottom, #000 0, #000 45%, transparent 100%);
             }
             .dark #timeline-pane.mobile-active::before,
             .dark #viewer-pane.mobile-active::before {
                 background: linear-gradient(to bottom,
-                    rgba(0,0,0,0.82) 0,
-                    rgba(0,0,0,0.55) max(env(safe-area-inset-top, 0px), 44px),
+                    rgba(0,0,0,0.15) 0,
+                    rgba(0,0,0,0.05) 60%,
                     rgba(0,0,0,0) 100%);
             }
-            /* Content rests just below the strip; scrolling carries it underneath. */
+            /* Content rests just below the strip; scrolling carries it underneath.
+               (+12px, was +18px — with the context chip tucked up under the clock,
+               content starts a touch higher: more reading screen.) */
             #timeline-pane.mobile-active #article-list {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 18px);
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 12px);
             }
             #viewer-pane.mobile-active #reader-view {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 18px);
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 12px);
             }
             #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
             #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
@@ -976,23 +1006,6 @@
             background: rgba(0, 0, 0, 0.58) !important;
         }
 
-        /* Reader tab progress ring (viewer mode) */
-        #mob-tab-reader .tab-progress-ring {
-            display: none;
-            position: relative;
-            width: 24px; height: 24px;
-        }
-        #mob-tab-reader.reader-progress .tab-ico { display: none; }
-        #mob-tab-reader.reader-progress .tab-progress-ring { display: block; }
-        #mob-tab-reader .tab-progress-ring svg { width: 24px; height: 24px; display: block; }
-        #mob-tab-reader .tab-progress-ring .tab-progress-text {
-            position: absolute; inset: 0;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 9px; font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            color: currentColor;
-        }
-
         /* Search sheet above bar */
         #mobile-search-sheet {
             display: none !important;
@@ -1327,6 +1340,19 @@
             font-size: 15px; font-weight: 500; color: #f0f6fc;
         }
         .settings-item-label-sm { font-size: 14px; font-weight: 500; color: #f0f6fc; }
+        /* Feed health rows — same dark-first pattern as the rest of the modal. */
+        .feed-problem-row {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; padding: 10px 16px;
+        }
+        .feed-problem-name {
+            font-size: 14px; font-weight: 500; color: #f0f6fc;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+        }
+        .feed-problem-detail { font-size: 12px; color: #f87171; flex-shrink: 0; }
+        .feed-problem-empty { font-size: 14px; color: #94a3b8; }
+        html:not(.dark) .feed-problem-name { color: #1f2937; }
+        html:not(.dark) .feed-problem-detail { color: #dc2626; }
         html:not(.dark) .settings-item-label,
         html:not(.dark) .settings-item-label-sm,
         html:not(.dark) .settings-item label { color: #1f2937; }
@@ -1678,7 +1704,7 @@
                 <div id="smart-feeds-card" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
                     <button id="feed-btn-all" onclick="setSmartFeed('all')" oncontextmenu="showFolderContextMenu(event,'smart','all')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 active-item">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/></svg> Unread</span>
-                        <span id="badge-all" class="feed-badge mob-unread-count text-blue-400 hidden">0</span>
+                        <span id="badge-all" class="feed-badge mob-unread-count text-gray-400 hidden">0</span>
                     </button>
                     <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" oncontextmenu="showFolderContextMenu(event,'smart','read-later')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-bookmark"/></svg> Read Later</span>
@@ -1884,10 +1910,6 @@
             </button>
             <button id="mob-tab-reader" type="button" class="tab-btn" onclick="onReaderTabClick()">
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 6.5C10.5 5.5 8 5 4 5v13c4 0 6.5 0.5 8 1.5"/><path d="M12 6.5C13.5 5.5 16 5 20 5v13c-4 0-6.5 0.5-8 1.5"/><path d="M12 6.5v13"/></svg>
-                <span class="tab-progress-ring" aria-hidden="true">
-                    <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="3"/><circle id="tab-progress-circle" cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="97.39" stroke-dashoffset="97.39" transform="rotate(-90 18 18)" style="transition: stroke-dashoffset 0.15s linear;"/></svg>
-                    <span id="tab-progress-text" class="tab-progress-text"></span>
-                </span>
                 <span id="mob-tab-reader-label" class="tab-label">Reader</span>
             </button>
             <button id="mob-tab-search" type="button" class="tab-search" onclick="toggleSearchSheet()" aria-label="Search">
@@ -2203,6 +2225,27 @@
                     </div>
                 </div>
 
+                <!-- Reset all size/spacing sliders to the app's defaults (keeps font,
+                     theme, sort, refresh, and dedup choices). Confirm + reload. -->
+                <div>
+                    <div class="settings-list">
+                        <button type="button" onclick="resetTextSettings()"
+                            class="w-full text-left px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            Reset text sizes to defaults
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Feed health: feeds that haven't fetched successfully in 48h+
+                     (or are failing repeatedly this session). Populated on open by
+                     renderFeedProblems(). -->
+                <div>
+                    <h3 class="settings-section-label">Feed health</h3>
+                    <div class="settings-list" id="feed-problems-list">
+                        <div class="px-4 py-3 text-sm text-gray-400">Checking&hellip;</div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- No footer slab — the header ✕ and tapping the backdrop both close the
@@ -2326,6 +2369,9 @@
         window._readLinks = new Set();
         window._readLaterLinks = new Set();
         window._pinnedArticleIds = new Set();
+        // Links the user EXPLICITLY toggled back to unread this session — the only
+        // legitimate removal path from the durable read store (see saveReadState).
+        window._unreadToggledLinks = new Set();
 
         window._feedHealth = {};
         // Restore the persisted 'slow' set so the very FIRST refresh of a session already
@@ -2334,16 +2380,32 @@
         // and lastSuccess are session-scoped and recomputed live.
         (function restoreFeedHealth() {
             try {
-                const slowUrls = JSON.parse(localStorage.getItem('newsreader_slow_feeds') || '[]');
-                if (Array.isArray(slowUrls)) {
-                    for (const url of slowUrls) window._feedHealth[url] = { lastSuccess: null, errorCount: 0, slow: true };
+                // Rich health record { url: { slow, lastSuccess } } — lastSuccess
+                // persists across sessions so "feed dead for days" is detectable
+                // (it also makes the sidebar's stale-dot work across sessions, and
+                // feeds Settings' "Feed health" list). errorCount stays session-scoped.
+                const stored = JSON.parse(localStorage.getItem('newsreader_feed_health') || 'null');
+                if (stored && typeof stored === 'object') {
+                    for (const [url, h] of Object.entries(stored)) {
+                        window._feedHealth[url] = { lastSuccess: h.lastSuccess || null, errorCount: 0, slow: !!h.slow };
+                    }
+                } else {
+                    // Migrate the legacy slow-only list once.
+                    const slowUrls = JSON.parse(localStorage.getItem('newsreader_slow_feeds') || '[]');
+                    if (Array.isArray(slowUrls)) {
+                        for (const url of slowUrls) window._feedHealth[url] = { lastSuccess: null, errorCount: 0, slow: true };
+                    }
                 }
             } catch(e) { console.warn('restoreFeedHealth:', e.message); }
         })();
         window._persistFeedHealth = () => {
             try {
-                const slowUrls = Object.keys(window._feedHealth).filter(u => window._feedHealth[u] && window._feedHealth[u].slow);
-                localStorage.setItem('newsreader_slow_feeds', JSON.stringify(slowUrls));
+                const out = {};
+                for (const [url, h] of Object.entries(window._feedHealth)) {
+                    if (!h) continue;
+                    if (h.slow || h.lastSuccess) out[url] = { slow: !!h.slow, lastSuccess: h.lastSuccess || null };
+                }
+                localStorage.setItem('newsreader_feed_health', JSON.stringify(out));
             } catch(e) { console.warn('persistFeedHealth:', e.message); }
         };
         window._viewMode = 'list';
@@ -2451,6 +2513,20 @@
                     const store = tx.objectStore(storeName);
                     const request = store.get(key);
                     request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            // Keys only — no record payloads. Used by the boot read-state self-heal:
+            // readArchive is keyed by link, so this returns every archived link
+            // without deserializing bodies (the full-record version allocated
+            // megabytes at every launch just to throw the bodies away).
+            async getAllKeys(storeName) {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const request = tx.objectStore(storeName).getAllKeys();
+                    request.onsuccess = () => resolve(request.result || []);
                     request.onerror = () => reject(request.error);
                 });
             }
@@ -3216,7 +3292,17 @@
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
                         excerpt: decodeEntities(rawBody.replace(/(<([^>]+)>)/gi, '')).substring(0, 3000),
                         _excerptHtml: null,
-                        body: DOMPurify.sanitize(fixLazyImages(rawBody), { ADD_TAGS: ['audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'controls', 'preload', 'type'] }),
+                        // Body is stored RAW (fixLazyImages only) — NOT sanitized here.
+                        // Sanitization happens at the single display sink (selectArticle's
+                        // `bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), ...)`)
+                        // with a broader allowlist, so fetch-time sanitize was pure duplicated
+                        // main-thread cost: ~20 DOMPurify runs per feed per refresh was the
+                        // biggest source of scroll jank during a batch (Phase 3). Every other
+                        // .body consumer is string-only (search/word-count/TTS-via-rendered-DOM/
+                        // storage payloads that re-enter the DOM only through that same sink).
+                        // INVARIANT: any NEW code that puts article.body into the DOM must
+                        // wrap it in DOMPurify.sanitize itself.
+                        body: fixLazyImages(rawBody),
                         link,
                         unread: isNew,
                         readLater: window._readLaterLinks.has(link),
@@ -3559,8 +3645,29 @@
 
             // --- Title dedup (fuzzy: exact-match pass + Jaccard cluster pass within 24h) ---
             let dedupRemovedCount = 0;
-            if (window._dedupByTitle) {
+            if (window._dedupByTitle && window._preBatchLinks && window._dedupHiddenLinks) {
+                // CHEAP mid-batch path: the dedup world is FROZEN for the whole batch
+                // (pre-batch items only; batch-fresh items exempt), so the verdict
+                // from the last full run cannot change between progressive renders.
+                // Reuse it as a Set lookup instead of re-running tokenize+cluster
+                // 1-2x/second — that recompute churn was a contributor to the
+                // post-cache-clear iOS WebKit OOM crash (2026-07-22).
                 const before = filtered.length;
+                filtered = filtered.filter(a => !window._preBatchLinks.has(a.link) || !window._dedupHiddenLinks.has(a.link));
+                dedupRemovedCount = before - filtered.length;
+            } else if (window._dedupByTitle) {
+                const before = filtered.length;
+                // Mid-refresh stability (see fetchAllStaggered): while a batch is
+                // filling the list, dedup runs only among PRE-BATCH articles — same
+                // pool as the previous render, so no visible item can change fate —
+                // and batch-fresh arrivals bypass dedup entirely until the final
+                // render (they neither get hidden nor steal a cluster win mid-fill).
+                let _ddAll = null;
+                const _preDedup = filtered;
+                if (window._preBatchLinks) {
+                    _ddAll = filtered;
+                    filtered = filtered.filter(a => window._preBatchLinks.has(a.link));
+                }
 
                 // Pass 1: exact normalized-title collapse (cheap, catches reposts/wire copies)
                 const bestForTitle = new Map();
@@ -3630,7 +3737,17 @@
                 }
                 filtered = filtered.filter((_, i) => !tokens[i].all.size || keepIdx.has(i));
 
+                // Restore batch-fresh articles (exempt from dedup this render) in
+                // their original sort positions.
+                if (_ddAll) {
+                    const kept = new Set(filtered);
+                    filtered = _ddAll.filter(a => !window._preBatchLinks.has(a.link) || kept.has(a));
+                }
                 dedupRemovedCount = before - filtered.length;
+                // Record the verdict (hidden links) so mid-batch progressive renders
+                // reuse it via the cheap path above instead of recomputing.
+                const _keptLinks = new Set(filtered.map(a => a.link));
+                window._dedupHiddenLinks = new Set(_preDedup.filter(a => !_keptLinks.has(a.link)).map(a => a.link));
             }
             const dedupBadge = document.getElementById('dedup-badge');
             if (dedupBadge) {
@@ -3709,16 +3826,25 @@
             const selCls = selected ? 'is-active-card' : '';
             const isBsky = a.feedUrl ? isBlueskyFeed(a.feedUrl) : false;
 
+            // Mark the exception, not the default. Views under smartFeed 'all'
+            // (Unread / folder / feed) are unread-only plus just-read rows pinned
+            // in place — there the dot marked EVERY row (noise), so it's dropped
+            // and the rare just-read row is dimmed instead. Saved/Read Later are
+            // mostly-read, so the dot stays to mark the unread exception.
+            const inAllView = window.currentSmartFeed === 'all';
+            const showDot = a.unread && !inAllView;
+            const readDimCls = (!a.unread && inAllView) ? ' article-read-pinned' : '';
+
             const saId = escJs(a.id);
 
             if (window._viewMode === 'card') {
-                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                     <div class="swipe-hint swipe-hint-left"><span>&#x2713; Mark Read</span></div>
                     <div class="swipe-hint swipe-hint-right"><span>Save Later &#x2605;</span></div>
                     ${a.image ? `<img src="${esc(a.image)}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
                     <div class="p-3">
                         <div class="flex items-center text-[10px] mb-1">
-                            ${a.unread ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>' : ''}
+                            ${showDot ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>' : ''}
                             ${favicon}<span class="font-bold uppercase truncate text-blue-400 dark:text-blue-300">${esc(a.source)}</span>
                             <span class="ml-auto flex-shrink-0 text-gray-500 dark:text-gray-500">${getRelativeTime(a.timestamp)}</span>
                         </div>
@@ -3737,13 +3863,13 @@
             const previewCls = isBsky
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-social dynamic-list-preview'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
-            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="relative px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}">
+            return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="relative px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Read Later &#x2605;</div>
                 <div class="min-w-0">
                     <div class="flex items-center justify-between mb-1.5 gap-2">
-                        ${a.unread ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
-                        <span class="list-source-label font-bold text-blue-400 dark:text-blue-300 uppercase truncate mr-2 flex-1 min-w-0">${favicon}${esc(sourceLabel)}</span>
+                        ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
+                        <span class="list-source-label font-bold text-gray-500 dark:text-gray-400 uppercase truncate mr-2 flex-1 min-w-0">${favicon}${esc(sourceLabel)}</span>
                         <span class="list-date-label text-[11px] text-gray-500 dark:text-gray-500 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                     </div>
                     ${titleHtml}
@@ -4063,7 +4189,7 @@
                 authorEl.nextElementSibling.style.display = '';
             }
             const bodyEl = document.getElementById('article-body');
-            bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+            bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type', 'preload'] });
             stripJsonBlobs(bodyEl);
             stripImagePlaceholders(bodyEl);
             stripLeadingEmptyBlocks(bodyEl);
@@ -4460,8 +4586,17 @@
         function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
         function toggleUnread(article) {
             article.unread = !article.unread;
-            if (!article.unread) { window._readLinks.add(article.link); archiveReadArticle(article); }
-            else window._readLinks.delete(article.link);
+            if (!article.unread) {
+                window._readLinks.add(article.link);
+                window._unreadToggledLinks.delete(article.link);
+                archiveReadArticle(article);
+            } else {
+                window._readLinks.delete(article.link);
+                // Explicit keep-unread: exclude from the union-save AND remove the
+                // archive record so the boot self-heal can't resurrect it as read.
+                window._unreadToggledLinks.add(article.link);
+                try { window.appDB?.delete('readArchive', article.link); } catch(e) {}
+            }
         }
         function toggleReadLater(article) {
             article.readLater = !article.readLater;
@@ -4598,7 +4733,7 @@
                             </button>
                             <div class="flex items-center space-x-2 flex-shrink-0">
                                 ${healthDot}
-                                ${total > 0 ? `<span class="mob-unread-count text-blue-500 dark:text-blue-400">${total}</span>` : ''}
+                                ${total > 0 ? `<span class="mob-unread-count text-gray-400">${total}</span>` : ''}
                             </div>
                         </div>
                         ${!isCollapsed ? feeds.map(f => {
@@ -5131,6 +5266,38 @@
             const CONCURRENCY = isMobile() ? 3 : 6;
             let next = 0;
 
+            // PROGRESSIVE RENDERING + MID-REFRESH STABILITY.
+            // The old batch-end-only render left the app looking dead for the whole
+            // fetch (10-30s), while ACCIDENTAL renders (cloud read-state snapshots)
+            // fired mid-pass and exposed half-finished state - items appeared, then
+            // vanished as render-time title-dedup collapsed early small-feed items
+            // under higher-ranked copies that arrived later. Redesign:
+            //   1. Render deliberately as feeds land, throttled to one refresh per
+            //      800ms and only when the article count actually changed.
+            //   2. Freeze title-dedup's WORLD during the batch: articles present
+            //      before the batch (window._preBatchLinks) keep deduping among
+            //      themselves exactly as the last render did, while articles that
+            //      arrive during the batch are exempt from dedup (and can't steal a
+            //      cluster win from a visible item). Nothing visible moves mid-fill;
+            //      the full dedup collapse happens ONCE, in the final render.
+            //   3. Cloud read-state arriving mid-batch updates the sets silently
+            //      (applySnap defers its render via window._readStateDirty); flags
+            //      are reconciled here just before the final render.
+            window._preBatchLinks = new Set(window.articles.map(a => a.link));
+            let _lastRenderAt = 0, _lastRef = null;
+            const progressiveRender = () => {
+                const now = Date.now();
+                if (now - _lastRenderAt < 800) return;
+                // Each feed that changed anything reassigns window.articles (the
+                // remove/re-add filter builds a new array), so a reference check is
+                // the cheap "something changed" signal — length alone misses the
+                // common swap-old-for-new case on 20-capped feeds.
+                if (window.articles === _lastRef) return;
+                _lastRenderAt = now;
+                _lastRef = window.articles;
+                refreshUI();
+            };
+
             async function worker() {
                 while (next < list.length) {
                     const i = next++;
@@ -5138,6 +5305,7 @@
                     try {
                         await fetchRecentArticles(f.url, f.name, maxItems, isBackground);
                     } catch (e) { /* fetchRecentArticles already swallows its own errors */ }
+                    progressiveRender();
                     // Small stagger between a worker's successive feeds smooths the
                     // proxy load without serializing the whole batch.
                     if (next < list.length) await new Promise(r => setTimeout(r, delayMs));
@@ -5155,12 +5323,26 @@
             // Persist the slow-feed set so next session's first refresh is already ordered.
             window._persistFeedHealth?.();
 
-            // Background fetches don't trigger a full timeline/sidebar refresh per-feed
-            // (only the visible source filter re-renders inside fetchRecentArticles).
-            // After the batch completes, refresh once so the header counter and sidebar
-            // badges reflect newly-arrived unread articles. preserveLayout=true keeps
-            // the user's scroll position.
-            if (isBackground) refreshUI();
+            // Reconcile read/readLater flags if cloud read-state landed mid-batch
+            // (applySnap deferred its render to avoid yanking items mid-refresh).
+            if (window._readStateDirty) {
+                window._readStateDirty = false;
+                window.articles.forEach(a => {
+                    a.unread = !window._readLinks.has(a.link);
+                    a.readLater = window._readLaterLinks.has(a.link);
+                });
+            }
+
+            // The welcome placeholder (fresh-install only) must not outlive the
+            // first real content — sweep it as soon as any real article landed.
+            if (window.articles.some(a => a.source !== 'System')) {
+                window.articles = window.articles.filter(a => !(a.source === 'System' && a.link === '#'));
+            }
+
+            // Final render: dedup world unfrozen (fresh items now compete), all
+            // feeds landed, flags reconciled. Runs for foreground refreshes too.
+            window._preBatchLinks = null;
+            refreshUI();
         }
 
         // Single shared in-flight guard for full-feed refreshes. PTR, the header
@@ -5493,7 +5675,46 @@
             });
         })();
 
-        window.toggleSettings = () => document.getElementById('settings-modal').classList.toggle('hidden');
+        window.toggleSettings = () => {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('hidden');
+            // Refresh the Feed health list each time Settings opens.
+            if (!modal.classList.contains('hidden')) window.renderFeedProblems?.();
+        };
+
+        // "Feed health" list in Settings: feeds whose last successful fetch is
+        // >48h old (lastSuccess persists across sessions via _persistFeedHealth),
+        // or that failed 3+ times this session. Feeds with no recorded history
+        // are treated as unknown, not broken — the list earns accuracy over days.
+        window.renderFeedProblems = () => {
+            const box = document.getElementById('feed-problems-list');
+            if (!box) return;
+            const now = Date.now();
+            const probs = [];
+            for (const f of (window.feeds || [])) {
+                const h = window._feedHealth[f.url];
+                if (!h) continue;
+                const age = h.lastSuccess ? (now - h.lastSuccess) : null;
+                if (age !== null && age > 48 * 3600 * 1000) {
+                    const label = age > 2 * 86400000
+                        ? Math.round(age / 86400000) + 'd ago'
+                        : Math.round(age / 3600000) + 'h ago';
+                    probs.push({ name: f.name, detail: 'Last OK ' + label, age });
+                } else if ((h.errorCount || 0) >= 3) {
+                    probs.push({ name: f.name, detail: 'Failing this session', age: 0 });
+                }
+            }
+            probs.sort((a, b) => (b.age || 0) - (a.age || 0));
+            // Explicit CSS classes, NOT Tailwind utilities — several utilities used
+            // here originally (dark:text-gray-200, text-red-400) are missing from
+            // the app's compiled style set, which rendered the names invisible.
+            box.innerHTML = probs.length
+                ? probs.map(p => `<div class="feed-problem-row">
+                        <span class="feed-problem-name">${esc(p.name)}</span>
+                        <span class="feed-problem-detail">${esc(p.detail)}</span>
+                    </div>`).join('')
+                : '<div class="feed-problem-row"><span class="feed-problem-empty">All feeds healthy</span></div>';
+        };
         window.toggleFeedsOverflow = (e) => {
             e.stopPropagation();
             const m = document.getElementById('feeds-overflow-menu');
@@ -6470,6 +6691,31 @@ window.toggleUnreadManual = () => {
             } catch(e) { console.warn('Storage error:', e.message); }
         }
 
+        // Reset ONLY the size/spacing/line prefs written by saveTypographyPrefs
+        // above (keep this list in sync with it). Font, theme, sort order,
+        // auto-refresh, dedup, and app zoom survive the reset. Reload re-applies
+        // the pristine CSS :root defaults everywhere — simplest correct path.
+        window.resetTextSettings = () => {
+            if (!confirm('Reset all text sizes and spacing to defaults?')) return;
+            let prefs = {};
+            try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')) || {}; } catch(e) {}
+            const TYPO_KEYS = [
+                'sharedFeedName', 'sharedFolder', 'feedSpacing',
+                'sharedBodyDesktop', 'sharedBodyMobile',
+                'sharedArticleTitleDesktop', 'sharedArticleTitleMobile',
+                'sharedLineHeightDesktop', 'sharedLineHeightMobile',
+                'sharedMetaDesktop', 'sharedMetaMobile',
+                'sharedListTitleDesktop', 'sharedListTitleMobile',
+                'sharedPreviewDesktop', 'sharedPreviewMobile',
+                'previewLineHeightDesktop', 'previewLineHeightMobile',
+                'previewLinesDesktop', 'previewLinesMobile',
+                'previewLinesSocialDesktop', 'previewLinesSocialMobile',
+            ];
+            TYPO_KEYS.forEach(k => delete prefs[k]);
+            try { localStorage.setItem('newsreader_prefs', JSON.stringify(prefs)); } catch(e) {}
+            location.reload();
+        };
+
         function restoreTypographyPrefs() {
             let prefs;
             try { prefs = JSON.parse(localStorage.getItem('newsreader_prefs')); } catch(e) { return; }
@@ -6702,12 +6948,21 @@ window.toggleUnreadManual = () => {
             clearTimeout(_saveReadStateTimer);
             _saveReadStateTimer = setTimeout(async () => {
                 try {
-                    const readLinks = window.articles.filter(a => !a.unread).map(a => a.link);
+                    // UNION-based persistence: reads are only ever ADDED to the
+                    // durable store; the sole removal path is an explicit keep-unread
+                    // toggle (tracked in _unreadToggledLinks). The old version derived
+                    // read-ness from in-memory a.unread FLAGS and overwrote the store
+                    // for every loaded link — so any window where flags lagged
+                    // window._readLinks (e.g. cloud marks arriving mid-refresh with
+                    // the flag-sweep deferred) durably ERASED read history: the
+                    // "30 read articles resurrected as unread" bug (2026-07-21).
+                    // window._readLinks is the source of truth; never the flags.
                     const existing = await getStoredReadLinks();
-                    const loadedLinks = new Set(window.articles.map(a => a.link));
-                    const preserved = existing.filter(l => !loadedLinks.has(l));
-                    const merged = Array.from(new Set([...preserved, ...readLinks]));
-                    const final = merged.slice(-10000); // 2x increase in read history
+                    const merged = new Set([...existing, ...window._readLinks]);
+                    for (const l of window._unreadToggledLinks) {
+                        if (!window._readLinks.has(l)) merged.delete(l); // re-read since toggle wins
+                    }
+                    const final = Array.from(merged).slice(-10000);
                     await window.appDB.put('metadata', final, 'readLinks');
                 } catch(e) { console.warn('Read state save error:', e.message); }
             }, 500);
@@ -6738,10 +6993,11 @@ window.toggleUnreadManual = () => {
             const btn = document.getElementById('mob-tab-reader');
             const label = document.getElementById('mob-tab-reader-label');
             if (!btn || !label) return;
-            btn.classList.remove('reader-progress');
             // Reader tab label is stable — it's a navigation target, not a counter.
             // Mark-all-read lives on the Articles tab via long-press now; per-view
             // unread counts surface as a badge on the Articles tab icon instead.
+            // (The old reading-progress ring was fully removed 2026-07-21 — the
+            // browser scrollbar in the article view serves as reading progress.)
             label.textContent = 'Reader';
             // Keep the Articles tab unread badge in sync from the same update path.
             const artBadge = document.getElementById('mob-tab-articles-badge');
@@ -7273,7 +7529,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 136;
+        window.APP_BUILD = 157;
 
         (async function initApp() {
             try {
@@ -7284,6 +7540,30 @@ window.toggleUnreadManual = () => {
                     const stamp = document.getElementById('build-stamp');
                     if (stamp) stamp.textContent = `RSS Reader · build ${window.APP_BUILD}`;
                 } catch(e) {}
+
+                // NEW-VERSION CHECK (replaces the old SW updatefound auto-reload —
+                // see the note in the SW registration block). One HEAD request with
+                // a cache-busting query (bypasses the SW cache) compares the deploy's
+                // ETag with the last one seen. Reload at most once per session, HERE,
+                // before any heavy startup work — never mid-refresh. Offline or slow
+                // (>3s): skip silently and start normally.
+                try {
+                    const ETAG_KEY = 'newsreader_last_etag';
+                    const ctl = new AbortController();
+                    const tid = setTimeout(() => ctl.abort(), 3000);
+                    const res = await fetch('index.html?vchk=' + Math.random().toString(36).slice(2), {
+                        method: 'HEAD', cache: 'no-store', signal: ctl.signal
+                    });
+                    clearTimeout(tid);
+                    const etag = res.headers.get('ETag') || res.headers.get('Last-Modified') || '';
+                    const prev = localStorage.getItem(ETAG_KEY);
+                    if (etag) localStorage.setItem(ETAG_KEY, etag);
+                    if (etag && prev && etag !== prev && !sessionStorage.getItem('sw-reloaded')) {
+                        sessionStorage.setItem('sw-reloaded', '1');
+                        location.reload();
+                        return;   // abandon this boot; the reloaded page takes over
+                    }
+                } catch (e) { /* offline/slow — never block startup */ }
 
                 // 1. Initial UI Setup (Synchronous)
                 if (isMobile()) setMobilePane('sidebar');
@@ -7305,6 +7585,19 @@ window.toggleUnreadManual = () => {
                     ]);
                     
                     window._readLinks = new Set(await getStoredReadLinks());
+                    // Self-heal: the readArchive independently stores every article
+                    // read in the last 30 days (it feeds the History view). Union its
+                    // links back into the read set so read-marks survive even if the
+                    // metadata store was erased or corrupted — this also recovers the
+                    // marks lost to the pre-fix flag-derived save. Explicit keep-unread
+                    // toggles delete their archive record, so they don't resurrect.
+                    try {
+                        // Keys-only (the archive is pruned to 30 days at boot anyway) —
+                        // the previous full-record read deserialized every archived
+                        // body at launch, a multi-MB allocation spike on every open.
+                        const archivedLinks = await window.appDB.getAllKeys('readArchive');
+                        archivedLinks.forEach(l => window._readLinks.add(l));
+                    } catch(e) { console.warn('readArchive self-heal skipped:', e?.message); }
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
                     // Prune readArchive: drop entries older than the longest window we support
@@ -7318,19 +7611,29 @@ window.toggleUnreadManual = () => {
                 } catch(e) { console.error('App: Data restore failed:', e); }
 
                 // 4. Fallback for Empty State
-                if (window.articles.length === 0) {
-                    window.articles = [{ 
-                        id: crypto.randomUUID(), 
-                        source: "System", 
-                        title: "Welcome to RSS Reader", 
-                        author: "News Team", 
-                        timestamp: new Date().toISOString(), 
-                        excerpt: "Import an OPML file or add a manual feed to get started.", 
-                        body: "Your high-performance personal news hub.", 
-                        link: "#", 
-                        unread: true, 
-                        readLater: false 
+                // Welcome placeholder ONLY on a genuinely fresh install (no feeds
+                // either). With feeds but an empty cache, the skeletons + refresh
+                // spinner are the honest state — the old feeds-present injection
+                // left a fake "SYSTEM / 5m ago" item polluting the Unread list,
+                // counting as unread and getting persisted into the cache.
+                if (window.articles.length === 0 && window.feeds.length === 0) {
+                    window.articles = [{
+                        id: crypto.randomUUID(),
+                        source: "System",
+                        title: "Welcome to RSS Reader",
+                        author: "News Team",
+                        timestamp: new Date().toISOString(),
+                        excerpt: "Import an OPML file or add a manual feed to get started.",
+                        body: "Your high-performance personal news hub.",
+                        link: "#",
+                        unread: true,
+                        readLater: false
                     }];
+                }
+                // Sweep welcome items that older builds persisted into the cache:
+                // once ANY real article exists, the placeholder must not survive.
+                if (window.articles.some(a => a.source !== 'System')) {
+                    window.articles = window.articles.filter(a => !(a.source === 'System' && a.link === '#'));
                 }
 
                 // 5. Restore UI Modes
@@ -7392,7 +7695,9 @@ window.toggleUnreadManual = () => {
                             window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
                             window.runFullRefresh({ isBackground: true });
                         }
-                    }, 4000);
+                    }, 1500);  // was 4000 -- with progressive rendering the first items
+                               // can paint ~2s after fetch start, so a long grace period
+                               // for the Firestore snapshot just reads as dead air.
                 }
 
                 // Listeners
@@ -7615,6 +7920,15 @@ window.toggleUnreadManual = () => {
                     }
                 }
                 if (changed) {
+                    // A refresh batch is mid-flight: the read/readLater SETS are already
+                    // updated above (so articles fetched from here on get correct flags),
+                    // but defer the flag-sweep + render to the batch's final pass --
+                    // rendering now yanks just-arrived items out of the Unread view while
+                    // the user watches the list fill (the "items disappear" instability).
+                    if (window._refreshInFlight) {
+                        window._readStateDirty = true;
+                        return;
+                    }
                     window.articles.forEach(a => {
                         a.unread = !window._readLinks.has(a.link);
                         a.readLater = window._readLaterLinks.has(a.link);
@@ -7879,7 +8193,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v136';
+const CACHE_NAME = 'rss-reader-v157';
 const APP_SHELL = [
     '/',
     'index.html'
@@ -7966,59 +8280,20 @@ self.addEventListener('fetch', e => {
                         // Calling update() makes it re-evaluate now.
                         try { reg.update(); } catch (e) {}
 
-                        // A newer SW (= newer cached bytes) is ready. Auto-reload so mobile
-                        // picks up the new page without the user clearing cache (which they
-                        // can't easily do on a phone) — but ONLY when it won't interrupt
-                        // active reading. Otherwise show a gentle toast + defer.
-                        const onNewWorkerReady = () => {
-                            const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
-                            const safeToReload = document.hidden || !isReading;
-                            if (safeToReload && !sessionStorage.getItem('sw-reloaded')) {
-                                sessionStorage.setItem('sw-reloaded', '1');
-                                window.location.reload();
-                            } else if (window.showToast) {
-                                window._swUpdateReady = true;
-                                window.showToast("Update available — reload to apply.", false, true);
-                            }
-                        };
-
-                        // Case A: a new worker installs during this session.
-                        reg.addEventListener('updatefound', () => {
-                            const newWorker = reg.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    onNewWorkerReady();
-                                }
-                            });
-                        });
-
-                        // Case B: a worker is ALREADY installed-and-waiting from a prior
-                        // visit (updatefound won't fire again). This is the case that left
-                        // stuck PWAs serving stale pages indefinitely. Tell it to take over
-                        // and reload when it does.
-                        if (reg.waiting && navigator.serviceWorker.controller) {
-                            onNewWorkerReady();
-                        }
-                        // If an update was deferred because the user was reading, apply it
-                        // the moment they leave the article / background the app.
-                        const applyDeferredUpdate = () => {
-                            if (!window._swUpdateReady) return;
-                            const isReading = !!window.currentArticle || window._mobilePane === 'viewer';
-                            if ((document.hidden || !isReading) && !sessionStorage.getItem('sw-reloaded')) {
-                                sessionStorage.setItem('sw-reloaded', '1');
-                                window.location.reload();
-                            }
-                        };
-                        document.addEventListener('visibilitychange', applyDeferredUpdate);
-                        window.addEventListener('pageshow', applyDeferredUpdate);
+                        // DELIBERATELY NO 'updatefound -> auto reload' machinery here.
+                        // The SW registers from a fresh blob: URL every load, so the
+                        // browser fired updatefound on EVERY session — real update or
+                        // not — and the old handler self-reloaded the app mid-startup.
+                        // That was the hidden double cold boot (refresh runs, page
+                        // reloads, items vanish, everything refetches) and, after a
+                        // Safari cache clear, enough back-to-back memory churn to
+                        // crash iOS WebKit ("A problem repeatedly occurred").
+                        // New-version pickup now happens via the ETag check at the
+                        // top of initApp: at most one reload per session, BEFORE any
+                        // heavy startup work, and only when the deployed site
+                        // actually changed.
                     })
                     .catch(err => console.warn('RSS Reader: SW registration failed:', err));
-
-                // When the controlling SW changes (new version activated), clear the
-                // one-shot reload guard so the next genuine update can auto-reload again.
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    sessionStorage.removeItem('sw-reloaded');
-                });
             } catch (err) {
                 console.warn('RSS Reader: Failed to create SW Blob:', err);
             }
