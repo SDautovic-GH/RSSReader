@@ -2808,15 +2808,33 @@
 
         // Tokenize a title for similarity: lowercase, strip a leading "Source:" / "Section -" prefix,
         // drop punctuation/stopwords, keep tokens >= 2 chars.
+        // Minimal suffix stemmer for similarity tokens: harmonizes fines/fined/fine
+        // (all -> "fin") so verb-form variants reinforce a match instead of diluting
+        // it. Applied uniformly to both titles, so aggressive trailing-e stripping
+        // is safe (googl == googl). Similarity-only — never shown to the user.
+        function _dedupStem(t) {
+            let s = t;
+            if (s.length >= 6 && s.endsWith('ing')) s = s.slice(0, -3);
+            else if (s.length >= 5 && (s.endsWith('ed') || s.endsWith('es'))) s = s.slice(0, -2);
+            else if (s.length >= 4 && s.endsWith('s') && !s.endsWith('ss')) s = s.slice(0, -1);
+            if (s.length >= 4 && s.endsWith('e')) s = s.slice(0, -1);
+            return s;
+        }
+
         function dedupTokens(title) {
             if (!title) return { all: new Set(), proper: new Set() };
-            // Remember which tokens were Capitalized in the original (proxy for proper nouns).
+            // Remember which tokens were Capitalized in the original (proxy for proper
+            // nouns) — INCLUDING short ALL-CAPS acronyms (EU, US, FTC, DOJ, AI): they
+            // are entities too, and excluding them made every "EU fines Google" style
+            // pair fail the 2-shared-proper gate with only "Google" counting.
             const originalWords = title.replace(/^[^:–—-]{1,30}[:–—-]\s+/, '').split(/\s+/);
             const properRaw = new Set();
             for (const w of originalWords) {
                 const clean = w.replace(/[^A-Za-z0-9]/g, '');
                 if (clean.length >= 3 && /^[A-Z]/.test(clean) && !/^[A-Z]+$/.test(clean)) {
                     properRaw.add(clean.toLowerCase());
+                } else if (clean.length >= 2 && clean.length <= 5 && /^[A-Z][A-Z0-9]*$/.test(clean)) {
+                    properRaw.add(clean.toLowerCase());   // acronym entity
                 }
             }
             const norm = normTitle(title);
@@ -2824,10 +2842,13 @@
             for (const tok of norm.split(' ')) {
                 if (tok.length < 2) continue;
                 if (_DEDUP_STOPWORDS.has(tok)) continue;
-                all.add(tok);
+                all.add(_dedupStem(tok));
             }
             const proper = new Set();
-            for (const p of properRaw) if (all.has(p)) proper.add(p);
+            for (const p of properRaw) {
+                const sp = _dedupStem(p);
+                if (all.has(sp)) proper.add(sp);
+            }
             return { all, proper };
         }
 
@@ -2846,7 +2867,12 @@
         // The rare-token path catches reworded headlines about the same specific event (e.g. an
         // obituary where two outlets pick different adjectives but reuse the unique proper nouns).
         const _DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000;
-        const _DEDUP_JACCARD = 0.55;
+        // 0.40 (was 0.55): cross-outlet paraphrases of the SAME story typically share
+        // 3-5 stemmed content tokens = 0.40-0.60 Jaccard; 0.55 rejected most of them
+        // (traced: "EU fines Google..." pairs scored ~0.44). The 2-shared-proper-noun
+        // gate (now acronym-aware) remains the guard against different-story merges —
+        // e.g. two DIFFERENT Google/EU stories share only {eu, google} ~= 0.29.
+        const _DEDUP_JACCARD = 0.40;
         const _DEDUP_MIN_SHARED_PROPER = 2;
         const _DEDUP_MIN_SHARED_RARE = 3;
         const _DEDUP_RARE_MAX_DF = 2; // a token is "rare" if it appears in <= 2 articles in the current timeline
@@ -7577,7 +7603,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 165;
+        window.APP_BUILD = 166;
 
         (async function initApp() {
             try {
@@ -8241,7 +8267,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v165';
+const CACHE_NAME = 'rss-reader-v166';
 const APP_SHELL = [
     '/',
     'index.html'
