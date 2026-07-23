@@ -2406,6 +2406,13 @@
         // Links the user EXPLICITLY toggled back to unread this session — the only
         // legitimate removal path from the durable read store (see saveReadState).
         window._unreadToggledLinks = new Set();
+        // Read links KNOWN to be in the cloud doc (seeded by every received snapshot,
+        // extended after each successful cloud write). The cloud writer diffs
+        // _readLinks against this to upload only the DELTA via arrayUnion — so a
+        // device with stale local state can no longer overwrite marks it never saw.
+        // ADD-only on purpose: links compacted OUT of the cloud doc stay "known" so
+        // they are never re-uploaded (re-uploading would undo compaction).
+        window._cloudKnownReadLinks = new Set();
 
         window._feedHealth = {};
         // Restore the persisted 'slow' set so the very FIRST refresh of a session already
@@ -3085,7 +3092,10 @@
         async function fetchBlueskyArticles(feedUrl, sourceName, maxItems, isBackground) {
             const actor = extractBlueskyActor(feedUrl);
             if (!actor) return false;
-            const limit = maxItems || 50;
+            // Depth matches the RSS default (20) ON PURPOSE: the old 50 gave desktop
+            // a month-deep window mobile never fetched, so items 21-50 could only be
+            // marked read on desktop — permanent phantom unread everywhere else.
+            const limit = maxItems || 20;
             const apiUrl = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(actor)}&limit=${limit}`;
             let data = null;
             // Try direct fetch (public.api.bsky.app has CORS enabled)
@@ -4136,10 +4146,12 @@
                 if (wasReady && !_loading) {
                     _loading = true;
                     // Background semantics: one refreshUI() at the end instead of a
-                    // per-feed render storm. maxItems capped on mobile to shrink the
-                    // allocation burst. Routed through the shared in-flight guard so a
-                    // concurrent auto-refresh/first-snapshot fetch can't stack on top.
-                    window.runFullRefresh({ isBackground: true, maxItems: 15 }).then(() => {
+                    // per-feed render storm. Depth deliberately UNCAPPED (default 20)
+                    // so every device sees identical feed windows — the old mobile 15
+                    // left items 16-20 markable only on desktop. Routed through the
+                    // shared in-flight guard so a concurrent auto-refresh/first-
+                    // snapshot fetch can't stack on top.
+                    window.runFullRefresh({ isBackground: true }).then(() => {
                         _loading = false;
                     });
                 }
@@ -5169,7 +5181,10 @@
             window.feeds.push(f);
             renderFeeds();
             closeAddFeedModal();
-            fetchRecentArticles(u, t);
+            // New feed: backfill only the latest 10 — a fresh feed shouldn't dump a
+            // month of already-old items into Unread (subsequent refreshes use the
+            // shared default depth and pick up new items normally).
+            fetchRecentArticles(u, t, 10);
             saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds([f]);
             updateEmptyState();
@@ -6582,7 +6597,8 @@ window.toggleUnreadManual = () => {
                     } else {
                         // Timeline-pane pull-to-refresh — same guarded full-refresh path
                         // as the sidebar PTR so the two can't stack a double storm.
-                        window.runFullRefresh({ isBackground: true, maxItems: 15 });
+                        // Depth uncapped (default 20) to keep device windows identical.
+                        window.runFullRefresh({ isBackground: true });
                     }
                 }
             }, { passive: true });
@@ -7612,7 +7628,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 174;
+        window.APP_BUILD = 175;
 
         (async function initApp() {
             try {
@@ -7804,7 +7820,7 @@ window.toggleUnreadManual = () => {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc, updateDoc, arrayUnion, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBA4sMC6MGHYSCEd1ldTs2JPKVRAAbyYQk",
@@ -7978,6 +7994,66 @@ window.toggleUnreadManual = () => {
             });
         }
 
+        // ===== CLOUD READ-STATE HORIZON =====
+        // Firestore caps a document at 1 MiB, so the shared read-history array is
+        // budgeted by BYTES as well as count, keeping the NEWEST reads (Set
+        // insertion order ~= read order). The old fixed slice(-5000) wasted
+        // headroom for short links, risked oversize for long ones, and created a
+        // ~1-month sync horizon: marks older than it fell off the doc and items
+        // still visible in slow feeds resurrected as unread on other devices
+        // (the "81 old unread" incident, 2026-07-23).
+        const CLOUD_READ_CAP = 12000;      // stays well under the 40k index-entries/doc limit
+        const CLOUD_READ_BYTES = 850000;   // leaves ~200KB for readLaterLinks + overhead
+        const COMPACT_COUNT = CLOUD_READ_CAP + 500;   // hysteresis so devices don't
+        const COMPACT_BYTES = 900000;                  // compact-thrash around the cap
+        function trimReadLinksForCloud(arr) {
+            let bytes = 0, start = arr.length;
+            for (let i = arr.length - 1; i >= 0; i--) {
+                bytes += (arr[i] ? arr[i].length : 0) + 2;
+                if (bytes > CLOUD_READ_BYTES || (arr.length - i) > CLOUD_READ_CAP) break;
+                start = i;
+            }
+            return arr.slice(start);
+        }
+        // Trim the shared doc back inside budget. Runs as a TRANSACTION so an
+        // arrayUnion landing from another device mid-compaction is never lost
+        // (Firestore re-runs the transaction on contention). Merges the current
+        // cloud array with every local mark first, so nothing this device knows
+        // can be dropped except beyond-horizon history — which is the point.
+        let _compactInFlight = false;
+        async function compactCloudReadState() {
+            if (!userId || _compactInFlight) return;
+            _compactInFlight = true;
+            try {
+                const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
+                let written = null;
+                await runTransaction(db, async (tx) => {
+                    const snap = await tx.get(stateRef);
+                    const cur = snap.exists() ? (snap.data().readLinks || []) : [];
+                    const merged = new Set(cur);
+                    for (const l of window._readLinks) merged.add(l);
+                    // Explicit keep-unread toggles win over stale cloud copies
+                    for (const l of window._unreadToggledLinks) {
+                        if (!window._readLinks.has(l)) merged.delete(l);
+                    }
+                    const trimmed = trimReadLinksForCloud(Array.from(merged));
+                    tx.set(stateRef, {
+                        readLinks: trimmed,
+                        readLaterLinks: (snap.exists() && snap.data().readLaterLinks)
+                            ? snap.data().readLaterLinks
+                            : Array.from(window._readLaterLinks),
+                        updatedAt: new Date().toISOString()
+                    });
+                    written = trimmed;
+                });
+                if (written) {
+                    written.forEach(l => window._cloudKnownReadLinks.add(l));
+                    console.log(`Cloud read-state compacted to ${written.length} links`);
+                }
+            } catch(e) { console.warn('Cloud read-state compaction failed:', e); }
+            finally { _compactInFlight = false; }
+        }
+
         function syncCloudReadState() {
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
             const applySnap = (snap) => {
@@ -7987,11 +8063,32 @@ window.toggleUnreadManual = () => {
                 const data = snap.data();
                 let changed = false;
                 if (data.readLinks) {
-                    const incoming = data.readLinks.filter(l => !window._readLinks.has(l));
+                    // Seed the writer's diff base: everything the cloud lists is
+                    // "known" and never re-uploaded. ADD-only on purpose — links
+                    // compacted out of the doc stay known (see _cloudKnownReadLinks).
+                    data.readLinks.forEach(l => window._cloudKnownReadLinks.add(l));
+                    window._cloudReadStateSeeded = true;
+                    // Merge additively — but explicit keep-unread toggles win over a
+                    // stale cloud copy (merge-writes never remove, so the doc may
+                    // still list a link the user deliberately toggled back to unread).
+                    const incoming = data.readLinks.filter(l =>
+                        !window._readLinks.has(l) && !window._unreadToggledLinks.has(l));
                     if (incoming.length > 0) {
                         incoming.forEach(l => window._readLinks.add(l));
                         changed = true;
                         try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
+                    }
+                    // Housekeeping: arrayUnion merge-writes only ever ADD, so one
+                    // device per session trims the doc back inside budget once it
+                    // drifts over. Deferred + jittered so a fleet of devices
+                    // receiving the same snapshot doesn't compact simultaneously.
+                    if (!window._cloudCompactedThisSession) {
+                        let approxBytes = 0;
+                        for (const l of data.readLinks) approxBytes += l.length + 2;
+                        if (data.readLinks.length > COMPACT_COUNT || approxBytes > COMPACT_BYTES) {
+                            window._cloudCompactedThisSession = true;
+                            setTimeout(compactCloudReadState, 3000 + Math.floor(Math.random() * 5000));
+                        }
                     }
                 }
                 if (data.readLaterLinks) {
@@ -8063,20 +8160,64 @@ window.toggleUnreadManual = () => {
 
         function setupCloudSaveFunctions() {
             let _cloudReadStateTimer = null;
+            let _seedWaitTries = 0;
             window.saveReadStateCloud = () => {
                 if (!userId) return;
                 // Coalesce bursts (e.g. mark-all-read, fast scroll) into one Firestore write
                 clearTimeout(_cloudReadStateTimer);
-                _cloudReadStateTimer = setTimeout(async () => {
+                const arm = (delay) => { _cloudReadStateTimer = setTimeout(attempt, delay); };
+                const attempt = async () => {
+                    // Until the first snapshot has seeded _cloudKnownReadLinks, the
+                    // delta below would be this device's ENTIRE history — a fat,
+                    // wasteful write. Wait briefly for the seed; after ~2 min give
+                    // up waiting and write anyway (arrayUnion is add-only, so a big
+                    // write is merely inefficient, never destructive).
+                    if (!window._cloudReadStateSeeded && _seedWaitTries < 24) {
+                        _seedWaitTries++;
+                        arm(5000);
+                        return;
+                    }
+                    const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
                     try {
-                        const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
-                        await setDoc(stateRef, {
-                            readLinks: Array.from(window._readLinks).slice(-5000),
+                        // MERGE-write: upload only links the cloud doc is missing,
+                        // bounded to the horizon window. arrayUnion can only ADD
+                        // server-side — a device that booted with stale local state
+                        // can no longer erase marks it never saw (the old full
+                        // setDoc could: root cause of cross-device resurrections).
+                        const pending = trimReadLinksForCloud(Array.from(window._readLinks))
+                            .filter(l => !window._cloudKnownReadLinks.has(l));
+                        const payload = {
                             readLaterLinks: Array.from(window._readLaterLinks),
                             updatedAt: new Date().toISOString()
-                        });
-                    } catch(e) { console.warn('Cloud read state save failed:', e); }
-                }, 500);
+                        };
+                        if (pending.length > 0) payload.readLinks = arrayUnion(...pending);
+                        await updateDoc(stateRef, payload);
+                        pending.forEach(l => window._cloudKnownReadLinks.add(l));
+                    } catch(e) {
+                        if (e && e.code === 'not-found') {
+                            // First-ever readState doc for this account: create it whole.
+                            try {
+                                const links = trimReadLinksForCloud(Array.from(window._readLinks));
+                                await setDoc(stateRef, {
+                                    readLinks: links,
+                                    readLaterLinks: Array.from(window._readLaterLinks),
+                                    updatedAt: new Date().toISOString()
+                                });
+                                links.forEach(l => window._cloudKnownReadLinks.add(l));
+                            } catch(e2) { console.warn('Cloud read state create failed:', e2); }
+                        } else if (e && e.code === 'invalid-argument') {
+                            // Doc drifted past Firestore's 1MiB before the periodic
+                            // trim caught it — compact now (transactional; carries
+                            // every local mark into the trimmed doc, so nothing in
+                            // this failed delta is lost).
+                            console.warn('Cloud read state doc oversized - compacting');
+                            compactCloudReadState();
+                        } else {
+                            console.warn('Cloud read state save failed:', e);
+                        }
+                    }
+                };
+                arm(500);
             };
 
             window.saveUiPrefsCloud = async () => {
@@ -8276,7 +8417,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v174';
+const CACHE_NAME = 'rss-reader-v175';
 const APP_SHELL = [
     '/',
     'index.html'
