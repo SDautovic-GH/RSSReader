@@ -476,6 +476,9 @@
             object-fit: cover;
         }
 
+        /* Top frost is mobile-only (desktop has real headers). */
+        .top-frost { display: none; }
+
         /* ===== MOBILE LAYOUT ===== */
         @media (max-width: 900px) {
             /* Body is the positioning anchor for the bottom tab bar + its popovers
@@ -609,46 +612,48 @@
                scrolling carries content under it, fading progressively while staying
                ~20% readable beneath the clock (the 0.82 top alpha). Knobs: top alpha
                = how hidden under the clock; the +28px = fade depth past the bar. */
-            /* Frosted material (Safari-style): backdrop-filter blurs content passing
-               beneath, a whisper of dim steadies the clock, the mask feathers the
-               blur out with no hard edge. Dims tuned LIGHTER than the first attempt
-               (0.25 -> 0.15 dark top) per user direction — the blur carries the
-               look, content stays clearly visible under the clock. Timeline note:
-               the crash loop predated this material (crashes began 07-21, this
-               shipped 07-22), so it is NOT the crash suspect; the boot memory
-               spike (full-record archive read) was fixed separately. */
-            #timeline-pane.mobile-active::before,
-            #viewer-pane.mobile-active::before {
-                content: "";
+            /* PROGRESSIVE TOP FROST — the working web equivalent of Gemini's/iOS's
+               variable blur. Two prior attempts failed for documented reasons:
+               (1) blur + mask on one element: iOS silently DROPS backdrop-filter on
+               masked elements, so only the dim ever rendered; (2) a 2-step unmasked
+               pair: backdrop regions have razor edges, so 16->6->sharp read as a
+               glitch stripe (user screenshot, build 159). This version: SIX stacked
+               unmasked layers with slowly increasing blur (1.5 -> 18px), each layer
+               shorter than the last — adjacent steps differ so little the seams
+               vanish, and effects compound toward the status bar. One smooth dim
+               gradient on the container (~20% stronger than Gemini, user call).
+               Layer heights tuned so resting content (padding +24) only touches the
+               imperceptible 1.5px layer. If scrolling ever stutters, thin to 4
+               layers before touching anything else. */
+            /* FINAL band spec (user, build 162): the frost IS the clock strip — its
+               height is exactly the status area, zero tail. Below the clock: nothing,
+               ever. Content rests at +6 and never touches frost at rest; scrolled
+               text frosts only while physically inside the status strip. The whole
+               six-step ramp is compressed inside the strip (strong blur in its top
+               third), so the band's bottom edge carries only a 1px blur = no
+               visible start line. */
+            .top-frost {
+                display: block;
                 position: absolute;
                 top: 0; left: 0; right: 0;
-                height: calc(max(env(safe-area-inset-top, 0px), 44px) + 28px);
+                height: max(env(safe-area-inset-top, 0px), 44px);
                 z-index: 10;
                 pointer-events: none;
-                -webkit-backdrop-filter: blur(14px) saturate(1.3);
-                backdrop-filter: blur(14px) saturate(1.3);
-                background: linear-gradient(to bottom,
-                    rgba(255,255,255,0.30) 0,
-                    rgba(255,255,255,0.12) 60%,
-                    rgba(255,255,255,0) 100%);
-                -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 45%, transparent 100%);
-                mask-image: linear-gradient(to bottom, #000 0, #000 45%, transparent 100%);
+                /* FINAL (build 164, user spec): NO blur at all — a bare 10% dim
+                   gradient over the status strip so scrolled text stays fully
+                   legible behind the clock. All blur layers removed. */
+                background: linear-gradient(to bottom, rgba(0,0,0,0.10), rgba(0,0,0,0) 100%);
             }
-            .dark #timeline-pane.mobile-active::before,
-            .dark #viewer-pane.mobile-active::before {
-                background: linear-gradient(to bottom,
-                    rgba(0,0,0,0.15) 0,
-                    rgba(0,0,0,0.05) 60%,
-                    rgba(0,0,0,0) 100%);
+            html:not(.dark) .top-frost {
+                background: linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0) 100%);
             }
-            /* Content rests just below the strip; scrolling carries it underneath.
-               (+12px, was +18px — with the context chip tucked up under the clock,
-               content starts a touch higher: more reading screen.) */
+            /* Full-screen read area: content rests right under the status bar; only
+               the band's imperceptible 1.5px tail overlaps the first few pixels. */
             #timeline-pane.mobile-active #article-list {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 12px);
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
             }
             #viewer-pane.mobile-active #reader-view {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 12px);
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
             }
             #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
             #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
@@ -1347,12 +1352,25 @@
         }
         .feed-problem-name {
             font-size: 14px; font-weight: 500; color: #f0f6fc;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            min-width: 0; flex: 1;
         }
         .feed-problem-detail { font-size: 12px; color: #f87171; flex-shrink: 0; }
         .feed-problem-empty { font-size: 14px; color: #94a3b8; }
+        .feed-problem-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .feed-problem-btn {
+            width: 30px; height: 30px; border-radius: 8px; border: none;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: #94a3b8;
+            background: rgba(148,163,184,0.12);
+        }
+        .feed-problem-btn:active { background: rgba(148,163,184,0.28); }
+        .feed-problem-btn.remove { color: #f87171; background: rgba(248,113,113,0.12); }
+        .feed-problem-btn.remove:active { background: rgba(248,113,113,0.28); }
         html:not(.dark) .feed-problem-name { color: #1f2937; }
         html:not(.dark) .feed-problem-detail { color: #dc2626; }
+        html:not(.dark) .feed-problem-btn { color: #64748b; }
+        html:not(.dark) .feed-problem-btn.remove { color: #dc2626; }
         html:not(.dark) .settings-item-label,
         html:not(.dark) .settings-item-label-sm,
         html:not(.dark) .settings-item label { color: #1f2937; }
@@ -1768,6 +1786,8 @@
             <div id="article-list" class="flex-1 overflow-y-auto"></div>
             <!-- Floating position pill — fades in on scroll -->
             <div id="list-position-pill" aria-hidden="true">1 / 1</div>
+            <!-- Progressive top frost (mobile) — six stacked blur layers, see CSS -->
+            <div class="top-frost" aria-hidden="true"></div>
         </section>
 
         <!-- Column Resizer -->
@@ -1775,6 +1795,8 @@
 
         <!-- PANE 3: Viewer -->
         <main id="viewer-pane" class="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
+            <!-- Progressive top frost (mobile) — six stacked blur layers, see CSS -->
+            <div class="top-frost" aria-hidden="true"></div>
             <div id="viewer-header" class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10" ondblclick="toggleFullScreenManual()" title="Double-click to toggle Full Screen">
                 <div></div>
 
@@ -2014,6 +2036,16 @@
                     </div>
                 </div>
                 <div id="local-feed-list" class="pb-2"></div>
+                <!-- Feed health: feeds with no successful fetch in 48h+ (or failing
+                     repeatedly this session), with per-feed Retry / Remove actions.
+                     Lives in the Feeds tab (it's feed management, not a preference).
+                     Populated by renderFeedProblems() when Settings opens. -->
+                <div class="pt-2">
+                    <h3 class="settings-section-label">Feed health</h3>
+                    <div class="settings-list" id="feed-problems-list">
+                        <div class="feed-problem-row"><span class="feed-problem-empty">Checking&hellip;</span></div>
+                    </div>
+                </div>
             </div>
             <div id="feeds-overflow-menu" class="hidden fixed w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[60] py-1">
                 <button onclick="exportSubscriptions(); closeFeedsOverflow()" class="w-full text-left px-4 py-2 text-[14px] hover:bg-gray-100 dark:hover:bg-gray-700">Export OPML</button>
@@ -2233,16 +2265,6 @@
                             class="w-full text-left px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                             Reset text sizes to defaults
                         </button>
-                    </div>
-                </div>
-
-                <!-- Feed health: feeds that haven't fetched successfully in 48h+
-                     (or are failing repeatedly this session). Populated on open by
-                     renderFeedProblems(). -->
-                <div>
-                    <h3 class="settings-section-label">Feed health</h3>
-                    <div class="settings-list" id="feed-problems-list">
-                        <div class="px-4 py-3 text-sm text-gray-400">Checking&hellip;</div>
                     </div>
                 </div>
 
@@ -5699,9 +5721,9 @@
                     const label = age > 2 * 86400000
                         ? Math.round(age / 86400000) + 'd ago'
                         : Math.round(age / 3600000) + 'h ago';
-                    probs.push({ name: f.name, detail: 'Last OK ' + label, age });
+                    probs.push({ name: f.name, url: f.url, detail: 'Last OK ' + label, age });
                 } else if ((h.errorCount || 0) >= 3) {
-                    probs.push({ name: f.name, detail: 'Failing this session', age: 0 });
+                    probs.push({ name: f.name, url: f.url, detail: 'Failing this session', age: 0 });
                 }
             }
             probs.sort((a, b) => (b.age || 0) - (a.age || 0));
@@ -5712,8 +5734,29 @@
                 ? probs.map(p => `<div class="feed-problem-row">
                         <span class="feed-problem-name">${esc(p.name)}</span>
                         <span class="feed-problem-detail">${esc(p.detail)}</span>
+                        <span class="feed-problem-actions">
+                            <button type="button" class="feed-problem-btn" title="Retry now" onclick="retryProblemFeed('${escJs(p.url)}', '${escJs(p.name)}', this)">&#x21bb;</button>
+                            <button type="button" class="feed-problem-btn remove" title="Remove feed" onclick="removeProblemFeed('${escJs(p.url)}')">&#x2715;</button>
+                        </span>
                     </div>`).join('')
                 : '<div class="feed-problem-row"><span class="feed-problem-empty">All feeds healthy</span></div>';
+        };
+
+        // Retry a problem feed right now; success updates lastSuccess and the row
+        // clears on re-render, failure bumps errorCount and it stays listed.
+        window.retryProblemFeed = async (url, name, btn) => {
+            if (btn) { btn.disabled = true; btn.textContent = '…'; }
+            try { await fetchRecentArticles(url, name); } catch (e) {}
+            window._persistFeedHealth?.();
+            renderFeeds();
+            window.renderFeedProblems();
+        };
+        window.removeProblemFeed = (url) => {
+            const f = (window.feeds || []).find(x => x.url === url);
+            if (!f) { window.renderFeedProblems(); return; }
+            if (!confirm(`Remove feed "${f.name}"?`)) return;
+            window.removeLocalFeed(f.id);
+            window.renderFeedProblems();
         };
         window.toggleFeedsOverflow = (e) => {
             e.stopPropagation();
@@ -7529,7 +7572,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 157;
+        window.APP_BUILD = 164;
 
         (async function initApp() {
             try {
@@ -8193,7 +8236,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v157';
+const CACHE_NAME = 'rss-reader-v164';
 const APP_SHELL = [
     '/',
     'index.html'
