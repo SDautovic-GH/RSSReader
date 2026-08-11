@@ -640,20 +640,23 @@
                six-step ramp is compressed inside the strip (strong blur in its top
                third), so the band's bottom edge carries only a 1px blur = no
                visible start line. */
+            /* iOS 27 BETA / iOS 26.1+ RETIRED OUR DIM (build 176, 2026-07-23).
+               The 10% dim (build 164) was correct for as long as iOS composited a
+               fully translucent status bar over standalone web content: ours was the
+               only darkening, and scrolled text stayed legible behind the clock.
+               iOS changed that -- 26.1 renders PWA status bars opaque instead of
+               fullscreen and iOS 26 reworked safe-area logic; on iOS 27 beta the OS
+               paints its own backdrop over the strip. Ours then STACKED on top of the
+               system's, and the sum read as a hard grey band across the first line of
+               the article title (user report, unchanged across a freshly re-created
+               PWA container, so not a cache artifact). We can't remove the system's
+               layer from CSS, so we remove OURS and let the OS own the strip alone.
+               Geometry below is deliberately UNCHANGED (band height + content rest
+               padding), so nothing shifts and text can never collide with the clock:
+               only the paint is gone. Restoring the dim = put the two background
+               declarations back; do NOT restore it while iOS draws its own. */
             .top-frost {
-                display: block;
-                position: absolute;
-                top: 0; left: 0; right: 0;
-                height: max(env(safe-area-inset-top, 0px), 44px);
-                z-index: 10;
-                pointer-events: none;
-                /* FINAL (build 164, user spec): NO blur at all — a bare 10% dim
-                   gradient over the status strip so scrolled text stays fully
-                   legible behind the clock. All blur layers removed. */
-                background: linear-gradient(to bottom, rgba(0,0,0,0.10), rgba(0,0,0,0) 100%);
-            }
-            html:not(.dark) .top-frost {
-                background: linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0) 100%);
+                display: none;
             }
             /* Full-screen read area: content rests right under the status bar; only
                the band's imperceptible 1.5px tail overlaps the first few pixels. */
@@ -7628,7 +7631,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 175;
+        window.APP_BUILD = 176;
 
         (async function initApp() {
             try {
@@ -8417,7 +8420,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v175';
+const CACHE_NAME = 'rss-reader-v176';
 const APP_SHELL = [
     '/',
     'index.html'
