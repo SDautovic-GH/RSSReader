@@ -289,12 +289,14 @@
         }
 
         :root {
-            /* Extra top inset BELOW the status strip, on top of the strip's own height.
-               Exists because iOS 26+ dims a band of the web view next to the status bar
-               (its system scroll-edge effect) that reaches FURTHER DOWN than the strip
-               itself, and there is no web opt-out — so content has to clear the band.
+            /* Extra top inset below the status strip. 0 = the user's chosen FULL-SCREEN
+               underlap (content runs to the very top, as it did before iOS 27 Beta 5).
+               Raising it trades reading area for keeping text out of the system band. */
+            --mob-top-extra: 0px;
+            /* Strength of the counter-lift that pre-brightens text passing through iOS
+               27's system blur/dim band (see html.dark .top-frost). 0 disables it.
                Tunable live via the temporary dial button (see #top-inset-dial). */
-            --mob-top-extra: 36px;
+            --mob-top-lift: 0.30;
             --list-preview-font-size: 1.1em;
             --view-font-size: 1.1em;
             --category-font-size: 1.15em;
@@ -663,8 +665,35 @@
                padding), so nothing shifts and text can never collide with the clock:
                only the paint is gone. Restoring the dim = put the two background
                declarations back; do NOT restore it while iOS draws its own. */
+            /* COUNTER-LIFT (build 180, 2026-08-11) — user spec: keep the full-screen
+               underlap, and make text passing through iOS 27 Beta 5's system band as
+               visible as possible. iOS composites its blur+dim over our OUTPUT, so the
+               effect itself is untouchable from CSS — but we can pre-compensate: draw
+               the content brighter going in so what emerges is closer to normal.
+               mix-blend-mode: color-dodge is the right tool because dodge leaves PURE
+               BLACK unchanged (result = base / (1 - blend); base 0 stays 0), so the
+               black background shows NO grey band, while dimmed text (a mid tone)
+               lifts. The BLUR cannot be undone — that part is Apple's.
+               Band depth measured off-device from the user's zoomed screenshot
+               (2026-08-11): the effect ends between the blurred line and the crisp one
+               below it, ~95-100pt from the top = ~85 CSS px at their 115% Page Zoom,
+               hence strip + 44px. Dark mode ONLY: on a white background dodge would
+               wash out dark text and REDUCE contrast (base/(1-b) lightens it).
+               Tunable via --mob-top-lift; 0 disables the lift entirely. */
             .top-frost {
                 display: none;
+            }
+            html.dark .top-frost {
+                display: block;
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: calc(max(env(safe-area-inset-top, 0px), 44px) + 44px);
+                z-index: 10;
+                pointer-events: none;
+                mix-blend-mode: color-dodge;
+                background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, var(--mob-top-lift, 0.30)),
+                    rgba(255, 255, 255, 0) 100%);
             }
             /* HARD SCROLL EDGE (build 177, 2026-08-11) — the answer to iOS 26/27's
                system SCROLL EDGE EFFECT. iOS 26+ automatically blurs AND DIMS content
@@ -6253,22 +6282,25 @@
         setTimeout(function topInsetDial() {
           try {
             if (window.innerWidth > 900) return;
-            const STEPS = [0, 12, 24, 36, 48, 60, 72, 84, 96];
-            let idx = STEPS.indexOf(36);
+            // Now dials the COUNTER-LIFT strength (build 180), not the inset: the inset
+            // is pinned at 0 for the full-screen underlap the user wants, and the thing
+            // worth tuning is how hard we pre-brighten text inside the system band.
+            const STEPS = [0, 0.15, 0.30, 0.45, 0.60, 0.75, 0.90];
+            let idx = STEPS.indexOf(0.30);
             try {
-                const saved = parseInt(localStorage.getItem('newsreader_top_extra'), 10);
+                const saved = parseFloat(localStorage.getItem('newsreader_top_lift'));
                 const at = STEPS.indexOf(saved);
                 if (at >= 0) idx = at;
             } catch (e) {}
             const btn = document.createElement('button');
             btn.id = 'top-inset-dial';
             btn.type = 'button';
-            btn.setAttribute('aria-label', 'Adjust top inset');
+            btn.setAttribute('aria-label', 'Adjust top counter-lift');
             const apply = () => {
                 const v = STEPS[idx];
-                document.documentElement.style.setProperty('--mob-top-extra', v + 'px');
-                btn.textContent = 'top +' + v;
-                try { localStorage.setItem('newsreader_top_extra', String(v)); } catch (e) {}
+                document.documentElement.style.setProperty('--mob-top-lift', String(v));
+                btn.textContent = 'lift ' + v.toFixed(2);
+                try { localStorage.setItem('newsreader_top_lift', String(v)); } catch (e) {}
             };
             btn.addEventListener('click', () => { idx = (idx + 1) % STEPS.length; apply(); });
             document.body.appendChild(btn);
@@ -7718,7 +7750,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 179;
+        window.APP_BUILD = 180;
 
         (async function initApp() {
             try {
@@ -8507,7 +8539,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v179';
+const CACHE_NAME = 'rss-reader-v180';
 const APP_SHELL = [
     '/',
     'index.html'
