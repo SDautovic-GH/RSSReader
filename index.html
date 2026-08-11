@@ -658,13 +658,31 @@
             .top-frost {
                 display: none;
             }
-            /* Full-screen read area: content rests right under the status bar; only
-               the band's imperceptible 1.5px tail overlaps the first few pixels. */
+            /* HARD SCROLL EDGE (build 177, 2026-08-11) — the answer to iOS 26/27's
+               system SCROLL EDGE EFFECT. iOS 26+ automatically blurs AND DIMS content
+               that sits next to system UI (the status bar); native apps opt out with
+               SwiftUI's .scrollEdgeEffectStyle(.hard), which cuts content off sharply
+               instead of dimming it. There is NO web/CSS opt-out, so the only lever is
+               to give the OS nothing to dim: the SCROLL CONTAINER now starts BELOW the
+               status strip (pane padding) instead of spanning it, so scrolled text is
+               clipped at the strip's bottom edge and can never enter the OS's dim
+               region. Previously the inset lived on the CONTENT (padding-top on the
+               scroller), which put resting text below the strip but let scrolled text
+               pass underneath it — where iOS dimmed it (the grey first line).
+               Resting position is UNCHANGED: the 44px+6px total simply moved from the
+               scroller's padding onto the pane (+6px kept on the scroller). The strip
+               is filled by the pane's own opaque background, so it reads as one piece
+               with the status bar. Home/sidebar is untouched (its header already pads
+               for the inset). Revert = move the padding back onto the two scrollers. */
+            #timeline-pane.mobile-active,
+            #viewer-pane.mobile-active {
+                padding-top: max(env(safe-area-inset-top, 0px), 44px);
+            }
             #timeline-pane.mobile-active #article-list {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
+                padding-top: 6px;
             }
             #viewer-pane.mobile-active #reader-view {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
+                padding-top: 6px;
             }
             #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
             #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
@@ -7631,7 +7649,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 176;
+        window.APP_BUILD = 177;
 
         (async function initApp() {
             try {
@@ -8420,7 +8438,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v176';
+const CACHE_NAME = 'rss-reader-v177';
 const APP_SHELL = [
     '/',
     'index.html'
