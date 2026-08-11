@@ -7628,7 +7628,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 184;
+        window.APP_BUILD = 185;
 
         (async function initApp() {
             try {
@@ -8004,8 +8004,6 @@ window.toggleUnreadManual = () => {
         // (the "81 old unread" incident, 2026-07-23).
         const CLOUD_READ_CAP = 12000;      // stays well under the 40k index-entries/doc limit
         const CLOUD_READ_BYTES = 850000;   // leaves ~200KB for readLaterLinks + overhead
-        const COMPACT_COUNT = CLOUD_READ_CAP + 500;   // hysteresis so devices don't
-        const COMPACT_BYTES = 900000;                  // compact-thrash around the cap
         function trimReadLinksForCloud(arr) {
             let bytes = 0, start = arr.length;
             for (let i = arr.length - 1; i >= 0; i--) {
@@ -8015,44 +8013,21 @@ window.toggleUnreadManual = () => {
             }
             return arr.slice(start);
         }
-        // Trim the shared doc back inside budget. Runs as a TRANSACTION so an
-        // arrayUnion landing from another device mid-compaction is never lost
-        // (Firestore re-runs the transaction on contention). Merges the current
-        // cloud array with every local mark first, so nothing this device knows
-        // can be dropped except beyond-horizon history — which is the point.
-        let _compactInFlight = false;
-        async function compactCloudReadState() {
-            if (!userId || _compactInFlight) return;
-            _compactInFlight = true;
-            try {
-                const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
-                let written = null;
-                await runTransaction(db, async (tx) => {
-                    const snap = await tx.get(stateRef);
-                    const cur = snap.exists() ? (snap.data().readLinks || []) : [];
-                    const merged = new Set(cur);
-                    for (const l of window._readLinks) merged.add(l);
-                    // Explicit keep-unread toggles win over stale cloud copies
-                    for (const l of window._unreadToggledLinks) {
-                        if (!window._readLinks.has(l)) merged.delete(l);
-                    }
-                    const trimmed = trimReadLinksForCloud(Array.from(merged));
-                    tx.set(stateRef, {
-                        readLinks: trimmed,
-                        readLaterLinks: (snap.exists() && snap.data().readLaterLinks)
-                            ? snap.data().readLaterLinks
-                            : Array.from(window._readLaterLinks),
-                        updatedAt: new Date().toISOString()
-                    });
-                    written = trimmed;
-                });
-                if (written) {
-                    written.forEach(l => window._cloudKnownReadLinks.add(l));
-                    console.log(`Cloud read-state compacted to ${written.length} links`);
-                }
-            } catch(e) { console.warn('Cloud read-state compaction failed:', e); }
-            finally { _compactInFlight = false; }
-        }
+        // ===== COMPACTION DELETED (build 185, 2026-08-11) =====
+        // It rewrote the shared readLinks array from a LOCAL Set whose iteration order
+        // is not chronological (the boot self-heal unions readArchive keys in
+        // lexicographic URL order), then trimmed by that order — so it permanently
+        // DELETED read marks essentially at random, including recent ones. Measured:
+        // the user's _readLinks.size is 12,574, i.e. above CLOUD_READ_CAP (12,000) and
+        // ~1.1MB of raw URLs, above CLOUD_READ_BYTES (850KB) AND above Firestore's 1MB
+        // document limit — so compaction was firing on every session and cutting ~3,000
+        // marks, which is why a freshly re-installed PWA showed 115 unread while the
+        // desktop (full local history) showed 40.
+        // Nothing destructive replaces it: writes are append-only (arrayUnion) and the
+        // writer simply stops appending if the doc ever reaches its cap. The real fix
+        // for capacity is storing 64-bit HASHES instead of full URLs (~6x smaller) with
+        // recency ordered by readArchive.readAt — see the next build. NEVER reintroduce
+        // a rewrite that derives cloud array order from a local Set.
 
         function syncCloudReadState() {
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
@@ -8078,16 +8053,15 @@ window.toggleUnreadManual = () => {
                         changed = true;
                         try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
                     }
-                    // Housekeeping: arrayUnion merge-writes only ever ADD, so one
-                    // device per session trims the doc back inside budget once it
-                    // drifts over. Deferred + jittered so a fleet of devices
-                    // receiving the same snapshot doesn't compact simultaneously.
-                    if (!window._cloudCompactedThisSession) {
+                    // No compaction trigger here any more — see "COMPACTION DELETED".
+                    // The doc is append-only; over-budget is reported, never repaired
+                    // by deleting marks.
+                    if (!window._cloudOverBudgetLogged) {
                         let approxBytes = 0;
                         for (const l of data.readLinks) approxBytes += l.length + 2;
-                        if (data.readLinks.length > COMPACT_COUNT || approxBytes > COMPACT_BYTES) {
-                            window._cloudCompactedThisSession = true;
-                            setTimeout(compactCloudReadState, 3000 + Math.floor(Math.random() * 5000));
+                        if (data.readLinks.length > CLOUD_READ_CAP || approxBytes > CLOUD_READ_BYTES) {
+                            window._cloudOverBudgetLogged = true;
+                            console.warn(`Cloud read state over budget: ${data.readLinks.length} links, ~${Math.round(approxBytes/1024)}KB (cap ${CLOUD_READ_CAP} / ${Math.round(CLOUD_READ_BYTES/1024)}KB). Marks beyond it are NOT uploaded; hash migration pending.`);
                         }
                     }
                 }
@@ -8206,12 +8180,11 @@ window.toggleUnreadManual = () => {
                                 links.forEach(l => window._cloudKnownReadLinks.add(l));
                             } catch(e2) { console.warn('Cloud read state create failed:', e2); }
                         } else if (e && e.code === 'invalid-argument') {
-                            // Doc drifted past Firestore's 1MiB before the periodic
-                            // trim caught it — compact now (transactional; carries
-                            // every local mark into the trimmed doc, so nothing in
-                            // this failed delta is lost).
-                            console.warn('Cloud read state doc oversized - compacting');
-                            compactCloudReadState();
+                            // Doc is at/over Firestore's 1MiB. We do NOT repair this by
+                            // deleting marks any more (that was the compaction bug);
+                            // this delta simply doesn't land until the hash migration
+                            // shrinks the payload. Loud so it can't pass unnoticed.
+                            console.warn('Cloud read state doc OVERSIZED - delta not uploaded. Hash migration needed.', e);
                         } else {
                             console.warn('Cloud read state save failed:', e);
                         }
@@ -8417,7 +8390,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v184';
+const CACHE_NAME = 'rss-reader-v185';
 const APP_SHELL = [
     '/',
     'index.html'
