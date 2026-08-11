@@ -5,21 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <!-- STATUS BAR: back to "black-translucent" (build 182, 2026-08-11) after build
-         181 tried "black" and FAILED TWICE OVER, both measured on-device:
-           1. It did NOT stop the blur. iOS 27 Beta 5 blurs the top band of a
-              standalone web view UNCONDITIONALLY - the Home header stayed soft even
-              with no content underlapping the status bar. (Same page in Safari is
-              crisp, so the effect is specific to installed web apps.)
-           2. It BROKE THE BOTTOM BAR. "black" makes iOS start the web view ~47pt
-              lower, so the viewport is shorter than the full screen - but the tab bar
-              is anchored to a body whose height is computed from screen.height (see
-              lockMobileLayoutHeight), which then overshoots by ~41 CSS px and pushes
-              the pill below the fold.
-         So underlap stays ON (viewport spans the glass, the bar math holds) and the
-         blur band is handled the only way left: content is inset below it, see
-         --mob-top-extra. Do not switch to "black" again without also reworking the
-         body-height lock. -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RSS Reader">
     <meta name="theme-color" content="#2563eb">
@@ -304,22 +289,6 @@
         }
 
         :root {
-            /* Clearance BELOW the status strip, so nothing the app draws lands inside
-               iOS 27 Beta 5's unconditional blur band at the top of a standalone web
-               view. Measured from the user's zoomed screenshots: the band ends ~95-100pt
-               from the screen top; the strip itself is ~44px, so 44px more clears it.
-               Set to 0px to reclaim that space and accept a blurred first line — that
-               is the whole trade, and it is the ONLY knob (no CSS can weaken the band).
-               Applies to the Home header and both content panes so the treatment is
-               uniform: the top ~100pt belongs to iOS, and we draw nothing there.
-               CURRENT SETTING = 0px (user call, build 183): the band is ~100pt deep but
-               the status bar is only ~47pt of it, so clearing it costs ~50pt of dead
-               space on top of the strip — which looked far worse than the blur it
-               removed. 0px restores the exact pre-iOS-27 geometry (content resting at
-               44+6 = 50 CSS px). The trade is binary: intermediate values are strictly
-               worse (you get a margin AND a blurred first line), because the band's
-               cutoff is sharp at ~100pt rather than a fade. */
-            --mob-top-extra: 0px;
             --list-preview-font-size: 1.1em;
             --view-font-size: 1.1em;
             --category-font-size: 1.15em;
@@ -630,10 +599,7 @@
                also override height to auto on mobile. */
             #sidebar-pane > div:nth-of-type(2) {
                 height: auto !important;
-                /* Same clearance as the content panes: the logo/title are static chrome
-                   but iOS blurs them just the same when they sit in its top band
-                   (on-device proof, build 180 screenshot). */
-                padding: calc(max(env(safe-area-inset-top, 0px), 44px) + var(--mob-top-extra, 0px)) 1.25rem 0.75rem !important;
+                padding: env(safe-area-inset-top, 0px) 1.25rem 0.75rem !important;
             }
             /* Timeline + viewer panes have no visible header on mobile.
                Apple Glass pattern: content starts below the status bar at
@@ -674,45 +640,28 @@
                six-step ramp is compressed inside the strip (strong blur in its top
                third), so the band's bottom edge carries only a 1px blur = no
                visible start line. */
-            /* ===== TOP-OF-SCREEN TREATMENT: SUPERSEDED BY iOS (build 181, 2026-08-11)
-               Everything above this comment is HISTORY. The frost/dim/blur system
-               (builds 155-164) existed because iOS composited a fully TRANSLUCENT
-               status bar over standalone web content, so the app owned that strip and
-               had to keep text legible under the clock itself.
-               iOS 27 Beta 5 took the strip over: it draws a system blur+dim band
-               (~100pt, Liquid Glass status-bar backdrop) across ANY web content that
-               underlaps the status bar. Proven on-device, and the proof matters — the
-               HOME HEADER's logo and title were blurred, and those are static chrome,
-               NOT inside a scroll container. So it is neither our CSS nor a
-               scroll-edge-only effect, and there is no web/CSS opt-out (native apps
-               use SwiftUI .scrollEdgeEffectStyle(.hard); the web has no equivalent).
-               Failed attempts, so nobody repeats them: 176 removed our dim (the
-               system's remained, and looked worse without ours softening its edge);
-               177 moved the scroll container below the strip (no effect — the band is
-               a fixed region, not a scroller edge); 180 pre-brightened via
-               mix-blend-mode: color-dodge (the blur cannot be undone, and the band
-               covers static chrome too).
-               THE FIX is in <head>: apple-mobile-web-app-status-bar-style = "black"
-               instead of "black-translucent", so iOS starts the web view BELOW the
-               status bar and there is no underlap to blur. On this all-black app that
-               looks identical to the old translucent strip. All top insets are now
-               env()-driven with NO hardcoded floor, because iOS reserves the strip
-               itself. Nothing paints here anymore. */
             .top-frost {
-                display: none;
+                display: block;
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: max(env(safe-area-inset-top, 0px), 44px);
+                z-index: 10;
+                pointer-events: none;
+                /* FINAL (build 164, user spec): NO blur at all — a bare 10% dim
+                   gradient over the status strip so scrolled text stays fully
+                   legible behind the clock. All blur layers removed. */
+                background: linear-gradient(to bottom, rgba(0,0,0,0.10), rgba(0,0,0,0) 100%);
             }
-            /* Status strip + the band clearance above. The 44px floor is back because
-               underlap is on again (env reports the real inset), and --mob-top-extra
-               carries the extra clearance that keeps text out of the iOS blur band. */
-            #timeline-pane.mobile-active,
-            #viewer-pane.mobile-active {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + var(--mob-top-extra, 0px));
+            html:not(.dark) .top-frost {
+                background: linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0) 100%);
             }
+            /* Full-screen read area: content rests right under the status bar; only
+               the band's imperceptible 1.5px tail overlaps the first few pixels. */
             #timeline-pane.mobile-active #article-list {
-                padding-top: 6px;
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
             }
             #viewer-pane.mobile-active #reader-view {
-                padding-top: 6px;
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
             }
             #sidebar-pane > div:nth-of-type(2) svg { width: 1.5rem !important; height: 1.5rem !important; }
             #sidebar-pane > div:nth-of-type(2) h1 { font-size: 1.1rem !important; }
@@ -6237,14 +6186,6 @@
             sample();
         })();
 
-        // (The temporary top-inset / counter-lift dial from builds 178-180 was removed
-        // in 181: with status-bar-style "black" there is no system band left to tune.
-        // Its stale localStorage keys — newsreader_top_extra / newsreader_top_lift —
-        // are simply ignored. If a knob is ever needed again, note the hazard that
-        // block hit: top-level code added mid-file must not call isMobile(), which
-        // reads a `let` declared ~1400 lines lower; the TDZ ReferenceError aborts the
-        // rest of the script block and blanks the app. Defer it and wrap it.)
-
         // ===== IMAGE LIGHTBOX =====
         (function() {
             const lb      = document.getElementById('img-lightbox');
@@ -7687,7 +7628,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 183;
+        window.APP_BUILD = 184;
 
         (async function initApp() {
             try {
@@ -8476,7 +8417,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v183';
+const CACHE_NAME = 'rss-reader-v184';
 const APP_SHELL = [
     '/',
     'index.html'
