@@ -289,6 +289,12 @@
         }
 
         :root {
+            /* Extra top inset BELOW the status strip, on top of the strip's own height.
+               Exists because iOS 26+ dims a band of the web view next to the status bar
+               (its system scroll-edge effect) that reaches FURTHER DOWN than the strip
+               itself, and there is no web opt-out — so content has to clear the band.
+               Tunable live via the temporary dial button (see #top-inset-dial). */
+            --mob-top-extra: 36px;
             --list-preview-font-size: 1.1em;
             --view-font-size: 1.1em;
             --category-font-size: 1.15em;
@@ -486,6 +492,8 @@
 
         /* Top frost is mobile-only (desktop has real headers). */
         .top-frost { display: none; }
+        /* Temporary iOS dim-band depth dial — mobile only (see #top-inset-dial below). */
+        #top-inset-dial { display: none; }
 
         /* ===== MOBILE LAYOUT ===== */
         @media (max-width: 900px) {
@@ -676,7 +684,27 @@
                for the inset). Revert = move the padding back onto the two scrollers. */
             #timeline-pane.mobile-active,
             #viewer-pane.mobile-active {
-                padding-top: max(env(safe-area-inset-top, 0px), 44px);
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + var(--mob-top-extra, 0px));
+            }
+            /* TEMPORARY DEPTH DIAL (build 178) — tap to step the extra inset until the
+               OS dim band lands entirely on the pane's black background instead of on
+               text. Reports the value so it can be hardcoded and this control removed. */
+            #top-inset-dial {
+                display: block;
+                position: absolute;
+                right: 14px;
+                bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
+                z-index: 60;
+                padding: 6px 10px;
+                border-radius: 999px;
+                border: 1px solid rgba(255,255,255,0.18);
+                background: rgba(0,0,0,0.72);
+                color: #ffd479;
+                font-size: 12px;
+                font-weight: 700;
+                font-family: inherit;
+                font-variant-numeric: tabular-nums;
+                -webkit-tap-highlight-color: transparent;
             }
             #timeline-pane.mobile-active #article-list {
                 padding-top: 6px;
@@ -6207,6 +6235,39 @@
             sample();
         })();
 
+        // ===== TEMPORARY: iOS DIM-BAND DEPTH DIAL (build 178) =====
+        // iOS 26+ applies a SYSTEM scroll-edge effect that blurs/dims a band of the web
+        // view next to the status bar. Native apps opt out with SwiftUI's
+        // .scrollEdgeEffectStyle(.hard); the web has NO opt-out, so the only remedy is
+        // to keep content out of the band -- and the band reaches further down than the
+        // status strip itself. Its exact depth is a device/OS constant we cannot query,
+        // so this dial steps the extra inset live (persisted) to find it on-device in
+        // one sitting instead of one deploy per guess. Once the working value is known,
+        // hardcode --mob-top-extra and DELETE this block + #top-inset-dial's CSS.
+        (function topInsetDial() {
+            if (!isMobile()) return;
+            const STEPS = [0, 12, 24, 36, 48, 60, 72, 84, 96];
+            let idx = STEPS.indexOf(36);
+            try {
+                const saved = parseInt(localStorage.getItem('newsreader_top_extra'), 10);
+                const at = STEPS.indexOf(saved);
+                if (at >= 0) idx = at;
+            } catch (e) {}
+            const btn = document.createElement('button');
+            btn.id = 'top-inset-dial';
+            btn.type = 'button';
+            btn.setAttribute('aria-label', 'Adjust top inset');
+            const apply = () => {
+                const v = STEPS[idx];
+                document.documentElement.style.setProperty('--mob-top-extra', v + 'px');
+                btn.textContent = 'top +' + v;
+                try { localStorage.setItem('newsreader_top_extra', String(v)); } catch (e) {}
+            };
+            btn.addEventListener('click', () => { idx = (idx + 1) % STEPS.length; apply(); });
+            document.body.appendChild(btn);
+            apply();
+        })();
+
         // ===== IMAGE LIGHTBOX =====
         (function() {
             const lb      = document.getElementById('img-lightbox');
@@ -7649,7 +7710,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 177;
+        window.APP_BUILD = 178;
 
         (async function initApp() {
             try {
@@ -8438,7 +8499,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v177';
+const CACHE_NAME = 'rss-reader-v178';
 const APP_SHELL = [
     '/',
     'index.html'
