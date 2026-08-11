@@ -5,7 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- STATUS BAR: "black", NOT "black-translucent" (build 181, 2026-08-11).
+         iOS 27 Beta 5 draws a system blur+dim band (~100pt, its Liquid Glass status-bar
+         backdrop / scroll-edge effect) over ANY web content that underlaps the status
+         bar - proven on-device: the Home header's logo and title, which are static
+         chrome and not in a scroll container, were blurred too. There is no CSS/web
+         opt-out for that effect, so the only remedy is to stop underlapping: with
+         "black" iOS starts the web view BELOW the status bar and owns that strip
+         itself. On this app that is visually identical to what the user had before
+         (an opaque BLACK status bar over a black app reads exactly like a transparent
+         one) but our content is no longer under system UI, so nothing gets blurred.
+         Side effect this file now depends on: env(safe-area-inset-top) becomes 0, so
+         every top inset below is env-driven with NO hardcoded 44px floor - otherwise
+         we would add 44px of dead space that iOS is already providing. If Apple later
+         restores translucent underlap without the band, switch this back. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="RSS Reader">
     <meta name="theme-color" content="#2563eb">
     <meta name="description" content="Your personal RSS news reader">
@@ -289,14 +303,11 @@
         }
 
         :root {
-            /* Extra top inset below the status strip. 0 = the user's chosen FULL-SCREEN
-               underlap (content runs to the very top, as it did before iOS 27 Beta 5).
-               Raising it trades reading area for keeping text out of the system band. */
+            /* Extra top inset ON TOP of whatever iOS reserves (env(safe-area-inset-top)).
+               0 = content starts at the top of the web view, which under
+               status-bar-style "black" is immediately below the system status strip.
+               Only raise this if a future iOS reintroduces a band below the strip. */
             --mob-top-extra: 0px;
-            /* Strength of the counter-lift that pre-brightens text passing through iOS
-               27's system blur/dim band (see html.dark .top-frost). 0 disables it.
-               Tunable live via the temporary dial button (see #top-inset-dial). */
-            --mob-top-lift: 0.30;
             --list-preview-font-size: 1.1em;
             --view-font-size: 1.1em;
             --category-font-size: 1.15em;
@@ -494,8 +505,6 @@
 
         /* Top frost is mobile-only (desktop has real headers). */
         .top-frost { display: none; }
-        /* Temporary iOS dim-band depth dial — mobile only (see #top-inset-dial below). */
-        #top-inset-dial { display: none; }
 
         /* ===== MOBILE LAYOUT ===== */
         @media (max-width: 900px) {
@@ -609,7 +618,11 @@
                also override height to auto on mobile. */
             #sidebar-pane > div:nth-of-type(2) {
                 height: auto !important;
-                padding: env(safe-area-inset-top, 0px) 1.25rem 0.75rem !important;
+                /* env-driven with a small floor so the logo doesn't touch the very top
+                   edge once iOS owns the status strip (env becomes 0 under
+                   status-bar-style "black"); if a future iOS restores underlap, env
+                   grows again and this follows it. */
+                padding: max(env(safe-area-inset-top, 0px), 8px) 1.25rem 0.75rem !important;
             }
             /* Timeline + viewer panes have no visible header on mobile.
                Apple Glass pattern: content starts below the status bar at
@@ -650,90 +663,40 @@
                six-step ramp is compressed inside the strip (strong blur in its top
                third), so the band's bottom edge carries only a 1px blur = no
                visible start line. */
-            /* iOS 27 BETA / iOS 26.1+ RETIRED OUR DIM (build 176, 2026-07-23).
-               The 10% dim (build 164) was correct for as long as iOS composited a
-               fully translucent status bar over standalone web content: ours was the
-               only darkening, and scrolled text stayed legible behind the clock.
-               iOS changed that -- 26.1 renders PWA status bars opaque instead of
-               fullscreen and iOS 26 reworked safe-area logic; on iOS 27 beta the OS
-               paints its own backdrop over the strip. Ours then STACKED on top of the
-               system's, and the sum read as a hard grey band across the first line of
-               the article title (user report, unchanged across a freshly re-created
-               PWA container, so not a cache artifact). We can't remove the system's
-               layer from CSS, so we remove OURS and let the OS own the strip alone.
-               Geometry below is deliberately UNCHANGED (band height + content rest
-               padding), so nothing shifts and text can never collide with the clock:
-               only the paint is gone. Restoring the dim = put the two background
-               declarations back; do NOT restore it while iOS draws its own. */
-            /* COUNTER-LIFT (build 180, 2026-08-11) — user spec: keep the full-screen
-               underlap, and make text passing through iOS 27 Beta 5's system band as
-               visible as possible. iOS composites its blur+dim over our OUTPUT, so the
-               effect itself is untouchable from CSS — but we can pre-compensate: draw
-               the content brighter going in so what emerges is closer to normal.
-               mix-blend-mode: color-dodge is the right tool because dodge leaves PURE
-               BLACK unchanged (result = base / (1 - blend); base 0 stays 0), so the
-               black background shows NO grey band, while dimmed text (a mid tone)
-               lifts. The BLUR cannot be undone — that part is Apple's.
-               Band depth measured off-device from the user's zoomed screenshot
-               (2026-08-11): the effect ends between the blurred line and the crisp one
-               below it, ~95-100pt from the top = ~85 CSS px at their 115% Page Zoom,
-               hence strip + 44px. Dark mode ONLY: on a white background dodge would
-               wash out dark text and REDUCE contrast (base/(1-b) lightens it).
-               Tunable via --mob-top-lift; 0 disables the lift entirely. */
+            /* ===== TOP-OF-SCREEN TREATMENT: SUPERSEDED BY iOS (build 181, 2026-08-11)
+               Everything above this comment is HISTORY. The frost/dim/blur system
+               (builds 155-164) existed because iOS composited a fully TRANSLUCENT
+               status bar over standalone web content, so the app owned that strip and
+               had to keep text legible under the clock itself.
+               iOS 27 Beta 5 took the strip over: it draws a system blur+dim band
+               (~100pt, Liquid Glass status-bar backdrop) across ANY web content that
+               underlaps the status bar. Proven on-device, and the proof matters — the
+               HOME HEADER's logo and title were blurred, and those are static chrome,
+               NOT inside a scroll container. So it is neither our CSS nor a
+               scroll-edge-only effect, and there is no web/CSS opt-out (native apps
+               use SwiftUI .scrollEdgeEffectStyle(.hard); the web has no equivalent).
+               Failed attempts, so nobody repeats them: 176 removed our dim (the
+               system's remained, and looked worse without ours softening its edge);
+               177 moved the scroll container below the strip (no effect — the band is
+               a fixed region, not a scroller edge); 180 pre-brightened via
+               mix-blend-mode: color-dodge (the blur cannot be undone, and the band
+               covers static chrome too).
+               THE FIX is in <head>: apple-mobile-web-app-status-bar-style = "black"
+               instead of "black-translucent", so iOS starts the web view BELOW the
+               status bar and there is no underlap to blur. On this all-black app that
+               looks identical to the old translucent strip. All top insets are now
+               env()-driven with NO hardcoded floor, because iOS reserves the strip
+               itself. Nothing paints here anymore. */
             .top-frost {
                 display: none;
             }
-            html.dark .top-frost {
-                display: block;
-                position: absolute;
-                top: 0; left: 0; right: 0;
-                height: calc(max(env(safe-area-inset-top, 0px), 44px) + 44px);
-                z-index: 10;
-                pointer-events: none;
-                mix-blend-mode: color-dodge;
-                background: linear-gradient(to bottom,
-                    rgba(255, 255, 255, var(--mob-top-lift, 0.30)),
-                    rgba(255, 255, 255, 0) 100%);
-            }
-            /* HARD SCROLL EDGE (build 177, 2026-08-11) — the answer to iOS 26/27's
-               system SCROLL EDGE EFFECT. iOS 26+ automatically blurs AND DIMS content
-               that sits next to system UI (the status bar); native apps opt out with
-               SwiftUI's .scrollEdgeEffectStyle(.hard), which cuts content off sharply
-               instead of dimming it. There is NO web/CSS opt-out, so the only lever is
-               to give the OS nothing to dim: the SCROLL CONTAINER now starts BELOW the
-               status strip (pane padding) instead of spanning it, so scrolled text is
-               clipped at the strip's bottom edge and can never enter the OS's dim
-               region. Previously the inset lived on the CONTENT (padding-top on the
-               scroller), which put resting text below the strip but let scrolled text
-               pass underneath it — where iOS dimmed it (the grey first line).
-               Resting position is UNCHANGED: the 44px+6px total simply moved from the
-               scroller's padding onto the pane (+6px kept on the scroller). The strip
-               is filled by the pane's own opaque background, so it reads as one piece
-               with the status bar. Home/sidebar is untouched (its header already pads
-               for the inset). Revert = move the padding back onto the two scrollers. */
+            /* env-driven, NO 44px floor: under status-bar-style "black" iOS already
+               reserves the strip, so env is 0 and content correctly starts at the top
+               of the web view (full-screen, crisp). If a future iOS restores
+               translucent underlap, env reports the inset again and this follows it. */
             #timeline-pane.mobile-active,
             #viewer-pane.mobile-active {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + var(--mob-top-extra, 0px));
-            }
-            /* TEMPORARY DEPTH DIAL (build 178) — tap to step the extra inset until the
-               OS dim band lands entirely on the pane's black background instead of on
-               text. Reports the value so it can be hardcoded and this control removed. */
-            #top-inset-dial {
-                display: block;
-                position: absolute;
-                right: 14px;
-                bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
-                z-index: 60;
-                padding: 6px 10px;
-                border-radius: 999px;
-                border: 1px solid rgba(255,255,255,0.18);
-                background: rgba(0,0,0,0.72);
-                color: #ffd479;
-                font-size: 12px;
-                font-weight: 700;
-                font-family: inherit;
-                font-variant-numeric: tabular-nums;
-                -webkit-tap-highlight-color: transparent;
+                padding-top: calc(env(safe-area-inset-top, 0px) + var(--mob-top-extra, 0px));
             }
             #timeline-pane.mobile-active #article-list {
                 padding-top: 6px;
@@ -6264,49 +6227,13 @@
             sample();
         })();
 
-        // ===== TEMPORARY: iOS DIM-BAND DEPTH DIAL (build 178) =====
-        // iOS 26+ applies a SYSTEM scroll-edge effect that blurs/dims a band of the web
-        // view next to the status bar. Native apps opt out with SwiftUI's
-        // .scrollEdgeEffectStyle(.hard); the web has NO opt-out, so the only remedy is
-        // to keep content out of the band -- and the band reaches further down than the
-        // status strip itself. Its exact depth is a device/OS constant we cannot query,
-        // so this dial steps the extra inset live (persisted) to find it on-device in
-        // one sitting instead of one deploy per guess. Once the working value is known,
-        // hardcode --mob-top-extra and DELETE this block + #top-inset-dial's CSS.
-        // SAFETY (learned the hard way in 178): this block must depend on NOTHING
-        // declared later in the file. isMobile() reads `let _isMobileCache` declared
-        // ~1400 lines below, so calling it here threw a temporal-dead-zone
-        // ReferenceError at top level, which aborted the REST of this script block --
-        // including initApp -- and left the app blank. So: measure innerWidth directly,
-        // defer to a macrotask so every declaration has run, and swallow any throw.
-        setTimeout(function topInsetDial() {
-          try {
-            if (window.innerWidth > 900) return;
-            // Now dials the COUNTER-LIFT strength (build 180), not the inset: the inset
-            // is pinned at 0 for the full-screen underlap the user wants, and the thing
-            // worth tuning is how hard we pre-brighten text inside the system band.
-            const STEPS = [0, 0.15, 0.30, 0.45, 0.60, 0.75, 0.90];
-            let idx = STEPS.indexOf(0.30);
-            try {
-                const saved = parseFloat(localStorage.getItem('newsreader_top_lift'));
-                const at = STEPS.indexOf(saved);
-                if (at >= 0) idx = at;
-            } catch (e) {}
-            const btn = document.createElement('button');
-            btn.id = 'top-inset-dial';
-            btn.type = 'button';
-            btn.setAttribute('aria-label', 'Adjust top counter-lift');
-            const apply = () => {
-                const v = STEPS[idx];
-                document.documentElement.style.setProperty('--mob-top-lift', String(v));
-                btn.textContent = 'lift ' + v.toFixed(2);
-                try { localStorage.setItem('newsreader_top_lift', String(v)); } catch (e) {}
-            };
-            btn.addEventListener('click', () => { idx = (idx + 1) % STEPS.length; apply(); });
-            document.body.appendChild(btn);
-            apply();
-          } catch (e) { console.warn('top-inset dial skipped:', e && e.message); }
-        }, 0);
+        // (The temporary top-inset / counter-lift dial from builds 178-180 was removed
+        // in 181: with status-bar-style "black" there is no system band left to tune.
+        // Its stale localStorage keys — newsreader_top_extra / newsreader_top_lift —
+        // are simply ignored. If a knob is ever needed again, note the hazard that
+        // block hit: top-level code added mid-file must not call isMobile(), which
+        // reads a `let` declared ~1400 lines lower; the TDZ ReferenceError aborts the
+        // rest of the script block and blanks the app. Defer it and wrap it.)
 
         // ===== IMAGE LIGHTBOX =====
         (function() {
@@ -7750,7 +7677,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 180;
+        window.APP_BUILD = 181;
 
         (async function initApp() {
             try {
@@ -8539,7 +8466,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v180';
+const CACHE_NAME = 'rss-reader-v181';
 const APP_SHELL = [
     '/',
     'index.html'
