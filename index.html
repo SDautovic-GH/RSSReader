@@ -2406,6 +2406,60 @@
         // Links the user EXPLICITLY toggled back to unread this session — the only
         // legitimate removal path from the durable read store (see saveReadState).
         window._unreadToggledLinks = new Set();
+        // ===== READ-STATE HASHING (build 186, 2026-08-11) =====
+        // The CLOUD read set stores 64-bit HASHES of links instead of the URLs, because
+        // read state only ever needs SET MEMBERSHIP ("is this article read?"), never the
+        // URL itself. Measured: 12,574 marks as raw URLs is ~1.1MB — past Firestore's
+        // 1MB document limit, which is what forced the old lossy trim/compaction that
+        // silently dropped ~3,000 marks (a re-installed PWA then showed 115 unread vs
+        // the desktop's 40). The same history as 16-char hashes is ~240KB, ~6x headroom.
+        // Two 32-bit FNV-1a passes with different multipliers, concatenated = 64 bits;
+        // collision odds at 50k entries are ~1 in 1e11 — irrelevant for a read flag.
+        // DETERMINISTIC AND STABLE ACROSS DEVICES: never change these constants, or
+        // every device's cloud marks stop matching.
+        window.hashLink = function (str) {
+            let h1 = 0x811c9dc5, h2 = 0xc2b2ae35;
+            for (let i = 0; i < str.length; i++) {
+                const c = str.charCodeAt(i);
+                h1 ^= c; h1 = Math.imul(h1, 0x01000193);
+                h2 ^= c; h2 = Math.imul(h2, 0x85ebca6b);
+            }
+            return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
+        };
+        // Hashes the cloud says are read. Cannot be expanded back to URLs — by design;
+        // membership is all the app needs.
+        window._readHashes = new Set();
+        // SINGLE SOURCE OF TRUTH for "is this link read?". Checks the local URL set
+        // first, then the cloud hash set. On a hash hit it REHYDRATES the URL into
+        // _readLinks, so a device rebuilds URL-level history as it encounters articles —
+        // that is what makes a freshly installed PWA converge instead of showing
+        // everything unread. Explicit keep-unread toggles always win.
+        window.isLinkRead = function (link) {
+            if (!link) return false;
+            if (window._unreadToggledLinks.has(link)) return false;
+            if (window._readLinks.has(link)) return true;
+            if (window._readHashes.size && window._readHashes.has(window.hashLink(link))) {
+                window._readLinks.add(link);
+                return true;
+            }
+            return false;
+        };
+        // Newest-read first. Read marks are ordered by ACTUAL read time (readArchive's
+        // readAt index), never by Set insertion order — the boot self-heal unions
+        // archive keys in lexicographic URL order, so insertion order is NOT
+        // chronological, and trimming by it deleted recent marks at random. Links with
+        // no timestamp (older than the archive's 30-day window) keep their relative
+        // order behind the timestamped ones.
+        window.orderLinksByRecency = function (links, readAtMap) {
+            const arr = Array.from(links);
+            return arr
+                .map((l, i) => [l, (readAtMap && readAtMap.get(l)) || 0, i])
+                .sort((a, b) => (b[1] - a[1]) || (b[2] - a[2]))
+                .map(x => x[0]);
+        };
+        // Hashes KNOWN to be in the cloud doc — the writer's diff base, so each device
+        // uploads only its delta.
+        window._cloudKnownReadHashes = new Set();
         // Read links KNOWN to be in the cloud doc (seeded by every received snapshot,
         // extended after each successful cloud write). The cloud writer diffs
         // _readLinks against this to upload only the DELTA via arrayUnion — so a
@@ -2569,6 +2623,26 @@
                     const request = tx.objectStore(storeName).getAllKeys();
                     request.onsuccess = () => resolve(request.result || []);
                     request.onerror = () => reject(request.error);
+                });
+            }
+
+            // Map(link -> readAt) for every archived read, WITHOUT deserializing any
+            // record: openKeyCursor on the readAt index yields the index key (readAt)
+            // and the primary key (link) only, so bodies are never touched. This is the
+            // recency source that read-mark trimming must use — Set insertion order is
+            // not chronological (see window.orderLinksByRecency).
+            async getReadAtMap() {
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('readArchive', 'readonly');
+                    const idx = tx.objectStore('readArchive').index('readAt');
+                    const out = new Map();
+                    idx.openKeyCursor().onsuccess = (e) => {
+                        const cur = e.target.result;
+                        if (cur) { out.set(cur.primaryKey, cur.key); cur.continue(); }
+                        else resolve(out);
+                    };
+                    tx.onerror = () => reject(tx.error);
                 });
             }
 
@@ -3146,7 +3220,7 @@
                 if (!rkey || !handle) continue;
                 const link = `https://bsky.app/profile/${handle}/post/${rkey}`;
                 if (window.articles.some(a => a.link === link)) continue;
-                const isNew = !window._readLinks.has(link);
+                const isNew = !window.isLinkRead(link);
                 const record = post.record || {};
                 const text = record.text || '';
                 const isRepost = reason?.$type === 'app.bsky.feed.defs#reasonRepost';
@@ -3313,7 +3387,7 @@
                 items.forEach(item => {
                     const link = getLink(item);
                     if (!link || window.articles.some(a => a.link === link)) return;
-                    const isNew = !window._readLinks.has(link);
+                    const isNew = !window.isLinkRead(link);
                     const cachedBody = window._bodyCache?.[link];
                     let rawBody = getHtml(item, 'content\\:encoded', 'content', 'description', 'summary');
                     // Podcast/audio posts (e.g. Substack audio episodes) have near-empty body
@@ -5289,7 +5363,7 @@
                     author: r.author || '',
                     timestamp: r.timestamp,
                     addedAt: r.addedAt,
-                    unread: !window._readLinks.has(r.link),
+                    unread: !window.isLinkRead(r.link),
                     readLater: window._readLaterLinks ? window._readLaterLinks.has(r.link) : false,
                     saved: true,
                 }));
@@ -5311,7 +5385,7 @@
                     author: r.author || '',
                     timestamp: r.timestamp,
                     addedAt: r.addedAt,
-                    unread: !window._readLinks.has(r.link),
+                    unread: !window.isLinkRead(r.link),
                     readLater: true,
                     saved: window.savedBucket ? window.savedBucket.has(r.link) : false,
                 }));
@@ -5405,7 +5479,7 @@
             if (window._readStateDirty) {
                 window._readStateDirty = false;
                 window.articles.forEach(a => {
-                    a.unread = !window._readLinks.has(a.link);
+                    a.unread = !window.isLinkRead(a.link);
                     a.readLater = window._readLaterLinks.has(a.link);
                 });
             }
@@ -6976,7 +7050,7 @@ window.toggleUnreadManual = () => {
 
                 window._bodyCache = {};
                 fresh.forEach(a => {
-                    a.unread = !window._readLinks.has(a.link);
+                    a.unread = !window.isLinkRead(a.link);
                     a.readLater = window._readLaterLinks.has(a.link);
                     a._ts = a._ts || new Date(a.timestamp).getTime();
                     a._excerptHtml = null;
@@ -7041,6 +7115,7 @@ window.toggleUnreadManual = () => {
 
 
         // --- READ STATE PERSISTENCE ---
+        const LOCAL_READ_CAP = 50000;   // links kept in IndexedDB, newest-read first
         let _saveReadStateTimer = null;
         async function saveReadState() {
             if (typeof window.saveReadStateCloud === 'function') window.saveReadStateCloud();
@@ -7061,7 +7136,17 @@ window.toggleUnreadManual = () => {
                     for (const l of window._unreadToggledLinks) {
                         if (!window._readLinks.has(l)) merged.delete(l); // re-read since toggle wins
                     }
-                    const final = Array.from(merged).slice(-10000);
+                    // Trim by ACTUAL read time, newest kept — NOT by Set insertion
+                    // order. The old `slice(-10000)` assumed "newest last", but the boot
+                    // self-heal unions readArchive keys in lexicographic URL order, so
+                    // the tail was partly alphabetical: at 12,574 marks it was dropping
+                    // ~2,500 links essentially at random, including recent ones, on every
+                    // save. Cap raised to 50,000 as well — IndexedDB has no reason for a
+                    // 10k limit (50k links is a few MB) and the whole point is that
+                    // history stops evaporating.
+                    let readAtMap = new Map();
+                    try { readAtMap = await window.appDB.getReadAtMap(); } catch(e) {}
+                    const final = window.orderLinksByRecency(merged, readAtMap).slice(0, LOCAL_READ_CAP);
                     await window.appDB.put('metadata', final, 'readLinks');
                 } catch(e) { console.warn('Read state save error:', e.message); }
             }, 500);
@@ -7417,10 +7502,10 @@ window.toggleUnreadManual = () => {
             };
             for (const a of (window.articles || [])) pushIfNew(a);
             if (window.savedBucket) {
-                window.savedBucket.list().forEach(r => pushIfNew({ id: 'sv:' + r.link, ...r, unread: !window._readLinks.has(r.link) }));
+                window.savedBucket.list().forEach(r => pushIfNew({ id: 'sv:' + r.link, ...r, unread: !window.isLinkRead(r.link) }));
             }
             if (window.readLaterBucket) {
-                window.readLaterBucket.list().forEach(r => pushIfNew({ id: 'rl:' + r.link, ...r, unread: !window._readLinks.has(r.link), readLater: true }));
+                window.readLaterBucket.list().forEach(r => pushIfNew({ id: 'rl:' + r.link, ...r, unread: !window.isLinkRead(r.link), readLater: true }));
             }
             if (Array.isArray(window._readArchiveCache)) {
                 for (const r of window._readArchiveCache) {
@@ -7628,7 +7713,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 185;
+        window.APP_BUILD = 186;
 
         (async function initApp() {
             try {
@@ -7820,7 +7905,7 @@ window.toggleUnreadManual = () => {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc, updateDoc, arrayUnion, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc, updateDoc, arrayUnion, runTransaction, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBA4sMC6MGHYSCEd1ldTs2JPKVRAAbyYQk",
@@ -7994,24 +8079,33 @@ window.toggleUnreadManual = () => {
             });
         }
 
-        // ===== CLOUD READ-STATE HORIZON =====
-        // Firestore caps a document at 1 MiB, so the shared read-history array is
-        // budgeted by BYTES as well as count, keeping the NEWEST reads (Set
-        // insertion order ~= read order). The old fixed slice(-5000) wasted
-        // headroom for short links, risked oversize for long ones, and created a
-        // ~1-month sync horizon: marks older than it fell off the doc and items
-        // still visible in slow feeds resurrected as unread on other devices
-        // (the "81 old unread" incident, 2026-07-23).
-        const CLOUD_READ_CAP = 12000;      // stays well under the 40k index-entries/doc limit
-        const CLOUD_READ_BYTES = 850000;   // leaves ~200KB for readLaterLinks + overhead
-        function trimReadLinksForCloud(arr) {
-            let bytes = 0, start = arr.length;
-            for (let i = arr.length - 1; i >= 0; i--) {
-                bytes += (arr[i] ? arr[i].length : 0) + 2;
-                if (bytes > CLOUD_READ_BYTES || (arr.length - i) > CLOUD_READ_CAP) break;
-                start = i;
+        // ===== CLOUD READ-STATE CAPACITY (hash format, build 186) =====
+        // The doc stores `readHashes` (16-char hashes, see window.hashLink), so the whole
+        // of a 12,574-mark history is ~240KB instead of ~1.1MB and fits with ~6x room.
+        // 30,000 hashes ~= 570KB and stays under BOTH Firestore limits that matter: the
+        // 1MiB document size and the 40,000 index-entries-per-document ceiling (each
+        // array element costs one). Legacy `readLinks` (URLs) is still READ for
+        // backwards compatibility and removed by the one-time migration below.
+        const CLOUD_HASH_CAP = 30000;
+        const CLOUD_HASH_BYTES = 800000;   // leaves room for readLaterLinks + overhead
+        // Takes hashes already ordered NEWEST-FIRST and keeps as many as fit. Anything
+        // beyond the budget is simply not uploaded — it is never deleted from the doc.
+        function budgetHashes(hashesNewestFirst) {
+            const out = [];
+            let bytes = 0;
+            for (const h of hashesNewestFirst) {
+                bytes += h.length + 3;
+                if (bytes > CLOUD_HASH_BYTES || out.length >= CLOUD_HASH_CAP) break;
+                out.push(h);
             }
-            return arr.slice(start);
+            return out;
+        }
+        // Ordered, budgeted hashes for everything this device knows is read.
+        async function localReadHashesNewestFirst() {
+            let readAtMap = new Map();
+            try { readAtMap = await window.appDB.getReadAtMap(); } catch(e) {}
+            const ordered = window.orderLinksByRecency(window._readLinks, readAtMap);
+            return budgetHashes(ordered.map(window.hashLink));
         }
         // ===== COMPACTION DELETED (build 185, 2026-08-11) =====
         // It rewrote the shared readLinks array from a LOCAL Set whose iteration order
@@ -8029,6 +8123,53 @@ window.toggleUnreadManual = () => {
         // recency ordered by readArchive.readAt — see the next build. NEVER reintroduce
         // a rewrite that derives cloud array order from a local Set.
 
+        // ONE-TIME MIGRATION: URL array -> hash array. Transactional so a concurrent
+        // arrayUnion from another device can't be lost (Firestore retries on contention),
+        // and idempotent — if two devices run it they compute the same set.
+        // NON-LOSSY BY CONSTRUCTION: it is a pure union of (existing hashes + hashes of
+        // every legacy URL + hashes of this device's local marks); the only removals are
+        // explicit keep-unread toggles. If the union somehow exceeded the cap it writes
+        // everything anyway and warns, rather than silently dropping marks — deleting
+        // marks to fit is exactly the bug this replaces.
+        let _hashMigrationInFlight = false;
+        async function migrateCloudReadStateToHashes() {
+            if (!userId || _hashMigrationInFlight) return;
+            _hashMigrationInFlight = true;
+            try {
+                const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
+                let written = 0, legacyCount = 0;
+                await runTransaction(db, async (tx) => {
+                    const snap = await tx.get(stateRef);
+                    if (!snap.exists()) return;
+                    const d = snap.data();
+                    const legacy = Array.isArray(d.readLinks) ? d.readLinks : [];
+                    if (!legacy.length && Array.isArray(d.readHashes)) return; // already migrated
+                    legacyCount = legacy.length;
+                    const set = new Set(Array.isArray(d.readHashes) ? d.readHashes : []);
+                    for (const l of legacy) set.add(window.hashLink(l));
+                    for (const l of window._readLinks) set.add(window.hashLink(l));
+                    for (const l of window._unreadToggledLinks) {
+                        if (!window._readLinks.has(l)) set.delete(window.hashLink(l));
+                    }
+                    const arr = Array.from(set);
+                    if (arr.length > CLOUD_HASH_CAP) {
+                        console.warn(`Hash migration: ${arr.length} marks exceeds cap ${CLOUD_HASH_CAP}; writing all rather than dropping any.`);
+                    }
+                    tx.update(stateRef, {
+                        readHashes: arr,
+                        readLinks: deleteField(),
+                        updatedAt: new Date().toISOString()
+                    });
+                    written = arr.length;
+                    arr.forEach(h => { window._cloudKnownReadHashes.add(h); window._readHashes.add(h); });
+                });
+                if (written) {
+                    console.log(`Cloud read state migrated to hashes: ${written} marks (${legacyCount} legacy URLs folded in, ~${Math.round(written * 19 / 1024)}KB)`);
+                }
+            } catch(e) { console.warn('Hash migration failed (will retry next session):', e); }
+            finally { _hashMigrationInFlight = false; }
+        }
+
         function syncCloudReadState() {
             const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
             const applySnap = (snap) => {
@@ -8037,11 +8178,28 @@ window.toggleUnreadManual = () => {
                 if (!snap.exists()) return;
                 const data = snap.data();
                 let changed = false;
+                // PRIMARY FORMAT: hashes. They cannot be expanded back into URLs, and
+                // they don't need to be — window.isLinkRead() hashes each article's link
+                // and tests membership, rehydrating the URL locally on a hit.
+                if (Array.isArray(data.readHashes) && data.readHashes.length) {
+                    let added = 0;
+                    for (const h of data.readHashes) {
+                        window._cloudKnownReadHashes.add(h);
+                        if (!window._readHashes.has(h)) { window._readHashes.add(h); added++; }
+                    }
+                    window._cloudReadStateSeeded = true;
+                    if (added > 0) changed = true;
+                }
+                // LEGACY FORMAT: full URLs. Still merged so a device running older cached
+                // code (or a doc not yet migrated) keeps working. Their hashes are folded
+                // into the known-set so the writer doesn't re-upload them.
                 if (data.readLinks) {
-                    // Seed the writer's diff base: everything the cloud lists is
-                    // "known" and never re-uploaded. ADD-only on purpose — links
-                    // compacted out of the doc stay known (see _cloudKnownReadLinks).
-                    data.readLinks.forEach(l => window._cloudKnownReadLinks.add(l));
+                    data.readLinks.forEach(l => {
+                        window._cloudKnownReadLinks.add(l);
+                        const h = window.hashLink(l);
+                        window._cloudKnownReadHashes.add(h);
+                        window._readHashes.add(h);
+                    });
                     window._cloudReadStateSeeded = true;
                     // Merge additively — but explicit keep-unread toggles win over a
                     // stale cloud copy (merge-writes never remove, so the doc may
@@ -8053,16 +8211,13 @@ window.toggleUnreadManual = () => {
                         changed = true;
                         try { localStorage.setItem('newsreader_read', JSON.stringify(Array.from(window._readLinks))); } catch(e) {}
                     }
-                    // No compaction trigger here any more — see "COMPACTION DELETED".
-                    // The doc is append-only; over-budget is reported, never repaired
-                    // by deleting marks.
-                    if (!window._cloudOverBudgetLogged) {
-                        let approxBytes = 0;
-                        for (const l of data.readLinks) approxBytes += l.length + 2;
-                        if (data.readLinks.length > CLOUD_READ_CAP || approxBytes > CLOUD_READ_BYTES) {
-                            window._cloudOverBudgetLogged = true;
-                            console.warn(`Cloud read state over budget: ${data.readLinks.length} links, ~${Math.round(approxBytes/1024)}KB (cap ${CLOUD_READ_CAP} / ${Math.round(CLOUD_READ_BYTES/1024)}KB). Marks beyond it are NOT uploaded; hash migration pending.`);
-                        }
+                    // One device per session converts the doc to hashes and drops the
+                    // URL array (which is what blows the 1MB limit). Jittered so a fleet
+                    // receiving the same snapshot doesn't all migrate at once; the
+                    // transaction makes duplicates harmless anyway.
+                    if (!window._cloudHashMigrationStarted) {
+                        window._cloudHashMigrationStarted = true;
+                        setTimeout(migrateCloudReadStateToHashes, 2000 + Math.floor(Math.random() * 4000));
                     }
                 }
                 if (data.readLaterLinks) {
@@ -8084,7 +8239,7 @@ window.toggleUnreadManual = () => {
                         return;
                     }
                     window.articles.forEach(a => {
-                        a.unread = !window._readLinks.has(a.link);
+                        a.unread = !window.isLinkRead(a.link);
                         a.readLater = window._readLaterLinks.has(a.link);
                     });
                     window.renderTimeline(true);
@@ -8141,11 +8296,11 @@ window.toggleUnreadManual = () => {
                 clearTimeout(_cloudReadStateTimer);
                 const arm = (delay) => { _cloudReadStateTimer = setTimeout(attempt, delay); };
                 const attempt = async () => {
-                    // Until the first snapshot has seeded _cloudKnownReadLinks, the
-                    // delta below would be this device's ENTIRE history — a fat,
-                    // wasteful write. Wait briefly for the seed; after ~2 min give
-                    // up waiting and write anyway (arrayUnion is add-only, so a big
-                    // write is merely inefficient, never destructive).
+                    // Until the first snapshot has seeded the known-hash set, the delta
+                    // below would be this device's ENTIRE history — a fat, wasteful
+                    // write. Wait briefly for the seed; after ~2 min give up waiting and
+                    // write anyway (arrayUnion is add-only, so a big write is merely
+                    // inefficient, never destructive).
                     if (!window._cloudReadStateSeeded && _seedWaitTries < 24) {
                         _seedWaitTries++;
                         arm(5000);
@@ -8153,31 +8308,31 @@ window.toggleUnreadManual = () => {
                     }
                     const stateRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'readState');
                     try {
-                        // MERGE-write: upload only links the cloud doc is missing,
-                        // bounded to the horizon window. arrayUnion can only ADD
-                        // server-side — a device that booted with stale local state
-                        // can no longer erase marks it never saw (the old full
-                        // setDoc could: root cause of cross-device resurrections).
-                        const pending = trimReadLinksForCloud(Array.from(window._readLinks))
-                            .filter(l => !window._cloudKnownReadLinks.has(l));
+                        // MERGE-write of HASHES: upload only what the cloud is missing.
+                        // arrayUnion can only ADD server-side, so a device that booted
+                        // with stale local state can never erase marks it didn't see.
+                        // Ordering is by real read time and the budget only limits what
+                        // gets UPLOADED — nothing in the doc is ever removed here.
+                        const allowed = await localReadHashesNewestFirst();
+                        const pending = allowed.filter(h => !window._cloudKnownReadHashes.has(h));
                         const payload = {
                             readLaterLinks: Array.from(window._readLaterLinks),
                             updatedAt: new Date().toISOString()
                         };
-                        if (pending.length > 0) payload.readLinks = arrayUnion(...pending);
+                        if (pending.length > 0) payload.readHashes = arrayUnion(...pending);
                         await updateDoc(stateRef, payload);
-                        pending.forEach(l => window._cloudKnownReadLinks.add(l));
+                        pending.forEach(h => { window._cloudKnownReadHashes.add(h); window._readHashes.add(h); });
                     } catch(e) {
                         if (e && e.code === 'not-found') {
                             // First-ever readState doc for this account: create it whole.
                             try {
-                                const links = trimReadLinksForCloud(Array.from(window._readLinks));
+                                const hashes = await localReadHashesNewestFirst();
                                 await setDoc(stateRef, {
-                                    readLinks: links,
+                                    readHashes: hashes,
                                     readLaterLinks: Array.from(window._readLaterLinks),
                                     updatedAt: new Date().toISOString()
                                 });
-                                links.forEach(l => window._cloudKnownReadLinks.add(l));
+                                hashes.forEach(h => { window._cloudKnownReadHashes.add(h); window._readHashes.add(h); });
                             } catch(e2) { console.warn('Cloud read state create failed:', e2); }
                         } else if (e && e.code === 'invalid-argument') {
                             // Doc is at/over Firestore's 1MiB. We do NOT repair this by
@@ -8390,7 +8545,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v185';
+const CACHE_NAME = 'rss-reader-v186';
 const APP_SHELL = [
     '/',
     'index.html'
