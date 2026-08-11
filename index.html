@@ -5,21 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <!-- STATUS BAR: "black", NOT "black-translucent" (build 181, 2026-08-11).
-         iOS 27 Beta 5 draws a system blur+dim band (~100pt, its Liquid Glass status-bar
-         backdrop / scroll-edge effect) over ANY web content that underlaps the status
-         bar - proven on-device: the Home header's logo and title, which are static
-         chrome and not in a scroll container, were blurred too. There is no CSS/web
-         opt-out for that effect, so the only remedy is to stop underlapping: with
-         "black" iOS starts the web view BELOW the status bar and owns that strip
-         itself. On this app that is visually identical to what the user had before
-         (an opaque BLACK status bar over a black app reads exactly like a transparent
-         one) but our content is no longer under system UI, so nothing gets blurred.
-         Side effect this file now depends on: env(safe-area-inset-top) becomes 0, so
-         every top inset below is env-driven with NO hardcoded 44px floor - otherwise
-         we would add 44px of dead space that iOS is already providing. If Apple later
-         restores translucent underlap without the band, switch this back. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <!-- STATUS BAR: back to "black-translucent" (build 182, 2026-08-11) after build
+         181 tried "black" and FAILED TWICE OVER, both measured on-device:
+           1. It did NOT stop the blur. iOS 27 Beta 5 blurs the top band of a
+              standalone web view UNCONDITIONALLY - the Home header stayed soft even
+              with no content underlapping the status bar. (Same page in Safari is
+              crisp, so the effect is specific to installed web apps.)
+           2. It BROKE THE BOTTOM BAR. "black" makes iOS start the web view ~47pt
+              lower, so the viewport is shorter than the full screen - but the tab bar
+              is anchored to a body whose height is computed from screen.height (see
+              lockMobileLayoutHeight), which then overshoots by ~41 CSS px and pushes
+              the pill below the fold.
+         So underlap stays ON (viewport spans the glass, the bar math holds) and the
+         blur band is handled the only way left: content is inset below it, see
+         --mob-top-extra. Do not switch to "black" again without also reworking the
+         body-height lock. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RSS Reader">
     <meta name="theme-color" content="#2563eb">
     <meta name="description" content="Your personal RSS news reader">
@@ -303,11 +304,15 @@
         }
 
         :root {
-            /* Extra top inset ON TOP of whatever iOS reserves (env(safe-area-inset-top)).
-               0 = content starts at the top of the web view, which under
-               status-bar-style "black" is immediately below the system status strip.
-               Only raise this if a future iOS reintroduces a band below the strip. */
-            --mob-top-extra: 0px;
+            /* Clearance BELOW the status strip, so nothing the app draws lands inside
+               iOS 27 Beta 5's unconditional blur band at the top of a standalone web
+               view. Measured from the user's zoomed screenshots: the band ends ~95-100pt
+               from the screen top; the strip itself is ~44px, so 44px more clears it.
+               Set to 0px to reclaim that space and accept a blurred first line — that
+               is the whole trade, and it is the ONLY knob (no CSS can weaken the band).
+               Applies to the Home header and both content panes so the treatment is
+               uniform: the top ~100pt belongs to iOS, and we draw nothing there. */
+            --mob-top-extra: 44px;
             --list-preview-font-size: 1.1em;
             --view-font-size: 1.1em;
             --category-font-size: 1.15em;
@@ -618,11 +623,10 @@
                also override height to auto on mobile. */
             #sidebar-pane > div:nth-of-type(2) {
                 height: auto !important;
-                /* env-driven with a small floor so the logo doesn't touch the very top
-                   edge once iOS owns the status strip (env becomes 0 under
-                   status-bar-style "black"); if a future iOS restores underlap, env
-                   grows again and this follows it. */
-                padding: max(env(safe-area-inset-top, 0px), 8px) 1.25rem 0.75rem !important;
+                /* Same clearance as the content panes: the logo/title are static chrome
+                   but iOS blurs them just the same when they sit in its top band
+                   (on-device proof, build 180 screenshot). */
+                padding: calc(max(env(safe-area-inset-top, 0px), 44px) + var(--mob-top-extra, 0px)) 1.25rem 0.75rem !important;
             }
             /* Timeline + viewer panes have no visible header on mobile.
                Apple Glass pattern: content starts below the status bar at
@@ -690,13 +694,12 @@
             .top-frost {
                 display: none;
             }
-            /* env-driven, NO 44px floor: under status-bar-style "black" iOS already
-               reserves the strip, so env is 0 and content correctly starts at the top
-               of the web view (full-screen, crisp). If a future iOS restores
-               translucent underlap, env reports the inset again and this follows it. */
+            /* Status strip + the band clearance above. The 44px floor is back because
+               underlap is on again (env reports the real inset), and --mob-top-extra
+               carries the extra clearance that keeps text out of the iOS blur band. */
             #timeline-pane.mobile-active,
             #viewer-pane.mobile-active {
-                padding-top: calc(env(safe-area-inset-top, 0px) + var(--mob-top-extra, 0px));
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + var(--mob-top-extra, 0px));
             }
             #timeline-pane.mobile-active #article-list {
                 padding-top: 6px;
@@ -7677,7 +7680,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 181;
+        window.APP_BUILD = 182;
 
         (async function initApp() {
             try {
@@ -8466,7 +8469,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v181';
+const CACHE_NAME = 'rss-reader-v182';
 const APP_SHELL = [
     '/',
     'index.html'
