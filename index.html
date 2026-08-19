@@ -650,10 +650,22 @@
                 /* FINAL (build 164, user spec): NO blur at all — a bare 10% dim
                    gradient over the status strip so scrolled text stays fully
                    legible behind the clock. All blur layers removed. */
-                background: linear-gradient(to bottom, rgba(0,0,0,0.10), rgba(0,0,0,0) 100%);
+                /* OUR DIM SWITCHED OFF (build 187, 2026-08-18). iOS 27 Beta 6 made the
+                   OS's own top treatment lighter, and the user wants text passing under
+                   the clock to read as clearly as possible. Our 10% dim was stacking on
+                   top of the OS's, so it no longer paints. This is the ONLY part of that
+                   band we control - the remaining fade is the OS compositing over the web
+                   view, which no CSS can reach.
+                   PAINT-ONLY CHANGE: height, z-index, pointer-events and both panes'
+                   padding are deliberately untouched, so nothing moves and the bottom bar
+                   (anchored to the pixel-locked body, not to a pane) cannot be affected.
+                   REVERT = restore these two gradients:
+                     dark  : linear-gradient(to bottom, rgba(0,0,0,0.10), rgba(0,0,0,0) 100%)
+                     light : linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0) 100%) */
+                background: none;
             }
             html:not(.dark) .top-frost {
-                background: linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0) 100%);
+                background: none;
             }
             /* Full-screen read area: content rests right under the status bar; only
                the band's imperceptible 1.5px tail overlaps the first few pixels. */
@@ -7713,7 +7725,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 186;
+        window.APP_BUILD = 187;
 
         (async function initApp() {
             try {
@@ -8545,7 +8557,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v186';
+const CACHE_NAME = 'rss-reader-v187';
 const APP_SHELL = [
     '/',
     'index.html'
