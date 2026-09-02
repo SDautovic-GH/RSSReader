@@ -4688,6 +4688,16 @@
             bodyEl.querySelectorAll('img').forEach(img => {
                 if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
                 if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
+                // EAGER-LOAD BODY IMAGES (build 188, 2026-09-02). Feed bodies arrive
+                // with WordPress's loading="lazy" (WHDH's weather posts carry 5 such
+                // images), and iOS defers anything below the fold. That deferral is what
+                // broke them: WebKit reports complete=true with naturalWidth=0 for a
+                // deferred lazy image, so the collapse() check below hid the image AND its
+                // wrappers - irreversibly, since nothing re-shows them once loaded. Chrome
+                // reports complete=false, takes the onload path, and shows them, which is
+                // why the same article had images on desktop and none on mobile. This is
+                // the article the user is READING, so eager is also the right behavior.
+                img.loading = 'eager';
 
                 const collapse = () => {
                     img.setAttribute('data-broken', '1');
@@ -4716,7 +4726,11 @@
                 };
                 img.onerror = collapse;
 
-                if (img.complete) {
+                // Only treat a zero-size image as broken once the browser has actually
+                // ATTEMPTED it: currentSrc is empty until then, and on WebKit a not-yet-
+                // loaded image can report complete=true. Without this guard a deferred
+                // image is indistinguishable from a broken one and gets hidden forever.
+                if (img.complete && img.currentSrc) {
                     if (!img.naturalWidth || !img.naturalHeight) collapse();
                 } else {
                     // Reserve no space while loading — prevents gap if image fails or is tiny
@@ -7725,7 +7739,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 187;
+        window.APP_BUILD = 188;
 
         (async function initApp() {
             try {
@@ -8557,7 +8571,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v187';
+const CACHE_NAME = 'rss-reader-v188';
 const APP_SHELL = [
     '/',
     'index.html'
