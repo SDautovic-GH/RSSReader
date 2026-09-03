@@ -4353,7 +4353,8 @@
             stripJsonBlobs(bodyEl);
             stripImagePlaceholders(bodyEl);
             stripLeadingEmptyBlocks(bodyEl);
-            initBodyImages(bodyEl);
+            initBodyImages(bodyEl, article);   // normalize/drop unusable images first...
+            ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
             const readerElEarly = document.getElementById('reader-view');
             if (readerElEarly) readerElEarly.scrollTop = 0;
 
@@ -4591,7 +4592,8 @@
                             bodyEl.innerHTML = sanitized;
                             stripImagePlaceholders(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
-                            initBodyImages(bodyEl);
+                            initBodyImages(bodyEl, article);
+                            ensureLeadImage(bodyEl, article);
                             article.body = sanitized;
                             article._fullBodyLoaded = true;
                             // Body just got replaced with a much longer extracted version —
@@ -4727,10 +4729,76 @@
             }
         }
 
-        function initBodyImages(bodyEl) {
+        // LEAD IMAGE FROM FEED METADATA (build 190, 2026-09-03). Most feeds ship the
+        // article photo ONLY as <media:content>/<media:thumbnail>/<enclosure> - captured
+        // into article.image at fetch time - and put no <img> in the body. Audited across
+        // all 65 subscribed feeds: 9 are exactly this shape (NYT Politics/Technology/
+        // Wellness/Your Money, WSJ Technology/Personal Finance, WHDH 7News, Brian Krebs,
+        // NBC Sports Boston) and it is the most common RSS convention, so newly added
+        // feeds land here too. The Reader never rendered article.image, so those posts
+        // showed text only on every device. Inserted ONLY when the body has no usable
+        // media of its own, so feeds that embed images (ProPublica, MacRumors, The Verge,
+        // Bluesky, Slobodna-Bosna galleries) are untouched and nothing duplicates.
+        // Derived at DISPLAY time, never baked into the cached body, so it re-evaluates
+        // after extraction swaps the body in.
+        function ensureLeadImage(bodyEl, article) {
+            if (!bodyEl || !article) return;
+            const src = article.image || '';
+            if (!/^https?:\/\//i.test(src)) return;                       // no data:/javascript:
+            if (bodyEl.querySelector('img, video, iframe, audio')) return;  // body has its own media
+            if (bodyEl.querySelector('figure.lead-image')) return;          // already inserted
+            const fig = document.createElement('figure');
+            fig.className = 'lead-image';
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = '';
+            img.loading = 'eager';
+            img.onerror = () => fig.remove();   // dead featured URL leaves no gap
+            fig.appendChild(img);
+            bodyEl.insertBefore(fig, bodyEl.firstChild);
+        }
+
+        // Every lazy-loader convention ships the real URL in a data-* attribute and puts a
+        // placeholder (or nothing) in src. Normalized at DISPLAY time, not fetch time, so it
+        // costs nothing during a refresh (fetch-time DOM work was removed in Phase 3 as a
+        // jank source) and so it covers extracted article HTML as well as feed bodies.
+        const LAZY_SRC_ATTRS = ['data-original','data-lazy-src','data-src','data-hi-res-src','data-echo','data-lazy','data-image'];
+        function isPlaceholderSrc(s) {
+            const v = (s || '').trim();
+            if (!v) return true;
+            // A 1x1 spacer gif inlines to ~70 chars; a genuine inline image is far longer,
+            // so length is what separates 'placeholder' from 'real data: image'.
+            if (/^data:/i.test(v)) return v.length < 512;
+            return /(?:blank|spacer|placeholder|transparent|pixel|1x1)\.(?:gif|png)(?:[?#]|$)/i.test(v);
+        }
+        function initBodyImages(bodyEl, article) {
             bodyEl.querySelectorAll('img').forEach(img => {
-                if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
-                if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
+                // 1. Adopt a lazy-loader URL when src is absent or a placeholder. Replaces
+                //    `img.src = img.dataset.src`, which assigned undefined when there was no
+                //    data-src - producing a literal src="undefined", a 404, and then a
+                //    'broken image' collapse. The M365 Copilot Blog feed ships 52 bare
+                //    <img /> tags per 10 items and hit exactly that.
+                if (isPlaceholderSrc(img.getAttribute('src'))) {
+                    for (const a of LAZY_SRC_ATTRS) {
+                        const v = (img.getAttribute(a) || '').trim();
+                        if (v) { img.setAttribute('src', v); break; }
+                    }
+                }
+                // 2. srcset / data-srcset as the next-best source.
+                if (isPlaceholderSrc(img.getAttribute('src'))) {
+                    const ss = img.getAttribute('srcset') || img.getAttribute('data-srcset') || '';
+                    const first = ss.split(',')[0].trim().split(' ')[0];
+                    if (first) img.setAttribute('src', first);
+                }
+                // 3. A relative src would resolve against OUR origin (github.io) and 404 -
+                //    re-resolve it against the article's own URL whenever we know it.
+                const attrSrc = img.getAttribute('src') || '';
+                if (attrSrc && !/^(?:https?:|data:|\/\/)/i.test(attrSrc) && article && article.link) {
+                    try { img.setAttribute('src', new URL(attrSrc, article.link).href); } catch (e) {}
+                }
+                // 4. Still nothing usable: drop the element so it leaves no broken icon,
+                //    stray request or empty gap.
+                if (isPlaceholderSrc(img.getAttribute('src'))) { img.remove(); return; }
                 // EAGER-LOAD BODY IMAGES (build 188, 2026-09-02). Feed bodies arrive
                 // with WordPress's loading="lazy" (WHDH's weather posts carry 5 such
                 // images), and iOS defers anything below the fold. That deferral is what
@@ -7782,7 +7850,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 189;
+        window.APP_BUILD = 190;
 
         (async function initApp() {
             try {
@@ -8614,7 +8682,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v189';
+const CACHE_NAME = 'rss-reader-v190';
 const APP_SHELL = [
     '/',
     'index.html'
