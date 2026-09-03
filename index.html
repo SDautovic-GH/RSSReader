@@ -4960,7 +4960,17 @@
                     const hk = h ? `${h.errorCount >= 3 ? 'e' : ''}${h.lastSuccess && (Date.now() - h.lastSuccess > 7 * 86400000) ? 's' : ''}` : '';
                     return `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}:${hk}`;
                 }).join('|')
-                + '||' + (window._categoryOrder || []).join(',');
+                + '||' + (window._categoryOrder || []).join(',')
+                // Selection state belongs in this key for the SAME reason as category
+                // order above: the markup built below embeds the active-item highlight
+                // (per feed row AND per category row), so when ONLY the selection
+                // changed, every other component is identical, the early-return fires,
+                // and the highlight stays painted on the PREVIOUS row. Reproduced
+                // 2026-09-03: select CNBC Tech Check, then Slobodna-Bosna Sport with
+                // nothing read in between -> unread counts unchanged -> key unchanged ->
+                // CNBC stayed lit while the timeline correctly showed Slobodna-Bosna.
+                // (Normally a read/unread change moves a count and masks this.)
+                + '||' + window.currentSmartFeed + ':' + (window.currentCategoryFilter || '') + ':' + (window.currentSourceFilter || '');
             // Always repaint the Settings feed list — it's driven by accountStates.local,
             // which the renderKey guard below does not track.
             renderLocalFeedList();
@@ -7850,7 +7860,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 190;
+        window.APP_BUILD = 191;
 
         (async function initApp() {
             try {
@@ -8682,7 +8692,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v190';
+const CACHE_NAME = 'rss-reader-v191';
 const APP_SHELL = [
     '/',
     'index.html'
