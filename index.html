@@ -4459,6 +4459,40 @@
 
                     const doc = new DOMParser().parseFromString(html, 'text/html');
 
+                    // HARVEST JS-GALLERY IMAGES BEFORE THE REMOVAL PASS (build 189, 2026-09-03).
+                    // Some CMSes ship an article's photos ONLY as a JSON config for a
+                    // client-side gallery, with no <img> tag anywhere on the page.
+                    // Slobodna-Bosna emits:
+                    //   <div class="news_gallery"><div class="fotorama_data">
+                    //     [{"img":"/img/...jpg","full":"...","caption":"Foto: Agencije"}]
+                    //   </div><div class="fotorama"></div></div>
+                    // and their Fotorama script builds the <img> at runtime - which we never
+                    // run. We also DELETE both carriers deliberately (.news_gallery sits in the
+                    // removal list below; stripJsonBlobs() strips the JSON text node) because
+                    // that raw JSON used to leak into the reader as garbage. Net result: zero
+                    // images from such feeds on EVERY device (verified 2026-09-03 - the article
+                    // page's only <img> tags were logo, captcha, app badges and an FB pixel).
+                    // So read the JSON here, while it still exists, and re-emit real markup
+                    // below. Gated on actually finding such a block, so every other feed is
+                    // untouched.
+                    const galleryFigures = [];
+                    try {
+                        doc.querySelectorAll('.fotorama_data, [class$="_data"]').forEach(el => {
+                            const txt = (el.textContent || '').trim();
+                            if (!txt.startsWith('[{')) return;
+                            const arr = JSON.parse(txt);
+                            if (!Array.isArray(arr)) return;
+                            arr.forEach(o => {
+                                const raw = o && (o.full || o.img);
+                                if (!raw) return;
+                                let abs;
+                                try { abs = new URL(raw, article.link).href; } catch (e) { return; }
+                                if (!/^https?:\/\//i.test(abs)) return;   // never javascript:/data: sources
+                                galleryFigures.push({ src: abs, caption: String(o.caption || '') });
+                            });
+                        });
+                    } catch (e) { /* malformed JSON: skip quietly, never block extraction */ }
+
                     doc.querySelectorAll([
                         'script','style','nav','footer','header','aside','iframe',
                         '[class*="paywall"]','[class*="subscribe"]','[class*="newsletter"]',
@@ -4544,7 +4578,16 @@
                             }
                             stripJsonBlobs(content);
                             // Skip linkify — extracted HTML already has proper <a> tags
-                            const sanitized = DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+                            // Re-emit the harvested gallery photos ahead of the text (see
+                            // "HARVEST JS-GALLERY IMAGES" above). Built from esc()'d values and
+                            // http(s)-validated URLs, and folded into `sanitized` so the CACHED
+                            // body carries them too - otherwise reopening the article would show
+                            // the text with no images all over again.
+                            const galleryHtml = galleryFigures.map(g =>
+                                '<figure><img src="' + esc(g.src) + '" alt="' + esc(g.caption) + '">'
+                                + (g.caption ? '<figcaption>' + esc(g.caption) + '</figcaption>' : '')
+                                + '</figure>').join('');
+                            const sanitized = galleryHtml + DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.innerHTML = sanitized;
                             stripImagePlaceholders(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
@@ -7739,7 +7782,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 188;
+        window.APP_BUILD = 189;
 
         (async function initApp() {
             try {
@@ -8571,7 +8614,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v188';
+const CACHE_NAME = 'rss-reader-v189';
 const APP_SHELL = [
     '/',
     'index.html'
