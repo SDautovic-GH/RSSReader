@@ -4353,7 +4353,9 @@
             stripJsonBlobs(bodyEl);
             stripImagePlaceholders(bodyEl);
             stripLeadingEmptyBlocks(bodyEl);
-            initBodyImages(bodyEl);
+            normalizeBodyStyles(bodyEl);       // feed fonts/sizes must not beat the app's
+            initBodyImages(bodyEl, article);   // normalize/drop unusable images first...
+            ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
             const readerElEarly = document.getElementById('reader-view');
             if (readerElEarly) readerElEarly.scrollTop = 0;
 
@@ -4459,6 +4461,40 @@
 
                     const doc = new DOMParser().parseFromString(html, 'text/html');
 
+                    // HARVEST JS-GALLERY IMAGES BEFORE THE REMOVAL PASS (build 189, 2026-09-03).
+                    // Some CMSes ship an article's photos ONLY as a JSON config for a
+                    // client-side gallery, with no <img> tag anywhere on the page.
+                    // Slobodna-Bosna emits:
+                    //   <div class="news_gallery"><div class="fotorama_data">
+                    //     [{"img":"/img/...jpg","full":"...","caption":"Foto: Agencije"}]
+                    //   </div><div class="fotorama"></div></div>
+                    // and their Fotorama script builds the <img> at runtime - which we never
+                    // run. We also DELETE both carriers deliberately (.news_gallery sits in the
+                    // removal list below; stripJsonBlobs() strips the JSON text node) because
+                    // that raw JSON used to leak into the reader as garbage. Net result: zero
+                    // images from such feeds on EVERY device (verified 2026-09-03 - the article
+                    // page's only <img> tags were logo, captcha, app badges and an FB pixel).
+                    // So read the JSON here, while it still exists, and re-emit real markup
+                    // below. Gated on actually finding such a block, so every other feed is
+                    // untouched.
+                    const galleryFigures = [];
+                    try {
+                        doc.querySelectorAll('.fotorama_data, [class$="_data"]').forEach(el => {
+                            const txt = (el.textContent || '').trim();
+                            if (!txt.startsWith('[{')) return;
+                            const arr = JSON.parse(txt);
+                            if (!Array.isArray(arr)) return;
+                            arr.forEach(o => {
+                                const raw = o && (o.full || o.img);
+                                if (!raw) return;
+                                let abs;
+                                try { abs = new URL(raw, article.link).href; } catch (e) { return; }
+                                if (!/^https?:\/\//i.test(abs)) return;   // never javascript:/data: sources
+                                galleryFigures.push({ src: abs, caption: String(o.caption || '') });
+                            });
+                        });
+                    } catch (e) { /* malformed JSON: skip quietly, never block extraction */ }
+
                     doc.querySelectorAll([
                         'script','style','nav','footer','header','aside','iframe',
                         '[class*="paywall"]','[class*="subscribe"]','[class*="newsletter"]',
@@ -4544,11 +4580,22 @@
                             }
                             stripJsonBlobs(content);
                             // Skip linkify — extracted HTML already has proper <a> tags
-                            const sanitized = DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+                            // Re-emit the harvested gallery photos ahead of the text (see
+                            // "HARVEST JS-GALLERY IMAGES" above). Built from esc()'d values and
+                            // http(s)-validated URLs, and folded into `sanitized` so the CACHED
+                            // body carries them too - otherwise reopening the article would show
+                            // the text with no images all over again.
+                            const galleryHtml = galleryFigures.map(g =>
+                                '<figure><img src="' + esc(g.src) + '" alt="' + esc(g.caption) + '">'
+                                + (g.caption ? '<figcaption>' + esc(g.caption) + '</figcaption>' : '')
+                                + '</figure>').join('');
+                            const sanitized = galleryHtml + DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
                             bodyEl.innerHTML = sanitized;
                             stripImagePlaceholders(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
-                            initBodyImages(bodyEl);
+                            normalizeBodyStyles(bodyEl);
+                            initBodyImages(bodyEl, article);
+                            ensureLeadImage(bodyEl, article);
                             article.body = sanitized;
                             article._fullBodyLoaded = true;
                             // Body just got replaced with a much longer extracted version —
@@ -4684,10 +4731,118 @@
             }
         }
 
-        function initBodyImages(bodyEl) {
+        // LEAD IMAGE FROM FEED METADATA (build 190, 2026-09-03). Most feeds ship the
+        // article photo ONLY as <media:content>/<media:thumbnail>/<enclosure> - captured
+        // into article.image at fetch time - and put no <img> in the body. Audited across
+        // all 65 subscribed feeds: 9 are exactly this shape (NYT Politics/Technology/
+        // Wellness/Your Money, WSJ Technology/Personal Finance, WHDH 7News, Brian Krebs,
+        // NBC Sports Boston) and it is the most common RSS convention, so newly added
+        // feeds land here too. The Reader never rendered article.image, so those posts
+        // showed text only on every device. Inserted ONLY when the body has no usable
+        // media of its own, so feeds that embed images (ProPublica, MacRumors, The Verge,
+        // Bluesky, Slobodna-Bosna galleries) are untouched and nothing duplicates.
+        // Derived at DISPLAY time, never baked into the cached body, so it re-evaluates
+        // after extraction swaps the body in.
+        function ensureLeadImage(bodyEl, article) {
+            if (!bodyEl || !article) return;
+            const src = article.image || '';
+            if (!/^https?:\/\//i.test(src)) return;                       // no data:/javascript:
+            if (bodyEl.querySelector('img, video, iframe, audio')) return;  // body has its own media
+            if (bodyEl.querySelector('figure.lead-image')) return;          // already inserted
+            const fig = document.createElement('figure');
+            fig.className = 'lead-image';
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = '';
+            img.loading = 'eager';
+            img.onerror = () => fig.remove();   // dead featured URL leaves no gap
+            fig.appendChild(img);
+            bodyEl.insertBefore(fig, bodyEl.firstChild);
+        }
+
+        // Every lazy-loader convention ships the real URL in a data-* attribute and puts a
+        // placeholder (or nothing) in src. Normalized at DISPLAY time, not fetch time, so it
+        // costs nothing during a refresh (fetch-time DOM work was removed in Phase 3 as a
+        // jank source) and so it covers extracted article HTML as well as feed bodies.
+        const LAZY_SRC_ATTRS = ['data-original','data-lazy-src','data-src','data-hi-res-src','data-echo','data-lazy','data-image'];
+        function isPlaceholderSrc(s) {
+            const v = (s || '').trim();
+            if (!v) return true;
+            // A 1x1 spacer gif inlines to ~70 chars; a genuine inline image is far longer,
+            // so length is what separates 'placeholder' from 'real data: image'.
+            if (/^data:/i.test(v)) return v.length < 512;
+            return /(?:blank|spacer|placeholder|transparent|pixel|1x1)\.(?:gif|png)(?:[?#]|$)/i.test(v);
+        }
+        // FEED-SUPPLIED TYPOGRAPHY OVERRIDE (build 192, 2026-09-03). Feeds inline their
+        // own fonts and sizes, which then beat the app's reading typography. Measured on
+        // the Melrose Lady Raiders (Blogger) feed: every paragraph is wrapped in
+        //     <span style="font-family: verdana; font-size: medium;">
+        // - 451 such declarations across its 25 items - and `medium` is the CSS ABSOLUTE
+        // keyword (16px), independent of --mob-body-size/app zoom, so the text renders
+        // SMALLER than the rest of the app and in the wrong face. The app's typography is
+        // deliberately tuned and must win, so font-size/font-family/line-height are
+        // dropped from inline styles inside the reader (everything else is left alone).
+        // Embed wrappers get stripped wholesale: Instagram's blockquote carries
+        // background: rgb(255,255,255) plus line-height: 0, which on the dark theme paints
+        // a blank white card. With their inline styles gone they inherit our own
+        // .article-content blockquote treatment and their permalinks become tappable.
+        // Their MEDIA still cannot render (Instagram/X build those images in JS we never
+        // run) - YouTube embeds are real <iframe>s and already work.
+        const EMBED_WRAPPER_SEL = '.instagram-media, .twitter-tweet, .tiktok-embed, blockquote[data-instgrm-permalink]';
+        function normalizeBodyStyles(bodyEl) {
+            if (!bodyEl) return;
+            try {
+                bodyEl.querySelectorAll(EMBED_WRAPPER_SEL).forEach(w => {
+                    w.removeAttribute('style');
+                    w.querySelectorAll('[style]').forEach(el => el.removeAttribute('style'));
+                });
+                bodyEl.querySelectorAll('[style]').forEach(el => {
+                    el.style.removeProperty('font-size');
+                    el.style.removeProperty('font-family');
+                    el.style.removeProperty('line-height');
+                    if (!(el.getAttribute('style') || '').trim()) el.removeAttribute('style');
+                });
+            } catch (e) { /* never block rendering over cosmetics */ }
+        }
+
+        function initBodyImages(bodyEl, article) {
             bodyEl.querySelectorAll('img').forEach(img => {
-                if (!img.src || img.src === window.location.href) img.src = img.dataset.src;
-                if (!img.getAttribute('src') && img.srcset) { const first = img.srcset.split(',')[0].trim().split(' ')[0]; if (first) img.src = first; }
+                // 1. Adopt a lazy-loader URL when src is absent or a placeholder. Replaces
+                //    `img.src = img.dataset.src`, which assigned undefined when there was no
+                //    data-src - producing a literal src="undefined", a 404, and then a
+                //    'broken image' collapse. The M365 Copilot Blog feed ships 52 bare
+                //    <img /> tags per 10 items and hit exactly that.
+                if (isPlaceholderSrc(img.getAttribute('src'))) {
+                    for (const a of LAZY_SRC_ATTRS) {
+                        const v = (img.getAttribute(a) || '').trim();
+                        if (v) { img.setAttribute('src', v); break; }
+                    }
+                }
+                // 2. srcset / data-srcset as the next-best source.
+                if (isPlaceholderSrc(img.getAttribute('src'))) {
+                    const ss = img.getAttribute('srcset') || img.getAttribute('data-srcset') || '';
+                    const first = ss.split(',')[0].trim().split(' ')[0];
+                    if (first) img.setAttribute('src', first);
+                }
+                // 3. A relative src would resolve against OUR origin (github.io) and 404 -
+                //    re-resolve it against the article's own URL whenever we know it.
+                const attrSrc = img.getAttribute('src') || '';
+                if (attrSrc && !/^(?:https?:|data:|\/\/)/i.test(attrSrc) && article && article.link) {
+                    try { img.setAttribute('src', new URL(attrSrc, article.link).href); } catch (e) {}
+                }
+                // 4. Still nothing usable: drop the element so it leaves no broken icon,
+                //    stray request or empty gap.
+                if (isPlaceholderSrc(img.getAttribute('src'))) { img.remove(); return; }
+                // EAGER-LOAD BODY IMAGES (build 188, 2026-09-02). Feed bodies arrive
+                // with WordPress's loading="lazy" (WHDH's weather posts carry 5 such
+                // images), and iOS defers anything below the fold. That deferral is what
+                // broke them: WebKit reports complete=true with naturalWidth=0 for a
+                // deferred lazy image, so the collapse() check below hid the image AND its
+                // wrappers - irreversibly, since nothing re-shows them once loaded. Chrome
+                // reports complete=false, takes the onload path, and shows them, which is
+                // why the same article had images on desktop and none on mobile. This is
+                // the article the user is READING, so eager is also the right behavior.
+                img.loading = 'eager';
 
                 const collapse = () => {
                     img.setAttribute('data-broken', '1');
@@ -4716,7 +4871,11 @@
                 };
                 img.onerror = collapse;
 
-                if (img.complete) {
+                // Only treat a zero-size image as broken once the browser has actually
+                // ATTEMPTED it: currentSrc is empty until then, and on WebKit a not-yet-
+                // loaded image can report complete=true. Without this guard a deferred
+                // image is indistinguishable from a broken one and gets hidden forever.
+                if (img.complete && img.currentSrc) {
                     if (!img.naturalWidth || !img.naturalHeight) collapse();
                 } else {
                     // Reserve no space while loading — prevents gap if image fails or is tiny
@@ -4835,7 +4994,17 @@
                     const hk = h ? `${h.errorCount >= 3 ? 'e' : ''}${h.lastSuccess && (Date.now() - h.lastSuccess > 7 * 86400000) ? 's' : ''}` : '';
                     return `${f.name}:${f.unread}:${f.favicon||''}:${window.collapsedCategories[f.category]}:${hk}`;
                 }).join('|')
-                + '||' + (window._categoryOrder || []).join(',');
+                + '||' + (window._categoryOrder || []).join(',')
+                // Selection state belongs in this key for the SAME reason as category
+                // order above: the markup built below embeds the active-item highlight
+                // (per feed row AND per category row), so when ONLY the selection
+                // changed, every other component is identical, the early-return fires,
+                // and the highlight stays painted on the PREVIOUS row. Reproduced
+                // 2026-09-03: select CNBC Tech Check, then Slobodna-Bosna Sport with
+                // nothing read in between -> unread counts unchanged -> key unchanged ->
+                // CNBC stayed lit while the timeline correctly showed Slobodna-Bosna.
+                // (Normally a read/unread change moves a count and masks this.)
+                + '||' + window.currentSmartFeed + ':' + (window.currentCategoryFilter || '') + ':' + (window.currentSourceFilter || '');
             // Always repaint the Settings feed list — it's driven by accountStates.local,
             // which the renderKey guard below does not track.
             renderLocalFeedList();
@@ -7725,7 +7894,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 187;
+        window.APP_BUILD = 192;
 
         (async function initApp() {
             try {
@@ -8557,7 +8726,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v187';
+const CACHE_NAME = 'rss-reader-v192';
 const APP_SHELL = [
     '/',
     'index.html'
