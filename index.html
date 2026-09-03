@@ -4353,6 +4353,7 @@
             stripJsonBlobs(bodyEl);
             stripImagePlaceholders(bodyEl);
             stripLeadingEmptyBlocks(bodyEl);
+            normalizeBodyStyles(bodyEl);       // feed fonts/sizes must not beat the app's
             initBodyImages(bodyEl, article);   // normalize/drop unusable images first...
             ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
             const readerElEarly = document.getElementById('reader-view');
@@ -4592,6 +4593,7 @@
                             bodyEl.innerHTML = sanitized;
                             stripImagePlaceholders(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
+                            normalizeBodyStyles(bodyEl);
                             initBodyImages(bodyEl, article);
                             ensureLeadImage(bodyEl, article);
                             article.body = sanitized;
@@ -4771,6 +4773,38 @@
             if (/^data:/i.test(v)) return v.length < 512;
             return /(?:blank|spacer|placeholder|transparent|pixel|1x1)\.(?:gif|png)(?:[?#]|$)/i.test(v);
         }
+        // FEED-SUPPLIED TYPOGRAPHY OVERRIDE (build 192, 2026-09-03). Feeds inline their
+        // own fonts and sizes, which then beat the app's reading typography. Measured on
+        // the Melrose Lady Raiders (Blogger) feed: every paragraph is wrapped in
+        //     <span style="font-family: verdana; font-size: medium;">
+        // - 451 such declarations across its 25 items - and `medium` is the CSS ABSOLUTE
+        // keyword (16px), independent of --mob-body-size/app zoom, so the text renders
+        // SMALLER than the rest of the app and in the wrong face. The app's typography is
+        // deliberately tuned and must win, so font-size/font-family/line-height are
+        // dropped from inline styles inside the reader (everything else is left alone).
+        // Embed wrappers get stripped wholesale: Instagram's blockquote carries
+        // background: rgb(255,255,255) plus line-height: 0, which on the dark theme paints
+        // a blank white card. With their inline styles gone they inherit our own
+        // .article-content blockquote treatment and their permalinks become tappable.
+        // Their MEDIA still cannot render (Instagram/X build those images in JS we never
+        // run) - YouTube embeds are real <iframe>s and already work.
+        const EMBED_WRAPPER_SEL = '.instagram-media, .twitter-tweet, .tiktok-embed, blockquote[data-instgrm-permalink]';
+        function normalizeBodyStyles(bodyEl) {
+            if (!bodyEl) return;
+            try {
+                bodyEl.querySelectorAll(EMBED_WRAPPER_SEL).forEach(w => {
+                    w.removeAttribute('style');
+                    w.querySelectorAll('[style]').forEach(el => el.removeAttribute('style'));
+                });
+                bodyEl.querySelectorAll('[style]').forEach(el => {
+                    el.style.removeProperty('font-size');
+                    el.style.removeProperty('font-family');
+                    el.style.removeProperty('line-height');
+                    if (!(el.getAttribute('style') || '').trim()) el.removeAttribute('style');
+                });
+            } catch (e) { /* never block rendering over cosmetics */ }
+        }
+
         function initBodyImages(bodyEl, article) {
             bodyEl.querySelectorAll('img').forEach(img => {
                 // 1. Adopt a lazy-loader URL when src is absent or a placeholder. Replaces
@@ -7860,7 +7894,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 191;
+        window.APP_BUILD = 192;
 
         (async function initApp() {
             try {
@@ -8692,7 +8726,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v191';
+const CACHE_NAME = 'rss-reader-v192';
 const APP_SHELL = [
     '/',
     'index.html'
