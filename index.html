@@ -3740,6 +3740,32 @@
             const searchScope = document.getElementById('desk-search-scope')?.value || 'all';
             const searchReadState = document.getElementById('desk-search-readstate')?.value || 'all';
             const searchActive = !!window._searchQuery || searchScope !== 'all' || searchReadState !== 'all';
+            // Scope + read-state + query narrowing, factored out so the bucket views
+            // below can reuse it verbatim instead of ignoring search entirely.
+            const narrowBySearch = (pool) => {
+                if (searchScope.startsWith('cat:')) {
+                    const cat = searchScope.slice(4);
+                    const sources = new Set(window.feeds.filter(f => f.category === cat).map(f => f.name));
+                    pool = pool.filter(a => sources.has(a.source));
+                } else if (searchScope.startsWith('feed:')) {
+                    const url = searchScope.slice(5);
+                    const f = window.feeds.find(f => f.url === url);
+                    if (f) pool = pool.filter(a => a.source === f.name);
+                    else pool = [];
+                }
+                if (searchReadState === 'unread') pool = pool.filter(a => a.unread);
+                else if (searchReadState === 'read') pool = pool.filter(a => !a.unread);
+                if (window._searchQuery) {
+                    const q = window._searchQuery.toLowerCase();
+                    pool = pool.filter(a =>
+                        (a.title||'').toLowerCase().includes(q) ||
+                        (a.source||'').toLowerCase().includes(q) ||
+                        (a.excerpt||'').toLowerCase().includes(q) ||
+                        (a.body||'').toLowerCase().includes(q)
+                    );
+                }
+                return pool;
+            };
             if (searchActive && !isRecentlyRead && !isSaved && !isReadLaterBucketed) {
                 // Start with in-memory cache (~500 most-recent), then merge in
                 // the read-archive snapshot loaded by openDeskSearch so search
@@ -3766,28 +3792,21 @@
                         });
                     }
                 }
-                if (searchScope.startsWith('cat:')) {
-                    const cat = searchScope.slice(4);
-                    const sources = new Set(window.feeds.filter(f => f.category === cat).map(f => f.name));
-                    pool = pool.filter(a => sources.has(a.source));
-                } else if (searchScope.startsWith('feed:')) {
-                    const url = searchScope.slice(5);
-                    const f = window.feeds.find(f => f.url === url);
-                    if (f) pool = pool.filter(a => a.source === f.name);
-                    else pool = [];
-                }
-                if (searchReadState === 'unread') pool = pool.filter(a => a.unread);
-                else if (searchReadState === 'read') pool = pool.filter(a => !a.unread);
-                if (window._searchQuery) {
-                    const q = window._searchQuery.toLowerCase();
-                    pool = pool.filter(a =>
-                        (a.title||'').toLowerCase().includes(q) ||
-                        (a.source||'').toLowerCase().includes(q) ||
-                        (a.excerpt||'').toLowerCase().includes(q) ||
-                        (a.body||'').toLowerCase().includes(q)
-                    );
-                }
-                filtered = pool;
+                filtered = narrowBySearch(pool);
+            } else if (searchActive) {
+                // SEARCH IN THE BUCKET VIEWS (build 206, 2026-09-04). Both branches were
+                // gated on !isRecentlyRead && !isSaved && !isReadLaterBucketed, so while
+                // Recently Read / Saved / Read Later was selected the search box did
+                // NOTHING: handleDeskSearch set window._searchQuery and called
+                // renderTimeline(), then neither branch consumed it and the list stayed
+                // exactly as it was. Whichever view a device happened to be sitting in
+                // decided whether search worked at all - which is how it can look broken
+                // on the desktop and fine on the phone at the same moment.
+                // These buckets are their own pools (durable Read Later, the saved list,
+                // the read archive), so narrow the bucket in place; do NOT merge in
+                // window.articles or the read-archive cache, which would drag in items
+                // that are not in the bucket the user is looking at.
+                filtered = narrowBySearch(filtered);
             } else if (!isRecentlyRead && !isSaved && !isReadLaterBucketed) {
                 // Apply normal filters
                 if (window.currentSmartFeed === 'all') {
@@ -8097,7 +8116,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 205;
+        window.APP_BUILD = 206;
 
         (async function initApp() {
             try {
@@ -8929,7 +8948,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v205';
+const CACHE_NAME = 'rss-reader-v206';
 const APP_SHELL = [
     '/',
     'index.html'
