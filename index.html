@@ -4437,19 +4437,30 @@
                 }
             } catch(e) { return; }
 
+            // Per-proxy timeouts (build 196, 2026-09-04). A single 5s cap silently
+            // disqualified the only proxy that can reach some hosts. Measured on
+            // bleepingcomputer.com: the primary Worker returns Cloudflare "error code:
+            // 1106" (17 bytes - the same Worker pulls cnbc.com fine at 848KB), so the
+            // chain falls through to allorigins, which returned the real 935-word page
+            // but took 6-17s - always past the old 5s abort. The fast proxies keep the
+            // tight cap; only the last-resort one is allowed to be slow, and it now uses
+            // /raw instead of /get (same service, no JSON envelope to inflate the
+            // transfer, and it echoes an Access-Control-Allow-Origin for this app's
+            // origin). Worst case for an unreachable page: ~22s before the stub, up from
+            // ~15s - and that only delays the stub, never the RSS body already on screen.
             const proxies = [
-                url => ({ url: `https://still-shadow-1ebe.sdfyix.workers.dev/?url=${encodeURIComponent(url)}`, isJson: false }),
-                url => ({ url: `https://corsproxy.io/?${encodeURIComponent(url)}`, isJson: false }),
-                url => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, isJson: true }),
+                url => ({ url: `https://still-shadow-1ebe.sdfyix.workers.dev/?url=${encodeURIComponent(url)}`, isJson: false, timeout: 5000 }),
+                url => ({ url: `https://corsproxy.io/?${encodeURIComponent(url)}`, isJson: false, timeout: 5000 }),
+                url => ({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, isJson: false, timeout: 12000 }),
             ];
 
             const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
 
             for (const proxyFn of proxies) {
-                const { url: proxyUrl, isJson } = proxyFn(article.link);
+                const { url: proxyUrl, isJson, timeout } = proxyFn(article.link);
                 const proxyName = proxyUrl.split('/')[2];
                 try {
-                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(timeout || 5000) });
                     if (!res.ok) continue;
 
                     let html = isJson ? (await res.json()).contents : await res.text();
@@ -4571,13 +4582,36 @@
                         'article','main',
                     ];
 
+                    // PICK THE CONTAINER BY THE SAME BAR THE DECISION USES (build 196,
+                    // 2026-09-04). This loop used to accept the FIRST selector match over
+                    // 50 words; the gate further down then demanded "> 100 words AND at
+                    // least 80 more than the feed already gave us" and, when the chosen
+                    // match failed it, threw the WHOLE fetched page away and moved to the
+                    // next proxy. A page with a small decoy container earlier in the list
+                    // therefore defeated extraction outright. Measured on Bleeping
+                    // Computer, whose article page carries BOTH:
+                    //     <div class="article-body">   52 words,  2 <p>, 0 img  (teaser)
+                    //     <div class="articleBody">   409 words, 20 <p>, 2 img  (article)
+                    // and `.article-body` sits earlier in SELECTORS - so the 52-word
+                    // teaser won, failed the gate, and the reader fell through to the
+                    // "may be truncated" stub even with the full HTML in hand.
+                    // Now: walk SELECTORS in the same preference order, but take the first
+                    // match that actually CLEARS the gate. Only if nothing clears it fall
+                    // back to the largest match, which then meets the gate below exactly as
+                    // before - so pages where the feed really is the fullest text behave
+                    // unchanged.
+                    const wordsIn = el => el.textContent.trim().split(/\s+/).filter(Boolean).length;
+                    const clearsGate = w => w > 100 && w > rssWordCount + 80;
                     let content = null, matchedSel = null;
+                    let biggest = null, biggestWords = 0, biggestSel = null;
                     for (const sel of SELECTORS) {
                         const el = doc.querySelector(sel);
-                        if (el && el.textContent.trim().split(/\s+/).filter(Boolean).length > 50) {
-                            content = el; matchedSel = sel; break;
-                        }
+                        if (!el) continue;
+                        const w = wordsIn(el);
+                        if (w > biggestWords) { biggest = el; biggestWords = w; biggestSel = sel; }
+                        if (clearsGate(w)) { content = el; matchedSel = sel; break; }
                     }
+                    if (!content && biggestWords > 50) { content = biggest; matchedSel = biggestSel + ' (largest)'; }
 
                     if (!content) {
                         let best = null, bestScore = 0;
@@ -7958,7 +7992,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 195;
+        window.APP_BUILD = 196;
 
         (async function initApp() {
             try {
@@ -8790,7 +8824,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v195';
+const CACHE_NAME = 'rss-reader-v196';
 const APP_SHELL = [
     '/',
     'index.html'
