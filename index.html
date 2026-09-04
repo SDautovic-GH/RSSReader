@@ -4475,14 +4475,32 @@
             const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
 
             for (const proxyFn of proxies) {
+                // EXTRACTION DIAGNOSTICS (build 198, 2026-09-04). `proxyName` was computed
+                // here and never used, so a failing article was indistinguishable from a
+                // slow one: no way to tell WHICH proxy failed, how, or whether the page
+                // arrived and merely lost the word gate. Every attempt now prints one
+                // compact log line, which is what makes a report from the user's own
+                // network diagnosable - measurements from the corporate workstation are
+                // useless here (the Check Point gateway rewrites some proxy responses).
                 const { url: proxyUrl, isJson, timeout } = proxyFn(article.link);
                 const proxyName = proxyUrl.split('/')[2];
+                const t0 = Date.now();
                 try {
                     const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(timeout || 5000) });
-                    if (!res.ok) continue;
+                    if (!res.ok) { console.log(`[extract] ${proxyName}: HTTP ${res.status} after ${Date.now() - t0}ms`); continue; }
 
                     let html = isJson ? (await res.json()).contents : await res.text();
-                    if (!html || html.length < 500) continue;
+                    if (!html || html.length < 500) {
+                        // A tiny body is exactly how a blocked upstream reaches us: the
+                        // proxy answers 200 while carrying the block page. Measured on
+                        // bleepingcomputer.com - the primary Worker returns 17 bytes of
+                        // "error code: 1106" because that host's Cloudflare config rejects
+                        // Cloudflare Workers egress (NOT a User-Agent problem: a direct
+                        // fetch with the Worker's own UA returns the full 87KB article).
+                        console.log(`[extract] ${proxyName}: only ${(html || '').length} bytes after ${Date.now() - t0}ms -> ${JSON.stringify((html || '').trim().slice(0, 60))}`);
+                        continue;
+                    }
+                    console.log(`[extract] ${proxyName}: ${html.length} bytes in ${Date.now() - t0}ms`);
 
                     // Yield to event queue before heavy DOM parsing so clicks aren't blocked
                     await new Promise(r => setTimeout(r, 0));
@@ -4646,6 +4664,7 @@
                     if (!content) continue;
 
                     const fullWordCount = content.textContent.trim().split(/\s+/).filter(Boolean).length;
+                    console.log(`[extract] container "${matchedSel}" -> ${fullWordCount} words; feed had ${rssWordCount}, gate needs >100 and >${rssWordCount + 80} -> ${fullWordCount > 100 && fullWordCount > rssWordCount + 80 ? 'PASS' : 'FAIL, trying next proxy'}`);
 
                     if (fullWordCount > 100 && fullWordCount > rssWordCount + 80) {
                         const bodyEl = document.getElementById('article-body');
@@ -4706,7 +4725,7 @@
                         }
                         return;
                     }
-                } catch(e) {}
+                } catch(e) { console.log(`[extract] ${proxyName}: ${e.name || e} after ${Date.now() - t0}ms`); }
             }
             // Only show stub for RSS feeds (not Bluesky — Bluesky posts are complete by design)
             if (!isBlueskyFeed(article.feedUrl) && !isMastodonPost(article.link)) {
@@ -8010,7 +8029,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 197;
+        window.APP_BUILD = 198;
 
         (async function initApp() {
             try {
@@ -8842,7 +8861,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v197';
+const CACHE_NAME = 'rss-reader-v198';
 const APP_SHELL = [
     '/',
     'index.html'
