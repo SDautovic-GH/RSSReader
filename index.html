@@ -2837,10 +2837,17 @@
 
         // --- FETCH & ARTICLE LOGIC ---
         const PRIMARY_PROXY_ORIGIN = 'https://still-shadow-1ebe.sdfyix.workers.dev';
+        // corsproxy.io REMOVED (build 199, 2026-09-04) from this chain and from the
+        // article chain below. It now answers 303 See Other with NO
+        // Access-Control-Allow-Origin header, so the browser can never read the
+        // response whatever the target - captured in the user's own console for both a
+        // feed and an article in one session ("blocked by CORS policy: No
+        // 'Access-Control-Allow-Origin' header is present", then a TypeError after
+        // 59ms). It requires an API key these days. Keeping it only burned a
+        // guaranteed-failing hop on every fallback. Do not re-add it without a key.
         const PROXIES = [
             url => `${PRIMARY_PROXY_ORIGIN}/?url=${encodeURIComponent(url)}`,
             url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&_=${Date.now()}`,
-            url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
         ];
 
         // Warm the primary Cloudflare Worker on app load so the first pull-to-refresh
@@ -4468,7 +4475,6 @@
             // ~15s - and that only delays the stub, never the RSS body already on screen.
             const proxies = [
                 url => ({ url: `https://still-shadow-1ebe.sdfyix.workers.dev/?url=${encodeURIComponent(url)}`, isJson: false, timeout: 5000 }),
-                url => ({ url: `https://corsproxy.io/?${encodeURIComponent(url)}`, isJson: false, timeout: 5000 }),
                 url => ({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, isJson: false, timeout: 12000 }),
             ];
 
@@ -8029,7 +8035,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 198;
+        window.APP_BUILD = 199;
 
         (async function initApp() {
             try {
@@ -8861,7 +8867,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v198';
+const CACHE_NAME = 'rss-reader-v199';
 const APP_SHELL = [
     '/',
     'index.html'
