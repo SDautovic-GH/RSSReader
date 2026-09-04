@@ -159,7 +159,19 @@
            and the first paragraph of the body). Pixel values are immune to
            app-zoom rem scaling that was visually compressing Tailwind utilities. */
         #article-byline { padding-bottom: 14px; }
-        #article-body { padding-top: 14px; }
+        /* MAKE THE HEADER/BODY BOUNDARY OBVIOUS (build 205, 2026-09-04, on request:
+           "hard to distinguish quickly where the article body begins"). Two small
+           changes, and the colour is the important one. The byline's rule came from
+           Tailwind's `border-gray-100 dark:border-gray-800` - and gray-800 resolves
+           to oklch(27.8% .033 256.848), i.e. ~#1f2937, which is nearly invisible
+           against the dark reader ground, so the eye got a gap with no separator.
+           It now uses the app's own border tones (#30363d dark / #d0d7de light, the
+           same family as the #21262d borders used elsewhere). Doubling the body's
+           top padding then keeps the first line clear of that rule. Both live
+           inside the scrolling reader, so neither touches the mobile top strip. */
+        #article-byline { border-bottom-color: #d0d7de !important; }
+        .dark #article-byline { border-bottom-color: #30363d !important; }
+        #article-body { padding-top: 28px; }
         .dynamic-list-preview, .dynamic-list-title {
             line-height: var(--list-preview-line-height) !important;
         }
@@ -8085,7 +8097,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 204;
+        window.APP_BUILD = 205;
 
         (async function initApp() {
             try {
@@ -8917,7 +8929,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v204';
+const CACHE_NAME = 'rss-reader-v205';
 const APP_SHELL = [
     '/',
     'index.html'
