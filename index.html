@@ -5240,7 +5240,17 @@
                 localList.innerHTML = `<div class="text-center py-8 text-gray-400 text-[14px]">No feeds yet. Tap <span class="font-semibold text-blue-500">Add Feed</span> to get started.</div>`;
                 return;
             }
-            localList.innerHTML = feeds.map((f) => {
+            // ALPHABETICAL BY NAME, DISPLAY ONLY (build 200, 2026-09-04). The list used
+            // to render in stored order, which is add-order - fine at ten feeds, a hunt
+            // at sixty-five. Sorting a COPY is deliberate: window.accountStates.local is
+            // the array that gets persisted and exported, and every row addresses its
+            // feed by f.id, so reordering the view changes nothing else. Same idiom as
+            // refreshDeskSearchScope() uses for its feed dropdown. localeCompare (not a
+            // raw < comparison) so "ars technica" sorts next to "Ars Technica" instead of
+            // after every capitalised name, and accented names land where a reader
+            // expects - Slobodna-Bosna and the like.
+            const sortedFeeds = feeds.slice().sort((a, b) => (a.name || '').trim().localeCompare((b.name || '').trim()));
+            localList.innerHTML = sortedFeeds.map((f) => {
                 const sfId = escJs(f.id);
                 return `
                 <div class="feed-row">
@@ -8035,7 +8045,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 199;
+        window.APP_BUILD = 200;
 
         (async function initApp() {
             try {
@@ -8867,7 +8877,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v199';
+const CACHE_NAME = 'rss-reader-v200';
 const APP_SHELL = [
     '/',
     'index.html'
