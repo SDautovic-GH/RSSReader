@@ -4603,6 +4603,19 @@
                         // Match common conventions but only when they're standalone meta wrappers,
                         // not content classes (so "article-info" is excluded — that's often the body itself).
                         '.news_info','.news_gallery','.dcfp',
+                        // Share buttons (build 204, 2026-09-04). ESPN renders them as
+                        // <button class="... Button--icon-noLabel Share__Item"> holding an
+                        // <svg> plus <span class="Share__Text">Facebook</span>. The
+                        // -icon-noLabel modifier means THEIR css hides that label; without
+                        // it the four labels print as one run of text in the reader -
+                        // "FacebookFacebook MessengerTwitterEmail" - right under the
+                        // byline. They can never function here anyway (no share SDK), so
+                        // the whole widget goes. Matched on the stable BEM wrapper, not on
+                        // the hashed CSS-in-JS classes inside the scoreboard (NzyJW, SQItX,
+                        // HUcap...), which change on every ESPN deploy. The scoreboard
+                        // itself is deliberately LEFT ALONE, and nothing here may target
+                        // Gamestrip__ContentOffset - that wrapper holds the article text.
+                        '.Share','[class*="Share__"]',
                         '.post-meta','.entry-meta','.article-meta','.story-meta',
                         '.post-info','.entry-info'
                     ].join(',')).forEach(el => el.remove());
@@ -8072,7 +8085,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 203;
+        window.APP_BUILD = 204;
 
         (async function initApp() {
             try {
@@ -8904,7 +8917,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v203';
+const CACHE_NAME = 'rss-reader-v204';
 const APP_SHELL = [
     '/',
     'index.html'
