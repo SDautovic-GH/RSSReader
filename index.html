@@ -4495,6 +4495,44 @@
                         });
                     } catch (e) { /* malformed JSON: skip quietly, never block extraction */ }
 
+                    // OG:IMAGE BACKSTOP - HARVEST (build 195, 2026-09-04). 13 of the 65
+                    // subscribed feeds carry no image at ALL: none in the body, none in
+                    // media:content/enclosure. For those, whether the reader shows a photo
+                    // depends entirely on what the article page yields - and when extraction
+                    // succeeds but the extracted markup has no image of its own (measured:
+                    // CNBC Politics and CNBC Technology), the page's social-share image is
+                    // the only thing left. On every mainstream CMS that IS the article's
+                    // lead photo, so it is a sound last resort - but ONLY a last resort,
+                    // applied below after real images have been ruled out.
+                    // Rejected on sight: site chrome dressed up as a share image. Measured
+                    // examples - ESPN serves misc_logos/500/nfl.png, Mastodon serves the
+                    // instance's site_uploads banner, and text-only posts commonly serve the
+                    // author's avatar. Showing those as an article's lead photo is worse than
+                    // showing nothing, hence the keyword screen and the declared-width floor.
+                    let ogImage = '';
+                    try {
+                        const OG_JUNK = /logo|sprite|default|placeholder|avatar|blank|fallback|site_upload|banner|missing/i;
+                        const w = parseInt((doc.querySelector('meta[property="og:image:width"]') || {}).content || '', 10);
+                        const metaSels = [
+                            'meta[property="og:image:secure_url"]', 'meta[property="og:image:url"]',
+                            'meta[property="og:image"]', 'meta[name="og:image"]',
+                            'meta[name="twitter:image"]', 'meta[property="twitter:image"]',
+                            'meta[name="twitter:image:src"]', 'link[rel="image_src"]',
+                        ];
+                        for (const sel of metaSels) {
+                            const el = doc.querySelector(sel);
+                            const raw = el && (el.getAttribute('content') || el.getAttribute('href'));
+                            if (!raw) continue;
+                            let abs;
+                            try { abs = new URL(raw.trim(), article.link).href; } catch (e) { continue; }
+                            if (!/^https?:\/\//i.test(abs)) continue;   // never javascript:/data: sources
+                            if (OG_JUNK.test(abs)) continue;
+                            if (w && w < 200) continue;                  // declared thumbnail, not a lead photo
+                            ogImage = abs;
+                            break;
+                        }
+                    } catch (e) { /* a fallback image must never block extraction */ }
+
                     doc.querySelectorAll([
                         'script','style','nav','footer','header','aside','iframe',
                         '[class*="paywall"]','[class*="subscribe"]','[class*="newsletter"]',
@@ -4589,7 +4627,18 @@
                                 '<figure><img src="' + esc(g.src) + '" alt="' + esc(g.caption) + '">'
                                 + (g.caption ? '<figcaption>' + esc(g.caption) + '</figcaption>' : '')
                                 + '</figure>').join('');
-                            const sanitized = galleryHtml + DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+                            const extractedHtml = galleryHtml + DOMPurify.sanitize(fixLazyImages(content.innerHTML), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'] });
+                            // OG:IMAGE BACKSTOP - APPLY. Last resort only: the extracted
+                            // markup must have no media of its own AND the feed must have
+                            // supplied no article.image (ensureLeadImage renders that one).
+                            // Folded into `sanitized` so the CACHED body carries it too -
+                            // otherwise reopening the article would lose the photo again.
+                            const ogLead = (ogImage
+                                    && !/<(?:img|picture|video|audio|iframe)[\s>]/i.test(extractedHtml)
+                                    && !/^https?:\/\//i.test(article.image || ''))
+                                ? '<figure class="lead-image"><img src="' + esc(ogImage) + '" alt="" loading="eager"></figure>'
+                                : '';
+                            const sanitized = ogLead + extractedHtml;
                             bodyEl.innerHTML = sanitized;
                             stripImagePlaceholders(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
@@ -7909,7 +7958,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 194;
+        window.APP_BUILD = 195;
 
         (async function initApp() {
             try {
@@ -8741,7 +8790,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v194';
+const CACHE_NAME = 'rss-reader-v195';
 const APP_SHELL = [
     '/',
     'index.html'
