@@ -4426,10 +4426,28 @@
             'theverge.com',
         ]);
 
+        // MASTODON POSTS HAVE NOTHING TO EXTRACT (build 197, 2026-09-04). A Mastodon
+        // post page is a pure JS shell: measured on mastodon.social, 66KB of HTML
+        // containing 33 visible words, no <article>, no .status__content - the toot is
+        // rendered client-side by React, which this app never runs. Meanwhile the RSS
+        // item already carries the COMPLETE post (13-72 words is the whole toot, not a
+        // truncation), and attachments arrive as media:content -> article.image, which
+        // ensureLeadImage() already renders. So extraction could only ever fail here,
+        // and it was costing up to three proxy fetches per post (~22s of pointless
+        // network and battery since the build-196 timeouts) and then appending the
+        // "Content may be truncated in the RSS feed" stub - which is simply false for a
+        // complete toot. Treated like Bluesky from now on: skip the fetch, skip the stub.
+        // Matched on the PERMALINK SHAPE rather than a host list, because the user's
+        // instance is arbitrary: Mastodon posts are /@user/<id> (or the API-style
+        // /users/<user>/statuses/<id>) with a numeric id.
+        const MASTODON_POST_RE = /^https?:\/\/[^\/]+\/(?:@[^\/]+\/\d+|users\/[^\/]+\/statuses\/\d+)\/?$/i;
+        function isMastodonPost(link) { return MASTODON_POST_RE.test(link || ''); }
+
         async function attemptFullContentLoad(article) {
             if (!article || !article.link || article.link === '#') return;
             if (article._fullBodyLoaded) return;
 
+            if (isMastodonPost(article.link)) return;   // JS-only shell, feed already complete
             try {
                 const domain = new URL(article.link).hostname.replace('www.','');
                 if (JS_RENDERED_DOMAINS.has(domain)) {
@@ -4691,7 +4709,7 @@
                 } catch(e) {}
             }
             // Only show stub for RSS feeds (not Bluesky — Bluesky posts are complete by design)
-            if (!isBlueskyFeed(article.feedUrl)) {
+            if (!isBlueskyFeed(article.feedUrl) && !isMastodonPost(article.link)) {
                 const bodyEl = document.getElementById('article-body');
                 if (bodyEl && window.currentArticle?.id === article.id) {
                     const words = bodyEl.textContent.trim().split(/\s+/).filter(Boolean).length;
@@ -7992,7 +8010,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 196;
+        window.APP_BUILD = 197;
 
         (async function initApp() {
             try {
@@ -8824,7 +8842,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v196';
+const CACHE_NAME = 'rss-reader-v197';
 const APP_SHELL = [
     '/',
     'index.html'
