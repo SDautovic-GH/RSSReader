@@ -4926,6 +4926,33 @@
                     el.style.removeProperty('font-size');
                     el.style.removeProperty('font-family');
                     el.style.removeProperty('line-height');
+                    // LAYOUT-ESCAPE PROPERTIES (build 203, 2026-09-04). Extracted pages
+                    // sometimes position content against a layout we do not ship, and the
+                    // result is text printed ON TOP of other text. Measured on ESPN match
+                    // reports (e.g. /soccer/report/_/gameId/401879288), which wrap the
+                    // story in their sticky-scoreboard compensation:
+                    //     <section class="Gamestrip__StickyContainer"
+                    //              style="top:43px;--gamepackage-layout-sticky-offset:-43px">
+                    //     <section class="Gamestrip__ContentOffset"
+                    //              style="transform:translateY(-43px)">
+                    // ESPN's own CSS reserves the matching 43px; without it the transform
+                    // just yanks the byline and share row up over the score lines. A
+                    // reader only ever needs content to FLOW, so drop transforms outright
+                    // and take absolute/fixed positioning (plus its offsets) with them.
+                    el.style.removeProperty('transform');
+                    const pos = (el.style.position || '').toLowerCase();
+                    if (pos === 'absolute' || pos === 'fixed') {
+                        // ONE exception: the responsive-embed idiom is a percentage-padded
+                        // wrapper holding an absolutely positioned iframe/video. That is
+                        // legitimate framing - stripImagePlaceholders() above keeps such
+                        // wrappers precisely because they hold real media - so un-position
+                        // the media there would collapse the embed into its own padding.
+                        const isMedia = /^(?:iframe|video|embed|object)$/i.test(el.tagName || '');
+                        const inAspectWrapper = el.closest && el.closest('[style*="padding-bottom"]');
+                        if (!(isMedia && inAspectWrapper)) {
+                            ['position', 'top', 'right', 'bottom', 'left'].forEach(prop => el.style.removeProperty(prop));
+                        }
+                    }
                     if (!(el.getAttribute('style') || '').trim()) el.removeAttribute('style');
                 });
             } catch (e) { /* never block rendering over cosmetics */ }
@@ -8045,7 +8072,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 202;
+        window.APP_BUILD = 203;
 
         (async function initApp() {
             try {
@@ -8877,7 +8904,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v202';
+const CACHE_NAME = 'rss-reader-v203';
 const APP_SHELL = [
     '/',
     'index.html'
