@@ -7001,6 +7001,9 @@ window.toggleUnreadManual = () => {
         // active viewport, so on save we preserve the inactive viewport's existing
         // value from the prefs blob.
         function saveTypographyPrefs() {
+            // Viewport re-seeding replays defaults through the same writers a real
+            // slider drag uses; that must not turn "unset" into a saved value.
+            if (window._reseedingSliders) return;
             const get = id => document.getElementById(id)?.value;
             let prevPrefs = {};
             try { prevPrefs = JSON.parse(localStorage.getItem('newsreader_prefs')) || {}; } catch(e) {}
@@ -7817,7 +7820,7 @@ window.toggleUnreadManual = () => {
         // Per-device sliders re-seeded on viewport crossing so the slider value
         // reflects the now-active device's saved setting.
         const PER_DEVICE_SLIDER_CONFIG = [
-            { sliderId: 'app-zoom-slider',                labelId: 'app-zoom-val',                deskKey: 'appZoomDesktop',           mobKey: 'appZoomMobile',           fmt: v => `${v}%`,                              defaultVal: 100, apply: null /* CSS vars already applied for both */ },
+            { sliderId: 'app-zoom-slider',                labelId: 'app-zoom-val',                deskKey: 'appZoomDesktop',           mobKey: 'appZoomMobile',           fmt: v => `${v}%`,                              apply: null /* CSS vars already applied for both */ },
             { sliderId: 'shared-body-slider',             labelId: 'shared-body-val',             deskKey: 'sharedBodyDesktop',        mobKey: 'sharedBodyMobile',        fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('body', v) },
             { sliderId: 'shared-article-title-slider',    labelId: 'shared-article-title-val',    deskKey: 'sharedArticleTitleDesktop',mobKey: 'sharedArticleTitleMobile',fmt: v => `${parseFloat((v/10).toFixed(1))}em`, apply: v => updateSharedSize('articleTitle', v) },
             { sliderId: 'shared-line-height-slider',      labelId: 'shared-line-height-val',      deskKey: 'sharedLineHeightDesktop',  mobKey: 'sharedLineHeightMobile',  fmt: v => `${parseFloat((v/10).toFixed(1))}`,   apply: v => updateSharedSize('lineHeight', v) },
@@ -7832,16 +7835,28 @@ window.toggleUnreadManual = () => {
             try {
                 const prefs = JSON.parse(localStorage.getItem('newsreader_prefs')) || {};
                 const mob = _isMobileCache;
+                // Re-seeding must NOT write to storage: a viewport the user has
+                // never tuned has to stay unset, so later changes to the app
+                // defaults still reach it and "Reset text sizes" keeps meaning
+                // something. saveTypographyPrefs() checks this flag.
+                window._reseedingSliders = true;
                 PER_DEVICE_SLIDER_CONFIG.forEach(cfg => {
-                    const val = (mob ? prefs[cfg.mobKey] : prefs[cfg.deskKey]) ?? cfg.defaultVal;
-                    if (val == null) return;
-                    const el = document.getElementById(cfg.sliderId); if (el) el.value = val;
+                    const el = document.getElementById(cfg.sliderId);
+                    // No saved value for the viewport just crossed into -> fall back
+                    // to the slider's OWN markup `value=` attribute (defaultValue).
+                    // That attribute is the single source of truth for app defaults
+                    // and is kept in step with the CSS :root values, so a default
+                    // duplicated here could only drift out of date.
+                    const val = (mob ? prefs[cfg.mobKey] : prefs[cfg.deskKey]) ?? (el ? el.defaultValue : null);
+                    if (val == null || val === '') return;
+                    if (el) el.value = val;
                     const lb = document.getElementById(cfg.labelId); if (lb) lb.textContent = cfg.fmt(val);
                     // Re-apply via the underlying writer so per-device side effects
                     // (e.g. articleTitle's inline style on desktop) follow the new viewport.
                     if (cfg.apply) cfg.apply(val);
                 });
             } catch(e) {}
+            finally { window._reseedingSliders = false; }
         }
         window.addEventListener('resize', () => {
             const wasMobile = _isMobileCache;
@@ -7894,7 +7909,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 193;
+        window.APP_BUILD = 194;
 
         (async function initApp() {
             try {
@@ -8726,7 +8741,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v193';
+const CACHE_NAME = 'rss-reader-v194';
 const APP_SHELL = [
     '/',
     'index.html'
