@@ -1156,6 +1156,42 @@
             cursor: pointer;
             font-family: inherit;
         }
+        /* DESKTOP SEARCH PALETTE (build 207, 2026-09-04). The sheet's CSS turned out
+           NOT to sit inside the mobile @media block (that one closes around line 802),
+           so the markup and every handler already worked at any width - the sheet was
+           merely anchored above the mobile tab bar, and nothing on desktop opened it.
+           These overrides re-anchor it as a centred palette above 900px; the mobile
+           rules keep winning below that. !important mirrors the base rules' own use. */
+        #search-filter-row { display: none; }
+        @media (min-width: 901px) {
+            #mobile-search-sheet {
+                position: fixed !important;
+                top: 12vh;
+                bottom: auto !important;
+                left: 50% !important;
+                right: auto !important;
+                transform: translateX(-50%);
+                width: min(720px, 92vw);
+                padding: 0 !important;
+            }
+            #mobile-search-sheet .search-results { max-height: 52vh; }
+            #search-filter-row {
+                display: flex;
+                gap: 10px;
+                padding: 0 4px 10px;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+                margin-bottom: 6px;
+            }
+            #search-filter-row select {
+                background: transparent;
+                border: none;
+                outline: none;
+                color: rgba(255,255,255,0.62);
+                font-size: 12px;
+                max-width: 220px;
+            }
+            #search-filter-row select option { background: #1c2128; color: #e6edf3; }
+        }
         #mobile-search-sheet .search-smart-btn:active {
             background: rgba(255,255,255,0.12);
         }
@@ -1814,7 +1850,7 @@
                         </button>
                     </div>
                 </div>
-                <button id="desk-search-trigger" onclick="openDeskSearch()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 ml-2 flex-shrink-0" title="Search Articles (/)">
+                <button id="desk-search-trigger" onclick="toggleSearchSheet()" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 ml-2 flex-shrink-0" title="Search Articles (/)">
                     <svg class="h-5 w-5"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 </button>
             </div>
@@ -1996,6 +2032,21 @@
                 <button class="search-smart-btn" type="button" onclick="searchSmart('all')">Unread</button>
                 <button class="search-smart-btn" type="button" onclick="searchSmart('later')">Read Later</button>
                 <button class="search-smart-btn" type="button" onclick="searchSmart('saved')">Saved</button>
+            </div>
+            <!-- Scope + read-state: the two things the desktop bar had and this sheet
+                 did not. Desktop-only (the CSS hides this row under 901px), so the
+                 phone's sheet is unchanged and both selects read 'all' there. -->
+            <div id="search-filter-row">
+                <select id="search-scope" title="Search scope"
+                        onchange="updateSearchResults(document.getElementById('mobile-search-input').value)">
+                    <option value="all">All folders</option>
+                </select>
+                <select id="search-readstate" title="Read state"
+                        onchange="updateSearchResults(document.getElementById('mobile-search-input').value)">
+                    <option value="all">All</option>
+                    <option value="unread">Unread</option>
+                    <option value="read">Read</option>
+                </select>
             </div>
             <div id="mobile-search-results" class="search-results"></div>
         </div>
@@ -4826,10 +4877,11 @@
             } else if (e.key === '/') {
                 if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
                     e.preventDefault();
-                    openDeskSearch();
+                    toggleSearchSheet();
                 }
             } else if (e.key === 'Escape') {
                 closeShortcuts();
+                closeSearchSheet();
                 closeDeskSearch();
             }
         });
@@ -5347,9 +5399,12 @@
 
         // --- DESKTOP SEARCH HELPERS ---
         function refreshDeskSearchScope() {
-            const sel = document.getElementById('desk-search-scope');
-            if (!sel) return;
-            const current = sel.value || 'all';
+            // Fills BOTH scope dropdowns (build 207): the legacy inline bar's and the
+            // search palette's. Either may be absent; whichever exists is populated.
+            const sels = ['desk-search-scope', 'search-scope']
+                .map(id => document.getElementById(id))
+                .filter(Boolean);
+            if (!sels.length) return;
             const cats = [...new Set((window.feeds || []).map(f => f.category).filter(Boolean))];
             const feedOpts = (window.feeds || []).slice().sort((a,b) => (a.name||'').localeCompare(b.name||''));
             let html = '<option value="all">All folders</option>';
@@ -5363,10 +5418,13 @@
                 for (const f of feedOpts) html += `<option value="feed:${esc(f.url)}">${esc(f.name)}</option>`;
                 html += '</optgroup>';
             }
-            sel.innerHTML = html;
-            // Restore prior selection if it still exists in the new list.
-            if ([...sel.options].some(o => o.value === current)) sel.value = current;
-            else sel.value = 'all';
+            sels.forEach(sel => {
+                const current = sel.value || 'all';
+                sel.innerHTML = html;
+                // Restore prior selection if it still exists in the new list.
+                if ([...sel.options].some(o => o.value === current)) sel.value = current;
+                else sel.value = 'all';
+            });
         }
 
         window.openDeskSearch = async () => {
@@ -7850,6 +7908,7 @@ window.toggleUnreadManual = () => {
             const open = !document.body.classList.contains('search-active');
             if (open) {
                 document.body.classList.add('search-active');
+                refreshDeskSearchScope();   // keep the palette's folder list current
                 const input = document.getElementById('mobile-search-input');
                 if (input) {
                     input.value = '';
@@ -7915,11 +7974,32 @@ window.toggleUnreadManual = () => {
                     });
                 }
             }
-            const results = list.filter(a => {
+            // Scope + read-state from the palette's filter row. On mobile that row is
+            // hidden and both read 'all', so this reduces to the previous behaviour.
+            const scope = document.getElementById('search-scope')?.value || 'all';
+            const readState = document.getElementById('search-readstate')?.value || 'all';
+            let pool = list;
+            if (scope.startsWith('cat:')) {
+                const cat = scope.slice(4);
+                const sources = new Set((window.feeds || []).filter(f => f.category === cat).map(f => f.name));
+                pool = pool.filter(a => sources.has(a.source));
+            } else if (scope.startsWith('feed:')) {
+                const url = scope.slice(5);
+                const f = (window.feeds || []).find(x => x.url === url);
+                pool = f ? pool.filter(a => a.source === f.name) : [];
+            }
+            if (readState === 'unread') pool = pool.filter(a => a.unread);
+            else if (readState === 'read') pool = pool.filter(a => !a.unread);
+            // Bodies are scanned only from 3 characters up: this runs on every
+            // keystroke with no debounce and a body is ~50KB. The old desktop bar
+            // could afford a full scan because it sat behind a 150ms debounce.
+            const deep = q.length >= 3;
+            const results = pool.filter(a => {
                 const t = (a.title || '').toLowerCase();
                 const s = (a.source || '').toLowerCase();
                 const b = (a.excerpt || '').toLowerCase();
-                return t.includes(q) || s.includes(q) || b.includes(q);
+                return t.includes(q) || s.includes(q) || b.includes(q)
+                    || (deep && (a.body || '').toLowerCase().includes(q));
             }).slice(0, 80);
             if (!results.length) {
                 container.innerHTML = `<div class=\"search-empty\">No matches</div>`;
@@ -8116,7 +8196,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 206;
+        window.APP_BUILD = 207;
 
         (async function initApp() {
             try {
@@ -8948,7 +9028,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v206';
+const CACHE_NAME = 'rss-reader-v207';
 const APP_SHELL = [
     '/',
     'index.html'
