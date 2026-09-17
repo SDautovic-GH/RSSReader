@@ -4616,6 +4616,22 @@
                         // itself is deliberately LEFT ALONE, and nothing here may target
                         // Gamestrip__ContentOffset - that wrapper holds the article text.
                         '.Share','[class*="Share__"]',
+                        // ESPN's scoreboard strip (build 210, 2026-09-17). Without ESPN's
+                        // CSS it renders as a vertical dump of duplicated text, because the
+                        // markup carries every responsive variant at once and their
+                        // stylesheet is what hides all but one per breakpoint. Measured on
+                        // /soccer/report/_/gameId/401915586, the container's 39 words are:
+                        //   "UEFA Europa League ... AC Milan Milan MIL 0-0-1 , 0 PTS 0
+                        //    0-0-1 , 0 PTS FT Benfica Benfica SLB 1-0-0 , 3 PTS 2 ..."
+                        // i.e. each team name three times (full/short/abbrev) and each
+                        // record twice. The inner classes are hashed CSS-in-JS names
+                        // (NzyJW, SQItX, HUcap) that change on every ESPN deploy, so
+                        // de-duplicating structurally is not durable - the stable BEM
+                        // wrapper is. The score is in the headline and the first sentence
+                        // regardless. WARNING: match only StickyContainer. The sibling
+                        // Gamestrip__ContentOffset holds the ARTICLE ITSELF (456 words vs
+                        // this one's 39) - removing that deletes the story.
+                        '[class*="Gamestrip__StickyContainer"]',
                         '.post-meta','.entry-meta','.article-meta','.story-meta',
                         '.post-info','.entry-info'
                     ].join(',')).forEach(el => el.remove());
@@ -8110,7 +8126,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 209;
+        window.APP_BUILD = 210;
 
         (async function initApp() {
             try {
@@ -8942,7 +8958,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v209';
+const CACHE_NAME = 'rss-reader-v210';
 const APP_SHELL = [
     '/',
     'index.html'
