@@ -1639,7 +1639,7 @@
         /* Story Title: never bright blue, respects list title typography */
         .brief-story-card h4,
         .brief-story-card a.brief-story-title,
-        .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]),
+        .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link),
         .brief-story-title {
             font-size: var(--list-title-em-size, 1.1em) !important;
             line-height: var(--list-preview-line-height, 1.35) !important;
@@ -1651,12 +1651,12 @@
         }
         .dark .brief-story-card h4,
         .dark .brief-story-card a.brief-story-title,
-        .dark .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]),
+        .dark .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link),
         .dark .brief-story-title {
             color: #f0f6fc !important;
         }
         .brief-story-card a.brief-story-title:hover,
-        .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):hover,
+        .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link):hover,
         .brief-story-title:hover {
             color: #3b82f6 !important;
         }
@@ -1679,17 +1679,24 @@
             color: #94a3b8;
         }
         .brief-story-actions {
-            font-size: var(--view-font-size, 1.0em) !important;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding-top: 0.2rem;
+            font-size: var(--list-preview-font-size, 1.0em) !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.75rem !important;
+            padding-top: 0.25rem !important;
         }
         .brief-story-actions button,
-        .brief-story-actions a {
+        .brief-story-actions a,
+        .brief-action-btn,
+        .brief-action-link {
             font-size: inherit !important;
             font-family: inherit !important;
             font-weight: 400 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            white-space: nowrap !important;
+            line-height: 1.3 !important;
+            margin: 0 !important;
         }
 
         /* Mobile flush layout - consistent with #reader-view & #article-list */
@@ -1728,7 +1735,7 @@
             }
             .brief-story-card h4,
             .brief-story-card a.brief-story-title,
-            .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]),
+            .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link),
             .brief-story-title {
                 font-size: var(--mob-list-title-size, 1.1em) !important;
                 line-height: var(--mob-list-preview-line-height, 1.35) !important;
@@ -1741,13 +1748,24 @@
                 line-clamp: var(--mob-list-preview-lines, 4) !important;
             }
             .brief-story-actions {
-                font-size: var(--mob-body-size, var(--mob-list-preview-size, 1.0em)) !important;
+                font-size: var(--mob-list-preview-size, 1.0em) !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 0.75rem !important;
+                padding-top: 0.25rem !important;
             }
             .brief-story-actions button,
-            .brief-story-actions a {
+            .brief-story-actions a,
+            .brief-action-btn,
+            .brief-action-link {
                 font-size: inherit !important;
                 font-family: inherit !important;
                 font-weight: 400 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                white-space: nowrap !important;
+                line-height: 1.3 !important;
+                margin: 0 !important;
             }
         }
         .brief-empty-message {
@@ -4925,16 +4943,43 @@
                 const sTime = card.querySelector('.brief-story-time');
                 if (sTime) sTime.classList.add('whitespace-nowrap');
 
-                // Ensure story actions match article font and are not bolded
-                const sActions = card.querySelector('.brief-story-actions');
+                // Ensure story actions container exists and matches article font perfectly
+                let sActions = card.querySelector('.brief-story-actions');
+                if (!sActions) {
+                    const btn = card.querySelector('[onclick*="openArticleInReader"]');
+                    if (btn && btn.parentElement) {
+                        sActions = btn.parentElement;
+                        sActions.classList.add('brief-story-actions');
+                    }
+                }
                 if (sActions) {
+                    sActions.classList.add('brief-story-actions', 'flex', 'items-center', 'gap-3');
                     sActions.querySelectorAll('button, a').forEach(el => {
-                        el.classList.remove('font-medium', 'font-semibold', 'text-xs', 'text-sm', 'text-base');
+                        el.classList.remove('font-medium', 'font-semibold', 'text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl', 'block');
+                        el.classList.add('font-normal', 'whitespace-nowrap');
+                        el.style.fontSize = 'inherit';
+                        el.style.fontWeight = '400';
+                        el.style.display = 'inline-flex';
+                        el.style.alignItems = 'center';
+                        if (el.getAttribute('onclick')?.includes('openArticleInReader')) {
+                            el.classList.add('brief-action-btn', 'brief-open-reader');
+                        } else {
+                            el.classList.add('brief-action-link', 'brief-source-link');
+                            el.style.textDecoration = 'none';
+                        }
                     });
+                    const icon = sActions.querySelector('svg');
+                    if (icon) {
+                        icon.classList.add('brief-action-icon');
+                        icon.style.width = '1em';
+                        icon.style.height = '1em';
+                        icon.style.display = 'inline-block';
+                        icon.style.verticalAlign = 'middle';
+                    }
                 }
 
-                // Find title and excerpt elements
-                const titleEl = card.querySelector('.brief-story-title') || card.querySelector('h4') || card.querySelector('a:not(.brief-jump-pill):not([class*="action"]):not([class*="source"])');
+                // Find title and excerpt elements (never mistake action links for titles)
+                const titleEl = card.querySelector('.brief-story-title') || card.querySelector('h4') || card.querySelector('a:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link):not([onclick*="openArticleInReader"])');
                 const excerptEl = card.querySelector('.brief-story-excerpt') || card.querySelector('p');
 
                 if (titleEl && excerptEl) {
@@ -7284,10 +7329,10 @@
                                 </div>
                                 ${storyBodyHtml}
                                 <div class="brief-story-actions flex items-center gap-3 pt-0.5">
-                                    <button onclick="window.openArticleInReader('${saId}')" class="text-blue-500 dark:text-blue-400 hover:underline inline-flex items-center gap-1 font-normal">
-                                        Open in Reader <svg class="w-3.5 h-3.5" style="width: 1.1em; height: 1.1em;"><use href="#icon-newspaper"/></svg>
+                                    <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-blue-500 dark:text-blue-400 hover:underline inline-flex items-center gap-1 font-normal whitespace-nowrap">
+                                        Open in Reader <svg class="brief-action-icon w-3.5 h-3.5" style="width: 1em; height: 1em; display: inline-block; vertical-align: middle;"><use href="#icon-newspaper"/></svg>
                                     </button>
-                                    <a href="${esc(st.link)}" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-gray-200 inline-flex items-center gap-1 font-normal">
+                                    <a href="${esc(st.link)}" target="_blank" rel="noopener noreferrer" class="brief-action-link brief-source-link text-gray-400 hover:text-gray-200 inline-flex items-center gap-1 font-normal whitespace-nowrap">
                                         Source Link ↗
                                     </a>
                                 </div>
@@ -9499,7 +9544,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 220;
+        window.APP_BUILD = 221;
 
         (async function initApp() {
             try {
@@ -10349,7 +10394,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v220';
+const CACHE_NAME = 'rss-reader-v221';
 const APP_SHELL = [
     '/',
     'index.html'
