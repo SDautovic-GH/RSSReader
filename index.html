@@ -3587,12 +3587,162 @@
             return false;
         }
 
+        const MEMO_BASE_RANKS = {
+            "nytimes.com": 1, "new york times": 1, "nyt": 1,
+            "politico.com": 2, "politico": 2,
+            "washingtonpost.com": 3, "washington post": 3, "wapo": 3,
+            "axios.com": 4, "axios": 4,
+            "wsj.com": 5, "wall street journal": 5, "wsj": 5,
+            "thehill.com": 6, "the hill": 6,
+            "apnews.com": 7, "associated press": 7, "ap news": 7, "ap": 7,
+            "nbcnews.com": 8, "nbc news": 8,
+            "bloomberg.com": 9, "bloomberg": 9,
+            "washingtonsun.com": 10, "the washington sun": 10,
+            "reuters.com": 11, "reuters": 11,
+            "theguardian.com": 12, "the guardian": 12, "guardian": 12,
+            "cbsnews.com": 13, "cbs news": 13,
+            "cnn.com": 14, "cnn": 14,
+            "nypost.com": 15, "new york post": 15,
+            "ms.now": 16, "ms now": 16,
+            "cnbc.com": 17, "cnbc": 17,
+            "democracydocket.com": 18, "democracy docket": 18,
+            "foxnews.com": 19, "fox news": 19,
+            "washingtonexaminer.com": 20, "washington examiner": 20,
+            "newrepublic.com": 21, "new republic": 21,
+            "thebulwark.com": 22, "the bulwark": 22,
+            "theatlantic.com": 23, "the atlantic": 23, "atlantic": 23,
+            "npr.org": 24, "npr": 24,
+            "abcnews.com": 25, "abc news": 25,
+            "ft.com": 26, "financial times": 26, "ft": 26,
+            "vox.com": 27, "vox": 27,
+            "propublica.org": 28, "propublica": 28,
+            "semafor.com": 29, "semafor": 29,
+            "publicnotice.co": 30, "public notice": 30,
+            "notus.org": 31, "notus": 31,
+            "meidasnews.com": 32, "meidastouch": 32,
+            "rollingstone.com": 33, "rolling stone": 33,
+            "talkingpointsmemo.com": 34, "talking points memo": 34, "tpm": 34,
+            "thedailybeast.com": 35, "the daily beast": 35, "daily beast": 35,
+            "newyorker.com": 36, "new yorker": 36, "the new yorker": 36,
+            "motherjones.com": 37, "mother jones": 37,
+            "justice.gov": 38, "us department of justice": 38,
+            "mediamatters.org": 39, "media matters for america": 39,
+            "paulkrugman.substack.com": 40, "paul krugman": 40,
+            "prospect.org": 41, "american prospect": 41,
+            "gelliottmorris.com": 42, "strength in numbers": 42,
+            "whitehouse.gov": 43, "the white house": 43,
+            "nymag.com": 44, "new york magazine": 44,
+            "latimes.com": 45, "los angeles times": 45, "la times": 45,
+            "wired.com": 46, "wired": 46,
+            "404media.co": 47, "404 media": 47,
+            "telegraph.co.uk": 48, "telegraph": 48,
+            "status.news": 49, "status": 49,
+            "zeteo.com": 50, "zeteo": 50,
+            "natesilver.net": 51, "silver bulletin": 51,
+            "mediaite.com": 52, "mediaite": 52,
+            "huffpost.com": 53, "huffpost": 53, "huffington post": 53,
+            "texastribune.org": 54, "the texas tribune": 54, "texas tribune": 54,
+            "newsweek.com": 55, "newsweek": 55,
+            "maristpoll.marist.edu": 56, "marist poll": 56,
+            "variety.com": 57, "variety": 57,
+            "ballsandstrikes.org": 58, "balls and strikes": 58,
+            "the-independent.com": 59, "independent.co.uk": 59, "the independent": 59,
+            "emersoncollegepolling.com": 60, "emerson polling": 60,
+            "thefp.com": 61, "the free press": 61,
+            "donmoynihan.substack.com": 62, "can we still govern?": 62,
+            "missouriindependent.com": 63, "missouri independent": 63,
+            "hollywoodreporter.com": 64, "the hollywood reporter": 64,
+            "suntimes.com": 65, "chicago sun-times": 65, "chicago sun times": 65,
+            "electionlawblog.org": 66, "election law blog": 66,
+            "inquirer.com": 67, "the philadelphia inquirer": 67, "philadelphia inquirer": 67,
+            "tmz.com": 68, "tmz": 68,
+            "bbc.com": 69, "bbc.co.uk": 69, "bbc": 69, "bbc news": 69,
+            "deadline.com": 70, "deadline": 70,
+            "forbes.com": 71, "forbes": 71,
+            "gov.ca.gov": 72, "governor of california": 72,
+            "kyivindependent.com": 74, "the kyiv independent": 74,
+            "boltsmag.org": 75, "bolts": 75,
+            "reason.com": 76, "reason": 76,
+            "rawstory.com": 77, "raw story": 77,
+            "offmessage.net": 78, "off message": 78,
+            "mercurynews.com": 79, "mercury news": 79,
+            "meidasplus.com": 80, "meidas+": 80,
+            "slowboring.com": 81, "slow boring": 81,
+            "time.com": 82, "time": 82, "time magazine": 82,
+            "futurism.com": 83, "futurism": 83,
+            "gizmodo.com": 84, "gizmodo": 84,
+            "usatoday.com": 85, "usa today": 85,
+            "pagesix.com": 86, "page six": 86,
+            "slate.com": 87, "slate": 87,
+            "businessinsider.com": 88, "business insider": 88,
+            "redstate.com": 89, "redstate": 89,
+            "jpost.com": 90, "the jerusalem post": 90, "jerusalem post": 90,
+            "stlpr.org": 91, "stlpr": 91,
+            "hotair.com": 92, "hot air": 92,
+            "thenation.com": 93, "the nation": 93,
+            "poll.qu.edu": 94, "quinnipiac university poll": 94, "quinnipiac": 94,
+            "azfamily.com": 95, "kasw-tv": 95,
+            "euronews.com": 96, "euronews": 96,
+            "aljazeera.com": 97, "al jazeera": 97,
+            "heathercoxrichardson.substack.com": 98, "letters from an american": 98,
+            "taskandpurpose.com": 99, "task & purpose": 99,
+            "kff.org": 100, "kff": 100
+        };
+
+        window._memoRankMap = { ...MEMO_BASE_RANKS };
+
         function getSourceRank(article) {
-            if (!window._memoRankMap) return 9999;
-            try {
-                const domain = new URL(article.link).hostname.replace(/^www\./, '');
-                return window._memoRankMap[domain] ?? 9999;
-            } catch { return 9999; }
+            if (!article) return 9999;
+            const map = window._memoRankMap || MEMO_BASE_RANKS;
+            if (!map) return 9999;
+
+            const checkUrl = (rawUrl) => {
+                if (!rawUrl) return null;
+                try {
+                    const u = new URL(rawUrl);
+                    const host = u.hostname.replace(/^www\./, '').toLowerCase();
+                    if (map[host] !== undefined) return map[host];
+                    // Subdomain chain fallback (e.g. edition.cnn.com -> cnn.com, feeds.bloomberg.com -> bloomberg.com, news.bbc.co.uk -> bbc.co.uk)
+                    const parts = host.split('.');
+                    for (let i = 1; i < parts.length - 1; i++) {
+                        const parentDomain = parts.slice(i).join('.');
+                        if (map[parentDomain] !== undefined) return map[parentDomain];
+                    }
+                } catch {}
+                return null;
+            };
+
+            // 1. Check article link domain & root domain
+            const rLink = checkUrl(article.link);
+            if (rLink !== null) return rLink;
+
+            // 2. Check feed URL domain & root domain
+            const rFeed = checkUrl(article.feedUrl);
+            if (rFeed !== null) return rFeed;
+
+            // 3. Check normalized article source name
+            const testSources = [article.source, article.feedTitle, article.feedName].filter(Boolean);
+            for (const src of testSources) {
+                const sNorm = src.toLowerCase().replace(/^(the|a)\s+/i, '').replace(/[^a-z0-9\s]/g, '').trim();
+                if (map[sNorm] !== undefined) return map[sNorm];
+                const sRaw = src.toLowerCase().trim();
+                if (map[sRaw] !== undefined) return map[sRaw];
+                // Check word tokens for short acronyms (e.g. "NYT", "WSJ", "CNN", "NPR", "TPM", "BBC", "AP")
+                const tokens = sNorm.split(/\s+/);
+                for (const tok of tokens) {
+                    if (map[tok] !== undefined && (tok.length >= 3 || ['ft', 'ap'].includes(tok))) {
+                        return map[tok];
+                    }
+                }
+                // Substring match for major outlets (e.g. "Bloomberg Politics" -> "bloomberg", "Reuters News" -> "reuters")
+                for (const [key, rank] of Object.entries(map)) {
+                    if (key.length >= 4 && !key.includes('.') && sNorm.includes(key)) {
+                        return rank;
+                    }
+                }
+            }
+
+            return 9999;
         }
 
         async function fetchMemoRankings() {
@@ -3600,9 +3750,9 @@
             const CACHE_TTL = 86400000; // 24h
             try {
                 const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-                if (cached && Date.now() - cached.ts < CACHE_TTL && Object.keys(cached.map).length > 0) {
-                    window._memoRankMap = cached.map;
-                    console.log('[Dedup] Loaded', Object.keys(cached.map).length, 'source rankings from cache');
+                if (cached && Date.now() - cached.ts < CACHE_TTL && cached.map && Object.keys(cached.map).length > 0) {
+                    window._memoRankMap = { ...MEMO_BASE_RANKS, ...cached.map };
+                    console.log('[Dedup] Loaded', Object.keys(window._memoRankMap).length, 'source rankings from cache');
                     return;
                 }
             } catch {}
@@ -3617,24 +3767,51 @@
                     if (html && html.length > 500) break;
                 } catch(e) { console.warn('[Dedup] Proxy failed:', e.message); }
             }
-            if (!html) { console.warn('[Dedup] Could not fetch Memeorandum rankings — will rank all sources equally'); return; }
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-            const map = {};
-            let rank = 1;
-            doc.querySelectorAll('a[href]').forEach(a => {
-                const href = a.getAttribute('href') || '';
-                if (!href.startsWith('http')) return;
-                try {
-                    const domain = new URL(href).hostname.replace(/^www\./, '');
-                    if (domain && domain !== 'memeorandum.com' && !map[domain]) {
-                        map[domain] = rank++;
+            if (!html) {
+                console.log('[Dedup] Could not fetch live Memeorandum rankings — using built-in baseline of 100 top sources');
+                return;
+            }
+            try {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const map = { ...MEMO_BASE_RANKS };
+                const rows = doc.querySelectorAll('tr');
+                let foundRows = 0;
+                rows.forEach(tr => {
+                    const cr = tr.querySelector('.cr');
+                    const cs = tr.querySelector('.cs');
+                    const cu = tr.querySelector('.cu');
+                    if (cr && cs) {
+                        const rankNum = parseInt(cr.textContent.trim(), 10);
+                        const sName = cs.textContent.trim().toLowerCase().replace(/&amp;/g, '&');
+                        const sDomain = cu ? cu.textContent.trim().toLowerCase().replace(/\s+/g, '') : '';
+                        if (!isNaN(rankNum)) {
+                            if (sDomain) map[sDomain] = rankNum;
+                            if (sName) map[sName] = rankNum;
+                            foundRows++;
+                        }
                     }
-                } catch {}
-            });
-            if (Object.keys(map).length > 0) {
-                window._memoRankMap = map;
-                try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), map })); } catch {}
-                console.log('[Dedup] Fetched', Object.keys(map).length, 'source rankings from Memeorandum');
+                });
+                // Fallback: if table format changed, parse links
+                if (foundRows === 0) {
+                    let r = 1;
+                    doc.querySelectorAll('a[href]').forEach(a => {
+                        const href = a.getAttribute('href') || '';
+                        if (!href.startsWith('http')) return;
+                        try {
+                            const domain = new URL(href).hostname.replace(/^www\./, '').toLowerCase();
+                            if (domain && domain !== 'memeorandum.com' && !map[domain]) {
+                                map[domain] = r++;
+                            }
+                        } catch {}
+                    });
+                }
+                if (Object.keys(map).length > 0) {
+                    window._memoRankMap = map;
+                    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), map })); } catch {}
+                    console.log('[Dedup] Updated', Object.keys(map).length, 'source rankings from Memeorandum');
+                }
+            } catch(e) {
+                console.warn('[Dedup] Error parsing Memeorandum leaderboard:', e);
             }
         }
 
@@ -7172,37 +7349,118 @@
             let totalStories = 0;
 
             for (const cat of orderedCats) {
-                let items = grouped[cat].slice();
-                // Rank by Memeorandum authority score, ties by recency
-                items.sort((a, b) => {
-                    const rA = typeof getSourceRank === 'function' ? getSourceRank(a) : 9999;
-                    const rB = typeof getSourceRank === 'function' ? getSourceRank(b) : 9999;
-                    if (rA !== rB) return rA - rB;
-                    const tA = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-                    const tB = b._ts || (b.timestamp ? new Date(b.timestamp).getTime() : 0);
-                    return tB - tA;
-                });
+                const catItems = grouped[cat].slice();
+                if (catItems.length === 0) continue;
 
-                // Deduplicate similar titles in the same category
-                const deduped = [];
-                const seenKeys = new Map();
-                for (const art of items) {
-                    const norm = (typeof normTitle === 'function' ? normTitle(art.title) : (art.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ')).trim();
-                    const key = norm.slice(0, 40);
-                    if (seenKeys.has(key)) {
-                        const winner = seenKeys.get(key);
-                        if (!winner.alsoReportedBy) winner.alsoReportedBy = [];
-                        if (art.source && !winner.alsoReportedBy.includes(art.source) && art.source !== winner.source) {
-                            winner.alsoReportedBy.push(art.source);
+                // 1. Pre-calculate tokens and doc-frequencies for intelligent fuzzy story deduplication
+                const tokens = catItems.map(a => typeof dedupTokens === 'function' ? dedupTokens(a.title) : { all: new Set(), proper: new Set() });
+                const df = typeof buildDocFreq === 'function' ? buildDocFreq(tokens) : null;
+                const dates = catItems.map(a => a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0));
+
+                // 2. Cluster articles covering the same story/event
+                const clusters = [];
+                for (let i = 0; i < catItems.length; i++) {
+                    const art = catItems[i];
+                    const rank = typeof getSourceRank === 'function' ? getSourceRank(art) : 9999;
+                    const date = dates[i];
+                    const normT = (typeof normTitle === 'function' ? normTitle(art.title) : (art.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ')).trim();
+                    const key40 = normT.slice(0, 40);
+
+                    let matchedIdx = -1;
+                    for (let c = 0; c < clusters.length; c++) {
+                        const cl = clusters[c];
+                        // Match condition 1: Title prefix matches
+                        if (key40 && cl.key40 && (key40 === cl.key40 || key40.startsWith(cl.key40.slice(0, 30)) || cl.key40.startsWith(key40.slice(0, 30)))) {
+                            matchedIdx = c;
+                            break;
                         }
+                        // Match condition 2: isSameStory (token + proper noun overlap within 24h)
+                        if (typeof isSameStory === 'function' && isSameStory(tokens[i], cl.leadTokens, date, cl.leadDate, df)) {
+                            matchedIdx = c;
+                            break;
+                        }
+                    }
+
+                    if (matchedIdx === -1) {
+                        clusters.push({
+                            leadArticle: art,
+                            leadRank: rank,
+                            leadTokens: tokens[i],
+                            leadDate: date,
+                            key40: key40,
+                            sources: new Set(art.source ? [art.source] : []),
+                            articles: [art]
+                        });
                     } else {
-                        const copy = { ...art, alsoReportedBy: [] };
-                        seenKeys.set(key, copy);
-                        deduped.push(copy);
+                        const cl = clusters[matchedIdx];
+                        cl.articles.push(art);
+                        if (art.source) cl.sources.add(art.source);
+                        if (date > cl.leadDate) cl.leadDate = date;
+                        // If this newly clustered article has a higher Memeorandum authority score (lower rank number),
+                        // promote it to lead the story card!
+                        if (rank < cl.leadRank || (rank === cl.leadRank && date > (cl.leadArticle._ts || 0))) {
+                            cl.leadArticle = art;
+                            cl.leadRank = rank;
+                            cl.leadTokens = tokens[i];
+                            if (key40) cl.key40 = key40;
+                        }
                     }
                 }
 
-                const selectedStories = deduped.slice(0, limitPerCat);
+                // 3. Score and rank clusters
+                // Base score = Memeorandum source rank (1 = NYT, 2 = Politico, etc., 9999 = unranked)
+                // Multi-outlet consensus bonus: If multiple outlets report the story, it is a major event
+                // Each additional outlet improves effective rank by 3 positions (e.g. Reuters rank 11 + 2 others -> rank 5)
+                clusters.forEach(cl => {
+                    const extraOutlets = Math.max(0, cl.sources.size - 1);
+                    cl.effectiveRank = Math.max(1, cl.leadRank - (extraOutlets * 3));
+                    cl.sourceCount = cl.sources.size;
+                });
+
+                clusters.sort((a, b) => {
+                    // Lowest rank number = highest authority
+                    if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
+                    // Multi-source consensus tiebreaker
+                    if (b.sourceCount !== a.sourceCount) return b.sourceCount - a.sourceCount;
+                    // Recency tiebreaker
+                    return b.leadDate - a.leadDate;
+                });
+
+                // 4. Source Diversity selection
+                // Ensure a single high-frequency feed does not monopolize all slots in the section.
+                // Pass 1: pick up to perSourceCap stories per source
+                // Pass 2: if slots remain, fill with remaining top ranked stories
+                const perSourceCap = Math.max(2, Math.floor(limitPerCat / 3));
+                const sourceCounts = new Map();
+                const selectedClusters = [];
+                const remainingClusters = [];
+
+                for (const cl of clusters) {
+                    const src = cl.leadArticle.source || 'Unknown';
+                    const curCount = sourceCounts.get(src) || 0;
+                    if (selectedClusters.length < limitPerCat && curCount < perSourceCap) {
+                        sourceCounts.set(src, curCount + 1);
+                        selectedClusters.push(cl);
+                    } else {
+                        remainingClusters.push(cl);
+                    }
+                }
+
+                // Pass 2: fill any remaining slots up to limitPerCat
+                while (selectedClusters.length < limitPerCat && remainingClusters.length > 0) {
+                    selectedClusters.push(remainingClusters.shift());
+                }
+
+                // Build final selected story objects with alsoReportedBy metadata
+                const selectedStories = selectedClusters.map(cl => {
+                    const lead = cl.leadArticle;
+                    const otherSources = Array.from(cl.sources).filter(s => s && s !== lead.source);
+                    return {
+                        ...lead,
+                        alsoReportedBy: otherSources
+                    };
+                });
+
                 if (selectedStories.length > 0) {
                     const slug = cat.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
                     categorySections.push({
@@ -7383,6 +7641,13 @@
             const feedsAvailable = (window.feeds && window.feeds.length > 0) || (window.accountStates?.local && window.accountStates.local.length > 0);
             if (!feedsAvailable) return;
             try {
+                if (!window._memoRankMap) {
+                    window._memoRankMap = { ...MEMO_BASE_RANKS };
+                }
+                if (typeof fetchMemoRankings === 'function') {
+                    fetchMemoRankings().catch(() => {});
+                }
+
                 const existing = await window.appDB.getAll('briefs') || [];
                 const existingMap = new Map(existing.map(b => [b.id, b]));
                 const eligible = getEligibleBriefSlots(2);
@@ -7532,6 +7797,12 @@
 
         window.triggerManualBriefGeneration = async () => {
             if (window.showToast) window.showToast("Generating Daily Brief...");
+            if (!window._memoRankMap) {
+                window._memoRankMap = { ...MEMO_BASE_RANKS };
+            }
+            if (typeof fetchMemoRankings === 'function') {
+                try { await fetchMemoRankings(); } catch(e) {}
+            }
             await window.checkAndGenerateBriefs();
             let eligible = getEligibleBriefSlots(2);
             if (eligible.length > 0) {
@@ -8752,8 +9023,8 @@ window.toggleUnreadManual = () => {
                 window._dedupByTitle = true;
                 const btn = document.getElementById('dedup-title-toggle');
                 if (btn) btn.setAttribute('data-on', 'true');
-                fetchMemoRankings();
             }
+            fetchMemoRankings();
         }
 
         // --- ARTICLE CACHE ---
@@ -9544,7 +9815,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 221;
+        window.APP_BUILD = 222;
 
         (async function initApp() {
             try {
@@ -10394,7 +10665,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v221';
+const CACHE_NAME = 'rss-reader-v222';
 const APP_SHELL = [
     '/',
     'index.html'
