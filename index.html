@@ -1679,7 +1679,7 @@
             color: #94a3b8;
         }
         .brief-story-actions {
-            font-size: var(--article-meta-size, 0.85em) !important;
+            font-size: var(--view-font-size, 1.0em) !important;
             display: flex;
             align-items: center;
             gap: 0.75rem;
@@ -1688,6 +1688,8 @@
         .brief-story-actions button,
         .brief-story-actions a {
             font-size: inherit !important;
+            font-family: inherit !important;
+            font-weight: 400 !important;
         }
 
         /* Mobile flush layout - consistent with #reader-view & #article-list */
@@ -1739,11 +1741,13 @@
                 line-clamp: var(--mob-list-preview-lines, 4) !important;
             }
             .brief-story-actions {
-                font-size: var(--mob-author-size, 0.85em) !important;
+                font-size: var(--mob-body-size, var(--mob-list-preview-size, 1.0em)) !important;
             }
             .brief-story-actions button,
             .brief-story-actions a {
                 font-size: inherit !important;
+                font-family: inherit !important;
+                font-weight: 400 !important;
             }
         }
         .brief-empty-message {
@@ -3102,7 +3106,7 @@
                 });
             }
 
-            async pruneBriefs(maxAgeDays = 3) {
+            async pruneBriefs(maxAgeDays = 2) {
                 const cutoff = Date.now() - (maxAgeDays * 86400000);
                 const db = await this.open();
                 return new Promise((resolve, reject) => {
@@ -4920,6 +4924,14 @@
                 if (sSource) sSource.classList.add('truncate', 'whitespace-nowrap');
                 const sTime = card.querySelector('.brief-story-time');
                 if (sTime) sTime.classList.add('whitespace-nowrap');
+
+                // Ensure story actions match article font and are not bolded
+                const sActions = card.querySelector('.brief-story-actions');
+                if (sActions) {
+                    sActions.querySelectorAll('button, a').forEach(el => {
+                        el.classList.remove('font-medium', 'font-semibold', 'text-xs', 'text-sm', 'text-base');
+                    });
+                }
 
                 // Find title and excerpt elements
                 const titleEl = card.querySelector('.brief-story-title') || card.querySelector('h4') || card.querySelector('a:not(.brief-jump-pill):not([class*="action"]):not([class*="source"])');
@@ -7028,7 +7040,7 @@
             ];
         }
 
-        function getEligibleBriefSlots(maxDays = 3) {
+        function getEligibleBriefSlots(maxDays = 2) {
             const now = Date.now();
             const slots = [];
             for (let i = 0; i < maxDays; i++) {
@@ -7059,9 +7071,9 @@
             try {
                 let records = await window.appDB.getAll('briefs') || [];
                 records.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                // Rolling 3-day retention prune (max 12 briefs)
-                const cutoff = Date.now() - (3 * 86400000);
-                const fresh = records.filter(r => (r.timestamp || 0) >= cutoff).slice(0, 12);
+                // Rolling 2-day retention prune (max 8 briefs)
+                const cutoff = Date.now() - (2 * 86400000);
+                const fresh = records.filter(r => (r.timestamp || 0) >= cutoff).slice(0, 8);
                 if (fresh.length < records.length) {
                     const stale = records.filter(r => !fresh.includes(r));
                     stale.forEach(r => window.appDB.delete('briefs', r.id).catch(() => {}));
@@ -7272,10 +7284,10 @@
                                 </div>
                                 ${storyBodyHtml}
                                 <div class="brief-story-actions flex items-center gap-3 pt-0.5">
-                                    <button onclick="window.openArticleInReader('${saId}')" class="text-blue-500 dark:text-blue-400 hover:underline inline-flex items-center gap-1 font-medium">
-                                        Open in Reader <svg class="w-3 h-3"><use href="#icon-newspaper"/></svg>
+                                    <button onclick="window.openArticleInReader('${saId}')" class="text-blue-500 dark:text-blue-400 hover:underline inline-flex items-center gap-1 font-normal">
+                                        Open in Reader <svg class="w-3.5 h-3.5" style="width: 1.1em; height: 1.1em;"><use href="#icon-newspaper"/></svg>
                                     </button>
-                                    <a href="${esc(st.link)}" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-gray-200 inline-flex items-center gap-1">
+                                    <a href="${esc(st.link)}" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-gray-200 inline-flex items-center gap-1 font-normal">
                                         Source Link ↗
                                     </a>
                                 </div>
@@ -7328,7 +7340,7 @@
             try {
                 const existing = await window.appDB.getAll('briefs') || [];
                 const existingMap = new Map(existing.map(b => [b.id, b]));
-                const eligible = getEligibleBriefSlots(3);
+                const eligible = getEligibleBriefSlots(2);
                 let generatedCount = 0;
 
                 for (const slot of eligible) {
@@ -7346,8 +7358,8 @@
                         generatedCount++;
                     }
                 }
-                // Prune briefs older than 3 days
-                await window.appDB.pruneBriefs(3);
+                // Prune briefs older than 2 days
+                await window.appDB.pruneBriefs(2);
                 await window.loadBriefsFromDB();
                 if (generatedCount > 0 && window.currentSmartFeed === 'briefs') {
                     renderTimeline();
@@ -7476,7 +7488,7 @@
         window.triggerManualBriefGeneration = async () => {
             if (window.showToast) window.showToast("Generating Daily Brief...");
             await window.checkAndGenerateBriefs();
-            let eligible = getEligibleBriefSlots(3);
+            let eligible = getEligibleBriefSlots(2);
             if (eligible.length > 0) {
                 const currentSlot = eligible[0];
                 const brief = generateBrief(currentSlot);
@@ -9487,7 +9499,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 219;
+        window.APP_BUILD = 220;
 
         (async function initApp() {
             try {
@@ -10337,7 +10349,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v219';
+const CACHE_NAME = 'rss-reader-v220';
 const APP_SHELL = [
     '/',
     'index.html'
