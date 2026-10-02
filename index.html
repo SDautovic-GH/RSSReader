@@ -1412,6 +1412,39 @@
             padding-top: 0 !important;
             padding-bottom: 0 !important;
         }
+        /* DAILY BRIEFS STYLES */
+        .brief-jump-bar {
+            display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.08); position: sticky; top: 0;
+            background: var(--bg-reader, #0b1120); z-index: 10; scrollbar-width: none;
+        }
+        .brief-jump-bar::-webkit-scrollbar { display: none; }
+        .brief-jump-pill {
+            display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px;
+            font-size: 12px; font-weight: 500; white-space: nowrap; text-decoration: none;
+            background: rgba(255,255,255,0.06); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.15s ease; cursor: pointer;
+        }
+        .brief-jump-pill:hover {
+            background: rgba(59,130,246,0.2); color: #60a5fa; border-color: rgba(59,130,246,0.35);
+        }
+        html:not(.dark) .brief-jump-bar { border-bottom-color: rgba(0,0,0,0.08); background: #ffffff; }
+        html:not(.dark) .brief-jump-pill {
+            background: rgba(0,0,0,0.04); color: #475569; border-color: rgba(0,0,0,0.08);
+        }
+        html:not(.dark) .brief-jump-pill:hover {
+            background: rgba(37,99,235,0.1); color: #2563eb; border-color: rgba(37,99,235,0.25);
+        }
+        .brief-story-card {
+            padding: 12px 14px; margin-bottom: 10px; border-radius: 10px;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+            transition: background 0.15s ease;
+        }
+        .brief-story-card:hover { background: rgba(255,255,255,0.06); }
+        html:not(.dark) .brief-story-card {
+            background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06);
+        }
+        html:not(.dark) .brief-story-card:hover { background: rgba(0,0,0,0.04); }
         .settings-section-label {
             font-size: 14px; font-weight: 600; text-transform: uppercase;
             letter-spacing: 0.06em; color: #94a3b8;
@@ -1807,8 +1840,12 @@
                     <button id="feed-btn-saved" onclick="setSmartFeed('saved')" oncontextmenu="showFolderContextMenu(event,'smart','saved')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3"><use href="#icon-star"/></svg> Saved</span>
                     </button>
-                    <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" oncontextmenu="showFolderContextMenu(event,'smart','recently-read')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
+                    <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" oncontextmenu="showFolderContextMenu(event,'smart','recently-read')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg> History</span>
+                    </button>
+                    <button id="feed-btn-briefs" onclick="setSmartFeed('briefs')" oncontextmenu="showFolderContextMenu(event,'smart','briefs')" class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400 hover:bg-white/5">
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#icon-newspaper"/></svg> Daily Briefs</span>
+                        <span id="badge-briefs" class="feed-badge text-blue-400 hidden">0</span>
                     </button>
                 </div>
                 <!-- Category folders card -->
@@ -2227,6 +2264,34 @@
                     </div>
                 </div>
 
+                <!-- DAILY BRIEFS -->
+                <div>
+                    <h3 class="settings-section-label">Daily Briefs</h3>
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Enable Daily Briefs</label>
+                                <p class="text-[12px] text-gray-400 mt-1">Automatic news summaries at 5 AM, 12 PM, 4 PM, and 8 PM ET</p>
+                            </div>
+                            <button id="briefs-enabled-toggle" onclick="toggleBriefsEnabled()" class="toggle-switch" data-on="true" aria-label="Enable Daily Briefs"></button>
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <span class="settings-item-label">Stories per Category</span>
+                                <span class="settings-value" id="brief-stories-val">10</span>
+                            </div>
+                            <input type="range" min="3" max="25" value="10" id="brief-stories-slider" class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
+                        </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <span class="settings-item-label-sm">Generate Brief Now</span>
+                                <p class="text-[12px] text-gray-400 mt-1">Produce the current brief immediately from fetched articles</p>
+                            </div>
+                            <button onclick="triggerManualBriefGeneration()" class="px-3 py-1.5 rounded-lg border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 text-[13px] font-medium transition-colors">Generate</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- SIDEBAR -->
                 <div>
                     <h3 class="settings-section-label">Sidebar</h3>
@@ -2465,6 +2530,9 @@
         window._readLinks = new Set();
         window._readLaterLinks = new Set();
         window._pinnedArticleIds = new Set();
+        window._briefArticles = [];
+        window._briefsEnabled = (localStorage.getItem('newsreader_briefs_enabled') !== '0');
+        window._briefStoriesPerCat = parseInt(localStorage.getItem('newsreader_brief_stories_per_cat') || '10', 10);
         // Links the user EXPLICITLY toggled back to unread this session — the only
         // legitimate removal path from the durable read store (see saveReadState).
         window._unreadToggledLinks = new Set();
@@ -2576,7 +2644,7 @@
         class RSSReaderDB {
             constructor() {
                 this.dbName = 'RSSReaderDB';
-                this.version = 4;
+                this.version = 5;
                 this.db = null;
             }
 
@@ -2612,9 +2680,32 @@
                             const sv = db.createObjectStore('savedItems', { keyPath: 'link' });
                             sv.createIndex('addedAt', 'addedAt', { unique: false });
                         }
+                        // v5: Daily Briefs storage (Morning, Midday, Afternoon, Evening digests)
+                        if (!db.objectStoreNames.contains('briefs')) {
+                            const br = db.createObjectStore('briefs', { keyPath: 'id' });
+                            br.createIndex('timestamp', 'timestamp', { unique: false });
+                        }
                     };
                     request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
                     request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
+                });
+            }
+
+            async pruneBriefs(maxAgeDays = 3) {
+                const cutoff = Date.now() - (maxAgeDays * 86400000);
+                const db = await this.open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction('briefs', 'readwrite');
+                    const store = tx.objectStore('briefs');
+                    const idx = store.index('timestamp');
+                    const range = IDBKeyRange.upperBound(cutoff, true);
+                    let n = 0;
+                    idx.openCursor(range).onsuccess = (e) => {
+                        const cur = e.target.result;
+                        if (cur) { cur.delete(); n++; cur.continue(); }
+                        else resolve(n);
+                    };
+                    tx.onerror = () => reject(tx.error);
                 });
             }
 
@@ -3605,10 +3696,15 @@
             const isReadLater = window.currentSmartFeed === 'read-later';
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             const isSaved = window.currentSmartFeed === 'saved';
+            const isBriefs = window.currentSmartFeed === 'briefs';
             let headline, subtext, showRefresh = true;
             if (!hasFeeds) {
                 headline = 'No feeds yet';
                 subtext = 'Add your first feed from Settings → Feeds to get started.';
+                showRefresh = false;
+            } else if (isBriefs) {
+                headline = 'No briefs yet';
+                subtext = 'Daily Briefs are generated automatically at 5 AM, 12 PM, 4 PM, and 8 PM ET across your category folders.';
                 showRefresh = false;
             } else if (isSaved) {
                 headline = 'Nothing saved yet';
@@ -3630,11 +3726,15 @@
                 headline = 'All caught up';
                 subtext = "You've read everything. Pull down to refresh.";
             }
-            const refreshBtn = showRefresh ? `
+            const refreshBtn = isBriefs ? `
+                    <button onclick="triggerManualBriefGeneration()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold" style="background: rgba(59,130,246,0.15); color: #4493f8; border: 1px solid rgba(59,130,246,0.25);">
+                        <svg class="w-4 h-4"><use href="#icon-newspaper"/></svg>
+                        Generate Brief Now
+                    </button>` : (showRefresh ? `
                     <button onclick="refreshAll()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold" style="background: rgba(59,130,246,0.15); color: #4493f8; border: 1px solid rgba(59,130,246,0.25);">
                         <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
                         Refresh
-                    </button>` : '';
+                    </button>` : '');
             return `
                 <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
@@ -3756,19 +3856,21 @@
 
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             const isSaved = window.currentSmartFeed === 'saved';
+            const isBriefs = window.currentSmartFeed === 'briefs';
             // Read Later sources from the durable bucket when it's populated so
             // items survive feed removal and rolling cache eviction. Falls back
             // to the legacy in-memory filter while the bucket is still hydrating.
             const isReadLaterBucketed = window.currentSmartFeed === 'read-later'
                 && Array.isArray(window._readLaterArticles);
-            const sortOrder = (isRecentlyRead || isSaved || isReadLaterBucketed)
+            const sortOrder = (isRecentlyRead || isSaved || isReadLaterBucketed || isBriefs)
                 ? 'desc'
                 : (document.getElementById('pref-sort-order')?.value || 'asc');
 
             let filtered = isRecentlyRead
                 ? (window._recentlyReadArticles || [])
                 : (isSaved ? (window._savedArticles || [])
-                    : (isReadLaterBucketed ? (window._readLaterArticles || []) : window.articles));
+                    : (isBriefs ? (window._briefArticles || [])
+                        : (isReadLaterBucketed ? (window._readLaterArticles || []) : window.articles)));
 
             // The timeline's own search filtering was removed in build 209. Search is
             // now entirely the palette's job (updateSearchResults renders its own result
@@ -3776,7 +3878,7 @@
             // bar: nothing sets the old query global any more and the desk-search-*
             // elements it read no longer exist, so the branch was permanently inactive.
             // window._readArchiveCache survives - the palette still uses it.
-            if (!isRecentlyRead && !isSaved && !isReadLaterBucketed) {
+            if (!isRecentlyRead && !isSaved && !isReadLaterBucketed && !isBriefs) {
                 // Apply normal filters
                 if (window.currentSmartFeed === 'all') {
                     filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
@@ -3808,7 +3910,7 @@
 
             // --- Title dedup (fuzzy: exact-match pass + Jaccard cluster pass within 24h) ---
             let dedupRemovedCount = 0;
-            if (window._dedupByTitle && window._preBatchLinks && window._dedupHiddenLinks) {
+            if (!isBriefs && window._dedupByTitle && window._preBatchLinks && window._dedupHiddenLinks) {
                 // CHEAP mid-batch path: the dedup world is FROZEN for the whole batch
                 // (pre-batch items only; batch-fresh items exempt), so the verdict
                 // from the last full run cannot change between progressive renders.
@@ -3818,7 +3920,7 @@
                 const before = filtered.length;
                 filtered = filtered.filter(a => !window._preBatchLinks.has(a.link) || !window._dedupHiddenLinks.has(a.link));
                 dedupRemovedCount = before - filtered.length;
-            } else if (window._dedupByTitle) {
+            } else if (!isBriefs && window._dedupByTitle) {
                 const before = filtered.length;
                 // Mid-refresh stability (see fetchAllStaggered): while a batch is
                 // filling the list, dedup runs only among PRE-BATCH articles — same
@@ -3975,6 +4077,9 @@
         }
 
         function getFavicon(sourceName) {
+            if (sourceName === 'Daily Brief') {
+                return '<svg class="w-3.5 h-3.5 inline mr-1 text-blue-400 align-middle"><use href="#icon-newspaper"/></svg>';
+            }
             const feedObj = window.feeds.find(f => f.name === sourceName);
             if (!feedObj?.favicon) return '';
             const slug = getFaviconSlug(sourceName);
@@ -3984,6 +4089,44 @@
         }
 
         function buildArticleCard(a) {
+            if (a.isBrief) {
+                const saId = escJs(a.id);
+                const selected = window.currentArticle?.id === a.id;
+                const selCls = selected ? 'is-active-card' : '';
+                const readDimCls = (!a.unread) ? ' opacity-75' : '';
+                const showDot = a.unread;
+                const timeLabel = getRelativeTime(a.timestamp);
+                const slotLabel = a.slot ? (a.slot.charAt(0).toUpperCase() + a.slot.slice(1)) : 'Brief';
+
+                if (window._viewMode === 'card') {
+                    return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
+                        <div class="p-3">
+                            <div class="flex items-center text-[11px] mb-1.5 gap-1.5">
+                                ${showDot ? '<span class="w-2 h-2 bg-blue-500 rounded-full mr-1 flex-shrink-0"></span>' : ''}
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400"><svg class="w-3 h-3 mr-1"><use href="#icon-newspaper"/></svg>${slotLabel}</span>
+                                <span class="ml-auto text-gray-500 text-[11px]">${timeLabel}</span>
+                            </div>
+                            <h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title mb-1">${esc(a.title)}</h3>
+                            <p class="text-xs text-gray-400 mt-1">${esc(a.excerpt)}</p>
+                        </div>
+                    </div>`;
+                }
+                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" class="relative px-4 py-3 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
+                    <div class="min-w-0">
+                        <div class="flex items-center justify-between mb-1.5 gap-2">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400"><svg class="w-3 h-3 mr-1"><use href="#icon-newspaper"/></svg>${slotLabel}</span>
+                                <span class="list-source-label font-bold text-gray-500 dark:text-gray-400 uppercase truncate">Daily Brief</span>
+                            </div>
+                            <span class="list-date-label text-[11px] text-gray-500 flex-shrink-0">${timeLabel}</span>
+                        </div>
+                        <h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1 dynamic-list-title">${esc(a.title)}</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 dynamic-list-preview">${esc(a.excerpt)}</p>
+                    </div>
+                </div>`;
+            }
+
             const favicon = getFavicon(a.source);
             const selected = window.currentArticle?.id === a.id;
             const selCls = selected ? 'is-active-card' : '';
@@ -4294,13 +4437,27 @@
             if (!article && Array.isArray(window._readLaterArticles)) {
                 article = window._readLaterArticles.find(a => a.id === id);
             }
+            if (!article && Array.isArray(window._briefArticles)) {
+                article = window._briefArticles.find(a => a.id === id);
+            }
             if (!article) return;
 
-            window.articles.forEach(a => { if (a.id === id) a.unread = false; });
             window.currentArticle = article;
-            window._readLinks.add(article.link);
-            archiveReadArticle(article);
-            saveReadState();
+            if (article.isBrief) {
+                if (article.unread) {
+                    article.unread = false;
+                    if (article.briefData) {
+                        article.briefData.unread = false;
+                        window.saveBriefRecord?.(article.briefData);
+                    }
+                    updateBadges();
+                }
+            } else {
+                window.articles.forEach(a => { if (a.id === id) a.unread = false; });
+                window._readLinks.add(article.link);
+                archiveReadArticle(article);
+                saveReadState();
+            }
 
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('article-content').classList.remove('hidden');
@@ -4309,13 +4466,13 @@
             const feedObj = window.feeds.find(f => f.name === article.source);
             if (faviconEl) {
                 let faviconUrl = feedObj?.favicon;
-                if (!faviconUrl && article.link) {
+                if (!faviconUrl && article.link && !article.isBrief) {
                     try {
                         const domain = new URL(article.link).hostname;
                         faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
                     } catch(e) { console.warn('Favicon URL parse failed', e.message); }
                 }
-                if (faviconUrl) {
+                if (faviconUrl && !article.isBrief) {
                     faviconEl.src = faviconUrl;
                     faviconEl.classList.remove('hidden');
                     faviconEl.style.display = '';
@@ -4326,9 +4483,9 @@
             }
             const isBskyArticle = article.feedUrl ? isBlueskyFeed(article.feedUrl) : false;
             const metaEl = document.getElementById('article-meta');
-            if (sourceLabelEl) sourceLabelEl.textContent = article.source;
+            if (sourceLabelEl) sourceLabelEl.textContent = article.isBrief ? 'Daily Brief' : article.source;
             if (metaEl) {
-                metaEl.onclick = isBskyArticle ? (() => window.open(article.link, '_blank', 'noopener,noreferrer')) : filterByCurrentSource;
+                metaEl.onclick = article.isBrief ? null : (isBskyArticle ? (() => window.open(article.link, '_blank', 'noopener,noreferrer')) : filterByCurrentSource);
                 metaEl.title = isBskyArticle ? 'Open post on Bluesky' : '';
             }
             // Bluesky posts always render Mastodon-style: no headline, no author/date row.
@@ -4343,11 +4500,11 @@
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
             const authorEl = document.getElementById('article-author');
             const dateEl = document.getElementById('article-date');
-            authorEl.textContent = article.author;
+            authorEl.textContent = article.isBrief ? (article.slot ? (article.slot.toUpperCase() + ' BRIEF') : 'DAILY BRIEF') : article.author;
             const _d = new Date(article.timestamp);
             const _datePart = _d.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric', year: 'numeric' });
             const _timePart = _d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true });
-            dateEl.textContent = `${_datePart} · ${_timePart}`;
+            dateEl.textContent = article.isBrief ? `${_datePart} · ${_timePart} ET` : `${_datePart} · ${_timePart}`;
             if (isBskyArticle) {
                 authorEl.style.display = 'none';
                 authorEl.nextElementSibling.style.display = 'none';
@@ -4356,17 +4513,21 @@
                 authorEl.nextElementSibling.style.display = '';
             }
             const bodyEl = document.getElementById('article-body');
-            bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type', 'preload'] });
-            stripJsonBlobs(bodyEl);
-            stripImagePlaceholders(bodyEl);
-            stripLeadingEmptyBlocks(bodyEl);
-            normalizeBodyStyles(bodyEl);       // feed fonts/sizes must not beat the app's
-            initBodyImages(bodyEl, article);   // normalize/drop unusable images first...
-            ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
+            if (article.isBrief) {
+                bodyEl.innerHTML = article.body;
+            } else {
+                bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type', 'preload'] });
+                stripJsonBlobs(bodyEl);
+                stripImagePlaceholders(bodyEl);
+                stripLeadingEmptyBlocks(bodyEl);
+                normalizeBodyStyles(bodyEl);       // feed fonts/sizes must not beat the app's
+                initBodyImages(bodyEl, article);   // normalize/drop unusable images first...
+                ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
+            }
             const readerElEarly = document.getElementById('reader-view');
             if (readerElEarly) readerElEarly.scrollTop = 0;
 
-            attemptFullContentLoad(article);
+            if (!article.isBrief) attemptFullContentLoad(article);
 
 
             const idx = window.currentTimeline.findIndex(a => a.id === id);
@@ -5087,6 +5248,14 @@
         function hideContextMenu() { document.getElementById('article-context-menu').classList.add('hidden'); }
         function toggleUnread(article) {
             article.unread = !article.unread;
+            if (article.isBrief) {
+                if (article.briefData) {
+                    article.briefData.unread = article.unread;
+                    window.saveBriefRecord?.(article.briefData);
+                }
+                updateBadges();
+                return;
+            }
             if (!article.unread) {
                 window._readLinks.add(article.link);
                 window._unreadToggledLinks.delete(article.link);
@@ -5489,21 +5658,27 @@
         function updateBadges() {
             const allUnread = window.articles.filter(a => a.unread).length;
             const readLaterCount = window.articles.filter(a => a.readLater).length;
+            const briefUnreadCount = (window._briefArticles || []).filter(b => b.unread).length;
 
             const badgeAll = document.getElementById('badge-all');
             const badgeReadLater = document.getElementById('badge-read-later');
+            const badgeBriefs = document.getElementById('badge-briefs');
 
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
+            if (badgeBriefs) { badgeBriefs.textContent = briefUnreadCount; badgeBriefs.classList.toggle('hidden', briefUnreadCount === 0); }
 
-            // Dim empty Read Later / Saved smart feeds (always-visible, unlike category
+            // Dim empty Read Later / Saved / Briefs smart feeds (always-visible, unlike category
             // folders which hide when read). History is a rolling window — never dimmed.
             const savedCount = (window.savedBucket && typeof window.savedBucket.list === 'function')
                 ? window.savedBucket.list().length : 0;
+            const briefCount = (window._briefArticles || []).length;
             const btnReadLater = document.getElementById('feed-btn-read-later');
             const btnSaved = document.getElementById('feed-btn-saved');
+            const btnBriefs = document.getElementById('feed-btn-briefs');
             if (btnReadLater) btnReadLater.classList.toggle('smart-empty', readLaterCount === 0);
             if (btnSaved) btnSaved.classList.toggle('smart-empty', savedCount === 0);
+            if (btnBriefs) btnBriefs.classList.toggle('smart-empty', briefCount === 0);
 
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
             updateHeaderStatus();
@@ -5731,6 +5906,11 @@
             } else {
                 window._readLaterArticles = null;
             }
+            if (type === 'briefs') {
+                if (typeof window.loadBriefsFromDB === 'function') {
+                    await window.loadBriefsFromDB();
+                }
+            }
             renderTimeline();
         };
 
@@ -5908,6 +6088,7 @@
                 window._lastRefreshAt = Date.now();
                 window.updateHeaderStatus?.();
                 _setHintRefreshing(false);
+                window.checkAndGenerateBriefs?.();
                 // If we were showing the refreshing spinner and still have nothing to
                 // display, force one render so it returns to "All caught up" instead of
                 // spinning forever.
@@ -6009,7 +6190,12 @@
         window.toggleTTS = () => {
             if (window._ttsActive) { stopTTS(); return; }
             if (!window.currentArticle) return;
-            const text = document.getElementById('article-body')?.innerText || '';
+            let text = '';
+            if (window.currentArticle.isBrief && window.currentArticle.spokenText) {
+                text = window.currentArticle.spokenText;
+            } else {
+                text = document.getElementById('article-body')?.innerText || '';
+            }
             if (!text.trim()) return;
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.onend = () => { window._ttsActive = false; updateTTSButton(); };
@@ -6164,6 +6350,456 @@
                 }
             });
         })();
+
+        // ==========================================
+        // ===== DAILY BRIEFS ENGINE (ET Schedule) =====
+        // ==========================================
+
+        function getETParts(d = new Date()) {
+            const f = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/New_York',
+                year: 'numeric', month: 'numeric', day: 'numeric',
+                hour: 'numeric', minute: 'numeric', second: 'numeric',
+                hourCycle: 'h23'
+            });
+            const p = {};
+            f.formatToParts(d).forEach(x => p[x.type] = x.value);
+            const monthStr = p.month.padStart(2, '0');
+            const dayStr = p.day.padStart(2, '0');
+            return {
+                year: +p.year,
+                month: +p.month,
+                day: +p.day,
+                hour: +p.hour,
+                minute: +p.minute,
+                second: +p.second,
+                dateStr: `${p.year}-${monthStr}-${dayStr}`
+            };
+        }
+
+        function etToEpoch(dateStr, etHour, etMinute = 0) {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            let testTs = Date.UTC(y, m - 1, d, etHour + 4, etMinute, 0);
+            for (let offset = -6; offset <= 6; offset++) {
+                const candidate = Date.UTC(y, m - 1, d, etHour + offset, etMinute, 0);
+                const parts = getETParts(new Date(candidate));
+                if (parts.dateStr === dateStr && parts.hour === etHour && parts.minute === etMinute) {
+                    return candidate;
+                }
+            }
+            return testTs;
+        }
+
+        function getBriefSlotsForDate(dateStr, prevDateStr) {
+            return [
+                {
+                    id: `brief:${dateStr}:morning`,
+                    slot: 'morning',
+                    name: 'Morning Brief',
+                    badgeLabel: 'Morning',
+                    triggerHour: 5,
+                    triggerTs: etToEpoch(dateStr, 5, 0),
+                    windowStart: etToEpoch(prevDateStr, 20, 0), // 8 PM yesterday
+                    windowEnd: etToEpoch(dateStr, 5, 0),        // 5 AM today
+                    windowLabel: '8:00 PM yesterday – 5:00 AM ET',
+                    dateStr: dateStr
+                },
+                {
+                    id: `brief:${dateStr}:midday`,
+                    slot: 'midday',
+                    name: 'Midday Brief',
+                    badgeLabel: 'Midday',
+                    triggerHour: 12,
+                    triggerTs: etToEpoch(dateStr, 12, 0),
+                    windowStart: etToEpoch(dateStr, 5, 0),      // 5 AM today
+                    windowEnd: etToEpoch(dateStr, 12, 0),       // 12 PM today
+                    windowLabel: '5:00 AM – 12:00 PM ET',
+                    dateStr: dateStr
+                },
+                {
+                    id: `brief:${dateStr}:afternoon`,
+                    slot: 'afternoon',
+                    name: 'Afternoon Brief',
+                    badgeLabel: 'Afternoon',
+                    triggerHour: 16,
+                    triggerTs: etToEpoch(dateStr, 16, 0),
+                    windowStart: etToEpoch(dateStr, 12, 0),     // 12 PM today
+                    windowEnd: etToEpoch(dateStr, 16, 0),       // 4 PM today
+                    windowLabel: '12:00 PM – 4:00 PM ET',
+                    dateStr: dateStr
+                },
+                {
+                    id: `brief:${dateStr}:evening`,
+                    slot: 'evening',
+                    name: 'Evening Brief',
+                    badgeLabel: 'Evening',
+                    triggerHour: 20,
+                    triggerTs: etToEpoch(dateStr, 20, 0),
+                    windowStart: etToEpoch(dateStr, 16, 0),     // 4 PM today
+                    windowEnd: etToEpoch(dateStr, 20, 0),       // 8 PM today
+                    windowLabel: '4:00 PM – 8:00 PM ET',
+                    dateStr: dateStr
+                }
+            ];
+        }
+
+        function getEligibleBriefSlots(maxDays = 3) {
+            const now = Date.now();
+            const slots = [];
+            for (let i = 0; i < maxDays; i++) {
+                const dayTs = now - (i * 86400000);
+                const prevDayTs = now - ((i + 1) * 86400000);
+                const dateStr = getETParts(new Date(dayTs)).dateStr;
+                const prevDateStr = getETParts(new Date(prevDayTs)).dateStr;
+                const daySlots = getBriefSlotsForDate(dateStr, prevDateStr);
+                for (const s of daySlots) {
+                    if (s.triggerTs <= now) {
+                        slots.push(s);
+                    }
+                }
+            }
+            slots.sort((a, b) => b.triggerTs - a.triggerTs);
+            return slots;
+        }
+
+        window.saveBriefRecord = async function(brief) {
+            if (!window.appDB) return;
+            try {
+                await window.appDB.put('briefs', brief);
+            } catch(e) { console.warn('Failed to save brief:', e); }
+        };
+
+        window.loadBriefsFromDB = async function() {
+            if (!window.appDB) return;
+            try {
+                let records = await window.appDB.getAll('briefs') || [];
+                records.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                // Rolling 3-day retention prune (max 12 briefs)
+                const cutoff = Date.now() - (3 * 86400000);
+                const fresh = records.filter(r => (r.timestamp || 0) >= cutoff).slice(0, 12);
+                if (fresh.length < records.length) {
+                    const stale = records.filter(r => !fresh.includes(r));
+                    stale.forEach(r => window.appDB.delete('briefs', r.id).catch(() => {}));
+                }
+                window._briefArticles = fresh.map(b => ({
+                    id: b.id,
+                    link: 'brief://' + b.id,
+                    title: b.title,
+                    source: 'Daily Brief',
+                    slot: b.slot,
+                    excerpt: `${b.categories?.length || 0} sections · ${b.totalStories || 0} stories · ~${Math.ceil((b.totalStories || 1) * 0.35)} min read`,
+                    body: b.body,
+                    spokenText: b.spokenText,
+                    author: 'Automated Brief',
+                    timestamp: b.timestamp,
+                    unread: b.unread !== false,
+                    isBrief: true,
+                    briefData: b
+                }));
+                updateBadges();
+            } catch(e) {
+                console.warn('loadBriefsFromDB failed:', e);
+                window._briefArticles = [];
+            }
+        };
+
+        function generateBrief(slotDef) {
+            // Find articles within publication window
+            const pool = window.articles || [];
+            const inWindow = pool.filter(a => {
+                const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
+                return ts >= slotDef.windowStart && ts <= slotDef.windowEnd;
+            });
+
+            // Group by category
+            const grouped = {};
+            inWindow.forEach(a => {
+                const feed = (window.feeds || []).find(f => f.url === a.feedUrl || f.name === a.source);
+                const cat = feed?.category || 'Uncategorized';
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(a);
+            });
+
+            // Order categories strictly by window._categoryOrder
+            const orderedCats = (window._categoryOrder || []).filter(c => grouped[c] && grouped[c].length > 0);
+            Object.keys(grouped).forEach(c => {
+                if (!orderedCats.includes(c) && grouped[c]?.length > 0) orderedCats.push(c);
+            });
+
+            const limitPerCat = window._briefStoriesPerCat || 10;
+            const categorySections = [];
+            let totalStories = 0;
+
+            for (const cat of orderedCats) {
+                let items = grouped[cat].slice();
+                // Rank by Memeorandum authority score, ties by recency
+                items.sort((a, b) => {
+                    const rA = typeof getSourceRank === 'function' ? getSourceRank(a) : 9999;
+                    const rB = typeof getSourceRank === 'function' ? getSourceRank(b) : 9999;
+                    if (rA !== rB) return rA - rB;
+                    const tA = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
+                    const tB = b._ts || (b.timestamp ? new Date(b.timestamp).getTime() : 0);
+                    return tB - tA;
+                });
+
+                // Deduplicate similar titles in the same category
+                const deduped = [];
+                const seenKeys = new Map();
+                for (const art of items) {
+                    const norm = (typeof normTitle === 'function' ? normTitle(art.title) : (art.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ')).trim();
+                    const key = norm.slice(0, 40);
+                    if (seenKeys.has(key)) {
+                        const winner = seenKeys.get(key);
+                        if (!winner.alsoReportedBy) winner.alsoReportedBy = [];
+                        if (art.source && !winner.alsoReportedBy.includes(art.source) && art.source !== winner.source) {
+                            winner.alsoReportedBy.push(art.source);
+                        }
+                    } else {
+                        const copy = { ...art, alsoReportedBy: [] };
+                        seenKeys.set(key, copy);
+                        deduped.push(copy);
+                    }
+                }
+
+                const selectedStories = deduped.slice(0, limitPerCat);
+                if (selectedStories.length > 0) {
+                    const slug = cat.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                    categorySections.push({
+                        name: cat,
+                        slug: slug,
+                        stories: selectedStories
+                    });
+                    totalStories += selectedStories.length;
+                }
+            }
+
+            // Build Date labels
+            const triggerDate = new Date(slotDef.triggerTs);
+            const datePartFormatted = triggerDate.toLocaleDateString('en-US', {
+                timeZone: 'America/New_York',
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            const shortDateFormatted = triggerDate.toLocaleDateString('en-US', {
+                timeZone: 'America/New_York',
+                month: 'short',
+                day: 'numeric'
+            });
+            const readTimeEst = Math.max(1, Math.ceil(totalStories * 0.35));
+
+            // Generate HTML Body
+            let html = `
+                <div class="brief-container pb-10">
+                    <div class="brief-header mb-6 p-4 rounded-xl bg-white/[0.04] dark:bg-white/[0.04] border border-white/10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400">
+                                <svg class="w-3.5 h-3.5 mr-1"><use href="#icon-newspaper"/></svg> ${esc(slotDef.badgeLabel)} Brief
+                            </span>
+                            <span class="text-xs text-gray-400">• ${esc(slotDef.windowLabel)}</span>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1.5">${esc(slotDef.name)} — ${esc(datePartFormatted)}</h2>
+                        <div class="text-xs text-gray-400 flex items-center gap-2">
+                            <span>${categorySections.length} sections</span>
+                            <span>•</span>
+                            <span>${totalStories} stories</span>
+                            <span>•</span>
+                            <span>~${readTimeEst} min read</span>
+                        </div>
+                    </div>
+            `;
+
+            // Sticky Jump Pills (Table of Contents)
+            if (categorySections.length > 0) {
+                html += `<div class="brief-jump-bar">`;
+                categorySections.forEach(cs => {
+                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill" onclick="event.preventDefault(); document.getElementById('brief-cat-${cs.slug}')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">${esc(cs.name)} (${cs.stories.length})</a>`;
+                });
+                html += `</div>`;
+            }
+
+            // Category Sections & Story Cards
+            if (categorySections.length === 0) {
+                html += `
+                    <div class="text-center py-12 text-gray-400">
+                        <p class="text-sm">No new articles were captured in this delivery window.</p>
+                        <p class="text-xs text-gray-500 mt-1">Feeds may not have updated between ${esc(slotDef.windowLabel)}.</p>
+                    </div>
+                `;
+            } else {
+                categorySections.forEach(cs => {
+                    html += `
+                        <div id="brief-cat-${cs.slug}" class="mb-8 scroll-mt-20">
+                            <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2 mb-3">
+                                <h3 class="text-base font-bold text-blue-400 flex items-center gap-2">
+                                    <svg class="w-4 h-4"><use href="#icon-rss"/></svg>
+                                    ${esc(cs.name)}
+                                </h3>
+                                <span class="text-xs text-gray-500 font-medium">${cs.stories.length} stories</span>
+                            </div>
+                            <div class="space-y-3">
+                    `;
+                    cs.stories.forEach(st => {
+                        const favHtml = typeof getFavicon === 'function' ? getFavicon(st.source) : '';
+                        const relTime = typeof getRelativeTime === 'function' ? getRelativeTime(st.timestamp) : '';
+                        const alsoReported = (st.alsoReportedBy && st.alsoReportedBy.length > 0)
+                            ? `<span class="text-gray-500">• Also: ${esc(st.alsoReportedBy.join(', '))}</span>`
+                            : '';
+                        const saId = escJs(st.id);
+                        html += `
+                            <div class="brief-story-card">
+                                <div class="flex items-center gap-1.5 text-[11px] text-gray-400 mb-1">
+                                    ${favHtml}
+                                    <span class="font-bold text-gray-300 uppercase">${esc(st.source)}</span>
+                                    <span>•</span>
+                                    <span>${relTime}</span>
+                                    ${alsoReported}
+                                </div>
+                                <a href="${esc(st.link)}" target="_blank" rel="noopener noreferrer" class="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-400 transition-colors block text-sm leading-snug mb-1">
+                                    ${esc(st.title)}
+                                </a>
+                                ${st.excerpt ? `<p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom mb-2">${esc(st.excerpt)}</p>` : ''}
+                                <div class="flex items-center gap-3 text-xs text-blue-400 pt-1">
+                                    <button onclick="window.openArticleInReader('${saId}')" class="hover:underline inline-flex items-center gap-1 font-medium">
+                                        Open in Reader <svg class="w-3 h-3"><use href="#icon-newspaper"/></svg>
+                                    </button>
+                                    <a href="${esc(st.link)}" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-gray-300 inline-flex items-center gap-1">
+                                        Source Link ↗
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div></div>`;
+                });
+            }
+            html += `</div>`;
+
+            // Build plain-text spoken audio transcript for TTS
+            let spoken = `${slotDef.name} for ${datePartFormatted}. `;
+            if (categorySections.length === 0) {
+                spoken += "No new articles arrived in this window.";
+            } else {
+                spoken += `Covering ${categorySections.length} sections and ${totalStories} stories. `;
+                categorySections.forEach(cs => {
+                    spoken += `Next up, ${cs.name}. `;
+                    cs.stories.forEach((st, idx) => {
+                        spoken += `Story ${idx + 1} from ${st.source}: ${st.title}. `;
+                        if (st.excerpt) spoken += `${st.excerpt.slice(0, 140)}. `;
+                    });
+                });
+            }
+
+            return {
+                id: slotDef.id,
+                slot: slotDef.slot,
+                title: `${slotDef.name} — ${shortDateFormatted}`,
+                dateStr: slotDef.dateStr,
+                timestamp: slotDef.triggerTs,
+                windowStart: slotDef.windowStart,
+                windowEnd: slotDef.windowEnd,
+                windowLabel: slotDef.windowLabel,
+                categories: categorySections.map(cs => ({ name: cs.name, count: cs.stories.length })),
+                totalStories: totalStories,
+                body: html,
+                spokenText: spoken,
+                unread: true,
+                createdAt: Date.now()
+            };
+        }
+
+        window.checkAndGenerateBriefs = async function() {
+            if (!window._briefsEnabled) return;
+            if (!window.appDB) return;
+            try {
+                const existing = await window.appDB.getAll('briefs') || [];
+                const existingMap = new Map(existing.map(b => [b.id, b]));
+                const eligible = getEligibleBriefSlots(3);
+                let generatedCount = 0;
+
+                for (const slot of eligible) {
+                    const prev = existingMap.get(slot.id);
+                    // Generate if doesn't exist, OR if previous was generated with 0 stories and articles are now available
+                    if (!prev || (prev.totalStories === 0 && (window.articles || []).length > 0)) {
+                        const brief = generateBrief(slot);
+                        if (prev && prev.unread === false) brief.unread = false;
+                        await window.saveBriefRecord(brief);
+                        existingMap.set(slot.id, brief);
+                        generatedCount++;
+                    }
+                }
+                // Prune briefs older than 3 days
+                await window.appDB.pruneBriefs(3);
+                await window.loadBriefsFromDB();
+                if (generatedCount > 0 && window.currentSmartFeed === 'briefs') {
+                    renderTimeline();
+                }
+            } catch(e) {
+                console.warn('checkAndGenerateBriefs failed:', e);
+            }
+        };
+
+        window.openArticleInReader = function(articleId) {
+            let art = (window.articles || []).find(a => a.id === articleId);
+            if (!art && Array.isArray(window._readArchiveCache)) {
+                art = window._readArchiveCache.find(a => a.id === articleId || a.link === articleId);
+            }
+            if (art) {
+                if (typeof isMobile === 'function' && isMobile()) setMobilePane('reader');
+                selectArticle(art.id);
+            } else {
+                if (window.showToast) window.showToast("Article not found in local cache", true);
+            }
+        };
+
+        window.toggleBriefsEnabled = () => {
+            window._briefsEnabled = !window._briefsEnabled;
+            try { localStorage.setItem('newsreader_briefs_enabled', window._briefsEnabled ? '1' : '0'); } catch(e) {}
+            const btn = document.getElementById('briefs-enabled-toggle');
+            if (btn) btn.setAttribute('data-on', window._briefsEnabled ? 'true' : 'false');
+            if (window._briefsEnabled) {
+                window.checkAndGenerateBriefs();
+            } else {
+                updateBadges();
+                if (window.currentSmartFeed === 'briefs') setSmartFeed('all');
+            }
+        };
+
+        window.updateBriefStoriesPerCat = (val) => {
+            const num = parseInt(val, 10) || 10;
+            window._briefStoriesPerCat = num;
+            try { localStorage.setItem('newsreader_brief_stories_per_cat', String(num)); } catch(e) {}
+            const label = document.getElementById('brief-stories-val');
+            if (label) label.textContent = String(num);
+        };
+
+        window.triggerManualBriefGeneration = async () => {
+            if (window.showToast) window.showToast("Generating Daily Brief...");
+            await window.checkAndGenerateBriefs();
+            let eligible = getEligibleBriefSlots(3);
+            if (eligible.length > 0) {
+                const currentSlot = eligible[0];
+                const brief = generateBrief(currentSlot);
+                await window.saveBriefRecord(brief);
+                await window.loadBriefsFromDB();
+                setSmartFeed('briefs');
+                if (window.showToast) window.showToast("✓ Brief generated!");
+            } else {
+                if (window.showToast) window.showToast("No active slot found", true);
+            }
+        };
+
+        function initBriefScheduler() {
+            if (window._briefSchedulerTimer) clearInterval(window._briefSchedulerTimer);
+            window._briefSchedulerTimer = setInterval(() => {
+                const parts = getETParts(new Date());
+                // Trigger at exactly minute 0 of 5 AM, 12 PM, 4 PM, 8 PM ET
+                if ([5, 12, 16, 20].includes(parts.hour) && parts.minute === 0) {
+                    window.checkAndGenerateBriefs?.();
+                }
+            }, 60000);
+        }
 
         window.toggleSettings = () => {
             const modal = document.getElementById('settings-modal');
@@ -7106,6 +7742,24 @@ window.toggleUnreadManual = () => {
         document.getElementById('feed-list').addEventListener('touchend', () => clearTimeout(_catLongPressTimer));
         document.getElementById('feed-list').addEventListener('touchmove', () => clearTimeout(_catLongPressTimer), { passive: true });
 
+        const _smartCard = document.getElementById('smart-feeds-card');
+        if (_smartCard) {
+            let _smartLongPressTimer = null;
+            _smartCard.addEventListener('touchstart', (e) => {
+                const btn = e.target.closest('.smart-feed-btn');
+                if (!btn) return;
+                const id = btn.id || '';
+                const key = id.replace('feed-btn-', '');
+                if (key === 'all' || key === 'briefs') {
+                    _smartLongPressTimer = setTimeout(() => {
+                        const touch = e.touches[0];
+                        showFolderContextMenu({ preventDefault: () => {}, pageX: touch.pageX, pageY: touch.pageY }, 'smart', key);
+                    }, 500);
+                }
+            }, { passive: true });
+            _smartCard.addEventListener('touchend', () => clearTimeout(_smartLongPressTimer));
+            _smartCard.addEventListener('touchmove', () => clearTimeout(_smartLongPressTimer), { passive: true });
+        }
 
         window.showFolderContextMenu = (e, type, key) => {
             e.preventDefault();
@@ -7115,14 +7769,14 @@ window.toggleUnreadManual = () => {
 
             // Show only the actions that apply to what was long-pressed:
             //  - category folder: Mark All Read, Rename, Delete
-            //  - 'all' (Unread) smart feed: Mark All Read only (no per-folder
+            //  - 'all' (Unread) or 'briefs' smart feed: Mark All Read only (no per-folder
             //    rename/delete). Note: "Mark All Unread" is deliberately absent —
             //    the default view shows only unread items and markFolderRead()
             //    archives them, so a bulk un-read has no coherent target.
             //  - other smart feeds (Read Later / Saved / History): nothing applies,
             //    so the menu has nothing to offer -> don't open.
             const isCategory = (type === 'category');
-            const isAllUnread = (type === 'smart' && key === 'all');
+            const isAllUnread = (type === 'smart' && (key === 'all' || key === 'briefs'));
             const show = (id, on) => {
                 const el = document.getElementById(id);
                 if (el) el.classList.toggle('hidden', !on);
@@ -7143,6 +7797,14 @@ window.toggleUnreadManual = () => {
             if (type === 'smart') {
                 if (key === 'all') {
                     window.articles.forEach(a => { if (a.unread) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);} });
+                } else if (key === 'briefs') {
+                    if (Array.isArray(window._briefArticles)) {
+                        window._briefArticles.forEach(b => {
+                            b.unread = false;
+                            if (b.briefData) b.briefData.unread = false;
+                            window.saveBriefRecord?.(b.briefData || b);
+                        });
+                    }
                 }
             } else if (type === 'category') {
                 const sources = new Set(window.feeds.filter(f => f.category === key).map(f => f.name));
@@ -8126,7 +8788,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 210;
+        window.APP_BUILD = 211;
 
         (async function initApp() {
             try {
@@ -8197,6 +8859,11 @@ window.toggleUnreadManual = () => {
                     } catch(e) { console.warn('readArchive self-heal skipped:', e?.message); }
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
+                    try {
+                        if (typeof window.loadBriefsFromDB === 'function') {
+                            await window.loadBriefsFromDB();
+                        }
+                    } catch(e) { console.warn('App: Briefs restore failed:', e); }
                     // Prune readArchive: drop entries older than the longest window we support
                     // (30 days, used by full-history search). Done in the background so it
                     // doesn't delay first paint.
@@ -8296,6 +8963,16 @@ window.toggleUnreadManual = () => {
                                // can paint ~2s after fetch start, so a long grace period
                                // for the Firestore snapshot just reads as dead air.
                 }
+
+                // 8. Daily Briefs: Scheduler & Startup Catch-up
+                try {
+                    if (typeof window.checkAndGenerateBriefs === 'function') {
+                        window.checkAndGenerateBriefs();
+                    }
+                    if (typeof window.initBriefScheduler === 'function') {
+                        window.initBriefScheduler();
+                    }
+                } catch(e) { console.warn('App: Brief scheduler boot failed:', e); }
 
                 // Listeners
                 document.getElementById('pref-sort-order')?.addEventListener('change', saveTypographyPrefs);
@@ -8958,7 +9635,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v210';
+const CACHE_NAME = 'rss-reader-v211';
 const APP_SHELL = [
     '/',
     'index.html'
