@@ -2294,8 +2294,16 @@
                         <span id="badge-briefs" class="feed-badge text-blue-400 hidden">0</span>
                     </button>
                 </div>
-                <!-- Category folders card -->
-                <div id="feed-list" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm"></div>
+                <!-- Category folders card with Collapse/Expand All toggle -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between px-2 pt-0.5 text-[11px] text-gray-400 font-medium tracking-wider uppercase select-none">
+                        <span>Folders</span>
+                        <button id="toggle-all-folders-btn" onclick="toggleAllCategories()" class="text-[11px] font-normal tracking-normal lowercase text-gray-400 hover:text-blue-400 transition-colors flex items-center gap-1 cursor-pointer" title="Collapse or expand all category folders">
+                            <span id="toggle-all-folders-label">collapse all</span>
+                        </button>
+                    </div>
+                    <div id="feed-list" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm"></div>
+                </div>
                 <!-- Pull-to-refresh hint (mobile only) — sits below the category folders.
                      The Home/sidebar pane has the PTR gesture; this animated cue signals it.
                      Down-arrow housed in a rounded track that pulses downward, echoing the
@@ -2964,6 +2972,8 @@
     <!-- FOLDER CONTEXT MENU -->
     <div id="folder-context-menu" class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-base">
         <button id="fc-mark-read" onclick="markFolderRead()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Mark All Read</button>
+        <button id="fc-toggle-collapse" onclick="toggleFolderCollapseFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Collapse Folder</button>
+        <button id="fc-toggle-all" onclick="toggleAllCategoriesFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Collapse All Folders</button>
         <button id="fc-rename" onclick="renameFolderFromContext()" class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">Rename</button>
         <button id="fc-delete" onclick="deleteFolderFromContext()" class="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Delete Folder &amp; Feeds</button>
     </div>
@@ -3006,7 +3016,17 @@
         window.currentSmartFeed = 'all';
         window.currentCategoryFilter = null;
         window.currentSourceFilter = null;
-        window.collapsedCategories = {};
+        try {
+            window.collapsedCategories = JSON.parse(localStorage.getItem('newsreader_collapsed_categories') || '{}');
+            if (typeof window.collapsedCategories !== 'object' || window.collapsedCategories === null) window.collapsedCategories = {};
+        } catch(e) {
+            window.collapsedCategories = {};
+        }
+        window.saveCollapsedCategories = function() {
+            try {
+                localStorage.setItem('newsreader_collapsed_categories', JSON.stringify(window.collapsedCategories || {}));
+            } catch(e) {}
+        };
         window.currentTimeline = [];
         window.contextMenuArticleId = null;
         window._autoRefreshTimer = null;
@@ -6259,13 +6279,13 @@
                          ondragleave="handleCategoryDragLeave(event)"
                          ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
                         <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="w-full px-4 text-gray-400 flex items-center justify-between hover:bg-white/5 dynamic-category-text${window.currentCategoryFilter === sCat && !window.currentSourceFilter && window.currentSmartFeed === 'all' ? ' active-item' : ''}">
-                            <button onclick="toggleCategory('${sCat}')" class="flex items-center gap-2 outline-none flex-shrink-0 mr-2 opacity-60 hover:opacity-100 transition-opacity">
+                            <button onclick="toggleCategory('${sCat}')" class="flex items-center gap-2 outline-none flex-shrink-0 mr-2 opacity-60 hover:opacity-100 transition-opacity" title="${isCollapsed ? 'Expand folder' : 'Collapse folder'}">
                                 ${isCollapsed ?
                                     `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>` :
                                     `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`
                                 }
                             </button>
-                            <button onclick="setCategoryFilter('${sCat}')" class="flex-1 text-left outline-none truncate">
+                            <button onclick="setCategoryFilter('${sCat}')" ondblclick="toggleCategory('${sCat}')" class="flex-1 text-left outline-none truncate" title="${esc(formattedCat)} (Double-click to toggle)">
                                 <span>${esc(formattedCat)}</span>
                             </button>
                             <div class="flex items-center space-x-2 flex-shrink-0">
@@ -6304,6 +6324,17 @@
                     </div>
                 `;
             }).join('');
+
+            // Update Folders "collapse all" / "expand all" toggle label
+            const toggleAllBtn = document.getElementById('toggle-all-folders-btn');
+            const toggleAllLabel = document.getElementById('toggle-all-folders-label');
+            if (toggleAllLabel && sortedEntries.length > 0) {
+                const anyExpanded = sortedEntries.some(([cat]) => window.collapsedCategories[cat] === false);
+                toggleAllLabel.textContent = anyExpanded ? 'collapse all' : 'expand all';
+                if (toggleAllBtn) {
+                    toggleAllBtn.title = anyExpanded ? 'Collapse all category folders' : 'Expand all category folders';
+                }
+            }
 
             updateBadges();
         }
@@ -6354,7 +6385,31 @@
 
         window.setCategoryFilter = (cat) => { if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); } window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
         window.setSourceFilter = (source) => { if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); } window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
-        window.toggleCategory = (cat) => { window.collapsedCategories[cat] = !window.collapsedCategories[cat]; renderFeeds(); };
+        window.toggleCategory = (cat) => {
+            window.collapsedCategories[cat] = !window.collapsedCategories[cat];
+            window.saveCollapsedCategories?.();
+            renderFeeds();
+        };
+
+        window.toggleAllCategories = () => {
+            const feeds = (window.feeds && window.feeds.length > 0) ? window.feeds : (window.accountStates?.local || []);
+            const allCats = new Set(feeds.map(f => f.category || 'Uncategorized'));
+            // Check if any category folder is currently expanded (isCollapsed === false)
+            let anyExpanded = false;
+            for (const cat of allCats) {
+                if (window.collapsedCategories[cat] === false) {
+                    anyExpanded = true;
+                    break;
+                }
+            }
+            // If any folder is expanded, collapse all. If all are collapsed, expand all.
+            const targetState = anyExpanded;
+            allCats.forEach(cat => {
+                window.collapsedCategories[cat] = targetState;
+            });
+            window.saveCollapsedCategories?.();
+            renderFeeds();
+        };
 
         // --- DESKTOP SEARCH HELPERS ---
         function refreshDeskSearchScope() {
@@ -8765,6 +8820,7 @@ window.toggleUnreadManual = () => {
             if (window.collapsedCategories[oldName] !== undefined) {
                 window.collapsedCategories[trimmed] = window.collapsedCategories[oldName];
                 delete window.collapsedCategories[oldName];
+                window.saveCollapsedCategories?.();
             }
             saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds(window.accountStates.local);
@@ -8775,6 +8831,18 @@ window.toggleUnreadManual = () => {
         window.renameFolderFromContext = () => {
             document.getElementById('folder-context-menu').classList.add('hidden');
             if (window.folderContextType === 'category') renameCategory(window.folderContextKey);
+        };
+
+        window.toggleFolderCollapseFromContext = () => {
+            document.getElementById('folder-context-menu').classList.add('hidden');
+            if (window.folderContextType === 'category' && window.folderContextKey) {
+                toggleCategory(window.folderContextKey);
+            }
+        };
+
+        window.toggleAllCategoriesFromContext = () => {
+            document.getElementById('folder-context-menu').classList.add('hidden');
+            toggleAllCategories();
         };
 
         window.deleteFolderFromContext = () => {
@@ -8791,6 +8859,7 @@ window.toggleUnreadManual = () => {
             });
             window._categoryOrder = window._categoryOrder.filter(c => c !== cat);
             delete window.collapsedCategories[cat];
+            window.saveCollapsedCategories?.();
             saveLocalFeeds();
             renderFeeds();
             renderTimeline();
@@ -8853,6 +8922,22 @@ window.toggleUnreadManual = () => {
             show('fc-mark-read', isCategory || isAllUnread);
             show('fc-rename',    isCategory);
             show('fc-delete',    isCategory);
+            show('fc-toggle-collapse', isCategory);
+            show('fc-toggle-all', isCategory);
+
+            if (isCategory) {
+                const isCollapsed = window.collapsedCategories[key] !== false;
+                const toggleBtn = document.getElementById('fc-toggle-collapse');
+                if (toggleBtn) toggleBtn.textContent = isCollapsed ? 'Expand Folder' : 'Collapse Folder';
+
+                const allBtn = document.getElementById('fc-toggle-all');
+                if (allBtn) {
+                    const allKeys = Object.keys(window.collapsedCategories);
+                    const anyExpanded = allKeys.length > 0 && allKeys.some(k => window.collapsedCategories[k] === false);
+                    allBtn.textContent = anyExpanded ? 'Collapse All Folders' : 'Expand All Folders';
+                }
+            }
+
             if (!isCategory && !isAllUnread) return; // nothing to show
 
             menu.classList.remove('hidden');
@@ -9857,7 +9942,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 224;
+        window.APP_BUILD = 225;
 
         (async function initApp() {
             try {
@@ -10707,7 +10792,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v224';
+const CACHE_NAME = 'rss-reader-v225';
 const APP_SHELL = [
     '/',
     'index.html'
