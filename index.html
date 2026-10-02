@@ -4689,6 +4689,64 @@
                 console.warn('archiveReadArticle:', e?.message));
         }
 
+        function getCategoryForArticle(a) {
+            if (!a) return 'Uncategorized';
+            const feeds = (window.feeds && window.feeds.length > 0)
+                ? window.feeds
+                : (window.accountStates?.local || []);
+
+            // 1. Direct match by feedUrl
+            if (a.feedUrl) {
+                const f = feeds.find(x => x.url === a.feedUrl);
+                if (f && f.category && f.category !== 'Uncategorized') return f.category;
+
+                // Normalized URL match (ignore protocol and trailing slash)
+                const cleanA = a.feedUrl.replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase();
+                const fClean = feeds.find(x => x.url && x.url.replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase() === cleanA);
+                if (fClean && fClean.category && fClean.category !== 'Uncategorized') return fClean.category;
+            }
+
+            // 2. Direct match by source name
+            if (a.source) {
+                const sNorm = a.source.trim().toLowerCase();
+                const f = feeds.find(x => x.name && x.name.trim().toLowerCase() === sNorm);
+                if (f && f.category && f.category !== 'Uncategorized') return f.category;
+
+                // Substring / token matching (e.g. "NYT Technology" vs "NYT > Technology" or "New York Times - Technology")
+                const fSub = feeds.find(x => {
+                    if (!x.name) return false;
+                    const n = x.name.trim().toLowerCase();
+                    return n.includes(sNorm) || sNorm.includes(n);
+                });
+                if (fSub && fSub.category && fSub.category !== 'Uncategorized') return fSub.category;
+            }
+
+            // 3. Fallback: match by article link domain
+            if (a.link) {
+                try {
+                    const aHost = new URL(a.link).hostname.replace(/^www\./i, '').toLowerCase();
+                    const fHost = feeds.find(x => {
+                        if (!x.url) return false;
+                        try {
+                            const fH = new URL(x.url).hostname.replace(/^www\./i, '').toLowerCase();
+                            return aHost === fH || aHost.endsWith('.' + fH) || fH.endsWith('.' + aHost);
+                        } catch(e) { return false; }
+                    });
+                    if (fHost && fHost.category && fHost.category !== 'Uncategorized') return fHost.category;
+                } catch(e) {}
+            }
+
+            // 4. Fallback for social feeds if user has a Fediverse/Social folder
+            if ((a.feedUrl && isBlueskyFeed(a.feedUrl)) || (a.link && typeof isMastodonPost === 'function' && isMastodonPost(a.link))) {
+                const fedCat = feeds.find(x => x.category && /fediverse|mastodon|bluesky|social/i.test(x.category));
+                if (fedCat) return fedCat.category;
+            }
+
+            // 5. Fallback: check feed object if category was assigned
+            const fallbackFeed = feeds.find(x => (a.feedUrl && x.url === a.feedUrl) || (a.source && x.name === a.source));
+            return fallbackFeed?.category || 'Uncategorized';
+        }
+
         function normalizeBriefDOM(container) {
             if (!container) return;
             // Clean up stored legacy briefs (e.g. from IndexedDB before build 215)
@@ -4716,6 +4774,35 @@
                             excerptEl.textContent = tText;
                         }
                         titleEl.style.display = 'none';
+                    }
+                }
+            });
+
+            // Live repair for "Uncategorized" sections: map stories to real user folders from window.feeds
+            container.querySelectorAll('.brief-cat-section').forEach(catSection => {
+                const headingEl = catSection.querySelector('.brief-cat-heading');
+                if (headingEl && headingEl.textContent.trim().toLowerCase().includes('uncategorized')) {
+                    const sourceEl = catSection.querySelector('.brief-story-source');
+                    if (sourceEl) {
+                        const sName = sourceEl.textContent.trim();
+                        const realCat = getCategoryForArticle({ source: sName });
+                        if (realCat && realCat.toLowerCase() !== 'uncategorized') {
+                            headingEl.innerHTML = `<svg class="w-4 h-4"><use href="#icon-rss"/></svg> ${esc(realCat)}`;
+                            const oldSlug = 'uncategorized';
+                            const newSlug = realCat.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                            catSection.id = `brief-cat-${newSlug}`;
+                            const pill = container.querySelector(`.brief-jump-pill[href="#brief-cat-${oldSlug}"]`);
+                            if (pill) {
+                                pill.href = `#brief-cat-${newSlug}`;
+                                const countMatch = pill.textContent.match(/\((\d+)\)/);
+                                const countStr = countMatch ? ` (${countMatch[1]})` : '';
+                                pill.textContent = `${realCat}${countStr}`;
+                                pill.onclick = (e) => {
+                                    e.preventDefault();
+                                    document.getElementById(`brief-cat-${newSlug}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                };
+                            }
+                        }
                     }
                 }
             });
@@ -6818,11 +6905,10 @@
                 return ts >= slotDef.windowStart && ts <= slotDef.windowEnd;
             });
 
-            // Group by category
+            // Group by category using robust multi-field feed matching
             const grouped = {};
             inWindow.forEach(a => {
-                const feed = (window.feeds || []).find(f => f.url === a.feedUrl || f.name === a.source);
-                const cat = feed?.category || 'Uncategorized';
+                const cat = getCategoryForArticle(a);
                 if (!grouped[cat]) grouped[cat] = [];
                 grouped[cat].push(a);
             });
@@ -7046,6 +7132,8 @@
         window.checkAndGenerateBriefs = async function() {
             if (!window._briefsEnabled) return;
             if (!window.appDB) return;
+            const feedsAvailable = (window.feeds && window.feeds.length > 0) || (window.accountStates?.local && window.accountStates.local.length > 0);
+            if (!feedsAvailable) return;
             try {
                 const existing = await window.appDB.getAll('briefs') || [];
                 const existingMap = new Map(existing.map(b => [b.id, b]));
@@ -7054,8 +7142,12 @@
 
                 for (const slot of eligible) {
                     const prev = existingMap.get(slot.id);
-                    // Generate if doesn't exist, OR if previous was generated with 0 stories and articles are now available
-                    if (!prev || (prev.totalStories === 0 && (window.articles || []).length > 0)) {
+                    // Regenerate if:
+                    // 1. Doesn't exist
+                    // 2. Previously had 0 stories and articles are now available
+                    // 3. Or previously generated with an 'Uncategorized' section when feeds can now properly categorize them
+                    const hasUncategorized = prev && Array.isArray(prev.categories) && prev.categories.some(c => c.name === 'Uncategorized');
+                    if (!prev || (prev.totalStories === 0 && (window.articles || []).length > 0) || (hasUncategorized && feedsAvailable)) {
                         const brief = generateBrief(slot);
                         if (prev && prev.unread === false) brief.unread = false;
                         await window.saveBriefRecord(brief);
@@ -9122,7 +9214,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 216;
+        window.APP_BUILD = 218;
 
         (async function initApp() {
             try {
@@ -9473,6 +9565,9 @@ window.toggleUnreadManual = () => {
                     restoreCategoryOrder();
                     window.renderFeeds();
                     updateEmptyState();
+                    if (typeof window.checkAndGenerateBriefs === 'function') {
+                        window.checkAndGenerateBriefs();
+                    }
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
                         // The local 4s fallback timer was already cancelled at the top of
@@ -9969,7 +10064,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v216';
+const CACHE_NAME = 'rss-reader-v218';
 const APP_SHELL = [
     '/',
     'index.html'
