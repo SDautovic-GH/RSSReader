@@ -3264,7 +3264,8 @@
             #article-list {
                 padding-left: 0 !important;
                 padding-right: 0 !important;
-                padding-bottom: 32px !important;
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 16px) !important;
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
                 box-sizing: border-box !important;
             }
 
@@ -3400,10 +3401,10 @@
                 background: none;
             }
 
-            /* Full-screen read area: content rests right under the status bar; only
-               the band's imperceptible 1.5px tail overlaps the first few pixels. */
+            /* Full-screen read area: content rests comfortably below the status bar / Dynamic Island */
             #timeline-pane.mobile-active #article-list {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 16px) !important;
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
             }
 
             #timeline-pane.mobile-active.has-ondemand-bar #article-list,
@@ -3412,7 +3413,7 @@
             }
 
             #timeline-pane.mobile-active .brief-ondemand-bar {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 8px) !important;
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 10px) !important;
                 padding-bottom: 10px !important;
                 padding-left: 14px !important;
                 padding-right: 14px !important;
@@ -3435,7 +3436,8 @@
             }
 
             #viewer-pane.mobile-active #reader-view {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 14px) !important;
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
             }
 
             #sidebar-pane>div:nth-of-type(2) svg {
@@ -5461,6 +5463,27 @@
             background: rgba(245, 158, 11, 0.1) !important;
         }
 
+        /* Unified Back to Brief pill button (used in both top header and bottom footer) */
+        .brief-back-btn {
+            background: #2563eb !important;
+            border: 1px solid #1d4ed8 !important;
+            color: #ffffff !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .brief-back-btn:hover {
+            background: #1d4ed8 !important;
+            border-color: #1e40af !important;
+            color: #ffffff !important;
+        }
+
+        .brief-back-btn:active {
+            transform: scale(0.97);
+            background: #1e40af !important;
+        }
+
         /* Save and Later action pills in Brief return header and footer */
         .brief-pill-save-btn {
             background: rgba(255, 255, 255, 0.05);
@@ -6591,25 +6614,24 @@
 
                         <article id="article-content" class="hidden animate-in fade-in duration-300">
                             <!-- Top In-Flow Brief Return & Actions Header (visible only when opened from Brief) -->
-                            <div id="brief-return-header" class="hidden mb-4 flex items-center justify-between gap-2 flex-wrap">
+                            <div id="brief-return-header" class="hidden mb-6 flex items-center justify-between gap-3 flex-wrap">
                                 <button onclick="window.returnToBrief()"
-                                    class="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-blue-50/90 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/70 border border-blue-200/80 dark:border-blue-800/80 text-xs font-semibold transition-all shadow-sm group cursor-pointer">
+                                    class="brief-back-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold group cursor-pointer"
+                                    title="Back to Brief" aria-label="Back to Brief">
                                     <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5">
                                         <use href="#icon-arrow-left" />
                                     </svg>
                                     <span>Back to Brief</span>
-                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 font-normal">· Return to
-                                        story</span>
                                 </button>
                                 <div class="flex items-center gap-2">
                                     <button id="brief-article-save-btn" onclick="window.handleSavedAction()" type="button"
-                                        class="brief-pill-save-btn inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                                        class="brief-pill-save-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold cursor-pointer"
                                         title="Save Article" aria-label="Save Article">
                                         <svg class="w-3.5 h-3.5 text-amber-500"><use href="#icon-star" /></svg>
                                         <span id="brief-article-save-label">Save</span>
                                     </button>
                                     <button id="brief-article-later-btn" onclick="window.handleReadLaterAction()" type="button"
-                                        class="brief-pill-later-btn inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                                        class="brief-pill-later-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold cursor-pointer"
                                         title="Add to Read Later" aria-label="Add to Read Later">
                                         <svg class="w-3.5 h-3.5 text-blue-500"><use href="#icon-bookmark" /></svg>
                                         <span id="brief-article-later-label">Later</span>
@@ -6635,42 +6657,24 @@
                             <div id="article-body"
                                 class="article-content dynamic-view-text text-gray-800 dark:text-gray-300 leading-relaxed space-y-4">
                             </div>
-                            <!-- Bottom End-Of-Article Brief Return Card (visible only when opened from Brief) -->
+                            <!-- Bottom End-Of-Article Brief Return Actions (visible only when opened from Brief) -->
                             <div id="brief-return-footer"
-                                class="hidden mt-10 pt-6 border-t border-gray-200 dark:border-gray-800">
-                                <div
-                                    class="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="w-9 h-9 rounded-lg bg-blue-600/10 dark:bg-blue-400/20 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-5 h-5">
-                                                <use href="#icon-arrow-left" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p
-                                                class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                                                Done Reading?</p>
-                                            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Return to
-                                                Brief</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-2 self-stretch sm:self-auto justify-end flex-wrap">
-                                        <button id="brief-footer-save-btn" onclick="window.handleSavedAction()" type="button"
-                                            class="brief-pill-save-btn inline-flex items-center gap-1.5 px-5 py-2 rounded-full border text-xs font-semibold transition-all shadow-sm cursor-pointer"
-                                            title="Save Article" aria-label="Save Article">
-                                            <svg class="w-3.5 h-3.5 text-amber-500"><use href="#icon-star" /></svg>
-                                            <span id="brief-footer-save-label">Save</span>
-                                        </button>
-                                        <button onclick="window.returnToBrief()"
-                                            class="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-all shadow-sm group cursor-pointer"
-                                            title="Return to Brief" aria-label="Return to Brief">
-                                            <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5">
-                                                <use href="#icon-arrow-left" />
-                                            </svg>
-                                            <span>Back to Brief</span>
-                                        </button>
-                                    </div>
+                                class="hidden mt-8 pt-6 pb-8 border-t border-gray-200 dark:border-gray-800">
+                                <div class="flex items-center justify-center gap-3">
+                                    <button onclick="window.returnToBrief()"
+                                        class="brief-back-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold group cursor-pointer"
+                                        title="Back to Brief" aria-label="Back to Brief">
+                                        <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5">
+                                            <use href="#icon-arrow-left" />
+                                        </svg>
+                                        <span>Back to Brief</span>
+                                    </button>
+                                    <button id="brief-footer-save-btn" onclick="window.handleSavedAction()" type="button"
+                                        class="brief-pill-save-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold cursor-pointer"
+                                        title="Save Article" aria-label="Save Article">
+                                        <svg class="w-3.5 h-3.5 text-amber-500"><use href="#icon-star" /></svg>
+                                        <span id="brief-footer-save-label">Save</span>
+                                    </button>
                                 </div>
                             </div>
                         </article>
@@ -14972,7 +14976,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 248;
+        window.APP_BUILD = 249;
 
         (async function initApp() {
             try {
@@ -15833,7 +15837,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v248';
+const CACHE_NAME = 'rss-reader-v249';
 const APP_SHELL = [
     '/',
     'index.html'
