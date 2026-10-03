@@ -1982,6 +1982,70 @@
             font-size: var(--mob-author-size, 0.82em) !important;
         }
 
+        /* Daily Brief On-Demand Action Bar */
+        .brief-ondemand-bar {
+            padding: 10px 14px 10px 14px !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+            background: #f8fafc !important;
+            flex-shrink: 0 !important;
+            z-index: 5 !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+        }
+        .dark .brief-ondemand-bar {
+            border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+            background: rgba(15, 23, 42, 0.6) !important;
+        }
+        .brief-ondemand-inner {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 6px !important;
+            width: 100% !important;
+        }
+        .brief-ondemand-btn {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px !important;
+            width: 100% !important;
+            padding: 8px 14px !important;
+            background: #2563eb !important;
+            color: #ffffff !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            cursor: pointer !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+            transition: background-color 0.15s ease, transform 0.08s ease, opacity 0.15s ease !important;
+            box-sizing: border-box !important;
+        }
+        .brief-ondemand-btn:hover:not(:disabled) {
+            background: #1d4ed8 !important;
+        }
+        .brief-ondemand-btn:active:not(:disabled) {
+            transform: scale(0.985) !important;
+        }
+        .brief-ondemand-btn:disabled {
+            opacity: 0.65 !important;
+            cursor: not-allowed !important;
+        }
+        .brief-ondemand-btn-icon {
+            width: 15px !important;
+            height: 15px !important;
+            flex-shrink: 0 !important;
+        }
+        .brief-ondemand-hint {
+            font-size: 11px !important;
+            line-height: 1.35 !important;
+            color: #64748b !important;
+            text-align: center !important;
+        }
+        .dark .brief-ondemand-hint {
+            color: rgba(255, 255, 255, 0.5) !important;
+        }
+
         /* Back to Brief Return navigation styles (visible ONLY when coming from Brief) */
         @keyframes briefPulseHighlight {
             0% {
@@ -2498,6 +2562,19 @@
                 </button>
             </div>
 
+            <!-- ON-DEMAND BRIEF BAR (Daily Briefs folder only) -->
+            <div id="brief-ondemand-bar" class="brief-ondemand-bar hidden">
+                <div class="brief-ondemand-inner">
+                    <button type="button" id="brief-ondemand-btn" onclick="triggerManualBriefGeneration()" class="brief-ondemand-btn" title="Generate an on-demand brief from the last regular brief to now">
+                        <svg class="brief-ondemand-btn-icon"><use href="#icon-newspaper"/></svg>
+                        <span id="brief-ondemand-btn-label">Generate Brief Now</span>
+                    </button>
+                    <div id="brief-ondemand-hint" class="brief-ondemand-hint">
+                        Digest of items up to now since last regular brief
+                    </div>
+                </div>
+            </div>
+
             <div id="article-list" class="flex-1 overflow-y-auto"></div>
             <!-- Floating position pill — fades in on scroll -->
             <div id="list-position-pill" aria-hidden="true">1 / 1</div>
@@ -2936,13 +3013,6 @@
                                 <span class="settings-value" id="brief-stories-val">10</span>
                             </div>
                             <input type="range" min="3" max="25" value="10" id="brief-stories-slider" class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
-                        </div>
-                        <div class="settings-row">
-                            <div class="min-w-0 flex-1">
-                                <span class="settings-item-label-sm">Generate Brief Now</span>
-                                <p class="text-[12px] text-gray-400 mt-1">Produce the current brief immediately from fetched articles</p>
-                            </div>
-                            <button onclick="triggerManualBriefGeneration()" class="px-3 py-1.5 rounded-lg border border-blue-500/40 text-blue-400 hover:bg-blue-500/10 text-[13px] font-medium transition-colors">Generate</button>
                         </div>
                     </div>
                 </div>
@@ -4586,7 +4656,7 @@
                 showRefresh = false;
             } else if (isBriefs) {
                 headline = 'No briefs yet';
-                subtext = 'Daily Briefs are generated automatically at 5 AM, 12 PM, 4 PM, and 8 PM ET across your category folders.';
+                subtext = 'Generate an on-demand brief now, or wait for scheduled deliveries at 5 AM, 12 PM, 4 PM, and 8 PM ET.';
                 showRefresh = false;
             } else if (isSaved) {
                 headline = 'Nothing saved yet';
@@ -4739,6 +4809,16 @@
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             const isSaved = window.currentSmartFeed === 'saved';
             const isBriefs = window.currentSmartFeed === 'briefs';
+
+            const ondemandBar = document.getElementById('brief-ondemand-bar');
+            if (ondemandBar) {
+                if (isBriefs) {
+                    ondemandBar.classList.remove('hidden');
+                    window.updateBriefOnDemandBar?.();
+                } else {
+                    ondemandBar.classList.add('hidden');
+                }
+            }
             // Read Later sources from the durable bucket when it's populated so
             // items survive feed removal and rolling cache eviction. Falls back
             // to the legacy in-memory filter while the bucket is still hydrating.
@@ -4978,7 +5058,8 @@
                 const readDimCls = (!a.unread) ? ' opacity-75' : '';
                 const showDot = a.unread;
                 const timeLabel = getRelativeTime(a.timestamp);
-                const slotLabel = a.slot ? (a.slot.charAt(0).toUpperCase() + a.slot.slice(1)) : 'Brief';
+                const isOd = a.slot === 'ondemand' || a.isOnDemand || a.briefData?.isOnDemand;
+                const slotLabel = isOd ? 'On-Demand' : (a.slot ? (a.slot.charAt(0).toUpperCase() + a.slot.slice(1)) : 'Brief');
 
                 if (window._viewMode === 'card') {
                     return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
@@ -7630,8 +7711,8 @@
             ];
         }
 
-        function getEligibleBriefSlots(maxDays = 2) {
-            const now = Date.now();
+        function getEligibleBriefSlots(maxDays = 2, nowTs = null) {
+            const now = nowTs || Date.now();
             const slots = [];
             for (let i = 0; i < maxDays; i++) {
                 const dayTs = now - (i * 86400000);
@@ -7677,10 +7758,11 @@
                     excerpt: `${b.categories?.length || 0} sections · ${b.totalStories || 0} stories · ~${Math.ceil((b.totalStories || 1) * 0.35)} min read`,
                     body: b.body,
                     spokenText: b.spokenText,
-                    author: 'Automated Brief',
+                    author: b.isOnDemand ? 'On-Demand Brief' : 'Automated Brief',
                     timestamp: b.timestamp,
                     unread: b.unread !== false,
                     isBrief: true,
+                    isOnDemand: !!b.isOnDemand,
                     briefData: b
                 }));
                 updateBadges();
@@ -8016,6 +8098,7 @@
                 body: html,
                 spokenText: spoken,
                 unread: true,
+                isOnDemand: !!slotDef.isOnDemand,
                 createdAt: Date.now()
             };
         }
@@ -8180,25 +8263,146 @@
             if (label) label.textContent = String(num);
         };
 
+        function getLatestRegularBriefSlot(nowTs = Date.now()) {
+            const eligible = getEligibleBriefSlots(2, nowTs);
+            // eligible is sorted by triggerTs descending (newest first).
+            // getEligibleBriefSlots only returns regular slots (morning, midday, afternoon, evening).
+            const regular = eligible.filter(s => !s.isOnDemand && s.slot !== 'ondemand');
+            if (regular.length > 0) {
+                return regular[0];
+            }
+            const parts = getETParts(new Date(nowTs));
+            return {
+                id: `brief:${parts.dateStr}:morning`,
+                slot: 'morning',
+                name: 'Morning Brief',
+                badgeLabel: 'Morning',
+                triggerHour: 5,
+                triggerTs: etToEpoch(parts.dateStr, 5, 0),
+                windowEnd: etToEpoch(parts.dateStr, 5, 0),
+                dateStr: parts.dateStr
+            };
+        }
+
+        window.updateBriefOnDemandBar = function() {
+            const hintEl = document.getElementById('brief-ondemand-hint');
+            if (!hintEl) return;
+            const now = Date.now();
+            const lastRegular = typeof getLatestRegularBriefSlot === 'function' ? getLatestRegularBriefSlot(now) : null;
+            if (!lastRegular) {
+                hintEl.textContent = 'Digest of items up to now since last regular brief';
+                return;
+            }
+            const formatETTime = (ts) => {
+                try {
+                    return new Date(ts).toLocaleTimeString('en-US', {
+                        timeZone: 'America/New_York',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    });
+                } catch(e) {
+                    return '';
+                }
+            };
+            const startTimeStr = formatETTime(lastRegular.triggerTs);
+            const badge = lastRegular.badgeLabel || 'Regular';
+            const parts = getETParts(new Date(now));
+            const isDiffDay = lastRegular.dateStr && lastRegular.dateStr !== parts.dateStr;
+            const startLabel = isDiffDay ? `${startTimeStr} ET yesterday` : `${startTimeStr} ET`;
+            hintEl.textContent = `Includes all items since ${badge} Brief (${startLabel}) to now`;
+        };
+
         window.triggerManualBriefGeneration = async () => {
-            if (window.showToast) window.showToast("Generating Daily Brief...");
-            if (!window._memoRankMap) {
-                window._memoRankMap = { ...MEMO_BASE_RANKS };
-            }
-            if (typeof fetchMemoRankings === 'function') {
-                try { await fetchMemoRankings(); } catch(e) {}
-            }
-            await window.checkAndGenerateBriefs();
-            let eligible = getEligibleBriefSlots(2);
-            if (eligible.length > 0) {
-                const currentSlot = eligible[0];
-                const brief = generateBrief(currentSlot);
+            const btn = document.getElementById('brief-ondemand-btn');
+            const btnLabel = document.getElementById('brief-ondemand-btn-label');
+            const originalLabel = btnLabel ? btnLabel.textContent : 'Generate Brief Now';
+
+            try {
+                if (btn) {
+                    btn.disabled = true;
+                    if (btnLabel) btnLabel.textContent = 'Generating Brief...';
+                }
+                if (window.showToast) window.showToast("Generating On-Demand Brief...");
+
+                if (!window._memoRankMap) {
+                    window._memoRankMap = { ...MEMO_BASE_RANKS };
+                }
+                if (typeof fetchMemoRankings === 'function') {
+                    try { await fetchMemoRankings(); } catch(e) {}
+                }
+
+                // Ensure pending regular briefs are created
+                await window.checkAndGenerateBriefs();
+
+                const now = Date.now();
+                const lastRegular = getLatestRegularBriefSlot(now);
+                const parts = getETParts(new Date(now));
+
+                const formatETTime = (ts) => {
+                    try {
+                        return new Date(ts).toLocaleTimeString('en-US', {
+                            timeZone: 'America/New_York',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+                    } catch(e) {
+                        return '';
+                    }
+                };
+
+                const startTimeStr = formatETTime(lastRegular.triggerTs);
+                const endTimeStr = formatETTime(now);
+                const badge = lastRegular.badgeLabel || 'Regular';
+                const isDiffDay = lastRegular.dateStr && lastRegular.dateStr !== parts.dateStr;
+                const startLabel = isDiffDay ? `${startTimeStr} ET yesterday` : `${startTimeStr} ET`;
+                const windowLabel = `Since ${badge} Brief (${startLabel}) – ${endTimeStr} ET`;
+
+                const onDemandSlotId = `brief:${parts.dateStr}:ondemand_${lastRegular.dateStr !== parts.dateStr ? (lastRegular.dateStr + '_') : ''}${lastRegular.slot}`;
+
+                const onDemandSlot = {
+                    id: onDemandSlotId,
+                    slot: 'ondemand',
+                    name: `On-Demand Brief (${endTimeStr})`,
+                    badgeLabel: 'On-Demand',
+                    triggerHour: parts.hour,
+                    triggerTs: now,
+                    windowStart: lastRegular.triggerTs,
+                    windowEnd: now + (15 * 60 * 1000), // 15 min clock drift tolerance
+                    windowLabel: windowLabel,
+                    dateStr: parts.dateStr,
+                    isOnDemand: true
+                };
+
+                const brief = generateBrief(onDemandSlot);
+                brief.isOnDemand = true;
                 await window.saveBriefRecord(brief);
                 await window.loadBriefsFromDB();
-                setSmartFeed('briefs');
-                if (window.showToast) window.showToast("✓ Brief generated!");
-            } else {
-                if (window.showToast) window.showToast("No active slot found", true);
+
+                if (window.currentSmartFeed !== 'briefs') {
+                    await setSmartFeed('briefs');
+                } else {
+                    renderTimeline();
+                }
+
+                if (typeof selectArticle === 'function') {
+                    selectArticle(brief.id);
+                }
+
+                const count = brief.totalStories || 0;
+                if (window.showToast) {
+                    window.showToast(`✓ On-Demand Brief generated (${count} ${count === 1 ? 'story' : 'stories'})`);
+                }
+            } catch(e) {
+                console.error('triggerManualBriefGeneration error:', e);
+                if (window.showToast) window.showToast("Failed to generate brief", true);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    if (btnLabel) btnLabel.textContent = originalLabel;
+                }
+                window.updateBriefOnDemandBar?.();
             }
         };
 
@@ -10435,7 +10639,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 232;
+        window.APP_BUILD = 233;
 
         (async function initApp() {
             try {
@@ -11286,7 +11490,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v232';
+const CACHE_NAME = 'rss-reader-v233';
 const APP_SHELL = [
     '/',
     'index.html'
