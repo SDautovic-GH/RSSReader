@@ -4747,9 +4747,18 @@
 
         /* Category sections */
         .brief-cat-section {
-            margin-bottom: 1.25rem;
+            margin-top: 0 !important;
+            margin-bottom: 1.4rem !important;
             width: 100%;
             box-sizing: border-box;
+        }
+
+        .brief-cat-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            flex-wrap: nowrap !important;
         }
 
         .brief-container h3,
@@ -4757,12 +4766,29 @@
             font-size: var(--category-font-size, 1.1em) !important;
             font-weight: 700 !important;
             color: #60a5fa !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.2 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
+        }
+
+        .brief-cat-controls {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
+            line-height: 1 !important;
+            flex-shrink: 0 !important;
         }
 
         .brief-cat-section span,
         .brief-cat-count {
             font-size: var(--article-meta-size, 0.85em) !important;
             color: #64748b !important;
+            line-height: 1 !important;
+            display: inline-flex !important;
+            align-items: center !important;
         }
 
         @media (max-width: 900px) {
@@ -9573,15 +9599,28 @@
             container.querySelectorAll('.brief-header .brief-mark-all-btn, .brief-header .brief-header-actions').forEach(el => el.remove());
 
             container.querySelectorAll('.brief-cat-section').forEach(catSection => {
+                catSection.classList.remove('mb-8');
+                catSection.classList.add('mb-5');
                 const headingEl = catSection.querySelector('.brief-cat-heading');
                 if (!headingEl) return;
+                headingEl.classList.add('m-0', 'leading-none');
+                headingEl.style.margin = '0';
+                headingEl.style.padding = '0';
+                headingEl.style.lineHeight = '1.2';
+                const headerWrap = headingEl.parentElement;
+                if (headerWrap) {
+                    headerWrap.classList.add('brief-cat-header', 'flex-nowrap');
+                    headerWrap.classList.remove('flex-wrap');
+                }
                 const catName = headingEl.textContent.trim();
                 const countEl = catSection.querySelector('.brief-cat-count');
+                if (countEl) countEl.classList.add('whitespace-nowrap');
+                let controlsEl = catSection.querySelector('.brief-cat-controls');
+                if (controlsEl) controlsEl.classList.add('flex-shrink-0', 'leading-none');
                 if (countEl && !catSection.querySelector('.brief-cat-mark-read-btn')) {
-                    let controlsEl = catSection.querySelector('.brief-cat-controls');
                     if (!controlsEl) {
                         controlsEl = document.createElement('div');
-                        controlsEl.className = 'brief-cat-controls flex items-center gap-2';
+                        controlsEl.className = 'brief-cat-controls flex items-center gap-2 flex-shrink-0 leading-none';
                         countEl.parentNode.insertBefore(controlsEl, countEl);
                         controlsEl.appendChild(countEl);
                     }
@@ -11984,14 +12023,14 @@
             } else {
                 categorySections.forEach(cs => {
                     html += `
-                        <div id="brief-cat-${cs.slug}" class="brief-cat-section mb-8 scroll-mt-20">
-                            <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2 mb-3 flex-wrap gap-2">
-                                <h3 class="brief-cat-heading font-bold text-blue-400 flex items-center gap-2">
-                                    <svg class="w-4 h-4"><use href="#icon-rss"/></svg>
-                                    ${esc(cs.name)}
+                        <div id="brief-cat-${cs.slug}" class="brief-cat-section mb-5 scroll-mt-20">
+                            <div class="brief-cat-header flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2 mb-3 flex-nowrap gap-2">
+                                <h3 class="brief-cat-heading font-bold text-blue-400 flex items-center gap-2 m-0 leading-none min-w-0">
+                                    <svg class="w-4 h-4 flex-shrink-0"><use href="#icon-rss"/></svg>
+                                    <span class="truncate">${esc(cs.name)}</span>
                                 </h3>
-                                <div class="brief-cat-controls flex items-center gap-2">
-                                    <span class="brief-cat-count text-gray-500 font-medium">${cs.stories.length} stories</span>
+                                <div class="brief-cat-controls flex items-center gap-2 flex-shrink-0 leading-none">
+                                    <span class="brief-cat-count text-gray-500 font-medium whitespace-nowrap">${cs.stories.length} stories</span>
                                     <button type="button" data-brief-cat="${esc(cs.name)}" onclick="window.markBriefCategoryRead(this.getAttribute('data-brief-cat'), this)" class="brief-cat-mark-read-btn" title="Mark '${esc(cs.name)}' folder as read" aria-label="Mark '${esc(cs.name)}' folder as read">
                                         <svg><use href="#icon-check"/></svg>
                                     </button>
@@ -14805,7 +14844,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 242;
+        window.APP_BUILD = 243;
 
         (async function initApp() {
             try {
@@ -15656,7 +15695,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v242';
+const CACHE_NAME = 'rss-reader-v243';
 const APP_SHELL = [
     '/',
     'index.html'
