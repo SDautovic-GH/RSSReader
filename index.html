@@ -6497,21 +6497,21 @@
             <div class="top-frost" aria-hidden="true"></div>
             <div id="viewer-header"
                 class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10"
-                ondblclick="toggleFullScreenManual()" title="Double-click to toggle Full Screen">
+                ondblclick="toggleFullScreenManual(event)" title="Double-click header background to toggle Full Screen">
                 <div class="flex items-center">
                 </div>
 
-                <div class="flex items-center space-x-3">
-                    <div class="flex space-x-2 mr-2">
+                <div class="flex items-center space-x-3" ondblclick="event.stopPropagation()">
+                    <div class="flex space-x-2 mr-2 items-center" ondblclick="event.stopPropagation()">
                         <!-- Desktop Article Navigation (Prev / Next) -->
-                        <div id="desk-nav-group" class="hidden inline-flex rounded-md shadow-sm mr-1" role="group">
-                            <button id="prev-article-btn" onclick="navigateArticle(-1)" type="button" title="Previous Article (↑ / k)" aria-label="Previous Article"
+                        <div id="desk-nav-group" class="hidden inline-flex rounded-md shadow-sm mr-1" role="group" ondblclick="event.stopPropagation()">
+                            <button id="prev-article-btn" onclick="navigateArticle(-1)" ondblclick="event.stopPropagation()" type="button" title="Previous Article (↑ / k)" aria-label="Previous Article"
                                 class="p-1.5 rounded-l-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                                 <svg class="w-4 h-4">
                                     <use href="#icon-chevron-up" />
                                 </svg>
                             </button>
-                            <button id="next-article-btn" onclick="navigateArticle(1)" type="button" title="Next Article (↓ / j)" aria-label="Next Article"
+                            <button id="next-article-btn" onclick="navigateArticle(1)" ondblclick="event.stopPropagation()" type="button" title="Next Article (↓ / j)" aria-label="Next Article"
                                 class="p-1.5 -ml-px rounded-r-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                                 <svg class="w-4 h-4">
                                     <use href="#icon-chevron-down" />
@@ -13150,7 +13150,18 @@
         };
 
         window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
-        window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
+        window.toggleFullScreenManual = (e) => {
+            // Guard: Ignore if double-click originated on or inside any interactive element or toolbar controls!
+            if (e && e.target) {
+                if (e.target.closest('button, a, input, select, textarea, [role="button"], [role="group"], svg, use, #desk-nav-group, #viewer-header > div')) {
+                    return;
+                }
+                if (e.target.id !== 'viewer-header') {
+                    return;
+                }
+            }
+            toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
+        };
         window.openExternal = () => { if (window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
         // ===== STANDALONE LAYOUT-HEIGHT LOCK =====
@@ -15029,7 +15040,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 250;
+        window.APP_BUILD = 251;
 
         (async function initApp() {
             try {
@@ -15890,7 +15901,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v250';
+const CACHE_NAME = 'rss-reader-v251';
 const APP_SHELL = [
     '/',
     'index.html'
