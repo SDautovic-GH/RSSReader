@@ -3139,6 +3139,7 @@
             }
 
             /* Hide desktop toolbar equivalents on mobile */
+            #desk-nav-group,
             #prev-article-btn,
             #next-article-btn,
             #share-btn,
@@ -3556,53 +3557,20 @@
             background: rgba(59, 130, 246, 0.12);
         }
 
-        /* ===== DESKTOP FLOATING ARTICLE NAV =====
-           Positioned to sit just to the right of the reader content column
-           (max-w-2xl = 42rem, left-anchored with lg:ml-8 + lg:p-6 padding),
-           so the buttons feel attached to the article instead of floating off
-           in dead space on wide screens. */
-        #desk-nav-float {
-            position: absolute;
-            bottom: 24px;
-            left: calc(1.5rem + 2rem + 42rem + 1rem);
-            /* lg:p-6 + lg:ml-8 + max-w-2xl + gap */
-            right: auto;
-            z-index: 20;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        @media (max-width: 1023px) {
-            #desk-nav-float {
-                left: calc(1rem + 1rem + 42rem + 1rem);
-                /* md:p-4 + md:ml-4 + max-w-2xl + gap */
-            }
-        }
-
-        #desk-nav-float button {
-            display: flex;
+        /* ===== DESKTOP ARTICLE NAVIGATION (Toolbar Prev / Next Segmented Group) ===== */
+        #desk-nav-group {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.13);
-            background: rgba(22, 22, 30, 0.62);
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(24px) saturate(1.6);
-            -webkit-backdrop-filter: blur(24px) saturate(1.6);
-            color: rgba(255, 255, 255, 0.88);
-            cursor: pointer;
-            transition: background 0.12s, opacity 0.12s;
         }
 
-        #desk-nav-float button:hover:not(.hidden) {
-            background: rgba(59, 130, 246, 0.65);
-            border-color: rgba(59, 130, 246, 0.45);
+        #desk-nav-group button:disabled {
+            opacity: 0.28 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
         }
 
         @media (max-width: 900px) {
-            #desk-nav-float {
+            #desk-nav-group {
                 display: none !important;
             }
         }
@@ -5463,25 +5431,44 @@
             background: rgba(245, 158, 11, 0.1) !important;
         }
 
-        /* Unified Back to Brief pill button (used in both top header and bottom footer) */
+        /* Unified Back to Brief pill button (toned-down neutral style, matching Save & Later) */
         .brief-back-btn {
-            background: #2563eb !important;
-            border: 1px solid #1d4ed8 !important;
-            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            color: #cbd5e1 !important;
             cursor: pointer !important;
             transition: all 0.15s ease !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .brief-back-btn svg {
+            color: #60a5fa !important;
+        }
+
+        html:not(.dark) .brief-back-btn {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
+        }
+
+        html:not(.dark) .brief-back-btn svg {
+            color: #2563eb !important;
         }
 
         .brief-back-btn:hover {
-            background: #1d4ed8 !important;
-            border-color: #1e40af !important;
-            color: #ffffff !important;
+            background: rgba(59, 130, 246, 0.12) !important;
+            border-color: rgba(59, 130, 246, 0.4) !important;
+            color: #60a5fa !important;
+        }
+
+        html:not(.dark) .brief-back-btn:hover {
+            background: #eff6ff !important;
+            border-color: #93c5fd !important;
+            color: #1d4ed8 !important;
         }
 
         .brief-back-btn:active {
             transform: scale(0.97);
-            background: #1e40af !important;
         }
 
         /* Save and Later action pills in Brief return header and footer */
@@ -6516,6 +6503,21 @@
 
                 <div class="flex items-center space-x-3">
                     <div class="flex space-x-2 mr-2">
+                        <!-- Desktop Article Navigation (Prev / Next) -->
+                        <div id="desk-nav-group" class="hidden inline-flex rounded-md shadow-sm mr-1" role="group">
+                            <button id="prev-article-btn" onclick="navigateArticle(-1)" type="button" title="Previous Article (↑ / k)" aria-label="Previous Article"
+                                class="p-1.5 rounded-l-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                <svg class="w-4 h-4">
+                                    <use href="#icon-chevron-up" />
+                                </svg>
+                            </button>
+                            <button id="next-article-btn" onclick="navigateArticle(1)" type="button" title="Next Article (↓ / j)" aria-label="Next Article"
+                                class="p-1.5 -ml-px rounded-r-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                <svg class="w-4 h-4">
+                                    <use href="#icon-chevron-down" />
+                                </svg>
+                            </button>
+                        </div>
                         <!-- Share Button -->
                         <button id="share-btn" onclick="shareArticle()" title="Share" aria-label="Share"
                             class="hidden p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -6682,19 +6684,6 @@
                 </div>
             </div>
 
-            <!-- DESKTOP FLOATING ARTICLE NAV (prev/next at bottom-right of viewer) -->
-            <div id="desk-nav-float" style="display:none">
-                <button id="prev-article-btn" onclick="navigateArticle(-1)" title="Previous Article (↑)">
-                    <svg class="h-5 w-5">
-                        <use href="#icon-chevron-up" />
-                    </svg>
-                </button>
-                <button id="next-article-btn" onclick="navigateArticle(1)" title="Next Article (↓)">
-                    <svg class="h-5 w-5">
-                        <use href="#icon-chevron-down" />
-                    </svg>
-                </button>
-            </div>
 
             <!-- Mobile Reader Action Bar (shown only on mobile, in reader pane) -->
             <div id="mobile-reader-bar"
@@ -9819,10 +9808,15 @@
             // Manage "Back to Brief" state: clear if navigating to an unrelated article
             if (window._returnToBriefState) {
                 const s = window._returnToBriefState;
-                if (article.isBrief || (article.id !== s.articleId && article.id !== s.sourceCardId)) {
-                    if (!article.isBrief) {
-                        window._returnToBriefState = null;
-                    }
+                const isStoryInBrief = Array.isArray(s.storyIds) && s.storyIds.includes(article.id);
+                if (article.isBrief) {
+                    // Do nothing here, returnToBrief handles returning
+                } else if (!isStoryInBrief && article.id !== s.articleId && article.id !== s.sourceCardId) {
+                    window._returnToBriefState = null;
+                } else {
+                    s.articleId = article.id;
+                    s.sourceCardId = article.id;
+                    if (Array.isArray(s.storyIds)) s.storyIndex = s.storyIds.indexOf(article.id);
                 }
             }
             if (typeof updateBriefReturnUI === 'function') {
@@ -9924,18 +9918,46 @@
             if (!article.isBrief) attemptFullContentLoad(article);
 
 
-            const idx = window.currentTimeline.findIndex(a => a.id === id);
+            // Update Prev / Next buttons (aware of Brief story list or timeline)
+            const deskNavGroup = document.getElementById('desk-nav-group');
             const prevBtn = document.getElementById('prev-article-btn');
             const nextBtn = document.getElementById('next-article-btn');
-            if (prevBtn) prevBtn.classList.toggle('hidden', idx <= 0);
-            if (nextBtn) nextBtn.classList.toggle('hidden', idx >= window.currentTimeline.length - 1);
-            const deskNav = document.getElementById('desk-nav-float');
-            if (deskNav) deskNav.style.display = isMobile() ? 'none' : 'flex';
-
             const mobPrev = document.getElementById('mob-prev-btn');
             const mobNext = document.getElementById('mob-next-btn');
-            if (mobPrev) mobPrev.style.opacity = idx <= 0 ? '0.3' : '1';
-            if (mobNext) mobNext.style.opacity = idx >= window.currentTimeline.length - 1 ? '0.3' : '1';
+
+            let canPrev = false;
+            let canNext = false;
+            const inBriefStories = Boolean(window._returnToBriefState && Array.isArray(window._returnToBriefState.storyIds) && window._returnToBriefState.storyIds.length > 0);
+
+            if (inBriefStories) {
+                const bState = window._returnToBriefState;
+                let curIdx = bState.storyIds.indexOf(id);
+                if (curIdx === -1) curIdx = bState.storyIndex ?? 0;
+                bState.storyIndex = curIdx;
+                canPrev = curIdx > 0;
+                canNext = curIdx < bState.storyIds.length - 1;
+            } else {
+                const nav = window._navSnapshot.length ? window._navSnapshot : window.currentTimeline;
+                const curIdx = nav.findIndex(a => a.id === id);
+                canPrev = curIdx > 0;
+                canNext = curIdx >= 0 && curIdx < nav.length - 1;
+            }
+
+            if (deskNavGroup) {
+                deskNavGroup.classList.toggle('hidden', isMobile());
+            }
+            if (prevBtn) {
+                prevBtn.disabled = !canPrev;
+                prevBtn.title = inBriefStories ? "Previous Story in Brief (↑ / k)" : "Previous Article (↑ / k)";
+                prevBtn.setAttribute('aria-label', prevBtn.title);
+            }
+            if (nextBtn) {
+                nextBtn.disabled = !canNext;
+                nextBtn.title = inBriefStories ? "Next Story in Brief (↓ / j)" : "Next Article (↓ / j)";
+                nextBtn.setAttribute('aria-label', nextBtn.title);
+            }
+            if (mobPrev) mobPrev.style.opacity = canPrev ? '1' : '0.3';
+            if (mobNext) mobNext.style.opacity = canNext ? '1' : '0.3';
 
             const shareBtn = document.getElementById('share-btn');
             if (shareBtn) shareBtn.classList.remove('hidden');
@@ -11602,6 +11624,24 @@
         window._navSnapshot = [];
 
         window.navigateArticle = (direction) => {
+            // 1. If currently reading an article opened from a Brief:
+            if (window._returnToBriefState && Array.isArray(window._returnToBriefState.storyIds) && window._returnToBriefState.storyIds.length > 0) {
+                const bState = window._returnToBriefState;
+                const curId = window.currentArticle?.id || bState.articleId;
+                let curIdx = bState.storyIds.indexOf(curId);
+                if (curIdx === -1) curIdx = bState.storyIndex ?? -1;
+                const newIdx = curIdx + direction;
+                if (newIdx >= 0 && newIdx < bState.storyIds.length) {
+                    const nextStoryId = bState.storyIds[newIdx];
+                    bState.articleId = nextStoryId;
+                    bState.sourceCardId = nextStoryId;
+                    bState.storyIndex = newIdx;
+                    window.openArticleInReader(nextStoryId);
+                }
+                return;
+            }
+
+            // 2. Normal timeline navigation:
             const nav = window._navSnapshot.length ? window._navSnapshot : window.currentTimeline;
             if (!nav.length) return;
             const idx = nav.findIndex(a => a.id === window.currentArticle?.id);
@@ -12548,12 +12588,24 @@
             if (art) {
                 if (window.currentArticle && window.currentArticle.isBrief) {
                     const readerView = document.getElementById('reader-view');
+                    const storyCards = Array.from(readerView?.querySelectorAll('.brief-story-card[data-sa-id]') || []);
+                    const storyIds = storyCards.map(c => c.getAttribute('data-sa-id')).filter(Boolean);
+
                     window._returnToBriefState = {
                         briefId: window.currentArticle.id,
                         articleId: art.id,
                         sourceCardId: articleId,
+                        storyIds: storyIds.length ? storyIds : [art.id],
+                        storyIndex: storyIds.indexOf(art.id) >= 0 ? storyIds.indexOf(art.id) : 0,
                         scrollTop: readerView ? readerView.scrollTop : 0
                     };
+                } else if (window._returnToBriefState) {
+                    window._returnToBriefState.articleId = art.id;
+                    window._returnToBriefState.sourceCardId = articleId;
+                    if (Array.isArray(window._returnToBriefState.storyIds)) {
+                        const idx = window._returnToBriefState.storyIds.indexOf(articleId);
+                        if (idx >= 0) window._returnToBriefState.storyIndex = idx;
+                    }
                 }
                 if (typeof isMobile === 'function' && isMobile()) setMobilePane('viewer');
                 selectArticle(art.id);
@@ -13350,8 +13402,9 @@
             const ttsBtn = document.getElementById('tts-btn');
             const unreadBtn = document.getElementById('unread-action-btn');
             const savedBtn = document.getElementById('saved-action-btn');
+            const deskNavGroup = document.getElementById('desk-nav-group');
             const hasArticle = !!window.currentArticle;
-            [b, shareBtn, ttsBtn, unreadBtn, savedBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            [b, shareBtn, ttsBtn, unreadBtn, savedBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
             if (!hasArticle) return;
 
             const BASE = 'p-1.5 rounded-md border transition-colors cursor-pointer';
@@ -14976,7 +15029,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 249;
+        window.APP_BUILD = 250;
 
         (async function initApp() {
             try {
@@ -15837,7 +15890,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v249';
+const CACHE_NAME = 'rss-reader-v250';
 const APP_SHELL = [
     '/',
     'index.html'
