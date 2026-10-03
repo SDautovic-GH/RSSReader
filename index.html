@@ -1604,7 +1604,9 @@
         .brief-story-card > div:first-child,
         .brief-story-meta {
             font-size: 0.8em !important;
-            margin-bottom: 0.25rem;
+            margin-top: 0 !important;
+            margin-bottom: 0.125rem !important; /* 50% reduction from 0.25rem */
+            line-height: 1.25 !important;
             display: flex;
             align-items: center;
             gap: 0.35rem;
@@ -1644,6 +1646,8 @@
             font-size: var(--list-title-em-size, 1.1em) !important;
             line-height: var(--list-preview-line-height, 1.35) !important;
             font-weight: 600 !important;
+            margin-top: 0 !important; /* override .article-content h4 margin-top */
+            padding-top: 0 !important;
             margin-bottom: 0.25rem;
             display: block;
             color: #0f1923 !important;
@@ -1666,6 +1670,8 @@
         .brief-story-excerpt {
             font-size: var(--list-preview-font-size, 1.0em) !important;
             line-height: var(--list-preview-line-height, 1.4) !important;
+            margin-top: 0 !important; /* override .article-content p margin-top */
+            padding-top: 0 !important;
             margin-bottom: 0.35rem;
             display: -webkit-box;
             -webkit-line-clamp: var(--list-preview-lines, 4);
@@ -1762,6 +1768,9 @@
             .brief-story-card > div:first-child,
             .brief-story-meta {
                 font-size: 0.78em !important;
+                margin-top: 0 !important;
+                margin-bottom: 0.125rem !important; /* 50% reduction */
+                line-height: 1.25 !important;
                 white-space: nowrap !important;
                 overflow: hidden !important;
             }
@@ -1780,11 +1789,15 @@
             .brief-story-title {
                 font-size: var(--mob-list-title-size, 1.1em) !important;
                 line-height: var(--mob-list-preview-line-height, 1.35) !important;
+                margin-top: 0 !important;
+                padding-top: 0 !important;
             }
             .brief-story-card p,
             .brief-story-excerpt {
                 font-size: var(--mob-list-preview-size, 1.0em) !important;
                 line-height: var(--mob-list-preview-line-height, 1.4) !important;
+                margin-top: 0 !important;
+                padding-top: 0 !important;
                 -webkit-line-clamp: var(--mob-list-preview-lines, 4) !important;
                 line-clamp: var(--mob-list-preview-lines, 4) !important;
             }
@@ -5222,9 +5235,14 @@
                     el.classList.remove('text-xs', 'text-[11px]', 'text-sm');
                 });
 
-                // Ensure story metadata components do not wrap vertically
-                const sMeta = card.querySelector('.brief-story-meta');
-                if (sMeta) sMeta.classList.add('flex-nowrap');
+                // Ensure story metadata components do not wrap vertically and author spacing is tight
+                const sMeta = card.querySelector('.brief-story-meta') || card.querySelector(':scope > div:first-child');
+                if (sMeta) {
+                    sMeta.classList.remove('mb-1', 'mb-2');
+                    sMeta.classList.add('mb-0.5', 'flex-nowrap');
+                    sMeta.style.marginBottom = '2px';
+                    sMeta.style.marginTop = '0px';
+                }
                 const sSource = card.querySelector('.brief-story-source');
                 if (sSource) sSource.classList.add('truncate', 'whitespace-nowrap');
                 const sTime = card.querySelector('.brief-story-time');
@@ -5260,6 +5278,15 @@
                 // Find title and excerpt elements (never mistake action links for titles)
                 const titleEl = card.querySelector('.brief-story-title') || card.querySelector('h4') || card.querySelector('a:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link):not([onclick*="openArticleInReader"])');
                 const excerptEl = card.querySelector('.brief-story-excerpt') || card.querySelector('p');
+
+                if (titleEl) {
+                    titleEl.style.marginTop = '0px';
+                    titleEl.style.paddingTop = '0px';
+                }
+                if (excerptEl) {
+                    excerptEl.style.marginTop = '0px';
+                    excerptEl.style.paddingTop = '0px';
+                }
 
                 if (titleEl && excerptEl) {
                     const tText = (titleEl.textContent || '').trim().replace(/\s+/g, ' ');
@@ -7706,22 +7733,22 @@
 
                         if (isSocial) {
                             storyBodyHtml = `
-                                <p class="brief-story-excerpt dynamic-list-preview text-gray-800 dark:text-gray-200 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
+                                <p class="brief-story-excerpt dynamic-list-preview text-gray-800 dark:text-gray-200 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
                                     ${esc(postText)}
                                 </p>
                             `;
                         } else {
                             storyBodyHtml = `
-                                <h4 class="brief-story-title dynamic-list-title font-semibold text-gray-900 dark:text-white leading-snug mb-1 cursor-pointer" onclick="window.openArticleInReader('${saId}')">
+                                <h4 class="brief-story-title dynamic-list-title font-semibold text-gray-900 dark:text-white leading-snug mt-0 mb-1 cursor-pointer" onclick="window.openArticleInReader('${saId}')">
                                     ${esc(st.title)}
                                 </h4>
-                                ${st.excerpt ? `<p class="brief-story-excerpt dynamic-list-preview text-gray-500 dark:text-gray-400 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">${esc(st.excerpt)}</p>` : ''}
+                                ${st.excerpt ? `<p class="brief-story-excerpt dynamic-list-preview text-gray-500 dark:text-gray-400 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">${esc(st.excerpt)}</p>` : ''}
                             `;
                         }
 
                         html += `
                             <div class="brief-story-card" id="brief-card-${saId}" data-sa-id="${saId}">
-                                <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-1 flex-nowrap min-w-0">
+                                <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
                                     ${favHtml}
                                     <span class="brief-story-source font-bold uppercase truncate">${esc(st.source)}</span>
                                     <span class="brief-story-dot flex-shrink-0">•</span>
@@ -9986,7 +10013,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 226;
+        window.APP_BUILD = 227;
 
         (async function initApp() {
             try {
@@ -10837,7 +10864,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v226';
+const CACHE_NAME = 'rss-reader-v227';
 const APP_SHELL = [
     '/',
     'index.html'
