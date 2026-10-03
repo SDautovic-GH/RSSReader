@@ -2731,8 +2731,8 @@
                scan speed here). Title dominance is carried by size + color, and the
                smaller/dimmer preview keeps the hierarchy legible at 4 lines. */
             --mob-list-preview-lines: 4;
-            --list-preview-lines-brief: 10;
-            --mob-list-preview-lines-brief: 10;
+            --list-preview-lines-brief: var(--list-preview-lines, 4);
+            --mob-list-preview-lines-brief: var(--mob-list-preview-lines, 4);
             --list-preview-lines-social: 10;
             --mob-list-preview-lines-social: 10;
             --list-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -2824,19 +2824,22 @@
            The .dark override at `.dark #article-list > div` below uses border-color !important
            at higher specificity (1,1,1), which would repaint our stripe dark gray. The second
            selector here matches that specificity (1,2,0) and wins on class count. */
-        /* Article list items styled as cards - identical to brief cards (desktop & mobile) */
+        /* Edge-to-Edge Hairline Stream (desktop & mobile) */
         #article-list {
-            padding: 8px 10px;
+            padding: 0 !important;
             box-sizing: border-box;
         }
 
-        .article-item-card {
-            padding: 0.75rem 0.85rem !important;
-            margin-bottom: 8px !important;
-            border-radius: 8px !important;
-            background: #ffffff !important;
-            border: 1px solid rgba(0, 0, 0, 0.08) !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+        .article-item-card,
+        .article-card {
+            padding: 12px 16px !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            border-left: 3px solid transparent !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+            box-shadow: none !important;
             transition: background 0.15s ease, border-color 0.15s ease !important;
             width: 100% !important;
             box-sizing: border-box !important;
@@ -2844,20 +2847,23 @@
             overflow: hidden !important;
         }
 
-        .article-item-card:hover {
-            background: #f8fafc !important;
-            border-color: rgba(0, 0, 0, 0.12) !important;
+        .article-item-card:hover,
+        .article-card:hover {
+            background: rgba(0, 0, 0, 0.025) !important;
         }
 
-        .dark .article-item-card {
-            background: #12161f !important;
-            border: 1px solid rgba(255, 255, 255, 0.11) !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+        .dark .article-item-card,
+        .dark .article-card {
+            background: transparent !important;
+            border: none !important;
+            border-left: 3px solid transparent !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+            box-shadow: none !important;
         }
 
-        .dark .article-item-card:hover {
-            background: #171d28 !important;
-            border-color: rgba(255, 255, 255, 0.16) !important;
+        .dark .article-item-card:hover,
+        .dark .article-card:hover {
+            background: rgba(255, 255, 255, 0.035) !important;
         }
 
         .article-item-card.is-active-card,
@@ -2865,10 +2871,19 @@
         #article-list .is-active-card,
         .dark #article-list .article-item-card.is-active-card,
         .dark #article-list>.is-active-card {
-            border-left: 3px solid #3b82f6 !important;
-            border-left-color: #3b82f6 !important;
-            background: rgba(59, 130, 246, 0.12) !important;
-            border-color: rgba(59, 130, 246, 0.4) !important;
+            border-left: 3px solid #3d6bb0 !important;
+            border-left-color: #3d6bb0 !important;
+            background: rgba(61, 107, 176, 0.09) !important;
+            border-bottom-color: rgba(61, 107, 176, 0.25) !important;
+        }
+
+        .dark .article-item-card.is-active-card,
+        .dark #article-list .article-item-card.is-active-card,
+        .dark #article-list>.is-active-card {
+            border-left: 3px solid #4d7cc7 !important;
+            border-left-color: #4d7cc7 !important;
+            background: rgba(61, 107, 176, 0.15) !important;
+            border-bottom-color: rgba(61, 107, 176, 0.3) !important;
         }
 
         .article-item-card.article-read-pinned {
@@ -3030,24 +3045,20 @@
         }
 
 
-        /* Card view */
-        #article-list.card-view .article-card {
-            display: flex;
-            flex-direction: column;
-            margin: 8px;
-            border-radius: 10px;
-            border: 1px solid #e5e7eb;
-            overflow: hidden;
+        /* Compact Wire Density View Mode */
+        #article-list.compact-wire .article-item-card,
+        #article-list.compact-wire .article-card {
+            padding: 8px 16px !important;
         }
 
-        .dark #article-list.card-view .article-card {
-            border-color: #30363d;
+        #article-list.compact-wire .dynamic-list-preview,
+        #article-list.compact-wire .article-card-img {
+            display: none !important;
         }
 
-        #article-list.card-view .article-card-img {
-            width: 100%;
-            height: 120px;
-            object-fit: cover;
+        #article-list.compact-wire .dynamic-list-title {
+            margin-bottom: 0 !important;
+            line-height: 1.35 !important;
         }
 
         /* Top frost is mobile-only (desktop has real headers). */
@@ -3128,6 +3139,7 @@
             }
 
             /* Hide desktop toolbar equivalents on mobile */
+            #desk-nav-group,
             #prev-article-btn,
             #next-article-btn,
             #share-btn,
@@ -3139,14 +3151,13 @@
             }
 
             /* Mobile sidebar — consistent font size for smart feeds AND category folders */
-            #sidebar-pane .smart-feed-btn {
+            #sidebar-pane .smart-feed-btn,
+            #sidebar-pane .dynamic-category-text,
+            #sidebar-pane #toggle-folders-section-btn {
                 font-size: var(--mob-folder-size) !important;
                 line-height: var(--mob-feed-line-height) !important;
-            }
-
-            #sidebar-pane .dynamic-category-text {
-                font-size: var(--mob-folder-size) !important;
-                line-height: var(--mob-feed-line-height) !important;
+                text-transform: none !important;
+                letter-spacing: normal !important;
             }
 
             #sidebar-pane #feed-list [data-category]>button {
@@ -3250,26 +3261,58 @@
                 line-clamp: var(--mob-list-preview-lines-social, 10);
             }
 
-            /* Mobile article list card padding and margins */
+            /* Mobile article list — Edge-to-Edge Hairline Stream */
             #article-list {
-                padding-left: 8px !important;
-                padding-right: 8px !important;
-                padding-bottom: 32px !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 16px) !important;
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
                 box-sizing: border-box !important;
             }
 
             #article-list [data-id],
-            #article-list .article-item-card {
-                padding: 0.75rem 0.85rem !important;
-                margin-bottom: 8px !important;
-                border-radius: 8px !important;
+            #article-list .article-item-card,
+            #article-list .article-card {
+                padding: 11px 14px !important;
+                margin-bottom: 0 !important;
+                border-radius: 0 !important;
+                border-left: 3px solid transparent !important;
+                border-right: none !important;
+                border-top: none !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+                background: transparent !important;
+                box-shadow: none !important;
                 -webkit-user-select: none;
                 user-select: none;
             }
 
+            html:not(.dark) #article-list [data-id],
+            html:not(.dark) #article-list .article-item-card,
+            html:not(.dark) #article-list .article-card {
+                border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+                background: transparent !important;
+            }
+
+            #article-list.compact-wire [data-id],
+            #article-list.compact-wire .article-item-card,
+            #article-list.compact-wire .article-card {
+                padding: 7px 14px !important;
+            }
+
+            #article-list.compact-wire .dynamic-list-preview,
+            #article-list.compact-wire .article-card-img {
+                display: none !important;
+            }
+
             #reader-view {
-                padding-left: 12px !important;
-                padding-right: 12px !important;
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+            }
+
+            #article-content:not(:has(.is-brief-body)) #article-header-card,
+            #article-content:not(:has(.is-brief-body)) #article-body {
+                padding-left: 6px !important;
+                padding-right: 6px !important;
             }
 
             /* ===== MOBILE TOP BAR SIZING ===== */
@@ -3359,10 +3402,10 @@
                 background: none;
             }
 
-            /* Full-screen read area: content rests right under the status bar; only
-               the band's imperceptible 1.5px tail overlaps the first few pixels. */
+            /* Full-screen read area: content rests comfortably below the status bar / Dynamic Island */
             #timeline-pane.mobile-active #article-list {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 16px) !important;
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
             }
 
             #timeline-pane.mobile-active.has-ondemand-bar #article-list,
@@ -3371,7 +3414,7 @@
             }
 
             #timeline-pane.mobile-active .brief-ondemand-bar {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 8px) !important;
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 10px) !important;
                 padding-bottom: 10px !important;
                 padding-left: 14px !important;
                 padding-right: 14px !important;
@@ -3394,7 +3437,8 @@
             }
 
             #viewer-pane.mobile-active #reader-view {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 6px);
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 14px) !important;
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
             }
 
             #sidebar-pane>div:nth-of-type(2) svg {
@@ -3513,53 +3557,20 @@
             background: rgba(59, 130, 246, 0.12);
         }
 
-        /* ===== DESKTOP FLOATING ARTICLE NAV =====
-           Positioned to sit just to the right of the reader content column
-           (max-w-2xl = 42rem, left-anchored with lg:ml-8 + lg:p-6 padding),
-           so the buttons feel attached to the article instead of floating off
-           in dead space on wide screens. */
-        #desk-nav-float {
-            position: absolute;
-            bottom: 24px;
-            left: calc(1.5rem + 2rem + 42rem + 1rem);
-            /* lg:p-6 + lg:ml-8 + max-w-2xl + gap */
-            right: auto;
-            z-index: 20;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        @media (max-width: 1023px) {
-            #desk-nav-float {
-                left: calc(1rem + 1rem + 42rem + 1rem);
-                /* md:p-4 + md:ml-4 + max-w-2xl + gap */
-            }
-        }
-
-        #desk-nav-float button {
-            display: flex;
+        /* ===== DESKTOP ARTICLE NAVIGATION (Toolbar Prev / Next Segmented Group) ===== */
+        #desk-nav-group {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.13);
-            background: rgba(22, 22, 30, 0.62);
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(24px) saturate(1.6);
-            -webkit-backdrop-filter: blur(24px) saturate(1.6);
-            color: rgba(255, 255, 255, 0.88);
-            cursor: pointer;
-            transition: background 0.12s, opacity 0.12s;
         }
 
-        #desk-nav-float button:hover:not(.hidden) {
-            background: rgba(59, 130, 246, 0.65);
-            border-color: rgba(59, 130, 246, 0.45);
+        #desk-nav-group button:disabled {
+            opacity: 0.28 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
         }
 
         @media (max-width: 900px) {
-            #desk-nav-float {
+            #desk-nav-group {
                 display: none !important;
             }
         }
@@ -4130,15 +4141,21 @@
             border-color: #21262d !important;
         }
 
-        /* Article list cards — dark mode card surfaces */
-        .dark #article-list .article-item-card {
-            background: #12161f !important;
-            border-color: rgba(255, 255, 255, 0.11) !important;
+        /* Article list — Edge-to-edge dark hairline stream */
+        .dark #article-list .article-item-card,
+        .dark #article-list .article-card {
+            background: transparent !important;
+            border: none !important;
+            border-left: 3px solid transparent !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+            border-radius: 0 !important;
+            margin-bottom: 0 !important;
+            box-shadow: none !important;
         }
 
-        .dark #article-list .article-item-card:hover {
-            background: #171d28 !important;
-            border-color: rgba(255, 255, 255, 0.16) !important;
+        .dark #article-list .article-item-card:hover,
+        .dark #article-list .article-card:hover {
+            background: rgba(255, 255, 255, 0.035) !important;
         }
 
         /* ===== MOBILE APPLE GLASS THEME ===== */
@@ -4212,9 +4229,15 @@
                 background: #000 !important;
             }
 
-            .dark #article-list .article-item-card {
-                background: #12161f !important;
-                border-color: rgba(255, 255, 255, 0.11) !important;
+            .dark #article-list .article-item-card,
+            .dark #article-list .article-card {
+                background: transparent !important;
+                border: none !important;
+                border-left: 3px solid transparent !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+                border-radius: 0 !important;
+                margin-bottom: 0 !important;
+                box-shadow: none !important;
             }
 
             /* Reader — black base */
@@ -4490,9 +4513,19 @@
 
         /* Desktop feed font size + line-height — smart feeds and category folders unified */
         #sidebar-pane .smart-feed-btn,
-        #sidebar-pane .dynamic-category-text {
+        #sidebar-pane .dynamic-category-text,
+        #sidebar-pane #toggle-folders-section-btn {
             font-size: var(--category-font-size) !important;
             line-height: var(--feed-line-height) !important;
+            text-transform: none !important;
+            letter-spacing: normal !important;
+        }
+
+        #toggle-folders-section-btn #folders-section-count,
+        #toggle-folders-section-btn #toggle-folders-section-label {
+            font-size: 0.88em !important;
+            text-transform: none !important;
+            letter-spacing: normal !important;
         }
 
         /* Feed name rows (direct button children of data-category) match folder size */
@@ -4739,11 +4772,27 @@
             }
         }
 
-        /* Category sections */
+        /* Category sections — Editorial Memo Flow */
         .brief-cat-section {
-            margin-bottom: 1.25rem;
+            margin-top: 1.25rem !important;
+            margin-bottom: 1.75rem !important;
             width: 100%;
             box-sizing: border-box;
+        }
+
+        .brief-cat-section:first-of-type {
+            margin-top: 0.5rem !important;
+        }
+
+        .brief-cat-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            flex-wrap: nowrap !important;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.25) !important;
+            padding-bottom: 0.45rem !important;
+            margin-bottom: 0.25rem !important;
         }
 
         .brief-container h3,
@@ -4751,12 +4800,29 @@
             font-size: var(--category-font-size, 1.1em) !important;
             font-weight: 700 !important;
             color: #60a5fa !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.2 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
+        }
+
+        .brief-cat-controls {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
+            line-height: 1 !important;
+            flex-shrink: 0 !important;
         }
 
         .brief-cat-section span,
         .brief-cat-count {
-            font-size: var(--article-meta-size, 0.85em) !important;
+            font-size: calc(var(--article-meta-size, 0.85em) * 0.8) !important;
             color: #64748b !important;
+            line-height: 1 !important;
+            display: inline-flex !important;
+            align-items: center !important;
         }
 
         @media (max-width: 900px) {
@@ -4768,7 +4834,7 @@
 
             .brief-cat-section span,
             .brief-cat-count {
-                font-size: var(--mob-author-size, 0.85em) !important;
+                font-size: calc(var(--mob-author-size, 0.85em) * 0.8) !important;
             }
         }
 
@@ -4881,42 +4947,48 @@
             padding-bottom: 2rem !important;
         }
 
-        /* Story cards - Desktop vs Mobile */
+        /* Story entries — Editorial Memo Flow (Desktop & Mobile) */
         .brief-story-card {
-            padding: 0.75rem 0.85rem;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-            transition: background 0.15s ease, border-color 0.15s ease;
-            width: 100%;
-            box-sizing: border-box;
+            padding: 1.15rem 0.25rem !important;
+            margin-bottom: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
+            box-shadow: none !important;
+            transition: background 0.15s ease !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .brief-story-card:last-child {
+            border-bottom: none !important;
         }
 
         .brief-story-card:hover {
-            background: #f8fafc;
-            border-color: rgba(0, 0, 0, 0.12);
+            background: rgba(0, 0, 0, 0.02) !important;
         }
 
         .dark .brief-story-card {
-            background: #12161f !important;
-            border: 1px solid rgba(255, 255, 255, 0.11) !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: none !important;
         }
 
         .dark .brief-story-card:hover {
-            background: #171d28 !important;
-            border-color: rgba(255, 255, 255, 0.16) !important;
+            background: rgba(255, 255, 255, 0.025) !important;
         }
 
         html:not(.dark) .brief-story-card {
-            background: #ffffff;
-            border-color: rgba(0, 0, 0, 0.08);
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
+            box-shadow: none !important;
         }
 
         html:not(.dark) .brief-story-card:hover {
-            background: #f8fafc;
+            background: rgba(0, 0, 0, 0.02) !important;
         }
 
         .brief-story-card>div:first-child,
@@ -5009,11 +5081,22 @@
             padding-top: 0 !important;
             margin-bottom: 0.35rem;
             display: -webkit-box;
-            -webkit-line-clamp: var(--list-preview-lines-brief, 10) !important;
-            line-clamp: var(--list-preview-lines-brief, 10) !important;
+            -webkit-line-clamp: var(--list-preview-lines-brief, var(--list-preview-lines, 5)) !important;
+            line-clamp: var(--list-preview-lines-brief, var(--list-preview-lines, 5)) !important;
             -webkit-box-orient: vertical;
             overflow: hidden;
             color: #475569;
+        }
+
+        /* Social posts in Briefs respect the Social Preview Lines setting */
+        .brief-story-card.is-social-story p,
+        .brief-story-card.is-social-story .brief-story-excerpt,
+        .brief-story-card p.line-clamp-social,
+        .brief-story-card .brief-story-excerpt.line-clamp-social,
+        .brief-story-card p.is-social-post,
+        .brief-story-card .brief-story-excerpt.is-social-post {
+            -webkit-line-clamp: var(--list-preview-lines-social, 10) !important;
+            line-clamp: var(--list-preview-lines-social, 10) !important;
         }
 
         .dark .brief-story-card p,
@@ -5092,35 +5175,44 @@
             flex-shrink: 0 !important;
         }
 
-        /* Mobile card layout - consistent with #article-list cards */
+        /* Mobile Editorial Memo Flow */
         @media (max-width: 900px) {
             .brief-story-card {
-                padding: 0.75rem 0.85rem !important;
-                margin-bottom: 8px !important;
-                border-radius: 8px !important;
+                padding: 1rem 0 !important;
+                margin-bottom: 0 !important;
+                border-radius: 0 !important;
+                border: none !important;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
                 box-sizing: border-box !important;
                 width: 100% !important;
+                background: transparent !important;
+                box-shadow: none !important;
+            }
+
+            .brief-story-card:last-child {
+                border-bottom: none !important;
             }
 
             .dark .brief-story-card {
-                background: #12161f !important;
-                border: 1px solid rgba(255, 255, 255, 0.11) !important;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+                background: transparent !important;
+                border: none !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+                box-shadow: none !important;
             }
 
             .dark .brief-story-card:hover {
-                background: #171d28 !important;
-                border-color: rgba(255, 255, 255, 0.16) !important;
+                background: rgba(255, 255, 255, 0.025) !important;
             }
 
             html:not(.dark) .brief-story-card {
-                background: #ffffff !important;
-                border: 1px solid rgba(0, 0, 0, 0.08) !important;
-                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+                background: transparent !important;
+                border: none !important;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
+                box-shadow: none !important;
             }
 
             html:not(.dark) .brief-story-card:hover {
-                background: #f8fafc !important;
+                background: rgba(0, 0, 0, 0.02) !important;
             }
 
             .brief-story-card>div:first-child,
@@ -5169,8 +5261,18 @@
                 line-height: var(--mob-list-preview-line-height, 1.4) !important;
                 margin-top: 0 !important;
                 padding-top: 0 !important;
-                -webkit-line-clamp: var(--mob-list-preview-lines-brief, 10) !important;
-                line-clamp: var(--mob-list-preview-lines-brief, 10) !important;
+                -webkit-line-clamp: var(--mob-list-preview-lines-brief, var(--mob-list-preview-lines, 5)) !important;
+                line-clamp: var(--mob-list-preview-lines-brief, var(--mob-list-preview-lines, 5)) !important;
+            }
+
+            .brief-story-card.is-social-story p,
+            .brief-story-card.is-social-story .brief-story-excerpt,
+            .brief-story-card p.line-clamp-social,
+            .brief-story-card .brief-story-excerpt.line-clamp-social,
+            .brief-story-card p.is-social-post,
+            .brief-story-card .brief-story-excerpt.is-social-post {
+                -webkit-line-clamp: var(--mob-list-preview-lines-social, 10) !important;
+                line-clamp: var(--mob-list-preview-lines-social, 10) !important;
             }
 
             .brief-story-actions {
@@ -5326,17 +5428,233 @@
             border-radius: 8px !important;
         }
 
+        #mobile-brief-fab-group {
+            display: none;
+        }
+
         #mobile-brief-fab {
             display: none;
         }
 
+        .brief-save-btn.is-saved,
+        .dark .brief-save-btn.is-saved {
+            color: #f59e0b !important;
+        }
+
+        .brief-save-btn.is-saved:hover,
+        .dark .brief-save-btn.is-saved:hover {
+            color: #d97706 !important;
+            background: rgba(245, 158, 11, 0.15) !important;
+        }
+
+        .brief-save-btn:hover {
+            color: #f59e0b !important;
+            background: rgba(245, 158, 11, 0.1) !important;
+        }
+
+        /* Unified Back to Brief, Save & Later pill buttons (exact matching padding, height, and typography) */
+        .brief-back-btn,
+        .brief-pill-save-btn,
+        .brief-pill-later-btn {
+            padding: 0.5rem 1rem !important;
+            /* py-2 px-4 */
+            gap: 0.375rem !important;
+            /* gap-1.5 */
+            font-size: 0.75rem !important;
+            /* text-xs */
+            line-height: 1rem !important;
+            font-weight: 600 !important;
+            border-radius: 9999px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+        }
+
+        .brief-back-btn svg,
+        .brief-pill-save-btn svg,
+        .brief-pill-later-btn svg {
+            width: 0.875rem !important;
+            height: 0.875rem !important;
+            flex-shrink: 0 !important;
+        }
+
+        /* Consistent spacing between action pill buttons across top and bottom return headers */
+        #brief-return-header,
+        #brief-return-footer>div {
+            gap: 0.625rem !important;
+            /* 10px consistent spacing */
+            justify-content: center !important;
+            justify-content: safe center !important;
+        }
+
+        .brief-back-btn {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            color: #cbd5e1 !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .brief-back-btn svg {
+            color: #60a5fa !important;
+        }
+
+        html:not(.dark) .brief-back-btn {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
+        }
+
+        html:not(.dark) .brief-back-btn svg {
+            color: #2563eb !important;
+        }
+
+        .brief-back-btn:hover {
+            background: rgba(59, 130, 246, 0.12) !important;
+            border-color: rgba(59, 130, 246, 0.4) !important;
+            color: #60a5fa !important;
+        }
+
+        html:not(.dark) .brief-back-btn:hover {
+            background: #eff6ff !important;
+            border-color: #93c5fd !important;
+            color: #1d4ed8 !important;
+        }
+
+        .brief-back-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Save and Later action pills in Brief return header and footer */
+        .brief-pill-save-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            color: #cbd5e1 !important;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .brief-pill-save-btn svg {
+            color: #f59e0b !important;
+        }
+
+        html:not(.dark) .brief-pill-save-btn {
+            background: #ffffff;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
+        }
+
+        /* Hover states — match mobile tap action: amber tint, NEVER white */
+        .brief-pill-save-btn:hover {
+            background: rgba(245, 158, 11, 0.15) !important;
+            border-color: rgba(245, 158, 11, 0.55) !important;
+            color: #f59e0b !important;
+        }
+
+        .brief-pill-save-btn:hover svg {
+            color: #f59e0b !important;
+        }
+
+        .brief-pill-save-btn:active {
+            transform: scale(0.96);
+            background: rgba(245, 158, 11, 0.25) !important;
+        }
+
+        /* Saved state */
+        .brief-pill-save-btn.is-saved {
+            background: rgba(245, 158, 11, 0.22) !important;
+            border-color: #f59e0b !important;
+            color: #f59e0b !important;
+        }
+
+        .brief-pill-save-btn.is-saved:hover {
+            background: rgba(245, 158, 11, 0.32) !important;
+            border-color: #d97706 !important;
+            color: #fbbf24 !important;
+        }
+
+        .brief-pill-later-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            color: #cbd5e1 !important;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .brief-pill-later-btn svg {
+            color: #3b82f6 !important;
+        }
+
+        html:not(.dark) .brief-pill-later-btn {
+            background: #ffffff;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
+        }
+
+        .brief-pill-later-btn:hover {
+            background: rgba(59, 130, 246, 0.15) !important;
+            border-color: rgba(59, 130, 246, 0.55) !important;
+            color: #60a5fa !important;
+        }
+
+        .brief-pill-later-btn:active {
+            transform: scale(0.96);
+            background: rgba(59, 130, 246, 0.25) !important;
+        }
+
+        .brief-pill-later-btn.is-later {
+            background: rgba(59, 130, 246, 0.22) !important;
+            border-color: #3b82f6 !important;
+            color: #60a5fa !important;
+        }
+
         @media (max-width: 900px) {
-            #mobile-brief-fab.active {
+            #mobile-brief-fab-group.active {
                 display: inline-flex !important;
                 position: absolute;
                 bottom: calc(90px + env(safe-area-inset-bottom, 0px));
                 right: 14px;
                 z-index: 35;
+                align-items: center;
+                gap: 8px;
+                animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            #mobile-brief-save-fab {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 38px;
+                height: 38px;
+                border-radius: 9999px;
+                background: rgba(13, 37, 69, 0.94);
+                color: #fbbf24;
+                border: 1px solid rgba(245, 158, 11, 0.55);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 10px rgba(245, 158, 11, 0.25);
+                backdrop-filter: blur(14px);
+                -webkit-backdrop-filter: blur(14px);
+                cursor: pointer;
+                transition: transform 0.12s ease, background 0.12s ease;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            #mobile-brief-save-fab.is-saved {
+                background: rgba(245, 158, 11, 0.28) !important;
+                border-color: #f59e0b !important;
+                color: #f59e0b !important;
+            }
+
+            #mobile-brief-save-fab:active {
+                transform: scale(0.92);
+            }
+
+            #mobile-brief-fab {
+                display: inline-flex !important;
+                position: static !important;
                 align-items: center;
                 gap: 6px;
                 padding: 9px 15px;
@@ -5350,24 +5668,46 @@
                 cursor: pointer;
                 transition: transform 0.12s ease, background 0.12s ease;
                 -webkit-tap-highlight-color: transparent;
-                animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             }
 
-            #mobile-brief-fab.active:active {
+            #mobile-brief-fab:active {
                 transform: scale(0.94);
                 background: rgba(13, 37, 69, 1);
             }
 
-            @keyframes briefFabSlideIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(14px) scale(0.92);
-                }
+            #brief-return-header {
+                margin-top: 12px !important;
+                margin-bottom: 16px !important;
+                margin-left: 0 !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                gap: 0.45rem !important;
+                /* 7px uniform spacing */
+            }
 
-                to {
-                    opacity: 1;
-                    transform: translateY(0) scale(1);
-                }
+            #brief-return-footer>div {
+                gap: 0.45rem !important;
+            }
+
+            .brief-back-btn,
+            .brief-pill-save-btn,
+            .brief-pill-later-btn {
+                padding: 0.45rem 0.75rem !important;
+                /* 7px 12px uniform compact padding */
+                gap: 0.3rem !important;
+                font-size: 0.75rem !important;
+            }
+        }
+
+        @keyframes briefFabSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(14px) scale(0.92);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
             }
         }
 
@@ -5967,6 +6307,13 @@
                 <rect x="3" y="14" width="7" height="7" />
                 <rect x="14" y="14" width="7" height="7" />
             </symbol>
+            <symbol id="icon-compact-lines" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="5" x2="21" y2="5" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+                <line x1="3" y1="15" x2="21" y2="15" />
+                <line x1="3" y1="20" x2="21" y2="20" />
+            </symbol>
             <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12" />
@@ -6118,14 +6465,14 @@
                                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
                                 viewBox="0 0 24 24">
                                 <use href="#icon-newspaper" />
-                            </svg> Daily Briefs</span>
+                            </svg> Briefs</span>
                         <span id="badge-briefs" class="feed-badge text-blue-400 hidden">0</span>
                     </button>
                 </div>
                 <!-- Category folders card with Section Collapse/Expand toggle -->
                 <div class="space-y-1.5" id="folders-section-wrap">
                     <button id="toggle-folders-section-btn" onclick="toggleFoldersSection()"
-                        class="flex items-center justify-between w-full px-2 py-1 text-[11px] text-gray-400 font-medium tracking-wider uppercase select-none hover:text-gray-200 hover:bg-white/5 rounded-lg transition-colors cursor-pointer group"
+                        class="dynamic-category-text flex items-center justify-between w-full px-2 py-1 text-gray-400 font-medium select-none hover:text-gray-200 hover:bg-white/5 rounded-lg transition-colors cursor-pointer group"
                         title="Collapse or expand all category folders">
                         <div class="flex items-center gap-1.5">
                             <svg id="folders-section-chevron" class="w-3.5 h-3.5 transition-transform duration-200"
@@ -6135,10 +6482,10 @@
                             </svg>
                             <span>Folders</span>
                             <span id="folders-section-count"
-                                class="text-[10px] text-gray-400/80 font-normal lowercase tracking-normal"></span>
+                                class="text-gray-400/80 font-normal tracking-normal"></span>
                         </div>
                         <span id="toggle-folders-section-label"
-                            class="text-[11px] font-normal tracking-normal lowercase text-gray-400 group-hover:text-blue-400 transition-colors">collapse</span>
+                            class="font-normal tracking-normal text-gray-400 group-hover:text-blue-400 transition-colors">Collapse</span>
                     </button>
                     <div id="feed-list"
                         class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
@@ -6224,20 +6571,32 @@
             <div class="top-frost" aria-hidden="true"></div>
             <div id="viewer-header"
                 class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10"
-                ondblclick="toggleFullScreenManual()" title="Double-click to toggle Full Screen">
+                ondblclick="toggleFullScreenManual(event)" title="Double-click header background to toggle Full Screen">
                 <div class="flex items-center">
-                    <button id="desk-back-to-brief-btn" onclick="window.returnToBrief()"
-                        class="hidden items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 text-xs font-semibold transition-all shadow-sm group"
-                        title="Return to Daily Brief">
-                        <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5">
-                            <use href="#icon-arrow-left" />
-                        </svg>
-                        <span>Back to Daily Brief</span>
-                    </button>
                 </div>
 
-                <div class="flex items-center space-x-3">
-                    <div class="flex space-x-2 mr-2">
+                <div class="flex items-center space-x-3" ondblclick="event.stopPropagation()">
+                    <div class="flex space-x-2 mr-2 items-center" ondblclick="event.stopPropagation()">
+                        <!-- Desktop Article Navigation (Prev / Next) -->
+                        <div id="desk-nav-group" class="hidden inline-flex rounded-md shadow-sm mr-1" role="group"
+                            ondblclick="event.stopPropagation()">
+                            <button id="prev-article-btn" onclick="navigateArticle(-1)"
+                                ondblclick="event.stopPropagation()" type="button" title="Previous Article (↑ / k)"
+                                aria-label="Previous Article"
+                                class="p-1.5 rounded-l-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                <svg class="w-4 h-4">
+                                    <use href="#icon-chevron-up" />
+                                </svg>
+                            </button>
+                            <button id="next-article-btn" onclick="navigateArticle(1)"
+                                ondblclick="event.stopPropagation()" type="button" title="Next Article (↓ / j)"
+                                aria-label="Next Article"
+                                class="p-1.5 -ml-px rounded-r-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                <svg class="w-4 h-4">
+                                    <use href="#icon-chevron-down" />
+                                </svg>
+                            </button>
+                        </div>
                         <!-- Share Button -->
                         <button id="share-btn" onclick="shareArticle()" title="Share" aria-label="Share"
                             class="hidden p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -6274,12 +6633,13 @@
                             </svg>
                         </button>
                     </div>
-                    <!-- View mode toggle: List / Card -->
-                    <button onclick="toggleViewMode()" id="view-density-toggle" title="Toggle List/Card view"
-                        aria-label="Toggle List/Card view"
+                    <!-- View mode toggle: Standard Stream / Compact Wire -->
+                    <button onclick="toggleViewMode()" id="view-density-toggle"
+                        title="Standard Stream (switch to Compact Wire)"
+                        aria-label="Standard Stream (switch to Compact Wire)"
                         class="p-1.5 rounded-md text-gray-500 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                         <svg class="w-4 h-4">
-                            <use href="#icon-list" />
+                            <use href="#icon-compact-lines" />
                         </svg>
                     </button>
                 </div>
@@ -6327,24 +6687,43 @@
                                     <p><kbd class="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-400">r</kbd>
                                         <span class="ml-1">Toggle read</span> &nbsp;<kbd
                                             class="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-400">b</kbd>
-                                        <span class="ml-1">Save for later</span></p>
+                                        <span class="ml-1">Save for later</span>
+                                    </p>
                                     <p><kbd class="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-400">o</kbd>
-                                        <span class="ml-1">Open in browser</span></p>
+                                        <span class="ml-1">Open in browser</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
                         <article id="article-content" class="hidden animate-in fade-in duration-300">
-                            <!-- Top In-Flow Brief Return Pill (visible only when opened from Brief) -->
-                            <div id="brief-return-header" class="hidden mb-4">
+                            <!-- Top In-Flow Brief Return & Actions Header (visible only when opened from Brief) -->
+                            <div id="brief-return-header"
+                                class="hidden mb-6 flex items-center gap-2.5 flex-nowrap overflow-x-auto no-scrollbar">
                                 <button onclick="window.returnToBrief()"
-                                    class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50/90 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/70 border border-blue-200/80 dark:border-blue-800/80 text-xs font-semibold transition-all shadow-sm group">
+                                    class="brief-back-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold group cursor-pointer flex-shrink-0"
+                                    title="Back to Brief" aria-label="Back to Brief">
                                     <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5">
                                         <use href="#icon-arrow-left" />
                                     </svg>
-                                    <span>Back to Daily Brief</span>
-                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 font-normal">· Return to
-                                        story</span>
+                                    <span>Back to Brief</span>
+                                </button>
+                                <button id="brief-article-save-btn" onclick="window.handleSavedAction()" type="button"
+                                    class="brief-pill-save-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap flex-shrink-0"
+                                    title="Save Article" aria-label="Save Article">
+                                    <svg class="w-3.5 h-3.5 text-amber-500">
+                                        <use href="#icon-star" />
+                                    </svg>
+                                    <span id="brief-article-save-label">Save</span>
+                                </button>
+                                <button id="brief-article-later-btn" onclick="window.handleReadLaterAction()"
+                                    type="button"
+                                    class="brief-pill-later-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap flex-shrink-0"
+                                    title="Add to Read Later" aria-label="Add to Read Later">
+                                    <svg class="w-3.5 h-3.5 text-blue-500">
+                                        <use href="#icon-bookmark" />
+                                    </svg>
+                                    <span id="brief-article-later-label">Later</span>
                                 </button>
                             </div>
                             <div id="article-header-card">
@@ -6366,32 +6745,26 @@
                             <div id="article-body"
                                 class="article-content dynamic-view-text text-gray-800 dark:text-gray-300 leading-relaxed space-y-4">
                             </div>
-                            <!-- Bottom End-Of-Article Brief Return Card (visible only when opened from Brief) -->
+                            <!-- Bottom End-Of-Article Brief Return Actions (visible only when opened from Brief) -->
                             <div id="brief-return-footer"
-                                class="hidden mt-10 pt-6 border-t border-gray-200 dark:border-gray-800">
-                                <div
-                                    class="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="w-9 h-9 rounded-lg bg-blue-600/10 dark:bg-blue-400/20 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-5 h-5">
-                                                <use href="#icon-arrow-left" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p
-                                                class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                                                Done Reading?</p>
-                                            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Return to
-                                                your Daily Brief</p>
-                                        </div>
-                                    </div>
+                                class="hidden mt-8 pt-6 pb-8 border-t border-gray-200 dark:border-gray-800">
+                                <div class="flex items-center justify-center gap-2.5">
                                     <button onclick="window.returnToBrief()"
-                                        class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-1.5 self-stretch sm:self-auto justify-center group">
+                                        class="brief-back-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold group cursor-pointer"
+                                        title="Back to Brief" aria-label="Back to Brief">
                                         <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5">
                                             <use href="#icon-arrow-left" />
                                         </svg>
                                         <span>Back to Brief</span>
+                                    </button>
+                                    <button id="brief-footer-save-btn" onclick="window.handleSavedAction()"
+                                        type="button"
+                                        class="brief-pill-save-btn inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold cursor-pointer"
+                                        title="Save Article" aria-label="Save Article">
+                                        <svg class="w-3.5 h-3.5 text-amber-500">
+                                            <use href="#icon-star" />
+                                        </svg>
+                                        <span id="brief-footer-save-label">Save</span>
                                     </button>
                                 </div>
                             </div>
@@ -6400,19 +6773,6 @@
                 </div>
             </div>
 
-            <!-- DESKTOP FLOATING ARTICLE NAV (prev/next at bottom-right of viewer) -->
-            <div id="desk-nav-float" style="display:none">
-                <button id="prev-article-btn" onclick="navigateArticle(-1)" title="Previous Article (↑)">
-                    <svg class="h-5 w-5">
-                        <use href="#icon-chevron-up" />
-                    </svg>
-                </button>
-                <button id="next-article-btn" onclick="navigateArticle(1)" title="Next Article (↓)">
-                    <svg class="h-5 w-5">
-                        <use href="#icon-chevron-down" />
-                    </svg>
-                </button>
-            </div>
 
             <!-- Mobile Reader Action Bar (shown only on mobile, in reader pane) -->
             <div id="mobile-reader-bar"
@@ -6467,14 +6827,22 @@
                 </button>
             </div>
 
-            <!-- Mobile Floating "Back to Brief" thumb pill (visible ONLY on mobile when opened from Brief) -->
-            <button id="mobile-brief-fab" onclick="window.returnToBrief()" class="hidden" title="Return to Daily Brief"
-                aria-label="Return to Daily Brief">
-                <svg class="w-3.5 h-3.5 text-blue-400">
-                    <use href="#icon-arrow-left" />
-                </svg>
-                <span class="font-bold tracking-tight text-white text-xs">Back to Brief</span>
-            </button>
+            <!-- Mobile Floating "Back to Brief" & Quick Actions (visible ONLY on mobile when opened from Brief) -->
+            <div id="mobile-brief-fab-group" class="hidden">
+                <button id="mobile-brief-save-fab" onclick="window.handleSavedAction()" type="button"
+                    title="Save Article" aria-label="Save Article">
+                    <svg class="w-4 h-4">
+                        <use href="#icon-star" />
+                    </svg>
+                </button>
+                <button id="mobile-brief-fab" onclick="window.returnToBrief()" title="Return to Brief"
+                    aria-label="Return to Brief">
+                    <svg class="w-3.5 h-3.5 text-blue-400">
+                        <use href="#icon-arrow-left" />
+                    </svg>
+                    <span class="font-bold tracking-tight text-white text-xs">Back to Brief</span>
+                </button>
+            </div>
         </main>
     </div>
 
@@ -6798,16 +7166,16 @@
 
                 <!-- DAILY BRIEFS -->
                 <div>
-                    <h3 class="settings-section-label">Daily Briefs</h3>
+                    <h3 class="settings-section-label">Briefs</h3>
                     <div class="settings-list">
                         <div class="settings-row">
                             <div class="min-w-0 flex-1">
-                                <label class="settings-item-label-sm">Enable Daily Briefs</label>
+                                <label class="settings-item-label-sm">Enable Briefs</label>
                                 <p class="text-[12px] text-gray-400 mt-1">Automatic news summaries at 5 AM, 12 PM, 4 PM,
                                     and 8 PM ET</p>
                             </div>
                             <button id="briefs-enabled-toggle" onclick="toggleBriefsEnabled()" class="toggle-switch"
-                                data-on="true" aria-label="Enable Daily Briefs"></button>
+                                data-on="true" aria-label="Enable Briefs"></button>
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -7144,7 +7512,7 @@
                 chevron.classList.toggle('-rotate-90', isCollapsed);
             }
             if (label) {
-                label.textContent = isCollapsed ? 'expand' : 'collapse';
+                label.textContent = isCollapsed ? 'Expand' : 'Collapse';
             }
             if (btn) {
                 btn.title = isCollapsed ? 'Expand folder categories' : 'Collapse folder categories';
@@ -7259,7 +7627,7 @@
                 localStorage.setItem('newsreader_feed_health', JSON.stringify(out));
             } catch (e) { console.warn('persistFeedHealth:', e.message); }
         };
-        window._viewMode = 'list';
+        window._viewMode = 'standard';
         window._ttsActive = false;
         window._categoryOrder = [];
         window._showEmptyCategories = false;
@@ -8553,7 +8921,7 @@
 
         function renderTimelinePage(filtered) {
             const listEl = document.getElementById('article-list');
-            listEl.classList.toggle('card-view', window._viewMode === 'card');
+            listEl.classList.toggle('compact-wire', window._viewMode === 'compact');
 
             if (filtered.length === 0) {
                 // While a refresh is running with nothing to show yet, render the
@@ -8892,7 +9260,7 @@
         }
 
         function getFavicon(sourceName) {
-            if (sourceName === 'Daily Brief') {
+            if (sourceName === 'Daily Brief' || sourceName === 'Brief') {
                 return '<svg class="w-3.5 h-3.5 inline mr-1 text-blue-400 align-middle"><use href="#icon-newspaper"/></svg>';
             }
             const feedObj = window.feeds.find(f => f.name === sourceName);
@@ -8914,31 +9282,17 @@
                 const isOd = a.slot === 'ondemand' || a.isOnDemand || a.briefData?.isOnDemand;
                 const slotLabel = isOd ? 'On-Demand' : (a.slot ? (a.slot.charAt(0).toUpperCase() + a.slot.slice(1)) : 'Brief');
 
-                if (window._viewMode === 'card') {
-                    return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
-                        <div class="p-3">
-                            <div class="flex items-center text-[11px] mb-1.5 gap-1.5">
-                                ${showDot ? '<span class="w-2 h-2 bg-blue-500 rounded-full mr-1 flex-shrink-0"></span>' : ''}
-                                <span class="brief-slot-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 flex-shrink-0"><svg class="w-3 h-3 flex-shrink-0"><use href="#icon-newspaper"/></svg><span>${slotLabel}</span></span>
-                                <span class="brief-source-label font-bold text-gray-500 dark:text-gray-400 uppercase truncate">Daily Brief</span>
-                                <span class="ml-auto list-date-label text-gray-500 flex-shrink-0">${timeLabel}</span>
-                            </div>
-                            <h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title mb-1">${esc(a.title)}</h3>
-                            <p class="text-gray-400 dynamic-list-preview mt-1">${esc(a.excerpt)}</p>
-                        </div>
-                    </div>`;
-                }
                 return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                     <div class="min-w-0">
-                        <div class="flex items-center justify-between mb-1.5 gap-2">
+                        <div class="flex items-center justify-between mb-1 gap-2">
                             <div class="flex items-center gap-1.5 min-w-0">
                                 ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
                                 <span class="brief-slot-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 flex-shrink-0"><svg class="w-3 h-3 flex-shrink-0"><use href="#icon-newspaper"/></svg><span>${slotLabel}</span></span>
-                                <span class="list-source-label brief-source-label font-bold text-gray-500 dark:text-gray-400 uppercase truncate">Daily Brief</span>
+                                <span class="list-source-label brief-source-label font-bold text-gray-500 dark:text-gray-400 uppercase truncate">Brief</span>
                             </div>
                             <span class="list-date-label text-[11px] text-gray-500 flex-shrink-0">${timeLabel}</span>
                         </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1 dynamic-list-title">${esc(a.title)}</h3>
+                        <h3 class="font-bold text-gray-900 dark:text-white leading-snug mb-1 dynamic-list-title">${esc(a.title)}</h3>
                         <p class="text-gray-500 dark:text-gray-400 dynamic-list-preview">${esc(a.excerpt)}</p>
                     </div>
                 </div>`;
@@ -8960,21 +9314,6 @@
 
             const saId = escJs(a.id);
 
-            if (window._viewMode === 'card') {
-                return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-card cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
-                    <div class="swipe-hint swipe-hint-left"><span>&#x2713; Mark Read</span></div>
-                    <div class="swipe-hint swipe-hint-right"><span>Save Later &#x2605;</span></div>
-                    ${a.image ? `<img src="${esc(a.image)}" loading="lazy" class="article-card-img" onerror="this.style.display='none'">` : ''}
-                    <div class="p-3">
-                        <div class="flex items-center text-[10px] mb-1">
-                            ${showDot ? '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 flex-shrink-0"></span>' : ''}
-                            ${favicon}<span class="font-bold uppercase truncate text-blue-400 dark:text-blue-300">${esc(a.source)}</span>
-                            <span class="ml-auto flex-shrink-0 text-gray-500 dark:text-gray-500">${getRelativeTime(a.timestamp)}</span>
-                        </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white leading-tight dynamic-list-title">${esc(a.title)}</h3>
-                    </div>
-                </div>`;
-            }
             // Bluesky posts use Mastodon-style: no headline, full text in the preview row.
             const sourceLabel = a.source;
             // For Bluesky reposts, show the original author above the post text so the
@@ -8982,7 +9321,7 @@
             const repostLine = (isBsky && a.bskyIsRepost && a.bskyOriginalAuthor)
                 ? `<p class="bsky-repost-byline dynamic-list-preview text-blue-400 font-semibold mb-1">↻ ${esc(a.bskyOriginalAuthor)}</p>`
                 : '';
-            const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-relaxed mb-1.5 dynamic-list-title">${esc(a.title)}</h3>`;
+            const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-snug mb-1 dynamic-list-title">${esc(a.title)}</h3>`;
             const previewCls = isBsky
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-social dynamic-list-preview'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
@@ -8990,9 +9329,11 @@
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Read Later &#x2605;</div>
                 <div class="min-w-0">
-                    <div class="flex items-center justify-between mb-1.5 gap-2">
-                        ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
-                        <span class="list-source-label font-bold text-gray-500 dark:text-gray-400 uppercase truncate mr-2 flex-1 min-w-0">${favicon}${esc(sourceLabel)}</span>
+                    <div class="flex items-center justify-between mb-1 gap-2">
+                        <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                            ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
+                            <span class="list-source-label font-bold text-gray-500 dark:text-gray-400 uppercase truncate mr-2">${favicon}${esc(sourceLabel)}</span>
+                        </div>
                         <span class="list-date-label text-[11px] text-gray-500 dark:text-gray-500 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                     </div>
                     ${titleHtml}
@@ -9351,6 +9692,29 @@
                 }
                 if (sActions) {
                     sActions.classList.add('brief-story-actions', 'flex', 'items-center', 'gap-1.5');
+                    const openBtn = sActions.querySelector('.brief-open-reader, [onclick*="openArticleInReader"]');
+                    const srcLink = sActions.querySelector('.brief-source-link, a[href]');
+                    if (openBtn && !sActions.querySelector('.brief-save-btn')) {
+                        const m = openBtn.getAttribute('onclick')?.match(/openArticleInReader\(['"]([^'"]+)['"]\)/);
+                        const saId = m ? m[1] : (card.getAttribute('data-sa-id') || '');
+                        const link = srcLink?.getAttribute('href') || '';
+                        const isSaved = !!(window.savedBucket && link && window.savedBucket.has(link));
+                        const saveBtn = document.createElement('button');
+                        saveBtn.type = 'button';
+                        saveBtn.setAttribute('data-save-id', saId);
+                        saveBtn.setAttribute('data-save-link', link);
+                        saveBtn.setAttribute('onclick', `window.toggleBriefStorySaved('${saId}', this)`);
+                        saveBtn.className = `brief-action-btn brief-save-btn ${isSaved ? 'text-amber-500 dark:text-amber-400 is-saved' : 'text-gray-500 dark:text-gray-400'}`;
+                        saveBtn.title = isSaved ? 'Unsave' : 'Save Article';
+                        saveBtn.setAttribute('aria-label', saveBtn.title);
+                        saveBtn.innerHTML = `<svg class="brief-action-icon"><use href="#${isSaved ? 'icon-star-filled' : 'icon-star'}"/></svg>`;
+                        if (srcLink) {
+                            sActions.insertBefore(saveBtn, srcLink);
+                        } else {
+                            sActions.appendChild(saveBtn);
+                        }
+                    }
+
                     sActions.querySelectorAll('button, a').forEach(el => {
                         el.style.textDecoration = 'none';
                         if (el.getAttribute('onclick')?.includes('openArticleInReader') || el.classList.contains('brief-open-reader')) {
@@ -9358,6 +9722,13 @@
                             el.title = 'Open in Reader';
                             el.setAttribute('aria-label', 'Open in Reader');
                             el.innerHTML = '<svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>';
+                        } else if (el.classList.contains('brief-save-btn') || el.getAttribute('onclick')?.includes('toggleBriefStorySaved')) {
+                            const link = el.getAttribute('data-save-link');
+                            const isSaved = !!(window.savedBucket && link && window.savedBucket.has(link));
+                            el.className = `brief-action-btn brief-save-btn ${isSaved ? 'text-amber-500 dark:text-amber-400 is-saved' : 'text-gray-500 dark:text-gray-400'}`;
+                            el.title = isSaved ? 'Unsave' : 'Save Article';
+                            el.setAttribute('aria-label', el.title);
+                            el.innerHTML = `<svg class="brief-action-icon"><use href="#${isSaved ? 'icon-star-filled' : 'icon-star'}"/></svg>`;
                         } else {
                             el.className = 'brief-action-link brief-source-link text-gray-500 dark:text-gray-400';
                             el.title = 'Open original source';
@@ -9381,6 +9752,19 @@
                     excerptEl.style.paddingTop = '0px';
                 }
 
+                // Detect if card represents a social / microblog post (Bluesky, Mastodon, or single-text post)
+                const saId = card.getAttribute('data-sa-id') || card.id?.replace(/^brief-card-/, '');
+                const art = saId ? ((window.articles || []).find(a => a.id === saId) || (window._readArchiveCache || []).find(a => a.id === saId || a.link === saId)) : null;
+                const srcText = card.querySelector('.brief-story-source')?.textContent?.trim();
+                const feed = window.feeds?.find(f => f.name === srcText);
+                const isSocial = (art && ((art.feedUrl && isBlueskyFeed(art.feedUrl)) || (art.link && typeof isMastodonPost === 'function' && isMastodonPost(art.link)) || (art.category && /fediverse|mastodon|bluesky|social/i.test(art.category)) || (!art.title)))
+                    || (feed && ((feed.url && isBlueskyFeed(feed.url)) || (feed.category && /fediverse|mastodon|bluesky|social/i.test(feed.category))));
+
+                if (isSocial) {
+                    card.classList.add('is-social-story');
+                    if (excerptEl) excerptEl.classList.add('line-clamp-social', 'is-social-post');
+                }
+
                 if (titleEl && excerptEl) {
                     const tText = (titleEl.textContent || '').trim().replace(/\s+/g, ' ');
                     const eText = (excerptEl.textContent || '').trim().replace(/\s+/g, ' ');
@@ -9395,7 +9779,12 @@
                             excerptEl.textContent = tText;
                         }
                         titleEl.style.display = 'none';
+                        card.classList.add('is-social-story');
+                        excerptEl.classList.add('line-clamp-social', 'is-social-post');
                     }
+                } else if (!titleEl || titleEl.style.display === 'none') {
+                    card.classList.add('is-social-story');
+                    if (excerptEl) excerptEl.classList.add('line-clamp-social', 'is-social-post');
                 }
             });
 
@@ -9446,15 +9835,29 @@
             container.querySelectorAll('.brief-header .brief-mark-all-btn, .brief-header .brief-header-actions').forEach(el => el.remove());
 
             container.querySelectorAll('.brief-cat-section').forEach(catSection => {
+                catSection.classList.remove('mb-8');
+                catSection.classList.add('mb-5');
                 const headingEl = catSection.querySelector('.brief-cat-heading');
                 if (!headingEl) return;
+                headingEl.classList.add('m-0', 'leading-none');
+                headingEl.style.margin = '0';
+                headingEl.style.padding = '0';
+                headingEl.style.lineHeight = '1.2';
+                const headerWrap = headingEl.parentElement;
+                if (headerWrap) {
+                    headerWrap.classList.add('brief-cat-header', 'flex-nowrap');
+                    headerWrap.classList.remove('flex-wrap', 'border-b', 'border-gray-200', 'dark:border-gray-800');
+                    headerWrap.style.borderBottom = 'none';
+                }
                 const catName = headingEl.textContent.trim();
                 const countEl = catSection.querySelector('.brief-cat-count');
+                if (countEl) countEl.classList.add('whitespace-nowrap');
+                let controlsEl = catSection.querySelector('.brief-cat-controls');
+                if (controlsEl) controlsEl.classList.add('flex-shrink-0', 'leading-none');
                 if (countEl && !catSection.querySelector('.brief-cat-mark-read-btn')) {
-                    let controlsEl = catSection.querySelector('.brief-cat-controls');
                     if (!controlsEl) {
                         controlsEl = document.createElement('div');
-                        controlsEl.className = 'brief-cat-controls flex items-center gap-2';
+                        controlsEl.className = 'brief-cat-controls flex items-center gap-2 flex-shrink-0 leading-none';
                         countEl.parentNode.insertBefore(controlsEl, countEl);
                         controlsEl.appendChild(countEl);
                     }
@@ -9514,10 +9917,15 @@
             // Manage "Back to Brief" state: clear if navigating to an unrelated article
             if (window._returnToBriefState) {
                 const s = window._returnToBriefState;
-                if (article.isBrief || (article.id !== s.articleId && article.id !== s.sourceCardId)) {
-                    if (!article.isBrief) {
-                        window._returnToBriefState = null;
-                    }
+                const isStoryInBrief = Array.isArray(s.storyIds) && s.storyIds.includes(article.id);
+                if (article.isBrief) {
+                    // Do nothing here, returnToBrief handles returning
+                } else if (!isStoryInBrief && article.id !== s.articleId && article.id !== s.sourceCardId) {
+                    window._returnToBriefState = null;
+                } else {
+                    s.articleId = article.id;
+                    s.sourceCardId = article.id;
+                    if (Array.isArray(s.storyIds)) s.storyIndex = s.storyIds.indexOf(article.id);
                 }
             }
             if (typeof updateBriefReturnUI === 'function') {
@@ -9563,7 +9971,7 @@
             }
             const isBskyArticle = article.feedUrl ? isBlueskyFeed(article.feedUrl) : false;
             const metaEl = document.getElementById('article-meta');
-            if (sourceLabelEl) sourceLabelEl.textContent = article.isBrief ? 'Daily Brief' : article.source;
+            if (sourceLabelEl) sourceLabelEl.textContent = article.isBrief ? 'Brief' : article.source;
             if (metaEl) {
                 metaEl.onclick = article.isBrief ? null : (isBskyArticle ? (() => window.open(article.link, '_blank', 'noopener,noreferrer')) : filterByCurrentSource);
                 metaEl.title = isBskyArticle ? 'Open post on Bluesky' : '';
@@ -9586,7 +9994,7 @@
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
             const authorEl = document.getElementById('article-author');
             const dateEl = document.getElementById('article-date');
-            authorEl.textContent = article.isBrief ? (article.slot ? (article.slot.toUpperCase() + ' BRIEF') : 'DAILY BRIEF') : article.author;
+            authorEl.textContent = article.isBrief ? (article.slot ? (article.slot.toUpperCase() + ' BRIEF') : 'BRIEF') : article.author;
             const _d = new Date(article.timestamp);
             const _datePart = _d.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric', year: 'numeric' });
             const _timePart = _d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -9619,18 +10027,46 @@
             if (!article.isBrief) attemptFullContentLoad(article);
 
 
-            const idx = window.currentTimeline.findIndex(a => a.id === id);
+            // Update Prev / Next buttons (aware of Brief story list or timeline)
+            const deskNavGroup = document.getElementById('desk-nav-group');
             const prevBtn = document.getElementById('prev-article-btn');
             const nextBtn = document.getElementById('next-article-btn');
-            if (prevBtn) prevBtn.classList.toggle('hidden', idx <= 0);
-            if (nextBtn) nextBtn.classList.toggle('hidden', idx >= window.currentTimeline.length - 1);
-            const deskNav = document.getElementById('desk-nav-float');
-            if (deskNav) deskNav.style.display = isMobile() ? 'none' : 'flex';
-
             const mobPrev = document.getElementById('mob-prev-btn');
             const mobNext = document.getElementById('mob-next-btn');
-            if (mobPrev) mobPrev.style.opacity = idx <= 0 ? '0.3' : '1';
-            if (mobNext) mobNext.style.opacity = idx >= window.currentTimeline.length - 1 ? '0.3' : '1';
+
+            let canPrev = false;
+            let canNext = false;
+            const inBriefStories = Boolean(window._returnToBriefState && Array.isArray(window._returnToBriefState.storyIds) && window._returnToBriefState.storyIds.length > 0);
+
+            if (inBriefStories) {
+                const bState = window._returnToBriefState;
+                let curIdx = bState.storyIds.indexOf(id);
+                if (curIdx === -1) curIdx = bState.storyIndex ?? 0;
+                bState.storyIndex = curIdx;
+                canPrev = curIdx > 0;
+                canNext = curIdx < bState.storyIds.length - 1;
+            } else {
+                const nav = window._navSnapshot.length ? window._navSnapshot : window.currentTimeline;
+                const curIdx = nav.findIndex(a => a.id === id);
+                canPrev = curIdx > 0;
+                canNext = curIdx >= 0 && curIdx < nav.length - 1;
+            }
+
+            if (deskNavGroup) {
+                deskNavGroup.classList.toggle('hidden', isMobile());
+            }
+            if (prevBtn) {
+                prevBtn.disabled = !canPrev;
+                prevBtn.title = inBriefStories ? "Previous Story in Brief (↑ / k)" : "Previous Article (↑ / k)";
+                prevBtn.setAttribute('aria-label', prevBtn.title);
+            }
+            if (nextBtn) {
+                nextBtn.disabled = !canNext;
+                nextBtn.title = inBriefStories ? "Next Story in Brief (↓ / j)" : "Next Article (↓ / j)";
+                nextBtn.setAttribute('aria-label', nextBtn.title);
+            }
+            if (mobPrev) mobPrev.style.opacity = canPrev ? '1' : '0.3';
+            if (mobNext) mobNext.style.opacity = canNext ? '1' : '0.3';
 
             const shareBtn = document.getElementById('share-btn');
             if (shareBtn) shareBtn.classList.remove('hidden');
@@ -11297,6 +11733,24 @@
         window._navSnapshot = [];
 
         window.navigateArticle = (direction) => {
+            // 1. If currently reading an article opened from a Brief:
+            if (window._returnToBriefState && Array.isArray(window._returnToBriefState.storyIds) && window._returnToBriefState.storyIds.length > 0) {
+                const bState = window._returnToBriefState;
+                const curId = window.currentArticle?.id || bState.articleId;
+                let curIdx = bState.storyIds.indexOf(curId);
+                if (curIdx === -1) curIdx = bState.storyIndex ?? -1;
+                const newIdx = curIdx + direction;
+                if (newIdx >= 0 && newIdx < bState.storyIds.length) {
+                    const nextStoryId = bState.storyIds[newIdx];
+                    bState.articleId = nextStoryId;
+                    bState.sourceCardId = nextStoryId;
+                    bState.storyIndex = newIdx;
+                    window.openArticleInReader(nextStoryId);
+                }
+                return;
+            }
+
+            // 2. Normal timeline navigation:
             const nav = window._navSnapshot.length ? window._navSnapshot : window.currentTimeline;
             if (!nav.length) return;
             const idx = nav.findIndex(a => a.id === window.currentArticle?.id);
@@ -11357,16 +11811,21 @@
                 : 'p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
         }
 
-        // --- VIEW MODE ---
+        // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
         window.toggleViewMode = () => {
-            window._viewMode = window._viewMode === 'list' ? 'card' : 'list';
+            window._viewMode = (window._viewMode === 'compact') ? 'standard' : 'compact';
+            const isCompact = window._viewMode === 'compact';
             const btn = document.getElementById('view-density-toggle');
             if (btn) {
-                const icon = window._viewMode === 'card' ? 'icon-grid' : 'icon-list';
-                const label = window._viewMode === 'card' ? 'Card view (switch to List)' : 'List view (switch to Card)';
+                const icon = isCompact ? 'icon-list' : 'icon-compact-lines';
+                const label = isCompact ? 'Compact Wire (click for Standard Stream)' : 'Standard Stream (click for Compact Wire)';
                 btn.innerHTML = `<svg class="w-4 h-4"><use href="#${icon}"/></svg>`;
                 btn.title = label;
                 btn.setAttribute('aria-label', label);
+            }
+            const listEl = document.getElementById('article-list');
+            if (listEl) {
+                listEl.classList.toggle('compact-wire', isCompact);
             }
             renderTimeline();
             try { localStorage.setItem('newsreader_viewmode', window._viewMode); } catch (e) { console.warn('Storage error:', e.message); }
@@ -11857,14 +12316,14 @@
             } else {
                 categorySections.forEach(cs => {
                     html += `
-                        <div id="brief-cat-${cs.slug}" class="brief-cat-section mb-8 scroll-mt-20">
-                            <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2 mb-3 flex-wrap gap-2">
-                                <h3 class="brief-cat-heading font-bold text-blue-400 flex items-center gap-2">
-                                    <svg class="w-4 h-4"><use href="#icon-rss"/></svg>
-                                    ${esc(cs.name)}
+                        <div id="brief-cat-${cs.slug}" class="brief-cat-section mb-5 scroll-mt-20">
+                            <div class="brief-cat-header flex items-center justify-between pb-1 mb-2.5 flex-nowrap gap-2">
+                                <h3 class="brief-cat-heading font-bold text-blue-400 flex items-center gap-2 m-0 leading-none min-w-0">
+                                    <svg class="w-4 h-4 flex-shrink-0"><use href="#icon-rss"/></svg>
+                                    <span class="truncate">${esc(cs.name)}</span>
                                 </h3>
-                                <div class="brief-cat-controls flex items-center gap-2">
-                                    <span class="brief-cat-count text-gray-500 font-medium">${cs.stories.length} stories</span>
+                                <div class="brief-cat-controls flex items-center gap-2 flex-shrink-0 leading-none">
+                                    <span class="brief-cat-count text-gray-500 font-medium whitespace-nowrap">${cs.stories.length} stories</span>
                                     <button type="button" data-brief-cat="${esc(cs.name)}" onclick="window.markBriefCategoryRead(this.getAttribute('data-brief-cat'), this)" class="brief-cat-mark-read-btn" title="Mark '${esc(cs.name)}' folder as read" aria-label="Mark '${esc(cs.name)}' folder as read">
                                         <svg><use href="#icon-check"/></svg>
                                     </button>
@@ -11896,7 +12355,7 @@
 
                         if (isSocial) {
                             storyBodyHtml = `
-                                <p class="brief-story-excerpt dynamic-list-preview text-gray-800 dark:text-gray-200 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
+                                <p class="brief-story-excerpt dynamic-list-preview line-clamp-social is-social-post text-gray-800 dark:text-gray-200 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
                                     ${esc(postText)}
                                 </p>
                             `;
@@ -11910,7 +12369,7 @@
                         }
 
                         html += `
-                            <div class="brief-story-card" id="brief-card-${saId}" data-sa-id="${saId}">
+                            <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}">
                                 <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
                                     ${favHtml}
                                     <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
@@ -11922,6 +12381,9 @@
                                 <div class="brief-story-actions flex items-center gap-1.5 pt-0.5">
                                     <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-gray-500 dark:text-gray-400" title="Open in Reader" aria-label="Open in Reader">
                                         <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
+                                    </button>
+                                    <button type="button" data-save-id="${saId}" data-save-link="${esc(st.link || '')}" onclick="window.toggleBriefStorySaved('${saId}', this)" class="brief-action-btn brief-save-btn text-gray-500 dark:text-gray-400" title="Save Article" aria-label="Save Article">
+                                        <svg class="brief-action-icon"><use href="#icon-star"/></svg>
                                     </button>
                                     <a href="${esc(st.link)}" target="_blank" rel="noopener noreferrer" class="brief-action-link brief-source-link text-gray-500 dark:text-gray-400" title="Open original source" aria-label="Open original source">
                                         <svg class="brief-action-icon"><use href="#icon-external-link"/></svg>
@@ -12025,11 +12487,139 @@
             }
         };
 
+        window.syncBriefArticleActionButtons = function () {
+            const art = window.currentArticle;
+            if (!art) return;
+            const isSaved = !!(window.savedBucket && art.link && window.savedBucket.has(art.link));
+            const isLater = !!(art.readLater);
+
+            // 1. Top banner save button
+            const topSaveBtn = document.getElementById('brief-article-save-btn');
+            const topSaveLabel = document.getElementById('brief-article-save-label');
+            if (topSaveBtn) {
+                topSaveBtn.title = isSaved ? 'Unsave' : 'Save Article';
+                topSaveBtn.setAttribute('aria-label', topSaveBtn.title);
+                if (topSaveLabel) topSaveLabel.textContent = isSaved ? 'Saved' : 'Save';
+                const icon = topSaveBtn.querySelector('use');
+                if (icon) icon.setAttribute('href', isSaved ? '#icon-star-filled' : '#icon-star');
+                topSaveBtn.classList.toggle('is-saved', isSaved);
+            }
+
+            // 2. Top banner read later button
+            const topLaterBtn = document.getElementById('brief-article-later-btn');
+            const topLaterLabel = document.getElementById('brief-article-later-label');
+            if (topLaterBtn) {
+                topLaterBtn.title = isLater ? 'Remove from Read Later' : 'Add to Read Later';
+                topLaterBtn.setAttribute('aria-label', topLaterBtn.title);
+                if (topLaterLabel) topLaterLabel.textContent = isLater ? 'Later ✓' : 'Later';
+                const icon = topLaterBtn.querySelector('use');
+                if (icon) icon.setAttribute('href', isLater ? '#icon-bookmark-filled' : '#icon-bookmark');
+                topLaterBtn.classList.toggle('is-later', isLater);
+            }
+
+            // 3. Footer save button
+            const footerSaveBtn = document.getElementById('brief-footer-save-btn');
+            const footerSaveLabel = document.getElementById('brief-footer-save-label');
+            if (footerSaveBtn) {
+                footerSaveBtn.title = isSaved ? 'Unsave' : 'Save Article';
+                footerSaveBtn.setAttribute('aria-label', footerSaveBtn.title);
+                if (footerSaveLabel) footerSaveLabel.textContent = isSaved ? 'Saved' : 'Save';
+                const icon = footerSaveBtn.querySelector('use');
+                if (icon) icon.setAttribute('href', isSaved ? '#icon-star-filled' : '#icon-star');
+                footerSaveBtn.classList.toggle('is-saved', isSaved);
+            }
+
+            // 4. Mobile FAB save button
+            const mobSaveFab = document.getElementById('mobile-brief-save-fab');
+            if (mobSaveFab) {
+                mobSaveFab.title = isSaved ? 'Unsave' : 'Save Article';
+                mobSaveFab.setAttribute('aria-label', mobSaveFab.title);
+                mobSaveFab.classList.toggle('is-saved', isSaved);
+                const icon = mobSaveFab.querySelector('use');
+                if (icon) icon.setAttribute('href', isSaved ? '#icon-star-filled' : '#icon-star');
+            }
+        };
+
+        window.toggleBriefStorySaved = async function (articleId, btnEl) {
+            let art = (window.articles || []).find(a => a.id === articleId);
+            if (!art && Array.isArray(window._readArchiveCache)) {
+                art = window._readArchiveCache.find(a => a.id === articleId || a.link === articleId);
+            }
+            if (!art && Array.isArray(window._savedArticles)) {
+                art = window._savedArticles.find(a => a.id === articleId || a.link === articleId);
+            }
+            if (!art && Array.isArray(window._readLaterArticles)) {
+                art = window._readLaterArticles.find(a => a.id === articleId || a.link === articleId);
+            }
+            if (!art && btnEl) {
+                const link = btnEl.getAttribute('data-save-link');
+                const card = btnEl.closest('.brief-story-card');
+                const titleEl = card?.querySelector('.brief-story-title') || card?.querySelector('h4');
+                const sourceEl = card?.querySelector('.brief-story-source') || card?.querySelector('.list-source-label');
+                const excerptEl = card?.querySelector('.brief-story-excerpt') || card?.querySelector('p');
+                if (link) {
+                    art = {
+                        id: articleId,
+                        title: titleEl?.textContent?.trim() || 'Untitled',
+                        link: link,
+                        source: sourceEl?.textContent?.trim() || 'News',
+                        excerpt: excerptEl?.textContent?.trim() || '',
+                        timestamp: Date.now()
+                    };
+                }
+            }
+            if (!art || !art.link || !window.savedBucket) {
+                if (window.showToast) window.showToast("Cannot save: article details unavailable", true);
+                return;
+            }
+            const wasSaved = window.savedBucket.has(art.link);
+            if (wasSaved) await window.savedBucket.remove(art.link);
+            else await window.savedBucket.add(art);
+
+            const isSaved = !wasSaved;
+            if (btnEl) {
+                btnEl.setAttribute('title', isSaved ? 'Unsave' : 'Save Article');
+                btnEl.setAttribute('aria-label', btnEl.title);
+                btnEl.classList.toggle('text-amber-500', isSaved);
+                btnEl.classList.toggle('dark:text-amber-400', isSaved);
+                btnEl.classList.toggle('is-saved', isSaved);
+                btnEl.classList.toggle('text-gray-500', !isSaved);
+                btnEl.classList.toggle('dark:text-gray-400', !isSaved);
+                const iconUse = btnEl.querySelector('use');
+                if (iconUse) {
+                    iconUse.setAttribute('href', isSaved ? '#icon-star-filled' : '#icon-star');
+                }
+            }
+            window.showToast?.(isSaved ? "Saved" : "Unsaved");
+            if (window.syncBriefArticleActionButtons) window.syncBriefArticleActionButtons();
+            if (window.updateBriefStorySaveButtons) window.updateBriefStorySaveButtons();
+        };
+
+        window.updateBriefStorySaveButtons = function () {
+            if (!window.savedBucket) return;
+            document.querySelectorAll('.brief-save-btn[data-save-link]').forEach(btn => {
+                const link = btn.getAttribute('data-save-link');
+                if (!link) return;
+                const isSaved = window.savedBucket.has(link);
+                btn.setAttribute('title', isSaved ? 'Unsave' : 'Save Article');
+                btn.setAttribute('aria-label', btn.title);
+                btn.classList.toggle('text-amber-500', isSaved);
+                btn.classList.toggle('dark:text-amber-400', isSaved);
+                btn.classList.toggle('is-saved', isSaved);
+                btn.classList.toggle('text-gray-500', !isSaved);
+                btn.classList.toggle('dark:text-gray-400', !isSaved);
+                const iconUse = btn.querySelector('use');
+                if (iconUse) {
+                    iconUse.setAttribute('href', isSaved ? '#icon-star-filled' : '#icon-star');
+                }
+            });
+        };
+
         window.updateBriefReturnUI = function () {
             const deskBtn = document.getElementById('desk-back-to-brief-btn');
             const topBanner = document.getElementById('brief-return-header');
             const endCard = document.getElementById('brief-return-footer');
-            const mobFab = document.getElementById('mobile-brief-fab');
+            const mobFab = document.getElementById('mobile-brief-fab-group') || document.getElementById('mobile-brief-fab');
 
             const isFromBrief = Boolean(
                 window._returnToBriefState &&
@@ -12043,13 +12633,14 @@
             if (topBanner) topBanner.classList.toggle('hidden', !isFromBrief);
             if (endCard) endCard.classList.toggle('hidden', !isFromBrief);
             if (mobFab) mobFab.classList.toggle('active', isFromBrief);
+            if (isFromBrief && window.currentArticle) window.syncBriefArticleActionButtons?.();
         };
 
         window.hideBriefReturnUI = function () {
             const deskBtn = document.getElementById('desk-back-to-brief-btn');
             const topBanner = document.getElementById('brief-return-header');
             const endCard = document.getElementById('brief-return-footer');
-            const mobFab = document.getElementById('mobile-brief-fab');
+            const mobFab = document.getElementById('mobile-brief-fab-group') || document.getElementById('mobile-brief-fab');
 
             if (deskBtn) deskBtn.classList.add('hidden');
             if (topBanner) topBanner.classList.add('hidden');
@@ -12106,12 +12697,24 @@
             if (art) {
                 if (window.currentArticle && window.currentArticle.isBrief) {
                     const readerView = document.getElementById('reader-view');
+                    const storyCards = Array.from(readerView?.querySelectorAll('.brief-story-card[data-sa-id]') || []);
+                    const storyIds = storyCards.map(c => c.getAttribute('data-sa-id')).filter(Boolean);
+
                     window._returnToBriefState = {
                         briefId: window.currentArticle.id,
                         articleId: art.id,
                         sourceCardId: articleId,
+                        storyIds: storyIds.length ? storyIds : [art.id],
+                        storyIndex: storyIds.indexOf(art.id) >= 0 ? storyIds.indexOf(art.id) : 0,
                         scrollTop: readerView ? readerView.scrollTop : 0
                     };
+                } else if (window._returnToBriefState) {
+                    window._returnToBriefState.articleId = art.id;
+                    window._returnToBriefState.sourceCardId = articleId;
+                    if (Array.isArray(window._returnToBriefState.storyIds)) {
+                        const idx = window._returnToBriefState.storyIds.indexOf(articleId);
+                        if (idx >= 0) window._returnToBriefState.storyIndex = idx;
+                    }
                 }
                 if (typeof isMobile === 'function' && isMobile()) setMobilePane('viewer');
                 selectArticle(art.id);
@@ -12597,6 +13200,8 @@
         window.updateLines = (v) => {
             const cssVar = isMobile() ? '--mob-list-preview-lines' : '--list-preview-lines';
             document.documentElement.style.setProperty(cssVar, v);
+            const briefCssVar = isMobile() ? '--mob-list-preview-lines-brief' : '--list-preview-lines-brief';
+            document.documentElement.style.setProperty(briefCssVar, v);
             const label = document.getElementById('lines-val');
             if (label) label.textContent = `${v} Lines`;
             renderTimeline();
@@ -12654,7 +13259,18 @@
         };
 
         window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
-        window.toggleFullScreenManual = () => toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
+        window.toggleFullScreenManual = (e) => {
+            // Guard: Ignore if double-click originated on or inside any interactive element or toolbar controls!
+            if (e && e.target) {
+                if (e.target.closest('button, a, input, select, textarea, [role="button"], [role="group"], svg, use, #desk-nav-group, #viewer-header > div')) {
+                    return;
+                }
+                if (e.target.id !== 'viewer-header') {
+                    return;
+                }
+            }
+            toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
+        };
         window.openExternal = () => { if (window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
         // ===== STANDALONE LAYOUT-HEIGHT LOCK =====
@@ -12906,8 +13522,9 @@
             const ttsBtn = document.getElementById('tts-btn');
             const unreadBtn = document.getElementById('unread-action-btn');
             const savedBtn = document.getElementById('saved-action-btn');
+            const deskNavGroup = document.getElementById('desk-nav-group');
             const hasArticle = !!window.currentArticle;
-            [b, shareBtn, ttsBtn, unreadBtn, savedBtn].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            [b, shareBtn, ttsBtn, unreadBtn, savedBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
             if (!hasArticle) return;
 
             const BASE = 'p-1.5 rounded-md border transition-colors cursor-pointer';
@@ -12953,6 +13570,8 @@
                     savedBtn.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
                 }
             }
+            if (window.syncBriefArticleActionButtons) window.syncBriefArticleActionButtons();
+            if (window.updateBriefStorySaveButtons) window.updateBriefStorySaveButtons();
         };
 
         window.markAllRead = (opts = {}) => {
@@ -13686,8 +14305,14 @@
             // previewLines is integer-valued and not in SHARED_SIZE_MAP — apply manually.
             const linesDesk = prefs.previewLinesDesktop;
             const linesMob = prefs.previewLinesMobile;
-            if (linesDesk) root.style.setProperty('--list-preview-lines', linesDesk);
-            if (linesMob) root.style.setProperty('--mob-list-preview-lines', linesMob);
+            if (linesDesk) {
+                root.style.setProperty('--list-preview-lines', linesDesk);
+                root.style.setProperty('--list-preview-lines-brief', linesDesk);
+            }
+            if (linesMob) {
+                root.style.setProperty('--mob-list-preview-lines', linesMob);
+                root.style.setProperty('--mob-list-preview-lines-brief', linesMob);
+            }
             const activeLines = mob ? linesMob : linesDesk;
             if (activeLines) {
                 const el = document.getElementById('lines-slider'); if (el) el.value = activeLines;
@@ -14524,7 +15149,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 238;
+        window.APP_BUILD = 257;
 
         (async function initApp() {
             try {
@@ -14640,13 +15265,23 @@
                 // 5. Restore UI Modes
                 try {
                     const vm = localStorage.getItem('newsreader_viewmode');
-                    if (vm === 'card') {
-                        window._viewMode = 'card';
+                    if (vm === 'compact' || vm === 'card') {
+                        window._viewMode = 'compact';
                         const btn = document.getElementById('view-density-toggle');
                         if (btn) {
-                            btn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-grid"/></svg>';
-                            btn.title = 'Card view (switch to List)';
-                            btn.setAttribute('aria-label', 'Card view (switch to List)');
+                            btn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-list"/></svg>';
+                            btn.title = 'Compact Wire (click for Standard Stream)';
+                            btn.setAttribute('aria-label', 'Compact Wire (click for Standard Stream)');
+                        }
+                        const listEl = document.getElementById('article-list');
+                        if (listEl) listEl.classList.add('compact-wire');
+                    } else {
+                        window._viewMode = 'standard';
+                        const btn = document.getElementById('view-density-toggle');
+                        if (btn) {
+                            btn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-compact-lines"/></svg>';
+                            btn.title = 'Standard Stream (click for Compact Wire)';
+                            btn.setAttribute('aria-label', 'Standard Stream (click for Compact Wire)');
                         }
                     }
 
@@ -15375,7 +16010,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v238';
+const CACHE_NAME = 'rss-reader-v257';
 const APP_SHELL = [
     '/',
     'index.html'
