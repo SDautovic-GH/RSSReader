@@ -214,66 +214,73 @@ try {
     # Deletions and renames (delete + add) are legitimate edits the user wants
     # committed; resurrecting them here would silently block every rm/mv.
 
+    # Work the old stash/pull/pop version of this script set aside and never restored.
+    $oldStashes = @(& git stash list 2>$null | Where-Object { $_ -match 'auto-sync-prepull-' })
+    if ($oldStashes.Count -gt 0) {
+        Write-Host "NOTE: an earlier sync left local work in a stash (not restored automatically):"
+        $oldStashes | ForEach-Object { Write-Host "  $_" }
+        Write-Host "  Inspect: git stash show -p 'stash@{n}'   Restore: git stash pop 'stash@{n}'   Discard: git stash drop 'stash@{n}'"
+    }
+
     # ============================================
-    # PULL-FIRST flow: stash local edits, fast-forward to origin, then pop.
-    # Guarantees the working tree sits on top of the latest remote state
-    # before any local commit. If FF is impossible or stash-pop conflicts,
-    # we abort cleanly with the user's work preserved -- never silently
-    # overwrite either side.
+    # COMMIT-FIRST flow, the same as the ScriptLibrary syncs: commit local edits,
+    # THEN fast-forward or rebase onto origin. The old stash/pull/pop could leave
+    # work hidden in a stash (an exit before the pop, or a pop that conflicted).
+    # With the work committed first there is nothing to set aside, and a real
+    # conflict stops with the work as a normal commit on a clean tree.
     # ============================================
 
-    $isDirty = [bool](& git status --porcelain 2>$null)
-    $stashed = $false
-    if ($isDirty) {
-        Write-Host "Local changes detected - stashing before pull."
-        $stashLabel = "auto-sync-prepull-$(Get-Date -Format 'yyyyMMddHHmmss')"
-        Invoke-GitChecked -Arguments @("stash", "push", "-u", "-m", $stashLabel) `
-            -ActionDescription "Stash local changes before pull"
-        $stashed = $true
+    # Force-add .opml, .md, and .html - parent .gitignore would otherwise block them
+    $forceFiles = @(Get-ChildItem -Path $RepoPath -File -Include "*.opml","*.md","*.html" -ErrorAction SilentlyContinue)
+    foreach ($f in $forceFiles) {
+        & git add --force -- $f.Name 2>$null
+    }
+
+    Invoke-GitChecked -Arguments @("add", "-A") -ActionDescription "Stage RSSReader changes"
+    $TimeStamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $committedThisRun = $false
+    $localChanges = & git status --porcelain 2>$null
+    if ($localChanges) {
+        Invoke-GitChecked -Arguments @("commit", "-m", "Auto sync $TimeStamp") -ActionDescription "Commit RSSReader changes"
+        $committedThisRun = $true
     }
 
     Invoke-GitChecked -Arguments @("fetch", $RemoteName, $MainBranch) `
         -ActionDescription "Fetch $MainBranch from $RemoteName"
-    try {
-        Invoke-GitChecked -Arguments @("merge", "--ff-only", "$RemoteName/$MainBranch") `
-            -ActionDescription "Fast-forward $MainBranch to $RemoteName/$MainBranch"
-    }
-    catch {
-        if ($stashed) { & git stash pop 2>$null }
-        Stop-WithError -Message ("Cannot fast-forward $MainBranch from $RemoteName/$MainBranch.`n" +
-            "Local branch has commits that aren't on the remote, or history has diverged.`n" +
-            "Resolve manually: review 'git log HEAD..$RemoteName/$MainBranch' and " +
-            "'git log $RemoteName/$MainBranch..HEAD', then merge or rebase deliberately.")
-    }
 
-    if ($stashed) {
-        $popOutput = & git stash pop 2>&1
+    # The working tree is clean from here on, so this only moves commits.
+    $null = & git merge --ff-only -q "$RemoteName/$MainBranch" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        # Both sides have commits the other lacks, normally edits to different
+        # files. Rebase replays the local commits on top of the remote ones.
+        Write-Host "Histories diverged - replaying local commits on top of $RemoteName/$MainBranch..."
+        $rebaseOutput = & git rebase "$RemoteName/$MainBranch" 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Stop-WithError -Message ("Stash-pop conflict after pull. Your local changes remain in the stash.`n" +
-                "Resolve the conflict in the working tree, then run 'git stash drop' when done.`n" +
-                "Conflict output:`n$($popOutput | Out-String)")
+            # Abort restores the pre-rebase state: the local commit survives and the tree stays clean.
+            & git rebase --abort 2>$null
+            throw ("Local commits can't be replayed onto $RemoteName/$MainBranch automatically (normally both machines edited the same part of the same file).`n" +
+                   "Nothing is lost and nothing is stashed: your work is a normal commit on local $MainBranch ('git log -1') and the working tree is clean.`n" +
+                   "See both sides: git log --oneline HEAD..$RemoteName/$MainBranch   and   git log --oneline $RemoteName/$MainBranch..HEAD`n" +
+                   "To resolve: git rebase $RemoteName/$MainBranch, fix the file, git add <file>, git rebase --continue, then run this sync again.`n" +
+                   "Rebase output:`n$($rebaseOutput | Out-String)")
         }
-    }
-
-    # Force-add .opml, .md, and .html — parent .gitignore would otherwise block them
-    $forceFiles = @(Get-ChildItem -Path $RepoPath -File -Include "*.opml","*.md","*.html" -ErrorAction SilentlyContinue)
-    foreach ($f in $forceFiles) {
-        & git add --force -- $f.Name 2>$null
+        Write-Host "Replayed - local commits now sit on top of $RemoteName/$MainBranch."
     }
 
     # ============================================
     # AUTO-BUMP service-worker cache version.
     # The SW caches index.html stale-while-revalidate; if CACHE_NAME doesn't change
     # when the file changes, returning users (esp. installed PWAs) keep serving the
-    # OLD page. Bumping by hand was error-prone and easy to forget. Here we detect an
-    # uncommitted change to index.html and auto-increment BOTH the SW cache key
+    # OLD page. Bumping by hand was error-prone and easy to forget. Here we detect
+    # local commits that change index.html and auto-increment BOTH the SW cache key
     # (CACHE_NAME = 'rss-reader-vNN') and the user-facing build stamp (APP_BUILD = NN)
     # in lockstep, so the version can never lag the code again.
+    # It runs after the pull, so the new number is one above GitHub's even when the
+    # other machine bumped it meanwhile. A number already above GitHub's (bumped by
+    # hand, or by an earlier run whose push failed) is left alone.
     # ============================================
     $IndexPath = Join-Path $RepoPath "index.html"
-    # Decide via diff-against-HEAD (working tree AND index), so the earlier force-add
-    # staging can't mask or fake a change. Non-zero exit from either diff = changed.
-    & git diff --quiet HEAD -- "index.html" 2>$null
+    & git diff --quiet "$RemoteName/$MainBranch" HEAD -- "index.html" 2>$null
     $indexChanged = ($LASTEXITCODE -ne 0)
     if ($indexChanged -and (Test-Path $IndexPath)) {
         # CRITICAL: read as UTF-8 explicitly. Get-Content -Raw on Windows PowerShell
@@ -284,33 +291,43 @@ try {
         $utf8 = New-Object System.Text.UTF8Encoding($false)
         $html = $utf8.GetString([System.IO.File]::ReadAllBytes($IndexPath))
         $m = [regex]::Match($html, "rss-reader-v(\d+)")
+        $remoteM = [regex]::Match(((& git show "${RemoteName}/${MainBranch}:index.html" 2>$null) -join "`n"), "rss-reader-v(\d+)")
         if ($m.Success) {
             $cur = [int]$m.Groups[1].Value
-            $next = $cur + 1
-            # Bump CACHE_NAME and APP_BUILD in one pass.
-            $html = $html -replace "rss-reader-v$cur\b", "rss-reader-v$next"
-            $html = $html -replace "(window\.APP_BUILD\s*=\s*)$cur\b", "`${1}$next"
-            # Write UTF-8 without BOM, matching the read encoding above.
-            [System.IO.File]::WriteAllText($IndexPath, $html, $utf8)
-            Write-Host "Auto-bumped cache version: v$cur -> v$next"
+            $next = if ($remoteM.Success) { [int]$remoteM.Groups[1].Value + 1 } else { $cur + 1 }
+            if ($cur -ge $next) {
+                Write-Host "Cache version v$cur is already above $RemoteName's - not bumped again."
+            }
+            else {
+                # Bump CACHE_NAME and APP_BUILD in one pass.
+                $html = $html -replace "rss-reader-v$cur\b", "rss-reader-v$next"
+                $html = $html -replace "(window\.APP_BUILD\s*=\s*)$cur\b", "`${1}$next"
+                # Write UTF-8 without BOM, matching the read encoding above.
+                [System.IO.File]::WriteAllText($IndexPath, $html, $utf8)
+                Invoke-GitChecked -Arguments @("add", "--", "index.html") -ActionDescription "Stage cache version bump"
+                if ($committedThisRun) {
+                    Invoke-GitChecked -Arguments @("commit", "--amend", "--no-edit") -ActionDescription "Add cache version bump to the sync commit"
+                }
+                else {
+                    Invoke-GitChecked -Arguments @("commit", "-m", "Auto sync $TimeStamp") -ActionDescription "Commit cache version bump"
+                }
+                Write-Host "Auto-bumped cache version: v$cur -> v$next"
+            }
         }
         else {
             Write-Host "WARNING: index.html changed but no 'rss-reader-vNN' token found - cache NOT bumped."
         }
     }
 
-    # Commit any local changes (now safely on top of latest origin)
-    $needsPush = $false
-    Invoke-GitChecked -Arguments @("add", "-A") -ActionDescription "Stage RSSReader changes"
-    $PostPullChanges = & git status --porcelain 2>$null
-    if ($PostPullChanges) {
-        $TimeStamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        Invoke-GitChecked -Arguments @("commit", "-m", "Auto sync $TimeStamp") -ActionDescription "Commit RSSReader changes"
-        $needsPush = $true
-    }
-
-    if ($needsPush) {
-        Invoke-GitChecked -Arguments @("push", $RemoteName, $MainBranch) -ActionDescription "Push RSSReader to $RemoteName"
+    # Push whenever local main is ahead: this run's commit, or commits made by hand.
+    $unpushed = @(& git log "$RemoteName/$MainBranch..$MainBranch" --oneline 2>$null)
+    if ($unpushed.Count -gt 0) {
+        try {
+            Invoke-GitChecked -Arguments @("push", $RemoteName, $MainBranch) -ActionDescription "Push RSSReader to $RemoteName"
+        }
+        catch {
+            throw "Push failed; your commits are safe on local $MainBranch ('git log -$($unpushed.Count)').`n$($_.Exception.Message)"
+        }
         Write-Host "RSSReader updated on GitHub."
     }
     else {
