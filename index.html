@@ -5088,6 +5088,17 @@
             color: #475569;
         }
 
+        /* Social posts in Briefs respect the Social Preview Lines setting */
+        .brief-story-card.is-social-story p,
+        .brief-story-card.is-social-story .brief-story-excerpt,
+        .brief-story-card p.line-clamp-social,
+        .brief-story-card .brief-story-excerpt.line-clamp-social,
+        .brief-story-card p.is-social-post,
+        .brief-story-card .brief-story-excerpt.is-social-post {
+            -webkit-line-clamp: var(--list-preview-lines-social, 10) !important;
+            line-clamp: var(--list-preview-lines-social, 10) !important;
+        }
+
         .dark .brief-story-card p,
         .dark .brief-story-excerpt {
             color: #94a3b8;
@@ -5252,6 +5263,16 @@
                 padding-top: 0 !important;
                 -webkit-line-clamp: var(--mob-list-preview-lines-brief, var(--mob-list-preview-lines, 5)) !important;
                 line-clamp: var(--mob-list-preview-lines-brief, var(--mob-list-preview-lines, 5)) !important;
+            }
+
+            .brief-story-card.is-social-story p,
+            .brief-story-card.is-social-story .brief-story-excerpt,
+            .brief-story-card p.line-clamp-social,
+            .brief-story-card .brief-story-excerpt.line-clamp-social,
+            .brief-story-card p.is-social-post,
+            .brief-story-card .brief-story-excerpt.is-social-post {
+                -webkit-line-clamp: var(--mob-list-preview-lines-social, 10) !important;
+                line-clamp: var(--mob-list-preview-lines-social, 10) !important;
             }
 
             .brief-story-actions {
@@ -6616,29 +6637,27 @@
 
                         <article id="article-content" class="hidden animate-in fade-in duration-300">
                             <!-- Top In-Flow Brief Return & Actions Header (visible only when opened from Brief) -->
-                            <div id="brief-return-header" class="hidden mb-6 flex items-center justify-between gap-3 flex-wrap">
+                            <div id="brief-return-header" class="hidden mb-6 flex items-center gap-2 sm:gap-2.5 flex-nowrap overflow-x-auto no-scrollbar">
                                 <button onclick="window.returnToBrief()"
-                                    class="brief-back-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold group cursor-pointer"
+                                    class="brief-back-btn inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold group cursor-pointer flex-shrink-0"
                                     title="Back to Brief" aria-label="Back to Brief">
                                     <svg class="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5">
                                         <use href="#icon-arrow-left" />
                                     </svg>
                                     <span>Back to Brief</span>
                                 </button>
-                                <div class="flex items-center gap-2">
-                                    <button id="brief-article-save-btn" onclick="window.handleSavedAction()" type="button"
-                                        class="brief-pill-save-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold cursor-pointer"
-                                        title="Save Article" aria-label="Save Article">
-                                        <svg class="w-3.5 h-3.5 text-amber-500"><use href="#icon-star" /></svg>
-                                        <span id="brief-article-save-label">Save</span>
-                                    </button>
-                                    <button id="brief-article-later-btn" onclick="window.handleReadLaterAction()" type="button"
-                                        class="brief-pill-later-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold cursor-pointer"
-                                        title="Add to Read Later" aria-label="Add to Read Later">
-                                        <svg class="w-3.5 h-3.5 text-blue-500"><use href="#icon-bookmark" /></svg>
-                                        <span id="brief-article-later-label">Later</span>
-                                    </button>
-                                </div>
+                                <button id="brief-article-save-btn" onclick="window.handleSavedAction()" type="button"
+                                    class="brief-pill-save-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap flex-shrink-0"
+                                    title="Save Article" aria-label="Save Article">
+                                    <svg class="w-3.5 h-3.5 text-amber-500"><use href="#icon-star" /></svg>
+                                    <span id="brief-article-save-label">Save</span>
+                                </button>
+                                <button id="brief-article-later-btn" onclick="window.handleReadLaterAction()" type="button"
+                                    class="brief-pill-later-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap flex-shrink-0"
+                                    title="Add to Read Later" aria-label="Add to Read Later">
+                                    <svg class="w-3.5 h-3.5 text-blue-500"><use href="#icon-bookmark" /></svg>
+                                    <span id="brief-article-later-label">Later</span>
+                                </button>
                             </div>
                             <div id="article-header-card">
                                 <p id="article-meta" onclick="filterByCurrentSource()"
@@ -9661,6 +9680,19 @@
                     excerptEl.style.paddingTop = '0px';
                 }
 
+                // Detect if card represents a social / microblog post (Bluesky, Mastodon, or single-text post)
+                const saId = card.getAttribute('data-sa-id') || card.id?.replace(/^brief-card-/, '');
+                const art = saId ? ((window.articles || []).find(a => a.id === saId) || (window._readArchiveCache || []).find(a => a.id === saId || a.link === saId)) : null;
+                const srcText = card.querySelector('.brief-story-source')?.textContent?.trim();
+                const feed = window.feeds?.find(f => f.name === srcText);
+                const isSocial = (art && ((art.feedUrl && isBlueskyFeed(art.feedUrl)) || (art.link && typeof isMastodonPost === 'function' && isMastodonPost(art.link)) || (art.category && /fediverse|mastodon|bluesky|social/i.test(art.category)) || (!art.title)))
+                    || (feed && ((feed.url && isBlueskyFeed(feed.url)) || (feed.category && /fediverse|mastodon|bluesky|social/i.test(feed.category))));
+
+                if (isSocial) {
+                    card.classList.add('is-social-story');
+                    if (excerptEl) excerptEl.classList.add('line-clamp-social', 'is-social-post');
+                }
+
                 if (titleEl && excerptEl) {
                     const tText = (titleEl.textContent || '').trim().replace(/\s+/g, ' ');
                     const eText = (excerptEl.textContent || '').trim().replace(/\s+/g, ' ');
@@ -9675,7 +9707,12 @@
                             excerptEl.textContent = tText;
                         }
                         titleEl.style.display = 'none';
+                        card.classList.add('is-social-story');
+                        excerptEl.classList.add('line-clamp-social', 'is-social-post');
                     }
+                } else if (!titleEl || titleEl.style.display === 'none') {
+                    card.classList.add('is-social-story');
+                    if (excerptEl) excerptEl.classList.add('line-clamp-social', 'is-social-post');
                 }
             });
 
@@ -12246,7 +12283,7 @@
 
                         if (isSocial) {
                             storyBodyHtml = `
-                                <p class="brief-story-excerpt dynamic-list-preview text-gray-800 dark:text-gray-200 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
+                                <p class="brief-story-excerpt dynamic-list-preview line-clamp-social is-social-post text-gray-800 dark:text-gray-200 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
                                     ${esc(postText)}
                                 </p>
                             `;
@@ -12260,7 +12297,7 @@
                         }
 
                         html += `
-                            <div class="brief-story-card" id="brief-card-${saId}" data-sa-id="${saId}">
+                            <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}">
                                 <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
                                     ${favHtml}
                                     <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
@@ -15040,7 +15077,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 251;
+        window.APP_BUILD = 252;
 
         (async function initApp() {
             try {
@@ -15901,7 +15938,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v251';
+const CACHE_NAME = 'rss-reader-v252';
 const APP_SHELL = [
     '/',
     'index.html'
