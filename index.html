@@ -2294,14 +2294,16 @@
                         <span id="badge-briefs" class="feed-badge text-blue-400 hidden">0</span>
                     </button>
                 </div>
-                <!-- Category folders card with Collapse/Expand All toggle -->
-                <div class="space-y-1.5">
-                    <div class="flex items-center justify-between px-2 pt-0.5 text-[11px] text-gray-400 font-medium tracking-wider uppercase select-none">
-                        <span>Folders</span>
-                        <button id="toggle-all-folders-btn" onclick="toggleAllCategories()" class="text-[11px] font-normal tracking-normal lowercase text-gray-400 hover:text-blue-400 transition-colors flex items-center gap-1 cursor-pointer" title="Collapse or expand all category folders">
-                            <span id="toggle-all-folders-label">collapse all</span>
-                        </button>
-                    </div>
+                <!-- Category folders card with Section Collapse/Expand toggle -->
+                <div class="space-y-1.5" id="folders-section-wrap">
+                    <button id="toggle-folders-section-btn" onclick="toggleFoldersSection()" class="flex items-center justify-between w-full px-2 py-1 text-[11px] text-gray-400 font-medium tracking-wider uppercase select-none hover:text-gray-200 hover:bg-white/5 rounded-lg transition-colors cursor-pointer group" title="Collapse or expand all category folders">
+                        <div class="flex items-center gap-1.5">
+                            <svg id="folders-section-chevron" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            <span>Folders</span>
+                            <span id="folders-section-count" class="text-[10px] text-gray-400/80 font-normal lowercase tracking-normal"></span>
+                        </div>
+                        <span id="toggle-folders-section-label" class="text-[11px] font-normal tracking-normal lowercase text-gray-400 group-hover:text-blue-400 transition-colors">collapse</span>
+                    </button>
                     <div id="feed-list" class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm"></div>
                 </div>
                 <!-- Pull-to-refresh hint (mobile only) — sits below the category folders.
@@ -3026,6 +3028,44 @@
             try {
                 localStorage.setItem('newsreader_collapsed_categories', JSON.stringify(window.collapsedCategories || {}));
             } catch(e) {}
+        };
+        window.foldersSectionCollapsed = (localStorage.getItem('newsreader_folders_section_collapsed') === 'true');
+        window.saveFoldersSectionCollapsed = function() {
+            try {
+                localStorage.setItem('newsreader_folders_section_collapsed', window.foldersSectionCollapsed ? 'true' : 'false');
+            } catch(e) {}
+        };
+        window.toggleFoldersSection = function() {
+            window.foldersSectionCollapsed = !window.foldersSectionCollapsed;
+            window.saveFoldersSectionCollapsed();
+            window.updateFoldersSectionState();
+        };
+        window.updateFoldersSectionState = function() {
+            const feedList = document.getElementById('feed-list');
+            const chevron = document.getElementById('folders-section-chevron');
+            const label = document.getElementById('toggle-folders-section-label');
+            const btn = document.getElementById('toggle-folders-section-btn');
+            const countEl = document.getElementById('folders-section-count');
+
+            const feeds = (window.feeds && window.feeds.length > 0) ? window.feeds : (window.accountStates?.local || []);
+            const catCount = new Set(feeds.map(f => f.category || 'Uncategorized')).size;
+            if (countEl) {
+                countEl.textContent = catCount > 0 ? `(${catCount})` : '';
+            }
+
+            const isCollapsed = !!window.foldersSectionCollapsed;
+            if (feedList) {
+                feedList.classList.toggle('hidden', isCollapsed);
+            }
+            if (chevron) {
+                chevron.classList.toggle('-rotate-90', isCollapsed);
+            }
+            if (label) {
+                label.textContent = isCollapsed ? 'expand' : 'collapse';
+            }
+            if (btn) {
+                btn.title = isCollapsed ? 'Expand folder categories' : 'Collapse folder categories';
+            }
         };
         window.currentTimeline = [];
         window.contextMenuArticleId = null;
@@ -6325,16 +6365,8 @@
                 `;
             }).join('');
 
-            // Update Folders "collapse all" / "expand all" toggle label
-            const toggleAllBtn = document.getElementById('toggle-all-folders-btn');
-            const toggleAllLabel = document.getElementById('toggle-all-folders-label');
-            if (toggleAllLabel && sortedEntries.length > 0) {
-                const anyExpanded = sortedEntries.some(([cat]) => window.collapsedCategories[cat] === false);
-                toggleAllLabel.textContent = anyExpanded ? 'collapse all' : 'expand all';
-                if (toggleAllBtn) {
-                    toggleAllBtn.title = anyExpanded ? 'Collapse all category folders' : 'Expand all category folders';
-                }
-            }
+            // Update Folders section state & count
+            window.updateFoldersSectionState?.();
 
             updateBadges();
         }
@@ -6383,8 +6415,38 @@
             `}).join('');
         }
 
-        window.setCategoryFilter = (cat) => { if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); } window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = cat; window.currentSourceFilter = null; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
-        window.setSourceFilter = (source) => { if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); } window._pinnedArticleIds.clear(); window.currentSmartFeed = 'all'; window.currentCategoryFilter = null; window.currentSourceFilter = source; document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item')); renderFeeds(); if (isMobile()) setMobilePane('timeline'); renderTimeline(); };
+        window.setCategoryFilter = (cat) => {
+            if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); }
+            window._pinnedArticleIds.clear();
+            window.currentSmartFeed = 'all';
+            window.currentCategoryFilter = cat;
+            window.currentSourceFilter = null;
+            document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
+            if (window.foldersSectionCollapsed) {
+                window.foldersSectionCollapsed = false;
+                window.saveFoldersSectionCollapsed?.();
+                window.updateFoldersSectionState?.();
+            }
+            renderFeeds();
+            if (isMobile()) setMobilePane('timeline');
+            renderTimeline();
+        };
+        window.setSourceFilter = (source) => {
+            if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); }
+            window._pinnedArticleIds.clear();
+            window.currentSmartFeed = 'all';
+            window.currentCategoryFilter = null;
+            window.currentSourceFilter = source;
+            document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
+            if (window.foldersSectionCollapsed) {
+                window.foldersSectionCollapsed = false;
+                window.saveFoldersSectionCollapsed?.();
+                window.updateFoldersSectionState?.();
+            }
+            renderFeeds();
+            if (isMobile()) setMobilePane('timeline');
+            renderTimeline();
+        };
         window.toggleCategory = (cat) => {
             window.collapsedCategories[cat] = !window.collapsedCategories[cat];
             window.saveCollapsedCategories?.();
@@ -6392,23 +6454,7 @@
         };
 
         window.toggleAllCategories = () => {
-            const feeds = (window.feeds && window.feeds.length > 0) ? window.feeds : (window.accountStates?.local || []);
-            const allCats = new Set(feeds.map(f => f.category || 'Uncategorized'));
-            // Check if any category folder is currently expanded (isCollapsed === false)
-            let anyExpanded = false;
-            for (const cat of allCats) {
-                if (window.collapsedCategories[cat] === false) {
-                    anyExpanded = true;
-                    break;
-                }
-            }
-            // If any folder is expanded, collapse all. If all are collapsed, expand all.
-            const targetState = anyExpanded;
-            allCats.forEach(cat => {
-                window.collapsedCategories[cat] = targetState;
-            });
-            window.saveCollapsedCategories?.();
-            renderFeeds();
+            window.toggleFoldersSection?.();
         };
 
         // --- DESKTOP SEARCH HELPERS ---
@@ -8928,13 +8974,11 @@ window.toggleUnreadManual = () => {
             if (isCategory) {
                 const isCollapsed = window.collapsedCategories[key] !== false;
                 const toggleBtn = document.getElementById('fc-toggle-collapse');
-                if (toggleBtn) toggleBtn.textContent = isCollapsed ? 'Expand Folder' : 'Collapse Folder';
+                if (toggleBtn) toggleBtn.textContent = isCollapsed ? 'Expand Feeds' : 'Collapse Feeds';
 
                 const allBtn = document.getElementById('fc-toggle-all');
                 if (allBtn) {
-                    const allKeys = Object.keys(window.collapsedCategories);
-                    const anyExpanded = allKeys.length > 0 && allKeys.some(k => window.collapsedCategories[k] === false);
-                    allBtn.textContent = anyExpanded ? 'Collapse All Folders' : 'Expand All Folders';
+                    allBtn.textContent = window.foldersSectionCollapsed ? 'Expand All Folders' : 'Collapse All Folders';
                 }
             }
 
@@ -9942,7 +9986,7 @@ window.toggleUnreadManual = () => {
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 225;
+        window.APP_BUILD = 226;
 
         (async function initApp() {
             try {
@@ -9980,6 +10024,7 @@ window.toggleUnreadManual = () => {
 
                 // 1. Initial UI Setup (Synchronous)
                 if (isMobile()) setMobilePane('sidebar');
+                window.updateFoldersSectionState?.();
                 
                 // 2. Restore Preferences (Fast)
                 try {
@@ -10792,7 +10837,7 @@ window.toggleUnreadManual = () => {
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v225';
+const CACHE_NAME = 'rss-reader-v226';
 const APP_SHELL = [
     '/',
     'index.html'
