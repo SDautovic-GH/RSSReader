@@ -8284,13 +8284,14 @@
             return html;
         }
 
-        // KEEP UNREAD STORIES FOR 48 HOURS (build 302, on request). A refresh replaces a
+        // KEEP UNREAD STORIES FOR 4 DAYS (builds 302-303, on request). A refresh replaces a
         // feed's articles with what the feed serves now - its newest 20 (RSS) or its current
         // page (Bluesky). Unread stories a busy feed had already pushed past that used to
         // vanish from Today, Unread, the folders and the badge before you saw them. Now an
-        // unread story younger than 48 hours survives its feed moving on; it leaves when you
-        // read it or when it turns 48 hours old (the same horizon the startup restore uses).
-        const RETAIN_UNREAD_MS = 48 * 3600000;
+        // unread story younger than 4 days survives its feed moving on; it leaves when you
+        // read it or when it turns 4 days old. restoreArticleCache keeps the same horizon for
+        // unread, so a restart does not cut it short.
+        const RETAIN_UNREAD_MS = 4 * 24 * 3600000;
         function retainedUnread(feedArticles) {
             const cutoff = Date.now() - RETAIN_UNREAD_MS;
             return feedArticles.filter(a => a.unread && !a.isBrief && !window.isLinkRead(a.link) && (a._ts || 0) >= cutoff);
@@ -14526,11 +14527,14 @@
 
                 if (!Array.isArray(cache) || cache.length === 0) { window._articleCacheRestored = true; return; }
 
-                // 2-day cutoff for general articles, but ALWAYS keep Read Later items
+                // 2-day cutoff for general articles; unread ones are kept for 4 days, the
+                // retention horizon (RETAIN_UNREAD_MS, build 303) - their feed may no longer
+                // serve them, so dropping them here would lose them. Read Later always stays.
                 const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
+                const unreadCutoff = Date.now() - RETAIN_UNREAD_MS;
                 const fresh = cache.filter(a => {
                     const ts = a._ts || new Date(a.timestamp).getTime();
-                    return ts >= cutoff || a.readLater;
+                    return ts >= cutoff || a.readLater || (ts >= unreadCutoff && !window.isLinkRead(a.link));
                 });
 
                 window._bodyCache = {};
@@ -15139,7 +15143,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 302;
+        window.APP_BUILD = 303;
 
         (async function initApp() {
             try {
@@ -16026,7 +16030,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v302';
+const CACHE_NAME = 'rss-reader-v303';
 const APP_SHELL = [
     '/',
     'index.html'
