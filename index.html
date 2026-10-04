@@ -4489,7 +4489,6 @@
            › becomes the Today tab's sun: tap it to go back to Today. */
         #reader-prev,
         #reader-next {
-            position: relative;
             width: 44px;
             padding: 0;
         }
@@ -4500,32 +4499,6 @@
         }
 
         #reader-next.is-last .reader-next-today {
-            display: block;
-        }
-
-        /* Unread total as a badge on Next, in full screen only (builds 287/289, on
-           request) - the Today tab's badge, which full screen hides with the tab bar. */
-        .reader-next-count {
-            display: none;
-            position: absolute;
-            top: -5px;
-            right: -6px;
-            min-width: 18px;
-            height: 18px;
-            padding: 0 5px;
-            background: #3b82f6;
-            color: #fff;
-            border-radius: 9999px;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 18px;
-            text-align: center;
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.9);
-            pointer-events: none;
-            font-variant-numeric: tabular-nums;
-        }
-
-        body.is-fullscreen .reader-next-count:not(:empty) {
             display: block;
         }
 
@@ -4572,14 +4545,10 @@
             margin-right: auto !important;
         }
 
-        /* Clean full screen (double-tap / double-click the top bar, build 293): no ‹ ›
-           arrows; the exit button stays. */
-        body.fs-clean #reader-nav {
-            display: none !important;
-        }
-
+        /* No ‹ › arrows in full screen (build 294, on request) - just the story and the
+           exit button; arrow keys and swipes still move between stories. */
         body.is-fullscreen #reader-nav {
-            right: max(1rem, calc(50% - 21rem));
+            display: none !important;
         }
 
         body.is-fullscreen #fullscreen-exit {
@@ -4592,13 +4561,8 @@
                 right: 14px;
             }
 
-            body.is-fullscreen #reader-nav,
             body.is-fullscreen #fullscreen-exit {
                 bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-            }
-
-            body.is-fullscreen #reader-nav {
-                right: 14px;
             }
 
             body.is-fullscreen #fullscreen-exit {
@@ -6221,14 +6185,7 @@
                 <path d="M4 4a16 16 0 0 1 16 16" />
                 <circle cx="5" cy="19" r="1" />
             </symbol>
-            <!-- Full screen in / out (build 284): Lucide maximize-2 / minimize-2 -->
-            <symbol id="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 3 21 3 21 9" />
-                <polyline points="9 21 3 21 3 15" />
-                <line x1="21" y1="3" x2="14" y2="10" />
-                <line x1="3" y1="21" x2="10" y2="14" />
-            </symbol>
+            <!-- Full-screen exit (build 284): Lucide minimize-2 -->
             <symbol id="icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="4 14 10 14 10 20" />
@@ -6639,7 +6596,7 @@
             </div>
             <div id="viewer-header"
                 class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10"
-                ondblclick="toggleFullScreenManual(event)" title="Double-click the bar for full screen without arrows">
+                ondblclick="toggleFullScreenManual(event)" title="Double-click the bar for full screen">
                 <div class="flex items-center">
                     <button id="viewer-back-btn" onclick="onViewerBackClick()" type="button" aria-label="Back"
                         class="hidden inline-flex items-center gap-1.5 -ml-1 px-3 py-1.5 rounded-full text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 active:scale-95 transition-all cursor-pointer">
@@ -6675,14 +6632,6 @@
                             </svg>
                         </button>
                     </div>
-                    <!-- Full screen: the story alone (build 284, on request). Shown while a
-                         story is open; exit is the button at the bottom left, or Esc. -->
-                    <button onclick="toggleReadingFullScreen()" id="fullscreen-btn" title="Full screen"
-                        aria-label="Full screen" class="hidden icon-act">
-                        <svg class="w-4 h-4">
-                            <use href="#icon-expand" />
-                        </svg>
-                    </button>
                     <!-- View mode toggle: Standard Stream / Compact Wire -->
                     <button onclick="toggleViewMode()" id="view-density-toggle" title="Standard Stream (switch to Compact Wire)"
                         aria-label="Standard Stream (switch to Compact Wire)"
@@ -6810,7 +6759,6 @@
                     <svg class="reader-next-today" fill="none" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                         <use href="#icon-sun" />
                     </svg>
-                    <span id="reader-next-count" class="reader-next-count"></span>
                 </button>
             </div>
             <button id="fullscreen-exit" type="button" onclick="window.setReadingFullScreen(false)"
@@ -11358,17 +11306,14 @@
             if (btnReadLater) btnReadLater.classList.toggle('smart-empty', readLaterCount === 0);
             if (btnSaved) btnSaved.classList.toggle('smart-empty', savedCount === 0);
 
-            // The same total on the Today tab (mobile) and inside Next (full screen), here
-            // because this runs after every read-state change - opening a story included
-            // (build 287; the tab badge had its own updater that only ran on list renders).
-            const unreadLabel = allUnread > 99 ? '99+' : String(allUnread);
+            // The same total on the Today tab (mobile), here because this runs after every
+            // read-state change - opening a story included (build 287; the tab badge had its
+            // own updater that only ran on list renders).
             const todayBadge = document.getElementById('mob-tab-today-badge');
             if (todayBadge) {
-                todayBadge.textContent = unreadLabel;
+                todayBadge.textContent = allUnread > 99 ? '99+' : String(allUnread);
                 todayBadge.classList.toggle('hidden', allUnread === 0);
             }
-            const nextCount = document.getElementById('reader-next-count');
-            if (nextCount) nextCount.textContent = allUnread > 0 ? unreadLabel : '';
 
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
             updateHeaderStatus();
@@ -13502,20 +13447,18 @@
             saveTypographyPrefs();
         };
 
-        // FULL SCREEN (build 284, on request): the open story alone, with Next and an exit
-        // button along the bottom. Stories only; it ends when the story closes or Today
-        // comes back (updateViewerBackBtn). On desktop the browser goes full screen too,
-        // and leaving that (Esc) leaves this.
-        // opts.clean (build 293, on request): full screen with no ‹ › arrows - entered by
-        // double-tapping / double-clicking the top bar. The exit button stays (the top bar
-        // is hidden in full screen, so a double-tap cannot leave it); arrow keys and swipes
-        // still move between stories.
-        window.setReadingFullScreen = function (on, opts = {}) {
+        // FULL SCREEN (builds 284/294, on request): the open story alone - no arrows, just
+        // the exit button at the bottom left. Entered by double-tapping / double-clicking
+        // the top bar; left by that button or Esc (the bar is hidden in full screen, so a
+        // double-tap cannot leave it). Arrow keys and swipes still move between stories.
+        // Stories only; it ends when the story closes or Today comes back
+        // (updateViewerBackBtn). On desktop the browser goes full screen too, and leaving
+        // that (Esc) leaves this.
+        window.setReadingFullScreen = function (on) {
             const art = window.currentArticle;
             if (on && (!art || art.isBrief)) return;
             if (document.body.classList.contains('is-fullscreen') === !!on) return;
             document.body.classList.toggle('is-fullscreen', !!on);
-            document.body.classList.toggle('fs-clean', !!on && !!opts.clean);
             const root = document.documentElement;
             if (on && !isMobile() && root.requestFullscreen && !document.fullscreenElement) {
                 root.requestFullscreen().catch(() => { });
@@ -13523,7 +13466,6 @@
                 document.exitFullscreen().catch(() => { });
             }
         };
-        window.toggleReadingFullScreen = () => window.setReadingFullScreen(!document.body.classList.contains('is-fullscreen'));
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement) window.setReadingFullScreen(false);
         });
@@ -13537,11 +13479,10 @@
                     return;
                 }
             }
-            window.setReadingFullScreen(true, { clean: true });
+            window.setReadingFullScreen(true);
         };
 
-        // Phone: double-tap the top bar - its empty part, not a button - for the same clean
-        // full screen. iOS Safari does not reliably send dblclick, so taps are timed here.
+        // Phone: double-tap the top bar - its empty part, not a button - for full screen. iOS Safari does not reliably send dblclick, so taps are timed here.
         (function () {
             const bar = document.getElementById('viewer-header');
             if (!bar) return;
@@ -13552,7 +13493,7 @@
                 if (now - lastTap < 350) {
                     lastTap = 0;
                     e.preventDefault();   // no zoom, no stray click
-                    window.setReadingFullScreen(true, { clean: true });
+                    window.setReadingFullScreen(true);
                 } else {
                     lastTap = now;
                 }
@@ -14851,8 +14792,7 @@
             viewerPane.classList.toggle('has-article', !!art);
             viewerPane.classList.toggle('is-today-brief', isToday);
             viewerPane.classList.toggle('is-brief-view', isAnyBrief);
-            // Full screen is for stories: offered while one is open, left when none is.
-            document.getElementById('fullscreen-btn')?.classList.toggle('hidden', !art || !!isAnyBrief);
+            // Full screen is for stories: left when none is open.
             if (!art || isAnyBrief) window.setReadingFullScreen?.(false);
 
             if (!art || isToday) {
@@ -15272,7 +15212,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 293;
+        window.APP_BUILD = 294;
 
         (async function initApp() {
             try {
@@ -16159,7 +16099,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v293';
+const CACHE_NAME = 'rss-reader-v294';
 const APP_SHELL = [
     '/',
     'index.html'
