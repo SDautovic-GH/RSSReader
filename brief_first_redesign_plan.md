@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 281** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 282** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-04 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–281)
+### Follow-ups (Builds 275–282)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -76,6 +76,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **A story's copies go with it (279):** marking a single brief story read (opening it, its Read dot, the reader's Read button, a list swipe) also marks the other outlets' copies grouped under it, so none returns as a "new" story in the next Today. Copies are registered from each card's `data-cov` when a brief is shown (`window._briefCopies`); marking the story unread puts back only the copies its read mark took along. The section row marks its copies explicitly and keeps its own exact Undo.
 - **Swipes, settings, speed (280):** a sideways swipe never navigates from a brief (on Today it used to open the first story of the Unread list) and never when it starts on something that scrolls sideways (the pill bar, a wide table). Stories per Category has a last step, All (every unread story). Generated briefs are built from unread stories only. Folder unread counts for all sections are computed in one pass (they re-ran the folder matcher per section per article on every refresh), and `normalizeBriefDOM` uses lookup maps instead of a linear search per card. "Mark N read" is 0.95em.
 - **Automatic briefs removed (281, on request):** with Today live, the scheduled Morning / Midday / Afternoon / Evening briefs were Today cut to a fixed window. Removed: generation (`checkAndGenerateBriefs`, `generateBrief`, the ET slot schedule and its once-a-minute timer), the on-demand "Generate Brief Now" bar, the Briefs folder and its badge, the Briefs segment next to Saved / Read Later, and the Enable Briefs switch. Settings' section is now "Today" (Stories per Category). Startup empties the old `briefs` IndexedDB store on existing installs. Kept for Today: `composeSlotBrief`, `buildStoryClusters`, `getETParts`, and the source rankings, which `runFullRefresh` now refreshes (24h cache) since the generator used to.
+- **Regular-weight titles (282, on request):** Today's story titles are weight 400 (were 600), like the category pills; they still stand out from the excerpt by size and colour.
 - **Reader bar alignment (278):** build 271 assumed the article column had `md:ml-4` / `lg:ml-8`, but those classes are not in the compiled CSS. The bar is now padded to the column's real edges (1rem / 1.5rem + 42rem). Category pills are regular weight.
 
 ---
