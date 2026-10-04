@@ -4572,6 +4572,12 @@
             margin-right: auto !important;
         }
 
+        /* Clean full screen (double-tap / double-click the top bar, build 293): no ‹ ›
+           arrows; the exit button stays. */
+        body.fs-clean #reader-nav {
+            display: none !important;
+        }
+
         body.is-fullscreen #reader-nav {
             right: max(1rem, calc(50% - 21rem));
         }
@@ -6633,7 +6639,7 @@
             </div>
             <div id="viewer-header"
                 class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10"
-                ondblclick="toggleFullScreenManual(event)" title="Double-click header background to toggle Full Screen">
+                ondblclick="toggleFullScreenManual(event)" title="Double-click the bar for full screen without arrows">
                 <div class="flex items-center">
                     <button id="viewer-back-btn" onclick="onViewerBackClick()" type="button" aria-label="Back"
                         class="hidden inline-flex items-center gap-1.5 -ml-1 px-3 py-1.5 rounded-full text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 active:scale-95 transition-all cursor-pointer">
@@ -13500,11 +13506,16 @@
         // button along the bottom. Stories only; it ends when the story closes or Today
         // comes back (updateViewerBackBtn). On desktop the browser goes full screen too,
         // and leaving that (Esc) leaves this.
-        window.setReadingFullScreen = function (on) {
+        // opts.clean (build 293, on request): full screen with no ‹ › arrows - entered by
+        // double-tapping / double-clicking the top bar. The exit button stays (the top bar
+        // is hidden in full screen, so a double-tap cannot leave it); arrow keys and swipes
+        // still move between stories.
+        window.setReadingFullScreen = function (on, opts = {}) {
             const art = window.currentArticle;
             if (on && (!art || art.isBrief)) return;
             if (document.body.classList.contains('is-fullscreen') === !!on) return;
             document.body.classList.toggle('is-fullscreen', !!on);
+            document.body.classList.toggle('fs-clean', !!on && !!opts.clean);
             const root = document.documentElement;
             if (on && !isMobile() && root.requestFullscreen && !document.fullscreenElement) {
                 root.requestFullscreen().catch(() => { });
@@ -13526,8 +13537,27 @@
                     return;
                 }
             }
-            window.toggleReadingFullScreen();
+            window.setReadingFullScreen(true, { clean: true });
         };
+
+        // Phone: double-tap the top bar - its empty part, not a button - for the same clean
+        // full screen. iOS Safari does not reliably send dblclick, so taps are timed here.
+        (function () {
+            const bar = document.getElementById('viewer-header');
+            if (!bar) return;
+            let lastTap = 0;
+            bar.addEventListener('touchend', (e) => {
+                if (e.target.closest('button, a')) { lastTap = 0; return; }
+                const now = Date.now();
+                if (now - lastTap < 350) {
+                    lastTap = 0;
+                    e.preventDefault();   // no zoom, no stray click
+                    window.setReadingFullScreen(true, { clean: true });
+                } else {
+                    lastTap = now;
+                }
+            });
+        })();
         window.openExternal = () => { if (window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
         // ===== STANDALONE LAYOUT-HEIGHT LOCK =====
@@ -15242,7 +15272,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 292;
+        window.APP_BUILD = 293;
 
         (async function initApp() {
             try {
@@ -16129,7 +16159,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v292';
+const CACHE_NAME = 'rss-reader-v293';
 const APP_SHELL = [
     '/',
     'index.html'
