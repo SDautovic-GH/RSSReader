@@ -4433,35 +4433,19 @@
             box-shadow: inset 3px 0 0 #4493f8 !important;
         }
 
-        /* READING CONTROLS (builds 283-288, on request): Previous + Next as a pair on the
-           right (#reader-nav) and the full-screen exit on the left, in the tab bar's dark
-           glass with 44px touch targets, along the bottom of the reader - on a phone just
-           above the tab bar, on desktop on the article column's edges (1rem / 1.5rem +
-           42rem; centred in full screen). Each shows only when it has somewhere to go. */
-        #reader-nav {
+        /* FULL-SCREEN EXIT (build 284; alone since build 297, when the ‹ › buttons were
+           removed on request): the tab bar's dark glass, a 44px round button at the bottom
+           left of the story column. */
+        #fullscreen-exit {
             display: none;
             position: absolute;
             z-index: 35;
-            align-items: center;
-            gap: 8px;
             bottom: 24px;
-            right: max(1rem, calc(100% - 43rem));
-        }
-
-        #viewer-pane.has-reader-prev #reader-nav,
-        #viewer-pane.has-reader-next #reader-nav {
-            display: inline-flex;
-            animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        #reader-prev,
-        #reader-next,
-        #fullscreen-exit {
-            display: none;
+            width: 44px;
+            min-height: 44px;
+            padding: 0;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            min-height: 44px;
             border-radius: 9999px;
             background: rgba(30, 30, 34, 0.82);
             color: #ffffff;
@@ -4469,66 +4453,24 @@
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
             backdrop-filter: blur(24px) saturate(1.6);
             -webkit-backdrop-filter: blur(24px) saturate(1.6);
-            font-size: 15px;
-            font-weight: 600;
             cursor: pointer;
             transition: transform 0.12s ease;
             -webkit-tap-highlight-color: transparent;
         }
 
-        #viewer-pane.has-reader-prev #reader-prev,
-        #viewer-pane.has-reader-next #reader-next,
         body.is-fullscreen #fullscreen-exit {
             display: inline-flex;
-        }
-
-        #fullscreen-exit {
-            position: absolute;
-            z-index: 35;
             animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* Icon-only pair, ‹ and › (build 289, on request). After a brief's last story the
-           › becomes the Today tab's sun: tap it to go back to Today. */
-        #reader-prev,
-        #reader-next {
-            width: 44px;
-            padding: 0;
-        }
-
-        #reader-next .reader-next-today,
-        #reader-next.is-last .reader-next-chevron {
-            display: none;
-        }
-
-        #reader-next.is-last .reader-next-today {
-            display: block;
-        }
-
-        #fullscreen-exit {
-            width: 44px;
-            padding: 0;
-            bottom: 24px;
-        }
-
-        #reader-prev svg,
-        #reader-next svg,
         #fullscreen-exit svg {
             width: 18px;
             height: 18px;
             flex-shrink: 0;
         }
 
-        #reader-prev:active,
-        #reader-next:active,
         #fullscreen-exit:active {
             transform: scale(0.94);
-        }
-
-        @media (min-width: 64rem) {
-            #reader-nav {
-                right: max(1.5rem, calc(100% - 43.5rem));
-            }
         }
 
         /* FULL SCREEN (build 284, on request): the open story alone - no sidebar, list or
@@ -4548,22 +4490,11 @@
             margin-right: auto !important;
         }
 
-        /* No ‹ › arrows in full screen (build 294, on request) - just the story and the
-           exit button; arrow keys and swipes still move between stories. */
-        body.is-fullscreen #reader-nav {
-            display: none !important;
-        }
-
         body.is-fullscreen #fullscreen-exit {
             left: max(1rem, calc(50% - 21rem));
         }
 
         @media (max-width: 900px) {
-            #reader-nav {
-                bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-                right: 14px;
-            }
-
             body.is-fullscreen #fullscreen-exit {
                 bottom: calc(16px + env(safe-area-inset-bottom, 0px));
             }
@@ -4576,17 +4507,9 @@
             body.is-fullscreen #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
                 padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 14px) !important;
             }
-
-            /* Room at the end so the story's last lines scroll clear of the controls. */
-            #viewer-pane.mobile-active.has-reader-next #reader-view,
-            #viewer-pane.mobile-active.has-reader-prev #reader-view {
-                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 140px) !important;
-            }
         }
 
         @media (min-width: 901px) {
-            #viewer-pane.has-reader-next #reader-view,
-            #viewer-pane.has-reader-prev #reader-view,
             body.is-fullscreen #reader-view {
                 padding-bottom: 88px !important;
             }
@@ -6737,33 +6660,9 @@
             </div>
 
 
-            <!-- READING CONTROLS along the bottom of the reader (builds 283-288, on request):
-                 Previous + Next (right) for any open story - the brief's stories, or the list
-                 it came from; Next reads "Back to Today" after a brief's last story - and the
-                 full-screen exit (left). Shown by classes on
-                 #viewer-pane / <body>, never by removing Tailwind's `hidden`: that class is
-                 a layered !important, which no unlayered rule can undo (why the build 283
-                 pill, inside a `hidden` wrapper, never appeared). -->
-            <div id="reader-nav">
-                <button id="reader-prev" type="button" onclick="window.navigateArticle(-1)" title="Previous"
-                    aria-label="Previous story">
-                    <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                        stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
-                </button>
-                <button id="reader-next" type="button" onclick="window.readerNextOrBack()" title="Next"
-                    aria-label="Next story">
-                    <svg class="reader-next-chevron" fill="none" stroke="currentColor" stroke-width="2.5"
-                        stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                    <!-- After a brief's last story: the Today tab's sun - back to Today -->
-                    <svg class="reader-next-today" fill="none" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <use href="#icon-sun" />
-                    </svg>
-                </button>
-            </div>
+            <!-- Full-screen exit, bottom left (build 284). Shown by body.is-fullscreen, never
+                 by removing Tailwind's `hidden`: that class is a layered !important, which no
+                 unlayered rule can undo. -->
             <button id="fullscreen-exit" type="button" onclick="window.setReadingFullScreen(false)"
                 title="Exit full screen (Esc)" aria-label="Exit full screen">
                 <svg aria-hidden="true">
@@ -9945,9 +9844,7 @@
                     if (Array.isArray(s.storyIds)) s.storyIndex = s.storyIds.indexOf(article.id);
                 }
             }
-            if (typeof updateBriefReturnUI === 'function') {
-                updateBriefReturnUI();
-            }
+            window.syncBriefCards?.();
             if (!article.isBrief) {
                 window.articles.forEach(a => { if (a.id === id) a.unread = false; });
                 window._readLinks.add(article.link);
@@ -10491,7 +10388,7 @@
                 && !document.getElementById('img-lightbox')?.classList.contains('open')) {
                 e.preventDefault();
                 if (e.key === 'ArrowLeft') window.navigateArticle(-1);
-                else if (document.getElementById('viewer-pane')?.classList.contains('has-reader-next')) window.readerNextOrBack();
+                else if (window.readerNext().show) window.readerNextOrBack();
                 return;
             }
             if (!window.currentTimeline || window.currentTimeline.length === 0) return;
@@ -11104,7 +11001,7 @@
 
         window.setCategoryFilter = (cat) => {
             window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
-            if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); }
+            if (window._returnToBriefState) window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = 'all';
             window.currentCategoryFilter = cat;
@@ -11121,7 +11018,7 @@
         };
         window.setSourceFilter = (source) => {
             window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
-            if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); }
+            if (window._returnToBriefState) window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = 'all';
             window.currentCategoryFilter = null;
@@ -11481,10 +11378,7 @@
         };
         window.setSmartFeed = async (type) => {
             window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
-            if (window._returnToBriefState) {
-                window._returnToBriefState = null;
-                window.hideBriefReturnUI?.();
-            }
+            window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
@@ -12356,7 +12250,6 @@
             const cur = window.currentArticle;
             const id = cur && !cur.isBrief ? cur.id : null;
             window._returnToBriefState = null;
-            window.hideBriefReturnUI?.();
             window.clearReaderPane();
             window.syncBriefCards();
             if (!id) return;
@@ -12394,7 +12287,6 @@
 
         window.openToday = async function () {
             window._returnToBriefState = null;
-            window.hideBriefReturnUI?.();
             // Timeline unread pool alignment
             if (window.currentSmartFeed !== 'all' || window.currentCategoryFilter || window.currentSourceFilter) {
                 window.currentSmartFeed = 'all';
@@ -12942,30 +12834,10 @@
             });
         };
 
-        // Runs on every story open: the reading controls (Previous / Next) and the brief's
-        // cards. (The in-article "Back to Brief" banner and footer it once toggled could
-        // never show - hidden on mobile, never set on desktop - and went in build 292.)
-        window.updateBriefReturnUI = function () {
-            // The Next button, for any open story (build 286): ›, or the Today sun once this
-            // is the last story of the brief it came from (icon-only since build 289).
-            const nx = window.readerNext();
-            document.getElementById('viewer-pane')?.classList.toggle('has-reader-next', nx.show);
-            document.getElementById('viewer-pane')?.classList.toggle('has-reader-prev', window.readerHasPrev());
-            const nextBtn = document.getElementById('reader-next');
-            if (nextBtn && nx.show) {
-                const last = nx.fromBrief && !nx.hasNext;
-                nextBtn.classList.toggle('is-last', last);
-                nextBtn.setAttribute('aria-label', last ? 'Back to Today' : 'Next story');
-                nextBtn.title = last ? 'Back to Today' : 'Next';
-            }
-            window.syncBriefCards?.();
-        };
-
-        // What Next does for the open story - the same choice navigateArticle() makes:
-        // the next story of the brief it was opened from (Today), else the next article
-        // of the list it was opened from (Unread, a folder, Saved, Read Later, History).
-        // Build 286: stories opened from a list had no Next, so full screen - which hides
-        // the list - left only j/k to move on.
+        // What Right arrow in full screen does for the open story - the same choice
+        // navigateArticle() makes: the next story of the brief it was opened from (Today),
+        // else the next article of the list it was opened from (Unread, a folder, Saved,
+        // Read Later, History). show: is there anywhere to go.
         window.readerNext = function () {
             const art = window.currentArticle;
             if (!art || art.isBrief) return { show: false };
@@ -12979,26 +12851,12 @@
             return { show: i >= 0 && i < nav.length - 1, fromBrief: false, hasNext: true };
         };
 
-        // Is there a story or article before the open one, from the same brief or list?
-        // (Previous button and Left arrow in full screen, build 288 - navigateArticle(-1).)
-        window.readerHasPrev = function () {
-            const art = window.currentArticle;
-            if (!art || art.isBrief) return false;
-            const s = window._returnToBriefState;
-            if (s && Array.isArray(s.storyIds) && s.storyIds.length > 0) return s.storyIds.indexOf(art.id) > 0;
-            const nav = window._navSnapshot.length ? window._navSnapshot : (window.currentTimeline || []);
-            return nav.findIndex(a => a.id === art.id) > 0;
-        };
-
-        // The Next pill: the next story or article, or back to Today after a brief's last.
+        // Right arrow in full screen: the next story or article, or back to Today after a
+        // brief's last.
         window.readerNextOrBack = function () {
             const nx = window.readerNext();
             if (nx.fromBrief && !nx.hasNext) window.returnToBrief();
             else window.navigateArticle(1);
-        };
-
-        window.hideBriefReturnUI = function () {
-            document.getElementById('viewer-pane')?.classList.remove('has-reader-next', 'has-reader-prev');
         };
 
         window.returnToBrief = function () {
@@ -13012,7 +12870,6 @@
                 return;
             }
             window._returnToBriefState = null;
-            if (window.hideBriefReturnUI) window.hideBriefReturnUI();
 
             // 1. Select the brief article in reader view
             selectArticle(state.briefId);
@@ -15227,7 +15084,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 296;
+        window.APP_BUILD = 297;
 
         (async function initApp() {
             try {
@@ -16114,7 +15971,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v296';
+const CACHE_NAME = 'rss-reader-v297';
 const APP_SHELL = [
     '/',
     'index.html'
