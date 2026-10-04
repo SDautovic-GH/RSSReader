@@ -4831,6 +4831,51 @@
             border-color: rgba(37, 99, 235, 0.35) !important;
         }
 
+        /* READER BAR BACK BUTTON (build 271). Its dark-mode background class,
+           dark:bg-blue-950/40, is not in the precompiled Tailwind stylesheet (0 rules),
+           so in dark mode only the light-mode bg-blue-50 applied: a near-white pill.
+           Text-style instead, in the app's accent, with a hover tint only. Unlayered
+           rules beat these Tailwind utilities because none of them is !important. */
+        #viewer-back-btn {
+            background: transparent !important;
+            color: #4493f8 !important;
+        }
+        #viewer-back-btn:hover {
+            background: rgba(68, 147, 248, 0.12) !important;
+        }
+
+        /* DESKTOP READER BAR = THE ARTICLE COLUMN'S WIDTH (build 271, on request). The
+           bar spanned the whole pane, so on a large monitor its buttons sat far off to
+           the right of the text. The article column is max-w-2xl (42rem), left-anchored
+           at the reader's padding + its own margin: md p-4 + ml-4 = 2rem, lg p-6 + ml-8
+           = 3.5rem. Padding the bar to the same edges lines Back up with the text's
+           left edge and the buttons with its right edge; max() keeps the reader's own
+           side padding when the pane is narrower than the column. Desktop only. */
+        @media (min-width: 901px) {
+            #viewer-header {
+                padding-left: 2rem !important;
+                padding-right: max(1rem, calc(100% - 44rem)) !important;
+            }
+            #viewer-back-btn {
+                margin-left: -0.75rem !important;   /* its own px-3, so the chevron sits on the text edge */
+            }
+        }
+        @media (min-width: 64rem) {
+            #viewer-header {
+                padding-left: 3.5rem !important;
+                padding-right: max(1.5rem, calc(100% - 45.5rem)) !important;
+            }
+        }
+
+        /* CATEGORY BAR BACKGROUND (build 271). The bar hard-coded #000000 - right for
+           mobile's pure-black reader, where the bar is transparent anyway - but the
+           desktop panes are #0d1117, so it showed as a black strip. It takes the pane
+           colour instead: invisible at rest, and as a sticky bar it still masks the
+           stories scrolling underneath it. */
+        .dark .brief-jump-bar {
+            background: #0d1117;
+        }
+
         /* The category pill last tapped (build 270) - the bar also slides to centre it. */
         .brief-jump-pill.is-active,
         html:not(.dark) .brief-jump-pill.is-active {
@@ -15759,7 +15804,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 270;
+        window.APP_BUILD = 271;
 
         (async function initApp() {
             try {
@@ -16661,7 +16706,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v270';
+const CACHE_NAME = 'rss-reader-v271';
 const APP_SHELL = [
     '/',
     'index.html'
