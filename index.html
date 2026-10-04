@@ -3715,23 +3715,21 @@
             user-select: none !important;
         }
 
-        /* While a tab long-press is in flight, iOS Safari would otherwise root
-           its selection loupe on the article block BEHIND the bar. Freeze
-           selection page-wide for the duration of the hold; the JS removes this
-           class ~350ms after touchend so article text stays copyable normally. */
-        body.tabbar-longpress,
-        body.tabbar-longpress * {
-            -webkit-touch-callout: none !important;
-            -webkit-user-select: none !important;
-            user-select: none !important;
-        }
-
         #mobile-tab-bar .tab-btn .tab-ico {
             width: 22px;
             height: 22px;
             display: block;
             stroke: currentColor;
             color: inherit;
+        }
+
+        /* SELECTED TAB = FILLED GLYPH (build 276, on request): the iOS 26 / Material 3
+           rule, and the one the reader's action buttons already use (build 273). The
+           sun's disc and the folder fill in; Search keeps its outline (a filled
+           magnifier is a solid disc). CSS fill beats the svg's fill="none" attribute. */
+        #mob-tab-today.active .tab-ico,
+        #mob-tab-following.active .tab-ico {
+            fill: currentColor;
         }
 
         /* 13px (build 275, on request): 11px read as tiny. Apple's 10pt tab labels sit
@@ -3829,86 +3827,6 @@
             box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.9);
             pointer-events: none;
             font-variant-numeric: tabular-nums;
-        }
-
-        /* Articles long-press menu — small popover that floats above the tab bar
-           when the user long-presses the Articles tab. */
-        #mob-articles-menu {
-            position: absolute;
-            /* track the layout-anchored tab bar, not the fixed viewport */
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
-            background: rgba(28, 28, 32, 0.96);
-            backdrop-filter: blur(20px) saturate(1.4);
-            -webkit-backdrop-filter: blur(20px) saturate(1.4);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            /* inset top rim matches the bar's edge-lit glass finish */
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 12px 36px rgba(0, 0, 0, 0.55);
-            padding: 6px;
-            min-width: 220px;
-            z-index: 9500;
-            display: none;
-            animation: pop-in 0.14s ease-out;
-        }
-
-        #mob-articles-menu.is-open {
-            display: block;
-        }
-
-        #mob-articles-menu button {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            padding: 12px 14px;
-            border-radius: 10px;
-            background: transparent;
-            color: #fff;
-            font-size: 15px;
-            font-weight: 500;
-            text-align: left;
-        }
-
-        /* Pressed menu item uses the SAME dark recess as the bar's active tab --
-           one interaction language across the whole bottom-bar system. (The old
-           blue flash was a leftover from the blue-active era.) */
-        #mob-articles-menu button:active {
-            background: rgba(0, 0, 0, 0.58);
-        }
-
-        #mob-articles-menu .menu-icon {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
-            opacity: 0.85;
-        }
-
-        @keyframes pop-in {
-            from {
-                opacity: 0;
-                transform: translateX(-50%) scale(0.95);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateX(-50%) scale(1);
-            }
-        }
-
-        #mob-articles-menu-scrim {
-            position: absolute;
-            /* body is 100dvh on mobile, so inset:0 still covers the glass */
-            inset: 0;
-            background: transparent;
-            z-index: 9499;
-            display: none;
-        }
-
-        #mob-articles-menu-scrim.is-open {
-            display: block;
         }
 
         /* Dark-mode context menus (article / folder / feed) join the bottom-bar
@@ -6562,11 +6480,15 @@
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </symbol>
-            <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="5" />
+            <!-- The one sun (build 276): Today in the sidebar and the bottom bar, Light in
+                 Settings. No fill or stroke-width here on purpose - each <svg> using it sets
+                 its own, so the bottom bar can draw it at 1.75 and fill the disc when Today
+                 is the selected tab (the rays are open strokes, so fill leaves them alone). -->
+            <symbol id="icon-sun" viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round"
+                stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4" />
                 <path
-                    d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                    d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
             </symbol>
             <symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -6820,8 +6742,7 @@
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3 flex-shrink-0" fill="none"
                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                                 viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="4" />
-                                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                                <use href="#icon-sun" />
                             </svg> Today</span>
                     </button>
                     <button id="feed-btn-all" onclick="setSmartFeed('all')"
@@ -7233,23 +7154,15 @@
     <nav id="mobile-tab-bar">
         <div class="tab-pill">
             <button id="mob-tab-today" type="button" class="tab-btn active" onclick="onTodayTabClick()">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
                     stroke-linejoin="round" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="5" />
-                    <line x1="12" y1="1" x2="12" y2="3" />
-                    <line x1="12" y1="21" x2="12" y2="23" />
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                    <line x1="1" y1="12" x2="3" y2="12" />
-                    <line x1="21" y1="12" x2="23" y2="12" />
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    <use href="#icon-sun" />
                 </svg>
                 <span class="tab-label">Today</span>
             </button>
             <button id="mob-tab-following" type="button" class="tab-btn" onclick="onFollowingTabClick()">
                 <span class="tab-ico-wrap">
-                    <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
                         stroke-linejoin="round" viewBox="0 0 24 24">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                     </svg>
@@ -7259,7 +7172,7 @@
             </button>
             <button id="mob-tab-search" type="button" class="tab-btn tab-search" onclick="toggleSearchSheet()"
                 aria-label="Search">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
                     stroke-linejoin="round" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="7" />
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -7268,19 +7181,6 @@
             </button>
         </div>
     </nav>
-    <!-- Articles long-press popover menu (mobile). Triggered by holding the
-         Articles tab. Contains Mark-All-Read for now; structured to add more
-         actions later (Mark Today Read, etc.) without restructuring. -->
-    <div id="mob-articles-menu-scrim" onclick="closeArticlesMenu()"></div>
-    <div id="mob-articles-menu" role="menu" aria-label="Articles actions">
-        <button type="button" onclick="closeArticlesMenu(); markAllRead();">
-            <svg class="menu-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round" viewBox="0 0 24 24">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Mark all read</span>
-        </button>
-    </div>
     <!-- MOBILE SEARCH SHEET -->
     <div id="mobile-search-sheet" aria-hidden="true">
         <div class="search-inner">
@@ -7455,7 +7355,7 @@
                             <label class="settings-item-label">Theme</label>
                             <div id="theme-segmented" class="segmented" role="group" aria-label="Theme">
                                 <button data-theme="light" onclick="setTheme('light')" data-active="false">
-                                    <svg class="w-3.5 h-3.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke-width="2">
                                         <use href="#icon-sun" />
                                     </svg>Light
                                 </button>
@@ -15419,82 +15319,6 @@
             setMobilePane('timeline');
         };
 
-        // --- Topics tab long-press menu ---
-        window.openArticlesMenu = () => {
-            const menu = document.getElementById('mob-articles-menu');
-            const scrim = document.getElementById('mob-articles-menu-scrim');
-            if (!menu || !scrim) return;
-            menu.classList.add('is-open');
-            scrim.classList.add('is-open');
-            window._mobArticlesMenuJustOpened = true;
-            const clearSel = () => { try { window.getSelection?.().removeAllRanges(); } catch (e) { } };
-            clearSel();
-            requestAnimationFrame(() => { clearSel(); requestAnimationFrame(clearSel); });
-            if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) { } }
-        };
-        window.closeArticlesMenu = () => {
-            const menu = document.getElementById('mob-articles-menu');
-            const scrim = document.getElementById('mob-articles-menu-scrim');
-            if (menu) menu.classList.remove('is-open');
-            if (scrim) scrim.classList.remove('is-open');
-        };
-
-        (function bindTopicsTabLongPress() {
-            const btn = document.getElementById('mob-tab-topics') || document.getElementById('mob-tab-articles');
-            if (!btn) return;
-            let timer = null;
-            let startX = 0, startY = 0;
-            let suppressing = false;
-            let releaseTimer = null;
-            const armSuppress = () => {
-                suppressing = true;
-                document.body.classList.add('tabbar-longpress');
-                if (releaseTimer) { clearTimeout(releaseTimer); releaseTimer = null; }
-            };
-            const disarmSuppress = () => {
-                if (releaseTimer) clearTimeout(releaseTimer);
-                releaseTimer = setTimeout(() => {
-                    suppressing = false;
-                    document.body.classList.remove('tabbar-longpress');
-                    releaseTimer = null;
-                }, 350);
-            };
-            const cancel = () => {
-                if (timer) { clearTimeout(timer); timer = null; }
-                disarmSuppress();
-            };
-            const onStart = (e) => {
-                const t = e.touches ? e.touches[0] : e;
-                startX = t.clientX; startY = t.clientY;
-                if (timer) { clearTimeout(timer); timer = null; }
-                armSuppress();
-                timer = setTimeout(() => {
-                    timer = null;
-                    window.openArticlesMenu();
-                }, 500);
-            };
-            const onMove = (e) => {
-                if (!timer) {
-                    if (suppressing && e.cancelable) e.preventDefault();
-                    return;
-                }
-                const t = e.touches ? e.touches[0] : e;
-                if (Math.hypot(t.clientX - startX, t.clientY - startY) > 10) {
-                    cancel();
-                } else if (e.cancelable) {
-                    e.preventDefault();
-                }
-            };
-            btn.addEventListener('touchstart', onStart, { passive: true });
-            btn.addEventListener('touchmove', onMove, { passive: false });
-            btn.addEventListener('touchend', cancel, { passive: true });
-            btn.addEventListener('touchcancel', cancel, { passive: true });
-            document.addEventListener('selectstart', (e) => {
-                if (suppressing) e.preventDefault();
-            });
-            btn.addEventListener('contextmenu', (e) => { e.preventDefault(); window.openArticlesMenu(); });
-        })();
-
         // --- Viewer Header & Back Button Navigation ---
         function updateViewerBackBtn() {
             const backBtn = document.getElementById('viewer-back-btn');
@@ -15928,7 +15752,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 275;
+        window.APP_BUILD = 276;
 
         (async function initApp() {
             try {
@@ -16830,7 +16654,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v275';
+const CACHE_NAME = 'rss-reader-v276';
 const APP_SHELL = [
     '/',
     'index.html'
