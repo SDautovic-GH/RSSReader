@@ -6060,6 +6060,11 @@
             }
         }
 
+        /* Desktop header Refresh spins while a refresh you asked for runs (build 304). */
+        #header-refresh-btn.is-refreshing svg {
+            animation: ptr-spin 0.8s linear infinite;
+        }
+
         @keyframes ptr-spin {
             to {
                 transform: rotate(360deg);
@@ -11661,10 +11666,25 @@
             }
         };
 
-        window.refreshAll = () => {
-            // No refresh toasts (user preference). Feedback is the in-timeline spinner
-            // when empty; when articles are showing, new items simply appear in place.
-            window.runFullRefresh();
+        // A refresh you asked for (the desktop header button, the phone's Following hint,
+        // an empty list's Refresh). No refresh toasts (user preference). Build 304: the
+        // desktop button spins until the refresh - and any pass queued behind one already
+        // running - is done, and the desktop Today column is then rebuilt in place (scroll
+        // and open story kept), so what was fetched shows. Before, Today never showed it:
+        // refreshUI deliberately leaves an open brief alone. The automatic refresh still
+        // does, so stories do not reshuffle under you while you read.
+        window.refreshAll = async () => {
+            const btn = document.getElementById('header-refresh-btn');
+            btn?.classList.add('is-refreshing');
+            try {
+                await window.runFullRefresh();
+                while (window._refreshInFlight || window._refreshPending) {
+                    await new Promise(r => setTimeout(r, 300));
+                }
+            } finally {
+                btn?.classList.remove('is-refreshing');
+                if (window._todayInColumn) window.renderTodayColumn?.();
+            }
         };
 
         // --- AUTO REFRESH ---
@@ -15143,7 +15163,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 303;
+        window.APP_BUILD = 304;
 
         (async function initApp() {
             try {
@@ -16030,7 +16050,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v303';
+const CACHE_NAME = 'rss-reader-v304';
 const APP_SHELL = [
     '/',
     'index.html'
