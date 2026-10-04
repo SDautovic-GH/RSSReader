@@ -4541,6 +4541,20 @@
             padding: 0 18px;
         }
 
+        /* Unread total inside Next - "Next · 41" - in full screen only (build 287, on
+           request): full screen hides the Today badge and the sidebar counts. */
+        .reader-next-count {
+            display: none;
+            margin-left: 2px;
+            font-weight: 500;
+            opacity: 0.75;
+            font-variant-numeric: tabular-nums;
+        }
+
+        body.is-fullscreen .reader-next-count:not(:empty) {
+            display: inline;
+        }
+
         #reader-next.is-last svg {
             display: none;
         }
@@ -7196,6 +7210,7 @@
                  pill, inside a `hidden` wrapper, never appeared). -->
             <button id="reader-next" type="button" onclick="window.readerNextOrBack()" aria-label="Next story">
                 <span id="reader-next-label">Next</span>
+                <span id="reader-next-count" class="reader-next-count"></span>
                 <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                     stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
                     <polyline points="9 18 15 12 9 6"></polyline>
@@ -9594,7 +9609,6 @@
             const unreadCount = filtered.filter(a => a.unread).length;
             document.getElementById('timeline-count').textContent = `Mark Read · ${unreadCount}`;
             updateBadges();
-            if (typeof updateReaderTabMode === 'function') updateReaderTabMode();
         };
 
         const _faviconStyleEl = document.createElement('style');
@@ -11773,6 +11787,18 @@
             const btnSaved = document.getElementById('feed-btn-saved');
             if (btnReadLater) btnReadLater.classList.toggle('smart-empty', readLaterCount === 0);
             if (btnSaved) btnSaved.classList.toggle('smart-empty', savedCount === 0);
+
+            // The same total on the Today tab (mobile) and inside Next (full screen), here
+            // because this runs after every read-state change - opening a story included
+            // (build 287; the tab badge had its own updater that only ran on list renders).
+            const unreadLabel = allUnread > 99 ? '99+' : String(allUnread);
+            const todayBadge = document.getElementById('mob-tab-today-badge');
+            if (todayBadge) {
+                todayBadge.textContent = unreadLabel;
+                todayBadge.classList.toggle('hidden', allUnread === 0);
+            }
+            const nextCount = document.getElementById('reader-next-count');
+            if (nextCount) nextCount.textContent = allUnread > 0 ? `· ${unreadLabel}` : '';
 
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
             updateHeaderStatus();
@@ -15220,20 +15246,6 @@
         window._mobilePane = 'timeline';
         window._activeTab = 'today';
 
-        function updateReaderTabMode() {
-            // Total unread on the Today tab (moved from Following in build 285, on request)
-            const badge = document.getElementById('mob-tab-today-badge');
-            if (badge) {
-                const n = (window.articles || []).filter(a => a.unread).length;
-                if (n > 0) {
-                    badge.textContent = n > 99 ? '99+' : String(n);
-                    badge.classList.remove('hidden');
-                } else {
-                    badge.classList.add('hidden');
-                }
-            }
-        }
-        window.updateReaderTabMode = updateReaderTabMode;
 
         // Active tab pill indicator
         window.setMobileTab = (tab) => {
@@ -15355,7 +15367,6 @@
             }
 
             updateViewerBackBtn();
-            updateReaderTabMode();
 
             if (pane === 'timeline') {
                 const listEl = document.getElementById('article-list');
@@ -15705,7 +15716,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 286;
+        window.APP_BUILD = 287;
 
         (async function initApp() {
             try {
@@ -16592,7 +16603,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v286';
+const CACHE_NAME = 'rss-reader-v287';
 const APP_SHELL = [
     '/',
     'index.html'
