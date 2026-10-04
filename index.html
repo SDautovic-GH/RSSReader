@@ -4553,35 +4553,48 @@
             animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        #reader-prev {
+        /* Icon-only pair, ‹ and › (build 289, on request). After a brief's last story the
+           › becomes the Today tab's sun: tap it to go back to Today. */
+        #reader-prev,
+        #reader-next {
+            position: relative;
             width: 44px;
             padding: 0;
         }
 
-        #reader-next {
-            padding: 0 14px 0 18px;
+        #reader-next .reader-next-today,
+        #reader-next.is-last .reader-next-chevron {
+            display: none;
         }
 
-        #reader-next.is-last {
-            padding: 0 18px;
+        #reader-next.is-last .reader-next-today {
+            display: block;
         }
 
-        /* Unread total inside Next - "Next · 41" - in full screen only (build 287, on
-           request): full screen hides the Today badge and the sidebar counts. */
+        /* Unread total as a badge on Next, in full screen only (builds 287/289, on
+           request) - the Today tab's badge, which full screen hides with the tab bar. */
         .reader-next-count {
             display: none;
-            margin-left: 2px;
-            font-weight: 500;
-            opacity: 0.75;
+            position: absolute;
+            top: -5px;
+            right: -6px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            background: #3b82f6;
+            color: #fff;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 18px;
+            text-align: center;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.9);
+            pointer-events: none;
             font-variant-numeric: tabular-nums;
         }
 
         body.is-fullscreen .reader-next-count:not(:empty) {
-            display: inline;
-        }
-
-        #reader-next.is-last svg {
-            display: none;
+            display: block;
         }
 
         #fullscreen-exit {
@@ -7245,13 +7258,17 @@
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
-                <button id="reader-next" type="button" onclick="window.readerNextOrBack()" aria-label="Next story">
-                    <span id="reader-next-label">Next</span>
-                    <span id="reader-next-count" class="reader-next-count"></span>
-                    <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                        stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                <button id="reader-next" type="button" onclick="window.readerNextOrBack()" title="Next"
+                    aria-label="Next story">
+                    <svg class="reader-next-chevron" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
+                    <!-- After a brief's last story: the Today tab's sun - back to Today -->
+                    <svg class="reader-next-today" fill="none" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <use href="#icon-sun" />
+                    </svg>
+                    <span id="reader-next-count" class="reader-next-count"></span>
                 </button>
             </div>
             <button id="fullscreen-exit" type="button" onclick="window.setReadingFullScreen(false)"
@@ -11852,7 +11869,7 @@
                 todayBadge.classList.toggle('hidden', allUnread === 0);
             }
             const nextCount = document.getElementById('reader-next-count');
-            if (nextCount) nextCount.textContent = allUnread > 0 ? `· ${unreadLabel}` : '';
+            if (nextCount) nextCount.textContent = allUnread > 0 ? unreadLabel : '';
 
             document.title = allUnread > 0 ? `(${allUnread}) RSS Reader` : 'RSS Reader';
             updateHeaderStatus();
@@ -13484,8 +13501,8 @@
             if (deskBtn) deskBtn.classList.toggle('hidden', !showReturn);
             if (topBanner) topBanner.classList.toggle('hidden', !showReturn);
             if (endCard) endCard.classList.toggle('hidden', !showReturn);
-            // The Next pill, for any open story (build 286): "Next", or "Back to Today" once
-            // this is the last story of the brief it came from.
+            // The Next button, for any open story (build 286): ›, or the Today sun once this
+            // is the last story of the brief it came from (icon-only since build 289).
             const nx = window.readerNext();
             document.getElementById('viewer-pane')?.classList.toggle('has-reader-next', nx.show);
             document.getElementById('viewer-pane')?.classList.toggle('has-reader-prev', window.readerHasPrev());
@@ -13494,8 +13511,7 @@
                 const last = nx.fromBrief && !nx.hasNext;
                 nextBtn.classList.toggle('is-last', last);
                 nextBtn.setAttribute('aria-label', last ? 'Back to Today' : 'Next story');
-                const label = document.getElementById('reader-next-label');
-                if (label) label.textContent = last ? 'Back to Today' : 'Next';
+                nextBtn.title = last ? 'Back to Today' : 'Next';
             }
             if (isFromBrief && window.currentArticle) window.syncBriefArticleActionButtons?.();
             window.syncBriefCards?.();
@@ -15782,7 +15798,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 288;
+        window.APP_BUILD = 289;
 
         (async function initApp() {
             try {
@@ -16669,7 +16685,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v288';
+const CACHE_NAME = 'rss-reader-v289';
 const APP_SHELL = [
     '/',
     'index.html'
