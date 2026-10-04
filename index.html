@@ -7345,6 +7345,19 @@
         // Hashes the cloud says are read. Cannot be expanded back to URLs — by design;
         // membership is all the app needs.
         window._readHashes = new Set();
+        // CLOUD READ MARKS ARE KEPT ON THE DEVICE (build 305). They used to live in memory
+        // only, so every launch started from this device's own read list: stories read on
+        // another device showed as unread (17) until the cloud snapshot arrived ~20s later
+        // (2) - and, never saved, the same again on the next launch. Saved after each
+        // snapshot that brings new marks; loaded at startup before anything is counted.
+        let _persistHashesTimer = null;
+        window.persistReadHashes = function () {
+            clearTimeout(_persistHashesTimer);
+            _persistHashesTimer = setTimeout(() => {
+                window.appDB?.put('metadata', Array.from(window._readHashes), 'readHashes')
+                    .catch(e => console.warn('Read hashes save error:', e?.message));
+            }, 3000);
+        };
         // SINGLE SOURCE OF TRUTH for "is this link read?". Checks the local URL set
         // first, then the cloud hash set. On a hash hit it REHYDRATES the URL into
         // _readLinks, so a device rebuilds URL-level history as it encounters articles —
@@ -15163,7 +15176,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 304;
+        window.APP_BUILD = 305;
 
         (async function initApp() {
             try {
@@ -15236,6 +15249,12 @@
                         const archivedLinks = await window.appDB.getAllKeys('readArchive');
                         archivedLinks.forEach(l => window._readLinks.add(l));
                     } catch (e) { console.warn('readArchive self-heal skipped:', e?.message); }
+                    // Cloud read marks saved on this device (build 305), applied before the
+                    // article cache is restored and counted.
+                    try {
+                        const savedHashes = await window.appDB.get('metadata', 'readHashes');
+                        if (Array.isArray(savedHashes)) savedHashes.forEach(h => window._readHashes.add(h));
+                    } catch (e) { console.warn('Saved read hashes skipped:', e?.message); }
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
                     // Automatic briefs are gone (build 281): drop what they stored.
@@ -15693,7 +15712,7 @@
                         if (!window._readHashes.has(h)) { window._readHashes.add(h); added++; }
                     }
                     window._cloudReadStateSeeded = true;
-                    if (added > 0) changed = true;
+                    if (added > 0) { changed = true; window.persistReadHashes(); }
                 }
                 // LEGACY FORMAT: full URLs. Still merged so a device running older cached
                 // code (or a doc not yet migrated) keeps working. Their hashes are folded
@@ -15706,6 +15725,7 @@
                         window._readHashes.add(h);
                     });
                     window._cloudReadStateSeeded = true;
+                    window.persistReadHashes();
                     // Merge additively — but explicit keep-unread toggles win over a
                     // stale cloud copy (merge-writes never remove, so the doc may
                     // still list a link the user deliberately toggled back to unread).
@@ -16050,7 +16070,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v304';
+const CACHE_NAME = 'rss-reader-v305';
 const APP_SHELL = [
     '/',
     'index.html'
