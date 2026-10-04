@@ -13047,6 +13047,8 @@
             if (img.naturalWidth < 100 || img.naturalHeight < 60) { box.remove(); return; }
             if (box.classList.contains('brief-hero') && img.naturalWidth < 600) {
                 box.classList.replace('brief-hero', 'brief-thumb');
+                // A thumbnail's place is after the source / time line (build 291).
+                box.parentElement?.querySelector(':scope > .brief-story-meta')?.after(box);
             }
         };
         window.briefImgFailed = function (img) {
@@ -13094,6 +13096,11 @@
                     const mediaHtml = imgUrl
                         ? `<div class="${isHero ? 'brief-hero' : 'brief-thumb'}" onclick="window.openArticleInReader('${saId}')"><img src="${esc(imgUrl)}" alt="" loading="lazy" decoding="async" onload="window.briefImgLoaded(this)" onerror="window.briefImgFailed(this)"></div>`
                         : '';
+                    // The hero leads the card; a thumbnail goes AFTER the source / time line
+                    // (build 291, on request), so that line keeps the full width and the
+                    // picture sits beside the headline and summary instead.
+                    const heroHtml = isHero ? mediaHtml : '';
+                    const thumbHtml = isHero ? '' : mediaHtml;
 
                     // Detect social / microblog post (Bluesky, Mastodon, or identical title & excerpt)
                     const isSocial = (st.feedUrl && isBlueskyFeed(st.feedUrl)) ||
@@ -13126,7 +13133,7 @@
 
                     html += `
                         <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}>
-                            ${mediaHtml}
+                            ${heroHtml}
                             <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
                                 ${favHtml}
                                 <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
@@ -13134,6 +13141,7 @@
                                 <span class="brief-story-time flex-shrink-0 whitespace-nowrap">${relTime}</span>
                                 ${alsoReported}
                             </div>
+                            ${thumbHtml}
                             ${storyBodyHtml}
                             <div class="brief-story-actions flex items-center gap-1.5 pt-0.5">
                                 <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-gray-500 dark:text-gray-400" title="Open in Reader" aria-label="Open in Reader">
@@ -15905,7 +15913,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 290;
+        window.APP_BUILD = 291;
 
         (async function initApp() {
             try {
@@ -16792,7 +16800,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v290';
+const CACHE_NAME = 'rss-reader-v291';
 const APP_SHELL = [
     '/',
     'index.html'

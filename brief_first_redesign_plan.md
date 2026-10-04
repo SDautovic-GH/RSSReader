@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 290** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 291** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-04 |
 
 ---
@@ -86,8 +86,9 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Unread badge on Today (285, on request):** the total-unread badge moved from the Following tab to the Today tab (same count, same 99+ cap).
 - **Reader bar alignment (278):** build 271 assumed the article column had `md:ml-4` / `lg:ml-8`, but those classes are not in the compiled CSS. The bar is now padded to the column's real edges (1rem / 1.5rem + 42rem). Category pills are regular weight.
 
-### Phase 6: Imagery (Build 290)
+### Phase 6: Imagery (Builds 290–291)
 - **Thumbnails:** every Today story with a picture shows a 72px square thumbnail on the right (cropped to fill), with the text wrapping beside it; stories without one stay full-width text. The picture is the story's `article.image` (feed attachment, media:thumbnail/content, or first body image), else one from the grouped copies (`briefStoryImage()`).
+- **Placement (291, on request):** the thumbnail sits after the source / time line, so that line keeps the full width (it had been squeezed and the source name cut). The picture sits beside the headline and summary. A hero demoted to a thumbnail moves there too.
 - **Hero:** the first story with a picture in the first section (Top Stories) gets a full-width 16:9 image above its headline.
 - **Guardrails:**
   - Images are lazy, so they load only near the screen.
