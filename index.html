@@ -3404,7 +3404,7 @@
 
             /* Full-screen read area: content rests comfortably below the status bar / Dynamic Island */
             #timeline-pane.mobile-active #article-list {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 16px) !important;
+                padding-top: 8px !important;
                 padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
             }
 
@@ -3466,12 +3466,47 @@
                 font-size: 0.875rem !important;
             }
 
-            /* Viewer toolbar hidden on mobile — reading progress lives in the Reader tab */
+            /* Mobile viewer header — shown when viewing an article, with back button and actions */
             #viewer-header {
                 display: none !important;
             }
 
+            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header {
+                display: flex !important;
+                height: 52px !important;
+                min-height: 52px !important;
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+                background: rgba(255, 255, 255, 0.88) !important;
+                backdrop-filter: blur(20px) !important;
+                -webkit-backdrop-filter: blur(20px) !important;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 20 !important;
+            }
+
+            .dark #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header {
+                background: rgba(17, 24, 39, 0.88) !important;
+                border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+            }
+
+            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #share-btn,
+            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #saved-action-btn,
+            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #read-later-action-btn {
+                display: inline-flex !important;
+            }
+
             #reading-progress {
+                display: none !important;
+            }
+
+            /* On mobile, the sticky reader header provides Back, Share, Save, and Later.
+               Hide in-article redundant floating/flow buttons to keep the layout clean. */
+            #brief-return-header,
+            #brief-return-footer,
+            #brief-return-floating,
+            #mobile-brief-fab-group {
                 display: none !important;
             }
 
@@ -3616,7 +3651,7 @@
             align-items: stretch;
             gap: 2px;
             height: 62px;
-            padding: 6px;
+            padding: 6px 4px;
             border-radius: 999px;
             /* Edge-lit glass finish: brighter at both rounded ends (90deg), a soft
                top sheen (180deg), over the translucent base — plus an inset top-rim
@@ -3650,7 +3685,7 @@
             justify-content: center;
             gap: 3px;
             height: 100%;
-            padding: 0 6px;
+            padding: 0 4px;
             border-radius: 999px;
             background: transparent;
             color: rgba(255, 255, 255, 0.82);
@@ -3728,7 +3763,7 @@
             justify-content: center;
             gap: 3px;
             height: 100%;
-            padding: 0 6px;
+            padding: 0 4px;
             border-radius: 999px;
             background: transparent;
             color: rgba(255, 255, 255, 0.82);
@@ -3752,8 +3787,8 @@
         }
 
         #mobile-tab-bar .tab-search svg {
-            width: 30px;
-            height: 30px;
+            width: 22px;
+            height: 22px;
             display: block;
             stroke: currentColor;
             color: inherit;
@@ -5402,6 +5437,161 @@
             color: rgba(255, 255, 255, 0.45) !important;
         }
 
+        /* Topics Horizontal Category Bar */
+        .topics-chip-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            overflow-x: auto;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            flex-shrink: 0;
+            z-index: 5;
+        }
+
+        .dark .topics-chip-bar {
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+            background: rgba(17, 24, 39, 0.85);
+        }
+
+        .topics-chip-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .topics-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            background: rgba(0, 0, 0, 0.05);
+            color: #64748b;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .dark .topics-chip {
+            background: rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+        }
+
+        .topics-chip:hover {
+            background: rgba(0, 0, 0, 0.08);
+            color: #334155;
+        }
+
+        .dark .topics-chip:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #f1f5f9;
+        }
+
+        .topics-chip.active {
+            background: #3d6bb0 !important;
+            color: #ffffff !important;
+            box-shadow: 0 1px 3px rgba(61, 107, 176, 0.3);
+        }
+
+        .dark .topics-chip.active {
+            background: #4d7cc7 !important;
+            color: #ffffff !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .topics-chip-badge {
+            font-size: 10px;
+            font-weight: 700;
+            opacity: 0.85;
+            padding: 0 4px;
+            border-radius: 9999px;
+            background: rgba(0, 0, 0, 0.12);
+        }
+
+        .topics-chip.active .topics-chip-badge {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Saved Segmented Control Bar */
+        #saved-segmented-bar {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            flex-shrink: 0;
+            z-index: 5;
+        }
+
+        .dark #saved-segmented-bar {
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+            background: rgba(17, 24, 39, 0.85);
+        }
+
+        .saved-segment-wrap {
+            display: flex;
+            align-items: stretch;
+            background: rgba(0, 0, 0, 0.06);
+            padding: 2px;
+            border-radius: 8px;
+            gap: 2px;
+        }
+
+        .dark .saved-segment-wrap {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .saved-segment {
+            flex: 1 1 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .dark .saved-segment {
+            color: #94a3b8;
+        }
+
+        .saved-segment.active {
+            background: #ffffff !important;
+            color: #3d6bb0 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+
+        .dark .saved-segment.active {
+            background: #1e293b !important;
+            color: #60a5fa !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            #timeline-pane.mobile-active .topics-chip-bar,
+            #timeline-pane.mobile-active #saved-segmented-bar {
+                padding-top: max(8px, env(safe-area-inset-top, 0px));
+            }
+        }
+
         /* Back to Brief Return navigation styles (visible ONLY when coming from Brief) */
         @keyframes briefPulseHighlight {
             0% {
@@ -6319,6 +6509,10 @@
                 <polyline points="15 3 21 3 21 9" />
                 <line x1="10" y1="14" x2="21" y2="3" />
             </symbol>
+            <symbol id="icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </symbol>
         </defs>
     </svg>
 
@@ -6417,6 +6611,16 @@
                 <!-- Smart Feeds card -->
                 <div id="smart-feeds-card"
                     class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
+                    <button id="feed-btn-today" onclick="openToday()"
+                        class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 hover:bg-white/5"
+                        title="Live brief of your unread stories from the last 24 hours">
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3 flex-shrink-0" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="4" />
+                                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                            </svg> Today</span>
+                    </button>
                     <button id="feed-btn-all" onclick="setSmartFeed('all')"
                         oncontextmenu="showFolderContextMenu(event,'smart','all')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 active-item">
@@ -6532,6 +6736,12 @@
                 </button>
             </div>
 
+            <!-- Topics Horizontal Category Bar (Topics mode) -->
+            <div id="topics-bar" class="topics-chip-bar flex items-center gap-1.5 px-3 py-2 overflow-x-auto border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm select-none no-scrollbar"></div>
+
+            <!-- Saved Segmented Bar (Saved mode) -->
+            <div id="saved-segmented-bar" class="hidden px-3 py-2 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm select-none"></div>
+
             <!-- ON-DEMAND BRIEF BAR (Daily Briefs folder only) -->
             <div id="brief-ondemand-bar" class="brief-ondemand-bar hidden">
                 <div class="brief-ondemand-inner">
@@ -6567,6 +6777,13 @@
                 class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10"
                 ondblclick="toggleFullScreenManual(event)" title="Double-click header background to toggle Full Screen">
                 <div class="flex items-center">
+                    <button id="viewer-back-btn" onclick="onViewerBackClick()" type="button" aria-label="Back"
+                        class="hidden md:hidden inline-flex items-center gap-1 -ml-1 px-2.5 py-1.5 rounded-lg text-sm font-semibold text-[#3d6bb0] dark:text-[#4d7cc7] hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95 transition-all">
+                        <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        <span id="viewer-back-label">Back</span>
+                    </button>
                 </div>
 
                 <div class="flex items-center space-x-3" ondblclick="event.stopPropagation()">
@@ -6821,44 +7038,60 @@
         </main>
     </div>
 
-    <!-- MOBILE BOTTOM TAB BAR — Apple Music style -->
+    <!-- MOBILE BOTTOM TAB BAR — Apple News / Google News style -->
     <nav id="mobile-tab-bar">
         <div class="tab-pill">
-            <button id="mob-tab-feeds" type="button" class="tab-btn" onclick="setMobilePane('sidebar')">
+            <button id="mob-tab-today" type="button" class="tab-btn" onclick="onTodayTabClick()">
                 <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                     stroke-linejoin="round" viewBox="0 0 24 24">
-                    <path d="M3 11l9-8 9 8" />
-                    <path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10" />
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                 </svg>
-                <span class="tab-label">Home</span>
+                <span class="tab-label">Today</span>
             </button>
-            <button id="mob-tab-articles" type="button" class="tab-btn" onclick="onArticlesTabClick()">
+            <button id="mob-tab-topics" type="button" class="tab-btn" onclick="onTopicsTabClick()">
                 <span class="tab-ico-wrap">
                     <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
                         stroke-linejoin="round" viewBox="0 0 24 24">
                         <path
                             d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2M7 16h6M7 8h6v4H7z" />
                     </svg>
-                    <span id="mob-tab-articles-badge" class="tab-icon-badge hidden" aria-hidden="true">0</span>
+                    <span id="mob-tab-topics-badge" class="tab-icon-badge hidden" aria-hidden="true">0</span>
                 </span>
-                <span class="tab-label">Articles</span>
+                <span class="tab-label">Topics</span>
             </button>
-            <button id="mob-tab-reader" type="button" class="tab-btn" onclick="onReaderTabClick()">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+            <button id="mob-tab-following" type="button" class="tab-btn" onclick="onFollowingTabClick()">
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                     stroke-linejoin="round" viewBox="0 0 24 24">
-                    <path d="M12 6.5C10.5 5.5 8 5 4 5v13c4 0 6.5 0.5 8 1.5" />
-                    <path d="M12 6.5C13.5 5.5 16 5 20 5v13c-4 0-6.5 0.5-8 1.5" />
-                    <path d="M12 6.5v13" />
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                 </svg>
-                <span id="mob-tab-reader-label" class="tab-label">Reader</span>
+                <span class="tab-label">Following</span>
             </button>
-            <button id="mob-tab-search" type="button" class="tab-search" onclick="toggleSearchSheet()"
+            <button id="mob-tab-saved" type="button" class="tab-btn" onclick="onSavedTabClick()">
+                <span class="tab-ico-wrap">
+                    <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" viewBox="0 0 24 24">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span id="mob-tab-saved-badge" class="tab-icon-badge hidden" aria-hidden="true">0</span>
+                </span>
+                <span class="tab-label">Saved</span>
+            </button>
+            <button id="mob-tab-search" type="button" class="tab-btn tab-search" onclick="toggleSearchSheet()"
                 aria-label="Search">
-                <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    viewBox="0 0 24 24">
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="7" />
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
+                <span class="tab-label">Search</span>
             </button>
         </div>
     </nav>
@@ -7376,6 +7609,8 @@
                 <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Open in
                         browser</span><kbd class="kbd">o</kbd></div>
                 <div class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-4 mb-2">App</div>
+                <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Open Today Brief</span><kbd
+                        class="kbd">t</kbd></div>
                 <div class="flex justify-between py-1.5"><span class="text-gray-300">Show this cheatsheet</span><kbd
                         class="kbd">?</kbd></div>
             </div>
@@ -8997,9 +9232,87 @@
             }
         }
 
+        function getAppCategories() {
+            const cats = new Set();
+            (window.feeds || []).forEach(f => {
+                if (f.category) cats.add(f.category);
+            });
+            const order = window._categoryOrder || [];
+            return Array.from(cats).sort((a, b) => {
+                const ia = order.indexOf(a);
+                const ib = order.indexOf(b);
+                if (ia !== -1 && ib !== -1) return ia - ib;
+                if (ia !== -1) return -1;
+                if (ib !== -1) return 1;
+                return a.localeCompare(b);
+            });
+        }
+        window.getAppCategories = getAppCategories;
+
+        window.renderTopicsBar = function () {
+            const bar = document.getElementById('topics-bar');
+            if (!bar) return;
+            const isSavedMode = window.currentSmartFeed === 'saved' || window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'briefs';
+            if (isSavedMode) {
+                bar.classList.add('hidden');
+                return;
+            }
+            bar.classList.remove('hidden');
+
+            const cats = getAppCategories();
+            const current = window.currentCategoryFilter;
+            const isAll = !current && window.currentSmartFeed === 'all';
+
+            let html = `<button type="button" class="topics-chip${isAll ? ' active' : ''}" onclick="setCategoryFilter(null)">All</button>`;
+            cats.forEach(c => {
+                const active = current === c;
+                const unread = (window.articles || []).filter(a => a.unread && (window.feeds || []).find(f => f.name === a.source && f.category === c)).length;
+                const escCat = c.replace(/'/g, "\\'");
+                html += `<button type="button" class="topics-chip${active ? ' active' : ''}" onclick="setCategoryFilter('${escCat}')">${c}${unread > 0 ? ` <span class="topics-chip-badge">${unread}</span>` : ''}</button>`;
+            });
+            bar.innerHTML = html;
+        };
+
+        window.renderSavedBar = function () {
+            const bar = document.getElementById('saved-segmented-bar');
+            if (!bar) return;
+            const isSavedMode = window.currentSmartFeed === 'saved' || window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'briefs';
+            if (!isSavedMode) {
+                bar.classList.add('hidden');
+                return;
+            }
+            bar.classList.remove('hidden');
+
+            const current = window.currentSmartFeed;
+            const isSaved = current === 'saved';
+            const isReadLater = current === 'read-later';
+            const isBriefs = current === 'briefs';
+
+            const savedCount = (window.savedBucket && typeof window.savedBucket.list === 'function') ? window.savedBucket.list().length : 0;
+            const readLaterCount = (window.articles || []).filter(a => a.readLater).length;
+            const briefsCount = (window._briefArticles || []).length;
+
+            bar.innerHTML = `
+                <div class="saved-segment-wrap">
+                    <button type="button" class="saved-segment${isSaved ? ' active' : ''}" onclick="setSmartFeed('saved')">
+                        Saved${savedCount > 0 ? ` (${savedCount})` : ''}
+                    </button>
+                    <button type="button" class="saved-segment${isReadLater ? ' active' : ''}" onclick="setSmartFeed('read-later')">
+                        Read Later${readLaterCount > 0 ? ` (${readLaterCount})` : ''}
+                    </button>
+                    <button type="button" class="saved-segment${isBriefs ? ' active' : ''}" onclick="setSmartFeed('briefs')">
+                        Briefs${briefsCount > 0 ? ` (${briefsCount})` : ''}
+                    </button>
+                </div>
+            `;
+        };
+
         window.renderTimeline = function (preserveLayout = false) {
             const list = document.getElementById('article-list');
             if (!list) return;
+
+            if (typeof renderTopicsBar === 'function') renderTopicsBar();
+            if (typeof renderSavedBar === 'function') renderSavedBar();
 
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             const isSaved = window.currentSmartFeed === 'saved';
@@ -9205,18 +9518,19 @@
         const _faviconSlugCache = {};
 
         function getFaviconSlug(sourceName) {
+            if (!sourceName) return 'fav-unknown';
             if (_faviconSlugCache[sourceName]) return _faviconSlugCache[sourceName];
-            const slug = 'fav-' + sourceName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            const slug = 'fav-' + String(sourceName).replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
             _faviconSlugCache[sourceName] = slug;
             return slug;
         }
 
         function updateFaviconStyles() {
-            const rules = window.feeds
-                .filter(f => f.favicon)
+            const rules = (window.feeds || [])
+                .filter(f => f && f.favicon)
                 .map(f => {
-                    const slug = getFaviconSlug(f.name);
-                    const fav = f.favicon.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    const slug = getFaviconSlug(f.name || f.title || 'feed');
+                    const fav = String(f.favicon).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     return `.${slug}{background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;}`;
                 }).join('');
             _faviconStyleEl.textContent = rules;
@@ -9235,10 +9549,11 @@
         }
 
         function getFavicon(sourceName) {
+            if (!sourceName) return '';
             if (sourceName === 'Daily Brief' || sourceName === 'Brief') {
                 return '<svg class="w-3.5 h-3.5 inline mr-1 text-blue-400 align-middle"><use href="#icon-newspaper"/></svg>';
             }
-            const feedObj = window.feeds.find(f => f.name === sourceName);
+            const feedObj = (window.feeds || []).find(f => (f.name === sourceName || f.title === sourceName));
             if (!feedObj?.favicon) return '';
             const slug = getFaviconSlug(sourceName);
             const fav = escJs(feedObj.favicon);
@@ -9290,7 +9605,10 @@
             const saId = escJs(a.id);
 
             // Bluesky posts use Mastodon-style: no headline, full text in the preview row.
-            const sourceLabel = a.source;
+            const feedObj = (window.feeds || []).find(f => (f.name === a.source || f.title === a.source || f.id === a.feedId || f.url === a.feedUrl));
+            const sourceLabel = a.source || feedObj?.name || feedObj?.title || 'News';
+            const favicon = getFavicon(sourceLabel);
+
             // For Bluesky reposts, show the original author above the post text so the
             // person being read is visible without losing the feed name at the top.
             const repostLine = (isBsky && a.bskyIsRepost && a.bskyOriginalAuthor)
@@ -9300,6 +9618,24 @@
             const previewCls = isBsky
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-social dynamic-list-preview'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
+
+            const isSaved = window.savedBucket ? window.savedBucket.has(a.link) : false;
+            const starIcon = isSaved ? '#icon-star-filled' : '#icon-star';
+            const starColor = isSaved ? 'text-amber-500 dark:text-amber-400 is-saved' : 'text-gray-500 dark:text-gray-400';
+            const actionsRowHtml = `
+                <div class="card-actions flex items-center gap-1.5 pt-1.5 mt-1" onclick="event.stopPropagation()">
+                    <button type="button" onclick="selectArticle('${saId}')" class="brief-action-btn text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors" title="Open in Reader" aria-label="Open in Reader">
+                        <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
+                    </button>
+                    <button type="button" data-save-id="${saId}" data-save-link="${esc(a.link || '')}" onclick="window.toggleBriefStorySaved('${saId}', this)" class="brief-action-btn brief-save-btn ${starColor} hover:text-amber-500 transition-colors" title="${isSaved ? 'Unsave' : 'Save Article'}" aria-label="${isSaved ? 'Unsave' : 'Save Article'}">
+                        <svg class="brief-action-icon"><use href="${starIcon}"/></svg>
+                    </button>
+                    ${a.link && a.link !== '#' ? `
+                    <a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" class="brief-action-link text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors" title="Open original source" aria-label="Open original source">
+                        <svg class="brief-action-icon"><use href="#icon-external-link"/></svg>
+                    </a>` : ''}
+                </div>`;
+
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Read Later &#x2605;</div>
@@ -9314,6 +9650,7 @@
                     ${titleHtml}
                     ${repostLine}
                     <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
+                    ${actionsRowHtml}
                 </div>
             </div>`;
         }
@@ -9829,7 +10166,7 @@
                 if (countEl) countEl.classList.add('whitespace-nowrap');
                 let controlsEl = catSection.querySelector('.brief-cat-controls');
                 if (controlsEl) controlsEl.classList.add('flex-shrink-0', 'leading-none');
-                if (countEl && !catSection.querySelector('.brief-cat-mark-read-btn')) {
+                if (countEl && !catSection.hasAttribute('data-no-mark-read') && !catSection.querySelector('.brief-cat-mark-read-btn')) {
                     if (!controlsEl) {
                         controlsEl = document.createElement('div');
                         controlsEl.className = 'brief-cat-controls flex items-center gap-2 flex-shrink-0 leading-none';
@@ -9885,6 +10222,9 @@
             }
             if (!article && Array.isArray(window._briefArticles)) {
                 article = window._briefArticles.find(a => a.id === id);
+            }
+            if (!article && window._todayBrief && window._todayBrief.id === id) {
+                article = window._todayBrief;
             }
             if (!article) return;
 
@@ -10049,6 +10389,7 @@
             if (window._ttsActive) stopTTS();
 
             if (isMobile()) setMobilePane('viewer');
+            if (typeof updateViewerBackBtn === 'function') updateViewerBackBtn();
 
             const readerEl = document.getElementById('reader-view');
             if (readerEl) {
@@ -10462,8 +10803,15 @@
                 if (window.currentArticle) {
                     toggleUnread(window.currentArticle); saveReadState(); refreshUI();
                 }
+            } else if (e.key === 't' || e.key === 'T') {
+                e.preventDefault();
+                if (typeof openToday === 'function') openToday();
             } else if (e.key === 'b' || e.key === 'B') {
-                if (window.currentArticle) handleReadLaterAction();
+                if (window._returnToBriefState) {
+                    window.returnToBrief();
+                } else if (window.currentArticle) {
+                    handleReadLaterAction();
+                }
             } else if (e.key === 'o' || e.key === 'O') {
                 openExternal();
             } else if (e.key === '?') {
@@ -10479,8 +10827,12 @@
                 const isShortcutsOpen = shortcutsModal && !shortcutsModal.classList.contains('hidden');
                 closeShortcuts();
                 closeSearchSheet();
-                if (!isShortcutsOpen && window._returnToBriefState) {
-                    window.returnToBrief();
+                if (!isShortcutsOpen) {
+                    if (window._returnToBriefState) {
+                        window.returnToBrief();
+                    } else if (typeof isMobile === 'function' && isMobile() && window._mobilePane === 'viewer') {
+                        setMobilePane('timeline');
+                    }
                 }
             }
         });
@@ -12035,6 +12387,103 @@
             return slots.slice(0, 4);
         }
 
+        // ===== TODAY: live brief over the unread pool (brief-first redesign, phase 1) =====
+        // Not persisted: rebuilt every time Today is opened. It is a synthetic isBrief
+        // article, so Back to Brief, prev/next-in-brief, save buttons and TTS all work.
+        window.TODAY_BRIEF_ID = 'brief:today';
+        window.TODAY_WINDOW_HOURS = 24;
+        window.TODAY_TOP_N = 5;
+        window._todayBrief = null;
+
+        window.buildTodayBrief = function () {
+            const now = Date.now();
+            const windowStart = now - window.TODAY_WINDOW_HOURS * 3600000;
+            const pool = (window.articles || []).filter(a => {
+                if (!a.unread || a.isBrief) return false;
+                const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
+                return ts >= windowStart;
+            });
+            const built = buildStoryClusters(pool, { limitPerCat: window._briefStoriesPerCat || 10 });
+            let sections = built.categorySections;
+            const totalStories = built.totalStories;
+
+            // Top Stories: strongest clusters across every folder (authority rank, then
+            // multi-outlet consensus, then recency). Lifted out of their folder sections
+            // so no story appears twice. Only worth it when there is enough to choose from.
+            if (sections.length > 1 && totalStories > window.TODAY_TOP_N * 2) {
+                const all = [];
+                sections.forEach(cs => cs.stories.forEach(st => all.push(st)));
+                all.sort((x, y) =>
+                    ((x.effectiveRank ?? 9999) - (y.effectiveRank ?? 9999)) ||
+                    ((y.sourceCount || 1) - (x.sourceCount || 1)) ||
+                    ((y._ts || 0) - (x._ts || 0)));
+                const top = all.slice(0, window.TODAY_TOP_N);
+                const topIds = new Set(top.map(s => s.id));
+                sections = sections
+                    .map(cs => ({ ...cs, stories: cs.stories.filter(s => !topIds.has(s.id)) }))
+                    .filter(cs => cs.stories.length > 0);
+                sections.unshift({ name: 'Top Stories', slug: 'top_stories', icon: 'icon-newspaper', noMarkRead: true, stories: top });
+            }
+
+            const dateStr = typeof getETParts === 'function' ? getETParts(new Date(now)).dateStr : '';
+            const composed = composeSlotBrief({
+                id: window.TODAY_BRIEF_ID,
+                slot: 'today',
+                name: 'Today',
+                badgeLabel: 'Live',
+                windowLabel: `Unread · last ${window.TODAY_WINDOW_HOURS} hours`,
+                dateStr,
+                triggerTs: now,
+                windowStart,
+                windowEnd: now
+            }, sections, totalStories);
+
+            let body = composed.body;
+            if (totalStories === 0) {
+                body = body
+                    .replace('No new articles were captured in this delivery window.', "You're all caught up.")
+                    .replace(/Feeds may not have updated between [^<]*\./, `No unread stories from the last ${window.TODAY_WINDOW_HOURS} hours.`);
+            }
+
+            return {
+                id: window.TODAY_BRIEF_ID,
+                link: 'brief://today',
+                title: composed.title,
+                source: 'Brief',
+                slot: 'today',
+                excerpt: `${sections.length} sections · ${totalStories} stories`,
+                body,
+                spokenText: composed.spokenText,
+                author: 'Live Brief',
+                timestamp: now,
+                unread: false,
+                isBrief: true,
+                isToday: true,
+                categories: composed.categories.filter(c => c.name !== 'Top Stories'),
+                totalStories
+            };
+        };
+
+        window.openToday = async function () {
+            window._returnToBriefState = null;
+            window.hideBriefReturnUI?.();
+            // Timeline unread pool alignment
+            if (window.currentSmartFeed !== 'all' || window.currentCategoryFilter || window.currentSourceFilter) {
+                window.currentSmartFeed = 'all';
+                window.currentCategoryFilter = null;
+                window.currentSourceFilter = null;
+                if (typeof renderTimeline === 'function') renderTimeline();
+            }
+            window._todayBrief = window.buildTodayBrief();
+            document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
+            document.getElementById('feed-btn-today')?.classList.add('active-item');
+            selectArticle(window.TODAY_BRIEF_ID);
+            if (typeof isMobile === 'function' && isMobile()) {
+                setMobilePane('viewer');
+                setMobileTab('today');
+            }
+        };
+
         window.saveBriefRecord = async function (brief) {
             if (!window.appDB) return;
             try {
@@ -12084,6 +12533,92 @@
             }
         };
 
+        // Renders brief sections (header + story cards) for any buildStoryClusters() output.
+        function renderBriefSectionsHtml(categorySections, opts = {}) {
+            let html = '';
+            categorySections.forEach(cs => {
+                html += `
+                    <div id="brief-cat-${cs.slug}" class="brief-cat-section mb-5 scroll-mt-20"${cs.noMarkRead ? ' data-no-mark-read="1"' : ''}>
+                        <div class="brief-cat-header flex items-center justify-between pb-1 mb-2.5 flex-nowrap gap-2">
+                            <h3 class="brief-cat-heading font-bold text-blue-400 flex items-center gap-2 m-0 leading-none min-w-0">
+                                <svg class="w-4 h-4 flex-shrink-0"><use href="#${cs.icon || 'icon-rss'}"/></svg>
+                                <span class="truncate">${esc(cs.name)}</span>
+                            </h3>
+                            <div class="brief-cat-controls flex items-center gap-2 flex-shrink-0 leading-none">
+                                <span class="brief-cat-count text-gray-500 font-medium whitespace-nowrap">${cs.stories.length} stories</span>
+                                ${cs.noMarkRead ? '' : `<button type="button" data-brief-cat="${esc(cs.name)}" onclick="window.markBriefCategoryRead(this.getAttribute('data-brief-cat'), this)" class="brief-cat-mark-read-btn" title="Mark '${esc(cs.name)}' folder as read" aria-label="Mark '${esc(cs.name)}' folder as read">
+                                    <svg><use href="#icon-check"/></svg>
+                                </button>`}
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                `;
+                cs.stories.forEach(st => {
+                    const favHtml = typeof getFavicon === 'function' ? getFavicon(st.source) : '';
+                    const relTime = typeof getRelativeTime === 'function' ? getRelativeTime(st.timestamp) : '';
+                    const alsoReported = (st.alsoReportedBy && st.alsoReportedBy.length > 0)
+                        ? `<span class="brief-story-also text-gray-500 whitespace-nowrap truncate max-w-[160px]">• Also: ${esc(st.alsoReportedBy.join(', '))}</span>`
+                        : '';
+                    const saId = escJs(st.id);
+
+                    // Detect social / microblog post (Bluesky, Mastodon, or identical title & excerpt)
+                    const isSocial = (st.feedUrl && isBlueskyFeed(st.feedUrl)) ||
+                        (st.link && typeof isMastodonPost === 'function' && isMastodonPost(st.link)) ||
+                        (st.category && /fediverse|mastodon|bluesky|social/i.test(st.category)) ||
+                        (!st.title) ||
+                        (st.excerpt && (
+                            st.title.trim() === st.excerpt.trim() ||
+                            st.excerpt.trim().startsWith(st.title.trim().slice(0, 30)) ||
+                            st.title.trim().startsWith(st.excerpt.trim().slice(0, 30))
+                        ));
+
+                    const postText = (st.excerpt || st.title || '').trim();
+                    let storyBodyHtml = '';
+
+                    if (isSocial) {
+                        storyBodyHtml = `
+                            <p class="brief-story-excerpt dynamic-list-preview line-clamp-social is-social-post text-gray-800 dark:text-gray-200 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
+                                ${esc(postText)}
+                            </p>
+                        `;
+                    } else {
+                        storyBodyHtml = `
+                            <h4 class="brief-story-title dynamic-list-title font-semibold text-gray-900 dark:text-white leading-snug mt-0 cursor-pointer" onclick="window.openArticleInReader('${saId}')">
+                                ${esc(st.title)}
+                            </h4>
+                            ${st.excerpt ? `<p class="brief-story-excerpt dynamic-list-preview text-gray-500 dark:text-gray-400 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">${esc(st.excerpt)}</p>` : ''}
+                        `;
+                    }
+
+                    html += `
+                        <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}">
+                            <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
+                                ${favHtml}
+                                <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
+                                <span class="brief-story-dot flex-shrink-0">•</span>
+                                <span class="brief-story-time flex-shrink-0 whitespace-nowrap">${relTime}</span>
+                                ${alsoReported}
+                            </div>
+                            ${storyBodyHtml}
+                            <div class="brief-story-actions flex items-center gap-1.5 pt-0.5">
+                                <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-gray-500 dark:text-gray-400" title="Open in Reader" aria-label="Open in Reader">
+                                    <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
+                                </button>
+                                <button type="button" data-save-id="${saId}" data-save-link="${esc(st.link || '')}" onclick="window.toggleBriefStorySaved('${saId}', this)" class="brief-action-btn brief-save-btn text-gray-500 dark:text-gray-400" title="Save Article" aria-label="Save Article">
+                                    <svg class="brief-action-icon"><use href="#icon-star"/></svg>
+                                </button>
+                                <a href="${esc(st.link)}" target="_blank" rel="noopener noreferrer" class="brief-action-link brief-source-link text-gray-500 dark:text-gray-400" title="Open original source" aria-label="Open original source">
+                                    <svg class="brief-action-icon"><use href="#icon-external-link"/></svg>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></div>`;
+            });
+            return html;
+        }
+
         function generateBrief(slotDef) {
             // Find articles within publication window
             const pool = window.articles || [];
@@ -12091,11 +12626,19 @@
                 const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
                 return ts >= slotDef.windowStart && ts <= slotDef.windowEnd;
             });
+            const { categorySections, totalStories } = buildStoryClusters(inWindow, { limitPerCat: window._briefStoriesPerCat || 10 });
+            return composeSlotBrief(slotDef, categorySections, totalStories);
+        }
 
+        // ===== BRIEF ENGINE =====
+        // Groups any article pool into ranked, de-duplicated story clusters.
+        // opts.limitPerCat: max stories per section; opts.groupBy(a): section key (default: category folder).
+        // Each story carries alsoReportedBy (other outlet names) and coverage (all clustered articles).
+        function buildStoryClusters(inWindow, opts = {}) {
             // Group by category using robust multi-field feed matching
             const grouped = {};
             inWindow.forEach(a => {
-                const cat = getCategoryForArticle(a);
+                const cat = typeof opts.groupBy === 'function' ? opts.groupBy(a) : getCategoryForArticle(a);
                 if (!grouped[cat]) grouped[cat] = [];
                 grouped[cat].push(a);
             });
@@ -12106,7 +12649,7 @@
                 if (!orderedCats.includes(c) && grouped[c]?.length > 0) orderedCats.push(c);
             });
 
-            const limitPerCat = window._briefStoriesPerCat || 10;
+            const limitPerCat = opts.limitPerCat || window._briefStoriesPerCat || 10;
             const categorySections = [];
             let totalStories = 0;
 
@@ -12219,7 +12762,10 @@
                     const otherSources = Array.from(cl.sources).filter(s => s && s !== lead.source);
                     return {
                         ...lead,
-                        alsoReportedBy: otherSources
+                        alsoReportedBy: otherSources,
+                        sourceCount: cl.sourceCount,
+                        effectiveRank: cl.effectiveRank,
+                        coverage: cl.articles
                     };
                 });
 
@@ -12234,6 +12780,10 @@
                 }
             }
 
+            return { categorySections, totalStories };
+        }
+
+        function composeSlotBrief(slotDef, categorySections, totalStories) {
             // Build Date labels
             const triggerDate = new Date(slotDef.triggerTs);
             const datePartFormatted = triggerDate.toLocaleDateString('en-US', {
@@ -12289,86 +12839,7 @@
                     </div>
                 `;
             } else {
-                categorySections.forEach(cs => {
-                    html += `
-                        <div id="brief-cat-${cs.slug}" class="brief-cat-section mb-5 scroll-mt-20">
-                            <div class="brief-cat-header flex items-center justify-between pb-1 mb-2.5 flex-nowrap gap-2">
-                                <h3 class="brief-cat-heading font-bold text-blue-400 flex items-center gap-2 m-0 leading-none min-w-0">
-                                    <svg class="w-4 h-4 flex-shrink-0"><use href="#icon-rss"/></svg>
-                                    <span class="truncate">${esc(cs.name)}</span>
-                                </h3>
-                                <div class="brief-cat-controls flex items-center gap-2 flex-shrink-0 leading-none">
-                                    <span class="brief-cat-count text-gray-500 font-medium whitespace-nowrap">${cs.stories.length} stories</span>
-                                    <button type="button" data-brief-cat="${esc(cs.name)}" onclick="window.markBriefCategoryRead(this.getAttribute('data-brief-cat'), this)" class="brief-cat-mark-read-btn" title="Mark '${esc(cs.name)}' folder as read" aria-label="Mark '${esc(cs.name)}' folder as read">
-                                        <svg><use href="#icon-check"/></svg>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="space-y-3">
-                    `;
-                    cs.stories.forEach(st => {
-                        const favHtml = typeof getFavicon === 'function' ? getFavicon(st.source) : '';
-                        const relTime = typeof getRelativeTime === 'function' ? getRelativeTime(st.timestamp) : '';
-                        const alsoReported = (st.alsoReportedBy && st.alsoReportedBy.length > 0)
-                            ? `<span class="brief-story-also text-gray-500 whitespace-nowrap truncate max-w-[160px]">• Also: ${esc(st.alsoReportedBy.join(', '))}</span>`
-                            : '';
-                        const saId = escJs(st.id);
-
-                        // Detect social / microblog post (Bluesky, Mastodon, or identical title & excerpt)
-                        const isSocial = (st.feedUrl && isBlueskyFeed(st.feedUrl)) ||
-                            (st.link && typeof isMastodonPost === 'function' && isMastodonPost(st.link)) ||
-                            (st.category && /fediverse|mastodon|bluesky|social/i.test(st.category)) ||
-                            (!st.title) ||
-                            (st.excerpt && (
-                                st.title.trim() === st.excerpt.trim() ||
-                                st.excerpt.trim().startsWith(st.title.trim().slice(0, 30)) ||
-                                st.title.trim().startsWith(st.excerpt.trim().slice(0, 30))
-                            ));
-
-                        const postText = (st.excerpt || st.title || '').trim();
-                        let storyBodyHtml = '';
-
-                        if (isSocial) {
-                            storyBodyHtml = `
-                                <p class="brief-story-excerpt dynamic-list-preview line-clamp-social is-social-post text-gray-800 dark:text-gray-200 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
-                                    ${esc(postText)}
-                                </p>
-                            `;
-                        } else {
-                            storyBodyHtml = `
-                                <h4 class="brief-story-title dynamic-list-title font-semibold text-gray-900 dark:text-white leading-snug mt-0 cursor-pointer" onclick="window.openArticleInReader('${saId}')">
-                                    ${esc(st.title)}
-                                </h4>
-                                ${st.excerpt ? `<p class="brief-story-excerpt dynamic-list-preview text-gray-500 dark:text-gray-400 mt-0 mb-2 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">${esc(st.excerpt)}</p>` : ''}
-                            `;
-                        }
-
-                        html += `
-                            <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}">
-                                <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
-                                    ${favHtml}
-                                    <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
-                                    <span class="brief-story-dot flex-shrink-0">•</span>
-                                    <span class="brief-story-time flex-shrink-0 whitespace-nowrap">${relTime}</span>
-                                    ${alsoReported}
-                                </div>
-                                ${storyBodyHtml}
-                                <div class="brief-story-actions flex items-center gap-1.5 pt-0.5">
-                                    <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-gray-500 dark:text-gray-400" title="Open in Reader" aria-label="Open in Reader">
-                                        <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
-                                    </button>
-                                    <button type="button" data-save-id="${saId}" data-save-link="${esc(st.link || '')}" onclick="window.toggleBriefStorySaved('${saId}', this)" class="brief-action-btn brief-save-btn text-gray-500 dark:text-gray-400" title="Save Article" aria-label="Save Article">
-                                        <svg class="brief-action-icon"><use href="#icon-star"/></svg>
-                                    </button>
-                                    <a href="${esc(st.link)}" target="_blank" rel="noopener noreferrer" class="brief-action-link brief-source-link text-gray-500 dark:text-gray-400" title="Open original source" aria-label="Open original source">
-                                        <svg class="brief-action-icon"><use href="#icon-external-link"/></svg>
-                                    </a>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    html += `</div></div>`;
-                });
+                html += renderBriefSectionsHtml(categorySections);
                 html += `
                     <div class="brief-footer text-sm text-gray-500 dark:text-gray-400">
                         <div class="flex items-center gap-2 text-xs">
@@ -14029,6 +14500,7 @@
                 });
             }
             document.querySelectorAll('#article-body .brief-cat-heading, .brief-container .brief-cat-heading').forEach(h => {
+                if (h.closest('[data-no-mark-read]')) return; // e.g. Today's cross-folder Top Stories
                 const t = h.textContent.trim();
                 if (t) catNames.add(t);
             });
@@ -14510,21 +14982,13 @@
             } catch (e) { return []; }
         }
 
-        // --- MOBILE TAB BAR: active + Reader-tab mode + search + scroll tint ---
+        // --- MOBILE TAB BAR & ROUTING (Apple News / Google News layout) ---
         window._mobilePane = 'timeline';
+        window._activeTab = 'today';
 
         function updateReaderTabMode() {
-            const btn = document.getElementById('mob-tab-reader');
-            const label = document.getElementById('mob-tab-reader-label');
-            if (!btn || !label) return;
-            // Reader tab label is stable — it's a navigation target, not a counter.
-            // Mark-all-read lives on the Articles tab via long-press now; per-view
-            // unread counts surface as a badge on the Articles tab icon instead.
-            // (The old reading-progress ring was fully removed 2026-07-21 — the
-            // browser scrollbar in the article view serves as reading progress.)
-            label.textContent = 'Reader';
-            // Keep the Articles tab unread badge in sync from the same update path.
-            const artBadge = document.getElementById('mob-tab-articles-badge');
+            // Keep the Topics tab unread badge in sync
+            const artBadge = document.getElementById('mob-tab-topics-badge') || document.getElementById('mob-tab-articles-badge');
             if (artBadge) {
                 const n = (window.currentTimeline || window.articles || []).filter(a => a.unread).length;
                 if (n > 0) {
@@ -14534,36 +14998,92 @@
                     artBadge.classList.add('hidden');
                 }
             }
+            const savedBadge = document.getElementById('mob-tab-saved-badge');
+            if (savedBadge) {
+                const n = (window.articles || []).filter(a => a.readLater).length;
+                if (n > 0) {
+                    savedBadge.textContent = n > 99 ? '99+' : String(n);
+                    savedBadge.classList.remove('hidden');
+                } else {
+                    savedBadge.classList.add('hidden');
+                }
+            }
         }
         window.updateReaderTabMode = updateReaderTabMode;
 
-        window.onArticlesTabClick = () => {
-            // Long-press just fired and opened the menu — swallow the synthetic
-            // click that follows the touchend.
+        // Active tab pill indicator
+        window.setMobileTab = (tab) => {
+            window._activeTab = tab;
+            const tabs = ['today', 'topics', 'following', 'saved'];
+            tabs.forEach(t => {
+                const el = document.getElementById('mob-tab-' + t);
+                if (el) el.classList.toggle('active', t === tab);
+            });
+        };
+
+        // Tab click handlers:
+        window.onTodayTabClick = async () => {
+            setMobileTab('today');
+            if (window._mobilePane === 'viewer' && window.currentArticle && window.currentArticle.id === window.TODAY_BRIEF_ID) {
+                const rv = document.getElementById('reader-view');
+                if (rv) rv.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            await window.openToday();
+        };
+
+        window.onTopicsTabClick = () => {
             if (window._mobArticlesMenuJustOpened) {
                 window._mobArticlesMenuJustOpened = false;
                 return;
             }
+            setMobileTab('topics');
             const fromPane = window._mobilePane;
-            // From Reader, just go back to Articles — preserve whatever filter was active.
+            const isSavedType = ['saved', 'read-later', 'readlater', 'briefs'].includes(window.currentSmartFeed);
             if (fromPane === 'viewer') {
+                if (isSavedType) setSmartFeed('all');
                 setMobilePane('timeline');
                 return;
             }
-            // Already on Articles — scroll to top of the current list.
-            if (fromPane === 'timeline') {
-                document.getElementById('article-list').scrollTop = 0;
+            if (fromPane === 'timeline' && !isSavedType) {
+                const al = document.getElementById('article-list');
+                if (al) al.scrollTo({ top: 0, behavior: 'smooth' });
                 return;
             }
-            // From Home (sidebar) — load All Unread as the default Articles view.
-            setSmartFeed('all');
+            if (isSavedType) {
+                setSmartFeed('all');
+            }
+            setMobilePane('timeline');
+        };
+        // Backward-compat alias
+        window.onArticlesTabClick = window.onTopicsTabClick;
+
+        window.onFollowingTabClick = () => {
+            setMobileTab('following');
+            setMobilePane('sidebar');
+        };
+
+        window.onSavedTabClick = () => {
+            setMobileTab('saved');
+            const fromPane = window._mobilePane;
+            const isSavedType = ['saved', 'read-later', 'readlater', 'briefs'].includes(window.currentSmartFeed);
+            if (fromPane === 'viewer') {
+                if (!isSavedType) {
+                    setSmartFeed('saved');
+                }
+                setMobilePane('timeline');
+                return;
+            }
+            if (fromPane === 'timeline' && isSavedType) {
+                const al = document.getElementById('article-list');
+                if (al) al.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            setSmartFeed('saved');
             setMobilePane('timeline');
         };
 
-        // --- Articles tab long-press menu ---
-        // Holding the Articles tab opens a small popover with Mark All Read.
-        // 500ms hold threshold; finger movement > ~10px cancels (so a scroll
-        // gesture started near the tab doesn't accidentally trigger the menu).
+        // --- Topics tab long-press menu ---
         window.openArticlesMenu = () => {
             const menu = document.getElementById('mob-articles-menu');
             const scrim = document.getElementById('mob-articles-menu-scrim');
@@ -14571,16 +15091,9 @@
             menu.classList.add('is-open');
             scrim.classList.add('is-open');
             window._mobArticlesMenuJustOpened = true;
-            // Clear any UA text selection the long-press may have started before
-            // our selectstart guard caught it, so the menu never floats over a
-            // "select all" highlight. Chrome extends the selection asynchronously
-            // after the long-press concludes, so clear now AND on the next couple
-            // of frames to catch the late extension.
             const clearSel = () => { try { window.getSelection?.().removeAllRanges(); } catch (e) { } };
             clearSel();
             requestAnimationFrame(() => { clearSel(); requestAnimationFrame(clearSel); });
-            // Haptic feedback on supported platforms (iOS Safari ignores this,
-            // but Android Chrome and most PWA wrappers honor it).
             if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) { } }
         };
         window.closeArticlesMenu = () => {
@@ -14589,19 +15102,12 @@
             if (menu) menu.classList.remove('is-open');
             if (scrim) scrim.classList.remove('is-open');
         };
-        (function bindArticlesTabLongPress() {
-            const btn = document.getElementById('mob-tab-articles');
+
+        (function bindTopicsTabLongPress() {
+            const btn = document.getElementById('mob-tab-topics') || document.getElementById('mob-tab-articles');
             if (!btn) return;
             let timer = null;
             let startX = 0, startY = 0;
-            // True from touchstart on the tab until a short grace period after
-            // touchend. Android Chrome starts the page "select all" gesture at
-            // the DOCUMENT level (not on the bar) AFTER the long-press fires, so
-            // a bar-scoped selectstart guard never sees it. While this flag is
-            // up we swallow selectstart everywhere, so no long-press on the tab
-            // can ever start a selection on the article list behind the bar.
-            // Normal taps elsewhere leave the flag down, so article text stays
-            // selectable/copyable.
             let suppressing = false;
             let releaseTimer = null;
             const armSuppress = () => {
@@ -14610,9 +15116,6 @@
                 if (releaseTimer) { clearTimeout(releaseTimer); releaseTimer = null; }
             };
             const disarmSuppress = () => {
-                // Keep suppressing briefly after release — Chrome extends the
-                // selection on the touchend/up that concludes the long-press,
-                // and iOS settles its gesture state a beat late too.
                 if (releaseTimer) clearTimeout(releaseTimer);
                 releaseTimer = setTimeout(() => {
                     suppressing = false;
@@ -14636,8 +15139,6 @@
             };
             const onMove = (e) => {
                 if (!timer) {
-                    // Long-press already fired: keep eating touchmove so iOS
-                    // can't promote the stationary hold into a selection drag.
                     if (suppressing && e.cancelable) e.preventDefault();
                     return;
                 }
@@ -14645,141 +15146,92 @@
                 if (Math.hypot(t.clientX - startX, t.clientY - startY) > 10) {
                     cancel();
                 } else if (e.cancelable) {
-                    // Within the hold slop: cancel the default so iOS Safari
-                    // never starts its selection loupe / callout gesture. iOS
-                    // only honors this on a NON-passive touchmove listener —
-                    // this is the actual iOS root cause; user-select:none alone
-                    // does not stop the loupe on the block behind the bar.
                     e.preventDefault();
                 }
             };
-            // touchmove is non-passive so preventDefault() actually suppresses
-            // iOS Safari's native long-press selection. touchstart stays passive
-            // (scroll perf; nothing to cancel there).
             btn.addEventListener('touchstart', onStart, { passive: true });
             btn.addEventListener('touchmove', onMove, { passive: false });
             btn.addEventListener('touchend', cancel, { passive: true });
             btn.addEventListener('touchcancel', cancel, { passive: true });
-            // DOCUMENT-level guard: kill any selection that tries to start while
-            // a tab long-press is in flight, regardless of which element the UA
-            // roots it on. Belt-and-braces alongside the touchmove preventDefault
-            // (Android roots the selection at document; the CSS user-select:none
-            // and removeAllRanges() in openArticlesMenu back this up).
             document.addEventListener('selectstart', (e) => {
                 if (suppressing) e.preventDefault();
             });
-            // Desktop testing convenience: right-click also opens the menu.
             btn.addEventListener('contextmenu', (e) => { e.preventDefault(); window.openArticlesMenu(); });
         })();
 
-        window.onReaderTabClick = () => {
-            const pane = window._mobilePane;
-            if (pane === 'timeline') {
-                // From Articles, single-tap Reader returns to the viewer pane
-                // (the article currently selected, or the empty/select-an-article
-                // state if none). Mark-all-read moved to long-press on the
-                // Articles tab — see #mob-tab-articles handlers.
-                setMobilePane('viewer');
+        // --- Viewer Mobile Header & Back Button Navigation ---
+        function updateViewerBackBtn() {
+            const backBtn = document.getElementById('viewer-back-btn');
+            const backLabel = document.getElementById('viewer-back-label');
+            const viewerPane = document.getElementById('viewer-pane');
+            if (!viewerPane) return;
+
+            const art = window.currentArticle;
+            const isToday = art && art.id === window.TODAY_BRIEF_ID;
+            viewerPane.classList.toggle('has-article', !!art);
+            viewerPane.classList.toggle('is-today-brief', isToday);
+
+            if (!backBtn) return;
+            if (typeof isMobile === 'function' && !isMobile()) {
+                backBtn.classList.add('hidden');
                 return;
             }
-            if (pane === 'viewer') {
-                const current = window.currentArticle;
-                if (current) {
-                    current.unread = false;
-                    window._readLinks.add(current.link);
-                    saveReadState();
-                }
-                const nav = (window._navSnapshot && window._navSnapshot.length) ? window._navSnapshot : (window.currentTimeline || []);
-                const currentId = current?.id;
-                const startIdx = currentId ? nav.findIndex(a => a.id === currentId) : -1;
-                let nextUnread = null;
-                for (let i = startIdx + 1; i < nav.length; i++) {
-                    if (nav[i].unread) { nextUnread = nav[i]; break; }
-                }
-                if (!nextUnread) {
-                    for (let i = 0; i < startIdx; i++) {
-                        if (nav[i].unread) { nextUnread = nav[i]; break; }
-                    }
-                }
-                refreshUI?.();
-                if (nextUnread) {
-                    window._navigating = true;
-                    selectArticle(nextUnread.id);
-                    window._navigating = false;
-                } else {
-                    setMobilePane('timeline');
-                    window.showToast?.('All caught up');
-                    if ((window.currentTimeline || []).length === 0) setMobilePane('sidebar');
-                }
+            if (window._mobilePane !== 'viewer' || !art || isToday) {
+                backBtn.classList.add('hidden');
                 return;
             }
-            if (window.currentArticle) setMobilePane('viewer');
-            else setMobilePane('timeline');
+
+            backBtn.classList.remove('hidden');
+            if (window._returnToBriefState) {
+                const fromToday = window._returnToBriefState.briefId === window.TODAY_BRIEF_ID;
+                if (backLabel) backLabel.textContent = fromToday ? 'Today' : 'Brief';
+            } else if (window._activeTab === 'saved') {
+                if (backLabel) backLabel.textContent = 'Saved';
+            } else if (window._activeTab === 'following') {
+                if (backLabel) backLabel.textContent = 'Following';
+            } else {
+                if (backLabel) backLabel.textContent = 'Topics';
+            }
+        }
+        window.updateViewerBackBtn = updateViewerBackBtn;
+
+        window.onViewerBackClick = () => {
+            if (window._returnToBriefState) {
+                window.returnToBrief();
+            } else if (window._activeTab === 'following') {
+                setMobilePane('sidebar');
+            } else if (window._activeTab === 'saved') {
+                setMobilePane('timeline');
+            } else {
+                setMobilePane('timeline');
+            }
         };
-
-        // Long-press on the Reader tab (~500ms hold) marks all read silently and goes Home.
-        // Single tap continues to fire onReaderTabClick via the normal onclick handler.
-        (function () {
-            const btn = document.getElementById('mob-tab-reader');
-            if (!btn) return;
-            let _lpTimer = null;
-            let _lpFired = false;
-            let _startX = 0, _startY = 0;
-
-            const cancel = () => {
-                if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
-            };
-
-            btn.addEventListener('touchstart', (e) => {
-                _lpFired = false;
-                const t = e.touches[0];
-                _startX = t.clientX; _startY = t.clientY;
-                cancel();
-                _lpTimer = setTimeout(() => {
-                    _lpTimer = null;
-                    _lpFired = true;
-                    if (navigator.vibrate) navigator.vibrate(30);
-                    // Silent mark-all-read: suppress toast, force pane to sidebar.
-                    window.markAllRead({ suppressToast: true });
-                    if (isMobile()) setMobilePane('sidebar');
-                }, 500);
-            }, { passive: true });
-
-            btn.addEventListener('touchmove', (e) => {
-                const t = e.touches[0];
-                if (Math.abs(t.clientX - _startX) > 10 || Math.abs(t.clientY - _startY) > 10) cancel();
-            }, { passive: true });
-
-            btn.addEventListener('touchend', () => { cancel(); }, { passive: true });
-            btn.addEventListener('touchcancel', () => { cancel(); _lpFired = false; }, { passive: true });
-
-            // Suppress the click that follows touchend if long-press already fired.
-            btn.addEventListener('click', (e) => {
-                if (_lpFired) {
-                    _lpFired = false;
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                }
-            }, true);
-
-            // Suppress iOS native long-press context menu / text-callout on this button.
-            btn.addEventListener('contextmenu', (e) => e.preventDefault());
-        })();
 
         window.setMobilePane = (pane) => {
             window._mobilePane = pane;
             const paneMap = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
-            const tabMap = { sidebar: 'mob-tab-feeds', timeline: 'mob-tab-articles', viewer: 'mob-tab-reader' };
             Object.entries(paneMap).forEach(([key, id]) => {
                 const el = document.getElementById(id);
                 if (el) el.classList.toggle('mobile-active', key === pane);
             });
-            Object.entries(tabMap).forEach(([key, id]) => {
-                const btn = document.getElementById(id);
-                if (!btn) return;
-                btn.classList.toggle('active', key === pane);
-            });
+
+            if (pane === 'sidebar') {
+                setMobileTab('following');
+            } else if (pane === 'timeline') {
+                if (['saved', 'read-later', 'readlater', 'briefs'].includes(window.currentSmartFeed)) {
+                    setMobileTab('saved');
+                } else {
+                    setMobileTab('topics');
+                }
+            } else if (pane === 'viewer') {
+                if (window.currentArticle && window.currentArticle.id === window.TODAY_BRIEF_ID) {
+                    setMobileTab('today');
+                }
+            }
+
+            updateViewerBackBtn();
             updateReaderTabMode();
+
             if (pane === 'timeline') {
                 const listEl = document.getElementById('article-list');
                 if (listEl) {
@@ -15124,7 +15576,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 257;
+        window.APP_BUILD = 264;
 
         (async function initApp() {
             try {
@@ -15282,6 +15734,11 @@
                 }
                 renderTimeline();
                 updateEmptyState();
+                if (window.articles.some(a => a.source !== 'System')) {
+                    if (typeof openToday === 'function') {
+                        openToday();
+                    }
+                }
 
                 // 7. Start Background Sync
                 //
@@ -15375,6 +15832,32 @@
                         document.getElementById('signout-btn').classList.remove('hidden');
                         setupPersistence();
                     } else {
+                        // On localhost, allow instant local test bypass so development and testing never stall
+                        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                            userId = 'test-local-user';
+                            userEmail = 'test@local';
+                            document.getElementById('login-modal').classList.add('hidden');
+                            document.getElementById('sync-status').textContent = 'Local Test Mode';
+                            document.getElementById('signout-btn').classList.remove('hidden');
+                            // Ensure sample feeds exist so user sees real content
+                            if (!window.feeds || window.feeds.length === 0) {
+                                window.feeds = [
+                                    { id: 'f_verge', name: 'The Verge', title: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', category: 'Technology', icon: '🗞️', unread: 0 },
+                                    { id: 'f_ars', name: 'Ars Technica', title: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', category: 'Technology', icon: '🗞️', unread: 0 },
+                                    { id: 'f_bbc', name: 'BBC News', title: 'BBC News', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'General', icon: '🗞️', unread: 0 },
+                                    { id: 'f_npr', name: 'NPR News', title: 'NPR News', url: 'https://feeds.npr.org/1001/rss.xml', category: 'General', icon: '🗞️', unread: 0 }
+                                ];
+                                window.accountStates.local = window.feeds;
+                                if (window.appDB) Promise.all(window.feeds.map(f => window.appDB.put('feeds', f))).catch(() => {});
+                                window.renderFeeds();
+                                window.runFullRefresh().then(() => {
+                                    if (typeof openToday === 'function') openToday();
+                                });
+                            } else {
+                                if (typeof openToday === 'function') openToday();
+                            }
+                            return;
+                        }
                         userId = null;
                         userEmail = null;
                         document.getElementById('login-modal').classList.remove('hidden');
@@ -15985,7 +16468,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v257';
+const CACHE_NAME = 'rss-reader-v264';
 const APP_SHELL = [
     '/',
     'index.html'
