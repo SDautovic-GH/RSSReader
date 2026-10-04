@@ -2510,8 +2510,16 @@
            (between the byline text and the border) and below (between the border
            and the first paragraph of the body). Pixel values are immune to
            app-zoom rem scaling that was visually compressing Tailwind utilities. */
+        /* TIGHTER STORY HEADER (build 300, on request): action row -> divider 14 -> 8px.
+           With the title -> author 24 -> 12, author -> actions 10 -> 6 and divider -> text
+           28 -> 16 below, the empty space between headline and text went from 76 to 42px.
+           The title's 12px still exceeds the 6 / 8px inside the byline block, so it leads. */
         #article-byline {
-            padding-bottom: 14px;
+            padding-bottom: 8px;
+        }
+
+        #article-title {
+            margin-bottom: 12px;   /* was Tailwind mb-6 (24px); unlayered, so this wins */
         }
 
         /* MAKE THE HEADER/BODY BOUNDARY OBVIOUS (build 205, 2026-09-04, on request:
@@ -2533,7 +2541,7 @@
         }
 
         #article-body {
-            padding-top: 28px;
+            padding-top: 16px;   /* 28px since build 205; the stronger divider colour stays (build 300) */
         }
 
         .dynamic-list-preview,
@@ -3435,7 +3443,7 @@
             /* The bar above now carries the status-bar offset, so the reader keeps only
                its small gap - otherwise the safe area would be counted twice. */
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
-                padding-top: 14px !important;
+                padding-top: 8px !important;   /* 14 -> 8 (build 300) */
             }
 
 
@@ -4508,13 +4516,18 @@
 
             /* No top bar: the story starts below the status bar, as Today does. */
             body.is-fullscreen #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 14px) !important;
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 8px) !important;
             }
         }
 
         @media (min-width: 901px) {
             body.is-fullscreen #reader-view {
                 padding-bottom: 88px !important;
+            }
+
+            /* Desktop: 16px above the story at every width (build 300; lg:p-6 gave 24px). */
+            #reader-view {
+                padding-top: 16px;
             }
         }
 
@@ -4910,7 +4923,8 @@
             flex-basis: 100%;
             align-items: center;
             gap: 2px;
-            margin: 10px 0 0 -7px;   /* the buttons' own inset, so the first glyph sits on the text edge */
+            margin: 6px 0 0 -7px;    /* 6px under the author line (build 300; was 10); -7px = the buttons'
+                                        own inset, so the first glyph sits on the text edge */
         }
 
         /* Brief cards keep their compact size, but the existing card rules force grey with
@@ -15087,7 +15101,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 299;
+        window.APP_BUILD = 300;
 
         (async function initApp() {
             try {
@@ -15974,7 +15988,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v299';
+const CACHE_NAME = 'rss-reader-v300';
 const APP_SHELL = [
     '/',
     'index.html'
