@@ -2780,12 +2780,6 @@
             font-weight: 400 !important;
         }
 
-        .is-fullscreen #sidebar-pane,
-        .is-fullscreen #timeline-pane,
-        .is-fullscreen #resizer {
-            display: none;
-        }
-
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -3474,8 +3468,7 @@
                Hide in-article redundant floating/flow buttons to keep the layout clean. */
             #brief-return-header,
             #brief-return-footer,
-            #brief-return-floating,
-            #mobile-brief-fab-group {
+            #brief-return-floating {
                 display: none !important;
             }
 
@@ -4503,6 +4496,139 @@
         #today-column .brief-story-card.brief-card-active {
             background: rgba(68, 147, 248, 0.08) !important;
             box-shadow: inset 3px 0 0 #4493f8 !important;
+        }
+
+        /* READING CONTROLS (builds 283-284, on request): Next story and the full-screen
+           exit, in the tab bar's dark glass with 44px touch targets, along the bottom of
+           the reader - on a phone just above the tab bar, on desktop on the article
+           column's edges (1rem / 1.5rem + 42rem; centred in full screen). */
+        #brief-next,
+        #fullscreen-exit {
+            display: none;
+            position: absolute;
+            z-index: 35;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            min-height: 44px;
+            border-radius: 9999px;
+            background: rgba(30, 30, 34, 0.82);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-backdrop-filter: blur(24px) saturate(1.6);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.12s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #viewer-pane.has-brief-next #brief-next,
+        body.is-fullscreen #fullscreen-exit {
+            display: inline-flex;
+            animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #brief-next {
+            padding: 0 14px 0 18px;
+            bottom: 24px;
+            right: max(1rem, calc(100% - 43rem));
+        }
+
+        #brief-next.is-last {
+            padding: 0 18px;
+        }
+
+        #brief-next.is-last svg {
+            display: none;
+        }
+
+        #fullscreen-exit {
+            width: 44px;
+            padding: 0;
+            bottom: 24px;
+        }
+
+        #brief-next svg,
+        #fullscreen-exit svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        #brief-next:active,
+        #fullscreen-exit:active {
+            transform: scale(0.94);
+        }
+
+        @media (min-width: 64rem) {
+            #brief-next {
+                right: max(1.5rem, calc(100% - 43.5rem));
+            }
+        }
+
+        /* FULL SCREEN (build 284, on request): the open story alone - no sidebar, list or
+           Today column, top bar or tab bar - in a centred column. setReadingFullScreen()
+           also asks the browser for full screen on desktop (an iPhone cannot). */
+        body.is-fullscreen #sidebar-pane,
+        body.is-fullscreen #timeline-pane,
+        body.is-fullscreen #resizer,
+        body.is-fullscreen #viewer-header,
+        body.is-fullscreen #viewer-pane.mobile-active.has-article #viewer-header,
+        body.is-fullscreen #mobile-tab-bar {
+            display: none !important;
+        }
+
+        body.is-fullscreen #reader-view > div {
+            margin-left: auto !important;
+            margin-right: auto !important;
+        }
+
+        body.is-fullscreen #brief-next {
+            right: max(1rem, calc(50% - 21rem));
+        }
+
+        body.is-fullscreen #fullscreen-exit {
+            left: max(1rem, calc(50% - 21rem));
+        }
+
+        @media (max-width: 900px) {
+            #brief-next {
+                bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+                right: 14px;
+            }
+
+            body.is-fullscreen #brief-next,
+            body.is-fullscreen #fullscreen-exit {
+                bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+            }
+
+            body.is-fullscreen #brief-next {
+                right: 14px;
+            }
+
+            body.is-fullscreen #fullscreen-exit {
+                left: 14px;
+            }
+
+            /* No top bar: the story starts below the status bar, as Today does. */
+            body.is-fullscreen #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 14px) !important;
+            }
+
+            /* Room at the end so the story's last lines scroll clear of the Next pill. */
+            #viewer-pane.mobile-active.has-brief-next #reader-view {
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 150px) !important;
+            }
+        }
+
+        @media (min-width: 901px) {
+            #viewer-pane.has-brief-next #reader-view,
+            body.is-fullscreen #reader-view {
+                padding-bottom: 88px !important;
+            }
         }
 
         /* READ STORIES LEAVE THE BRIEF (build 278, on request). Whatever marks a story
@@ -5678,10 +5804,6 @@
             border-radius: 8px !important;
         }
 
-        #mobile-brief-fab-group {
-            display: none;
-        }
-
         .brief-save-btn.is-saved,
         .dark .brief-save-btn.is-saved {
             color: #f59e0b !important;
@@ -5855,57 +5977,6 @@
         }
 
         @media (max-width: 900px) {
-            #mobile-brief-fab-group.active {
-                display: inline-flex !important;
-                position: absolute;
-                bottom: calc(90px + env(safe-area-inset-bottom, 0px));
-                right: 14px;
-                z-index: 35;
-                align-items: center;
-                gap: 8px;
-                animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-
-            /* NEXT STORY pill (build 283, on request): the tab bar's dark glass, a 44px
-               touch target, sitting just above the bar on the right. */
-            #mobile-brief-next {
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-                min-height: 44px;
-                padding: 0 14px 0 18px;
-                border-radius: 9999px;
-                background: rgba(30, 30, 34, 0.82);
-                color: #ffffff;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
-                backdrop-filter: blur(24px) saturate(1.6);
-                -webkit-backdrop-filter: blur(24px) saturate(1.6);
-                font-size: 15px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: transform 0.12s ease;
-                -webkit-tap-highlight-color: transparent;
-            }
-
-            #mobile-brief-next svg {
-                width: 18px;
-                height: 18px;
-                flex-shrink: 0;
-            }
-
-            #mobile-brief-next.is-last {
-                padding: 0 18px;
-            }
-
-            #mobile-brief-next.is-last svg {
-                display: none;
-            }
-
-            #mobile-brief-next:active {
-                transform: scale(0.94);
-            }
-
             #brief-return-header {
                 margin-top: 12px !important;
                 margin-bottom: 16px !important;
@@ -6456,6 +6527,21 @@
                 <path d="M4 4a16 16 0 0 1 16 16" />
                 <circle cx="5" cy="19" r="1" />
             </symbol>
+            <!-- Full screen in / out (build 284): Lucide maximize-2 / minimize-2 -->
+            <symbol id="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 3 21 3 21 9" />
+                <polyline points="9 21 3 21 3 15" />
+                <line x1="21" y1="3" x2="14" y2="10" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+            </symbol>
+            <symbol id="icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="4 14 10 14 10 20" />
+                <polyline points="20 10 14 10 14 4" />
+                <line x1="14" y1="10" x2="21" y2="3" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+            </symbol>
             <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
@@ -6895,6 +6981,14 @@
                             </svg>
                         </button>
                     </div>
+                    <!-- Full screen: the story alone (build 284, on request). Shown while a
+                         story is open; exit is the button at the bottom left, or Esc. -->
+                    <button onclick="toggleReadingFullScreen()" id="fullscreen-btn" title="Full screen"
+                        aria-label="Full screen" class="hidden icon-act">
+                        <svg class="w-4 h-4">
+                            <use href="#icon-expand" />
+                        </svg>
+                    </button>
                     <!-- View mode toggle: Standard Stream / Compact Wire -->
                     <button onclick="toggleViewMode()" id="view-density-toggle" title="Standard Stream (switch to Compact Wire)"
                         aria-label="Standard Stream (switch to Compact Wire)"
@@ -7093,19 +7187,25 @@
                 </button>
             </div>
 
-            <!-- Mobile: Next story, bottom right in thumb reach, while a story opened from
-                 Today is open (build 283, on request). After the last story it reads
-                 "Back to Today". It replaced a Save star and a "Back to Brief" pill, which
-                 the row under the headline and the top bar's Back already cover. -->
-            <div id="mobile-brief-fab-group" class="hidden">
-                <button id="mobile-brief-next" type="button" onclick="window.briefNextOrBack()" aria-label="Next story">
-                    <span id="mobile-brief-next-label">Next</span>
-                    <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                        stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </button>
-            </div>
+            <!-- READING CONTROLS along the bottom of the reader (builds 283-284, on request):
+                 Next story (right) while a story opened from Today is open - "Back to Today"
+                 after the last one - and the full-screen exit (left). Shown by classes on
+                 #viewer-pane / <body>, never by removing Tailwind's `hidden`: that class is
+                 a layered !important, which no unlayered rule can undo (why the build 283
+                 pill, inside a `hidden` wrapper, never appeared). -->
+            <button id="brief-next" type="button" onclick="window.briefNextOrBack()" aria-label="Next story">
+                <span id="brief-next-label">Next</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                    stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+            <button id="fullscreen-exit" type="button" onclick="window.setReadingFullScreen(false)"
+                title="Exit full screen (Esc)" aria-label="Exit full screen">
+                <svg aria-hidden="true">
+                    <use href="#icon-collapse" />
+                </svg>
+            </button>
         </main>
     </div>
 
@@ -10885,6 +10985,11 @@
                     toggleSearchSheet();
                 }
             } else if (e.key === 'Escape') {
+                // Full screen first: Esc leaves it and stays on the story (build 284).
+                if (document.body.classList.contains('is-fullscreen')) {
+                    window.setReadingFullScreen(false);
+                    return;
+                }
                 const shortcutsModal = document.getElementById('shortcuts-modal');
                 const isShortcutsOpen = shortcutsModal && !shortcutsModal.classList.contains('hidden');
                 closeShortcuts();
@@ -13283,7 +13388,6 @@
             const deskBtn = document.getElementById('desk-back-to-brief-btn');
             const topBanner = document.getElementById('brief-return-header');
             const endCard = document.getElementById('brief-return-footer');
-            const mobFab = document.getElementById('mobile-brief-fab-group');
 
             const isFromBrief = Boolean(
                 window._returnToBriefState &&
@@ -13299,14 +13403,15 @@
             if (deskBtn) deskBtn.classList.toggle('hidden', !showReturn);
             if (topBanner) topBanner.classList.toggle('hidden', !showReturn);
             if (endCard) endCard.classList.toggle('hidden', !showReturn);
-            if (mobFab) mobFab.classList.toggle('active', showReturn);
-            // The Next pill: "Next", or "Back to Today" once this is the brief's last story.
-            const nextBtn = document.getElementById('mobile-brief-next');
-            if (nextBtn && showReturn) {
+            // The Next pill (build 284: desktop too, column included): "Next", or "Back to
+            // Today" once this is the brief's last story.
+            document.getElementById('viewer-pane')?.classList.toggle('has-brief-next', isFromBrief);
+            const nextBtn = document.getElementById('brief-next');
+            if (nextBtn && isFromBrief) {
                 const last = !window.briefHasNextStory();
                 nextBtn.classList.toggle('is-last', last);
                 nextBtn.setAttribute('aria-label', last ? 'Back to Today' : 'Next story');
-                const label = document.getElementById('mobile-brief-next-label');
+                const label = document.getElementById('brief-next-label');
                 if (label) label.textContent = last ? 'Back to Today' : 'Next';
             }
             if (isFromBrief && window.currentArticle) window.syncBriefArticleActionButtons?.();
@@ -13331,12 +13436,11 @@
             const deskBtn = document.getElementById('desk-back-to-brief-btn');
             const topBanner = document.getElementById('brief-return-header');
             const endCard = document.getElementById('brief-return-footer');
-            const mobFab = document.getElementById('mobile-brief-fab-group');
 
             if (deskBtn) deskBtn.classList.add('hidden');
             if (topBanner) topBanner.classList.add('hidden');
             if (endCard) endCard.classList.add('hidden');
-            if (mobFab) mobFab.classList.remove('active');
+            document.getElementById('viewer-pane')?.classList.remove('has-brief-next');
         };
 
         window.returnToBrief = function () {
@@ -13812,7 +13916,26 @@
             saveTypographyPrefs();
         };
 
-        window.toggleFullScreen = (v) => document.getElementById('app-container').classList.toggle('is-fullscreen', v);
+        // FULL SCREEN (build 284, on request): the open story alone, with Next and an exit
+        // button along the bottom. Stories only; it ends when the story closes or Today
+        // comes back (updateViewerBackBtn). On desktop the browser goes full screen too,
+        // and leaving that (Esc) leaves this.
+        window.setReadingFullScreen = function (on) {
+            const art = window.currentArticle;
+            if (on && (!art || art.isBrief)) return;
+            if (document.body.classList.contains('is-fullscreen') === !!on) return;
+            document.body.classList.toggle('is-fullscreen', !!on);
+            const root = document.documentElement;
+            if (on && !isMobile() && root.requestFullscreen && !document.fullscreenElement) {
+                root.requestFullscreen().catch(() => { });
+            } else if (!on && document.fullscreenElement) {
+                document.exitFullscreen().catch(() => { });
+            }
+        };
+        window.toggleReadingFullScreen = () => window.setReadingFullScreen(!document.body.classList.contains('is-fullscreen'));
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) window.setReadingFullScreen(false);
+        });
         window.toggleFullScreenManual = (e) => {
             // Guard: Ignore if double-click originated on or inside any interactive element or toolbar controls!
             if (e && e.target) {
@@ -13823,7 +13946,7 @@
                     return;
                 }
             }
-            toggleFullScreen(!document.getElementById('app-container').classList.contains('is-fullscreen'));
+            window.toggleReadingFullScreen();
         };
         window.openExternal = () => { if (window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
@@ -15147,6 +15270,9 @@
             viewerPane.classList.toggle('has-article', !!art);
             viewerPane.classList.toggle('is-today-brief', isToday);
             viewerPane.classList.toggle('is-brief-view', isAnyBrief);
+            // Full screen is for stories: offered while one is open, left when none is.
+            document.getElementById('fullscreen-btn')?.classList.toggle('hidden', !art || !!isAnyBrief);
+            if (!art || isAnyBrief) window.setReadingFullScreen?.(false);
 
             if (!art || isToday) {
                 if (backBtn) backBtn.classList.add('hidden');
@@ -15566,7 +15692,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 283;
+        window.APP_BUILD = 284;
 
         (async function initApp() {
             try {
@@ -16453,7 +16579,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v283';
+const CACHE_NAME = 'rss-reader-v284';
 const APP_SHELL = [
     '/',
     'index.html'
