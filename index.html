@@ -4714,7 +4714,9 @@
 
             .brief-container h2,
             .brief-header-title {
-                font-size: 1.15em !important;
+                /* Article Reader > Title Size, as on desktop (build 283, on request; was a
+                   fixed 1.15em) */
+                font-size: var(--mob-article-title-size, 1.15em) !important;
                 line-height: 1.25 !important;
                 margin-top: 0 !important;
             }
@@ -5680,10 +5682,6 @@
             display: none;
         }
 
-        #mobile-brief-fab {
-            display: none;
-        }
-
         .brief-save-btn.is-saved,
         .dark .brief-save-btn.is-saved {
             color: #f59e0b !important;
@@ -5868,55 +5866,44 @@
                 animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             }
 
-            #mobile-brief-save-fab {
+            /* NEXT STORY pill (build 283, on request): the tab bar's dark glass, a 44px
+               touch target, sitting just above the bar on the right. */
+            #mobile-brief-next {
                 display: inline-flex;
                 align-items: center;
-                justify-content: center;
-                width: 38px;
-                height: 38px;
+                gap: 4px;
+                min-height: 44px;
+                padding: 0 14px 0 18px;
                 border-radius: 9999px;
-                background: rgba(13, 37, 69, 0.94);
-                color: #fbbf24;
-                border: 1px solid rgba(245, 158, 11, 0.55);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 10px rgba(245, 158, 11, 0.25);
-                backdrop-filter: blur(14px);
-                -webkit-backdrop-filter: blur(14px);
-                cursor: pointer;
-                transition: transform 0.12s ease, background 0.12s ease;
-                -webkit-tap-highlight-color: transparent;
-            }
-
-            #mobile-brief-save-fab.is-saved {
-                background: rgba(245, 158, 11, 0.28) !important;
-                border-color: #f59e0b !important;
-                color: #f59e0b !important;
-            }
-
-            #mobile-brief-save-fab:active {
-                transform: scale(0.92);
-            }
-
-            #mobile-brief-fab {
-                display: inline-flex !important;
-                position: static !important;
-                align-items: center;
-                gap: 6px;
-                padding: 9px 15px;
-                border-radius: 9999px;
-                background: rgba(13, 37, 69, 0.94);
+                background: rgba(30, 30, 34, 0.82);
                 color: #ffffff;
-                border: 1px solid rgba(59, 130, 246, 0.55);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 12px rgba(59, 130, 246, 0.25);
-                backdrop-filter: blur(14px);
-                -webkit-backdrop-filter: blur(14px);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
+                backdrop-filter: blur(24px) saturate(1.6);
+                -webkit-backdrop-filter: blur(24px) saturate(1.6);
+                font-size: 15px;
+                font-weight: 600;
                 cursor: pointer;
-                transition: transform 0.12s ease, background 0.12s ease;
+                transition: transform 0.12s ease;
                 -webkit-tap-highlight-color: transparent;
             }
 
-            #mobile-brief-fab:active {
+            #mobile-brief-next svg {
+                width: 18px;
+                height: 18px;
+                flex-shrink: 0;
+            }
+
+            #mobile-brief-next.is-last {
+                padding: 0 18px;
+            }
+
+            #mobile-brief-next.is-last svg {
+                display: none;
+            }
+
+            #mobile-brief-next:active {
                 transform: scale(0.94);
-                background: rgba(13, 37, 69, 1);
             }
 
             #brief-return-header {
@@ -7106,18 +7093,17 @@
                 </button>
             </div>
 
-            <!-- Mobile Floating "Back to Brief" & Quick Actions (visible ONLY on mobile when opened from Brief) -->
+            <!-- Mobile: Next story, bottom right in thumb reach, while a story opened from
+                 Today is open (build 283, on request). After the last story it reads
+                 "Back to Today". It replaced a Save star and a "Back to Brief" pill, which
+                 the row under the headline and the top bar's Back already cover. -->
             <div id="mobile-brief-fab-group" class="hidden">
-                <button id="mobile-brief-save-fab" onclick="window.handleSavedAction()" type="button" title="Save Article"
-                    aria-label="Save Article">
-                    <svg class="w-4 h-4"><use href="#icon-star" /></svg>
-                </button>
-                <button id="mobile-brief-fab" onclick="window.returnToBrief()" title="Return to Brief"
-                    aria-label="Return to Brief">
-                    <svg class="w-3.5 h-3.5 text-blue-400">
-                        <use href="#icon-arrow-left" />
+                <button id="mobile-brief-next" type="button" onclick="window.briefNextOrBack()" aria-label="Next story">
+                    <span id="mobile-brief-next-label">Next</span>
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                        <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
-                    <span class="font-bold tracking-tight text-white text-xs">Back to Brief</span>
                 </button>
             </div>
         </main>
@@ -13165,16 +13151,6 @@
                 if (icon) icon.setAttribute('href', isSaved ? '#icon-star-filled' : '#icon-star');
                 footerSaveBtn.classList.toggle('is-saved', isSaved);
             }
-
-            // 4. Mobile FAB save button
-            const mobSaveFab = document.getElementById('mobile-brief-save-fab');
-            if (mobSaveFab) {
-                mobSaveFab.title = isSaved ? 'Unsave' : 'Save Article';
-                mobSaveFab.setAttribute('aria-label', mobSaveFab.title);
-                mobSaveFab.classList.toggle('is-saved', isSaved);
-                const icon = mobSaveFab.querySelector('use');
-                if (icon) icon.setAttribute('href', isSaved ? '#icon-star-filled' : '#icon-star');
-            }
         };
 
         // ===== BRIEF CARD ACTION ROW (build 273, on request) =====
@@ -13307,7 +13283,7 @@
             const deskBtn = document.getElementById('desk-back-to-brief-btn');
             const topBanner = document.getElementById('brief-return-header');
             const endCard = document.getElementById('brief-return-footer');
-            const mobFab = document.getElementById('mobile-brief-fab-group') || document.getElementById('mobile-brief-fab');
+            const mobFab = document.getElementById('mobile-brief-fab-group');
 
             const isFromBrief = Boolean(
                 window._returnToBriefState &&
@@ -13324,15 +13300,38 @@
             if (topBanner) topBanner.classList.toggle('hidden', !showReturn);
             if (endCard) endCard.classList.toggle('hidden', !showReturn);
             if (mobFab) mobFab.classList.toggle('active', showReturn);
+            // The Next pill: "Next", or "Back to Today" once this is the brief's last story.
+            const nextBtn = document.getElementById('mobile-brief-next');
+            if (nextBtn && showReturn) {
+                const last = !window.briefHasNextStory();
+                nextBtn.classList.toggle('is-last', last);
+                nextBtn.setAttribute('aria-label', last ? 'Back to Today' : 'Next story');
+                const label = document.getElementById('mobile-brief-next-label');
+                if (label) label.textContent = last ? 'Back to Today' : 'Next';
+            }
             if (isFromBrief && window.currentArticle) window.syncBriefArticleActionButtons?.();
             window.syncBriefCards?.();
+        };
+
+        // Is there a story after the open one in the brief it was opened from?
+        window.briefHasNextStory = function () {
+            const s = window._returnToBriefState;
+            const ids = s && Array.isArray(s.storyIds) ? s.storyIds : [];
+            const i = ids.indexOf(window.currentArticle?.id);
+            return i >= 0 && i < ids.length - 1;
+        };
+
+        // The Next pill (build 283): the next story, or back to Today after the last one.
+        window.briefNextOrBack = function () {
+            if (window.briefHasNextStory()) window.navigateArticle(1);
+            else window.returnToBrief();
         };
 
         window.hideBriefReturnUI = function () {
             const deskBtn = document.getElementById('desk-back-to-brief-btn');
             const topBanner = document.getElementById('brief-return-header');
             const endCard = document.getElementById('brief-return-footer');
-            const mobFab = document.getElementById('mobile-brief-fab-group') || document.getElementById('mobile-brief-fab');
+            const mobFab = document.getElementById('mobile-brief-fab-group');
 
             if (deskBtn) deskBtn.classList.add('hidden');
             if (topBanner) topBanner.classList.add('hidden');
@@ -13725,8 +13724,6 @@
                 window._savedArticleTitleSize = display;
                 const el = document.getElementById('article-title');
                 if (el) el.style.fontSize = display;
-                const briefTitleEl = document.querySelector('.brief-header-title');
-                if (briefTitleEl && !isMobile()) briefTitleEl.style.fontSize = display;
             }
             const lb = document.getElementById(cfg.label);
             if (lb) lb.textContent = display;
@@ -15569,7 +15566,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 282;
+        window.APP_BUILD = 283;
 
         (async function initApp() {
             try {
@@ -16456,7 +16453,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v282';
+const CACHE_NAME = 'rss-reader-v283';
 const APP_SHELL = [
     '/',
     'index.html'
