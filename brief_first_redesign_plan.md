@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 267** (`af9f45e`) deployed to production |
+| Current State | **Active — Build 274** deployed to production (Phase 5 complete) |
 | Last Updated | 2026-10-04 |
 
 ---
@@ -62,6 +62,12 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Local Feed Persistence:** Fixed boot race condition by calling `saveLocalFeeds()` when cloud feeds arrive, caching folders in IndexedDB so categories load synchronously on launch.
 - **Live Re-clustering:** When cloud sync updates feed folders, any open Today view automatically re-clusters into the user's named folders.
 
+### Phase 5: Desktop Layout & Consolidated Actions (Builds 268–274)
+- **Today in the middle column (268):** on desktop the brief renders in `#today-column` (a sibling of `#article-list` in `#timeline-pane`) instead of the reader, so stories open beside it rather than replacing it. Unread, a folder or a feed in the sidebar swaps the plain list back; Today (sidebar or `t`) brings the brief back. Prev/next (`j`/`k`, chevrons) walk the brief's stories; the open story's card is highlighted and read cards are dimmed in place (no reshuffle). The column is emptied, not just hidden, when it is replaced, so brief ids exist once in the document. Mobile is unchanged: Today stays a full-screen "article" in the viewer.
+- **Reader bar (269–271):** mobile bar moved below the status bar (it had been rendering under the clock/Dynamic Island); desktop gets `< Today`, which closes the story and scrolls Today to its card (Escape and `b` do the same); the Back button is text-style (its `dark:bg-blue-950/40` class was never compiled, leaving a near-white pill); on desktop the bar is padded to the article column's edges (md 2rem / lg 3.5rem + 42rem).
+- **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
+- **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
+
 ---
 
 ## 4. Phase Status & Roadmap
@@ -73,7 +79,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 | **2. Full Coverage** | Popover sheet for external coverage | **Dropped** (User curated feeds only) |
 | **3. Mobile Navigation** | 3-action bottom bar, reader push/back header, launch default | **Completed** (Build 266) |
 | **4. Folder Categories** | Strict adoption of Following folders, cache persistence | **Completed** (Build 267) |
-| **5. Desktop Layout** | Rail + brief column + reader pane integration | Planned |
+| **5. Desktop Layout** | Brief column + reader pane integration, consolidated actions | **Completed** (Builds 268–274) |
 | **6. Imagery Refinements** | Hero image presentation for lead stories | Planned |
 
 ---
@@ -84,3 +90,6 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 2. **Tab Redundancy:** Removed planned standalone "Topics" and "Saved" bottom tabs. Topics are represented directly by the folder sections and jump pills inside Today; Saved feeds remain readily accessible in the Following sidebar.
 3. **Launch Priority:** Today brief is the default view on launch.
 4. **Folder Ground Truth:** Sidebar folder names under Following are the single source of truth for story classification. Synthetic/inferred topics are forbidden.
+5. **Brief Beside the Reader (desktop):** Today lives in the middle column on desktop so reading a story never replaces the brief. Mobile keeps the full-screen push/back flow.
+6. **Actions Live on the Item:** Read, Later, Save and Share belong to each story (reader row under the headline, brief card rows), not to the top bar. The top bar keeps navigation and view controls only.
+7. **One Navigator per Platform:** on desktop the sidebar folders navigate and the brief has no pill bar; a pill and a same-named folder doing different things was the confusion being removed. Mobile, with no sidebar on screen, keeps the pills.
