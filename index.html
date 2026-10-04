@@ -3142,10 +3142,7 @@
             #desk-nav-group,
             #prev-article-btn,
             #next-article-btn,
-            #share-btn,
             #tts-btn,
-            #read-later-action-btn,
-            #unread-action-btn,
             #view-density-toggle {
                 display: none !important;
             }
@@ -3505,12 +3502,6 @@
                 padding-top: 14px !important;
             }
 
-            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #share-btn,
-            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #unread-action-btn,
-            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #saved-action-btn,
-            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #read-later-action-btn {
-                display: inline-flex !important;
-            }
 
             #reading-progress {
                 display: none !important;
@@ -4829,6 +4820,69 @@
             background: rgba(37, 99, 235, 0.12) !important;
             color: #1d4ed8 !important;
             border-color: rgba(37, 99, 235, 0.35) !important;
+        }
+
+        /* ACTION BUTTONS (build 273). Borderless icon buttons; ON = the filled glyph in the
+           accent. Shared by the reader's action row and the top bar. */
+        .icon-act {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #8b949e;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        html:not(.dark) .icon-act {
+            color: #57606a;
+        }
+        .icon-act svg {
+            width: 19px;
+            height: 19px;
+        }
+        .icon-act:hover {
+            background: rgba(139, 148, 158, 0.16);
+        }
+        .icon-act.is-on,
+        html:not(.dark) .icon-act.is-on {
+            color: #4493f8;
+        }
+        .icon-act:disabled {
+            opacity: 0.35;
+            cursor: default;
+            background: transparent;
+        }
+
+        /* The reader's row sits under the author/date line, above the divider. */
+        #article-byline {
+            flex-wrap: wrap;
+        }
+        .article-actions {
+            display: flex;
+            flex-basis: 100%;
+            align-items: center;
+            gap: 2px;
+            margin: 10px 0 0 -7px;   /* the buttons' own inset, so the first glyph sits on the text edge */
+        }
+
+        /* Brief cards keep their compact size, but the existing card rules force grey with
+           !important - these outrank them so ON really shows in the accent. */
+        .brief-story-actions .icon-act.is-on,
+        .dark .brief-story-actions .icon-act.is-on {
+            color: #4493f8 !important;
+        }
+        .brief-story-actions .icon-act:hover {
+            background: rgba(139, 148, 158, 0.16) !important;
+        }
+        .brief-story-actions .icon-act svg {
+            width: 0.95rem;
+            height: 0.95rem;
         }
 
         /* READER BAR BACK BUTTON (build 271). Its dark-mode background class,
@@ -6590,6 +6644,26 @@
                 <rect x="3" y="14" width="7" height="7" />
                 <rect x="14" y="14" width="7" height="7" />
             </symbol>
+            <!-- Build 273: Read is a dot (filled = unread, as in Mail/Reeder/NetNewsWire);
+                 Standard Stream / Compact Wire are row-density glyphs. -->
+            <symbol id="icon-dot-filled" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="5.5" fill="currentColor" />
+            </symbol>
+            <symbol id="icon-dot-hollow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5.5" />
+            </symbol>
+            <symbol id="icon-rows-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+            </symbol>
+            <symbol id="icon-rows-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <line x1="3" y1="8" x2="21" y2="8" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="16" x2="21" y2="16" />
+            </symbol>
             <symbol id="icon-compact-lines" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="5" x2="21" y2="5" />
@@ -6888,51 +6962,23 @@
                 <div class="flex items-center space-x-3" ondblclick="event.stopPropagation()">
                     <div class="flex space-x-2 mr-2 items-center" ondblclick="event.stopPropagation()">
                         <!-- Desktop Article Navigation (Prev / Next) -->
-                        <div id="desk-nav-group" class="hidden inline-flex rounded-md shadow-sm mr-1" role="group" ondblclick="event.stopPropagation()">
+                        <div id="desk-nav-group" class="hidden inline-flex items-center" role="group" ondblclick="event.stopPropagation()">
                             <button id="prev-article-btn" onclick="navigateArticle(-1)" ondblclick="event.stopPropagation()" type="button" title="Previous Article (↑ / k)" aria-label="Previous Article"
-                                class="p-1.5 rounded-l-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                class="icon-act">
                                 <svg class="w-4 h-4">
                                     <use href="#icon-chevron-up" />
                                 </svg>
                             </button>
                             <button id="next-article-btn" onclick="navigateArticle(1)" ondblclick="event.stopPropagation()" type="button" title="Next Article (↓ / j)" aria-label="Next Article"
-                                class="p-1.5 -ml-px rounded-r-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                class="icon-act">
                                 <svg class="w-4 h-4">
                                     <use href="#icon-chevron-down" />
                                 </svg>
                             </button>
                         </div>
-                        <!-- Unread Toggle Button -->
-                        <button id="unread-action-btn" onclick="toggleUnreadManual()" title="Mark Read"
-                            aria-label="Mark Read" class="hidden p-1.5 rounded-md border transition-colors">
-                            <svg class="w-4 h-4">
-                                <use href="#icon-check" />
-                            </svg>
-                        </button>
-                        <!-- Dynamic Read Later Action Button -->
-                        <button id="read-later-action-btn" onclick="handleReadLaterAction()" title="Read Later"
-                            aria-label="Read Later" class="hidden p-1.5 rounded-md border transition-colors">
-                            <svg class="w-4 h-4">
-                                <use href="#icon-bookmark" />
-                            </svg>
-                        </button>
-                        <!-- Saved Toggle Button -->
-                        <button id="saved-action-btn" onclick="handleSavedAction()" title="Save" aria-label="Save"
-                            class="hidden p-1.5 rounded-md border transition-colors">
-                            <svg class="w-4 h-4">
-                                <use href="#icon-star" />
-                            </svg>
-                        </button>
-                        <!-- Share Button -->
-                        <button id="share-btn" onclick="shareArticle()" title="Share" aria-label="Share"
-                            class="hidden p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                            <svg class="w-4 h-4">
-                                <use href="#icon-share" />
-                            </svg>
-                        </button>
                         <!-- TTS Button -->
                         <button id="tts-btn" onclick="toggleTTS()" title="Listen" aria-label="Listen"
-                            class="hidden p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            class="hidden icon-act">
                             <svg class="w-4 h-4">
                                 <use href="#icon-headphones" />
                             </svg>
@@ -6941,9 +6987,9 @@
                     <!-- View mode toggle: Standard Stream / Compact Wire -->
                     <button onclick="toggleViewMode()" id="view-density-toggle" title="Standard Stream (switch to Compact Wire)"
                         aria-label="Standard Stream (switch to Compact Wire)"
-                        class="p-1.5 rounded-md text-gray-500 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                        class="icon-act">
                         <svg class="w-4 h-4">
-                            <use href="#icon-compact-lines" />
+                            <use href="#icon-rows-2" />
                         </svg>
                     </button>
                 </div>
@@ -7036,6 +7082,22 @@
                                     class="flex items-center text-xs text-gray-500 mb-12 border-b border-gray-100 dark:border-gray-800">
                                     <span id="article-author" class="font-semibold"></span><span
                                         class="mx-2">•</span><span id="article-date"></span>
+                                    <!-- READER ACTION ROW (build 273): the same actions as a brief card's
+                                         row, under the headline, for every story however it was opened.
+                                         They used to sit in the top bar. Ids unchanged, so every handler,
+                                         shortcut and state sync that targets them still works. -->
+                                    <div id="article-actions" class="article-actions">
+                                        <button id="unread-action-btn" type="button" onclick="toggleUnreadManual()" title="Mark Read"
+                                            aria-label="Mark Read" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-dot-filled" /></svg></button>
+                                        <button id="read-later-action-btn" type="button" onclick="handleReadLaterAction()" title="Read Later"
+                                            aria-label="Read Later" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-bookmark" /></svg></button>
+                                        <button id="saved-action-btn" type="button" onclick="handleSavedAction()" title="Save"
+                                            aria-label="Save" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-star" /></svg></button>
+                                        <button id="share-btn" type="button" onclick="shareArticle()" title="Share"
+                                            aria-label="Share" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-share" /></svg></button>
+                                        <button id="open-original-btn" type="button" onclick="openExternal()" title="Open original source"
+                                            aria-label="Open original source" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-external-link" /></svg></button>
+                                    </div>
                                 </div>
                             </div>
                             <div id="article-body"
@@ -10189,7 +10251,9 @@
                     card.classList.add('is-social-story');
                     if (excerptEl) excerptEl.classList.add('line-clamp-social', 'is-social-post');
                 }
+                window.buildBriefStoryActions(card);   // build 273: the full action row
             });
+            window.updateBriefStoryActionButtons(container);
 
             // Live repair for "Uncategorized" sections: map stories to real user folders from window.feeds
             container.querySelectorAll('.brief-cat-section').forEach(catSection => {
@@ -12228,12 +12292,10 @@
             if (!btn) return;
             const icon = window._ttsActive ? 'icon-stop' : 'icon-headphones';
             const label = window._ttsActive ? 'Stop' : 'Listen';
-            btn.innerHTML = `<svg class="w-4 h-4"><use href="#${icon}"/></svg>`;
+            btn.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
             btn.title = label;
             btn.setAttribute('aria-label', label);
-            btn.className = window._ttsActive
-                ? 'p-1.5 rounded-md border border-red-400 text-red-500 hover:bg-red-50 transition-colors'
-                : 'p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
+            btn.className = window._ttsActive ? 'icon-act is-on' : 'icon-act';
         }
 
         // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
@@ -12242,9 +12304,9 @@
             const isCompact = window._viewMode === 'compact';
             const btn = document.getElementById('view-density-toggle');
             if (btn) {
-                const icon = isCompact ? 'icon-list' : 'icon-compact-lines';
+                const icon = isCompact ? 'icon-rows-4' : 'icon-rows-2';
                 const label = isCompact ? 'Compact Wire (click for Standard Stream)' : 'Standard Stream (click for Compact Wire)';
-                btn.innerHTML = `<svg class="w-4 h-4"><use href="#${icon}"/></svg>`;
+                btn.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
                 btn.title = label;
                 btn.setAttribute('aria-label', label);
             }
@@ -13214,6 +13276,80 @@
             }
         };
 
+        // ===== BRIEF CARD ACTION ROW (build 273, on request) =====
+        // Every story card: Read · Later · Save · Share · Open in Reader · Open original.
+        // Built by normalizeBriefDOM for every card - freshly composed or stored before
+        // this build - so there is one row design, and Today in the column, Today in the
+        // reader and the scheduled briefs all get it.
+        window.briefStoryArticle = function (id) {
+            const by = (list) => (Array.isArray(list) ? list : []).find(a => a.id === id || a.link === id);
+            return by(window.articles) || by(window._readArchiveCache) || by(window._savedArticles) || by(window._readLaterArticles) || null;
+        };
+
+        window.buildBriefStoryActions = function (card) {
+            const saId = card.getAttribute('data-sa-id') || (card.id || '').replace(/^brief-card-/, '');
+            if (!saId) return;
+            let row = card.querySelector('.brief-story-actions');
+            if (!row) {
+                row = document.createElement('div');
+                card.appendChild(row);
+            }
+            const link = row.querySelector('.brief-source-link, a[href]')?.getAttribute('href')
+                || row.querySelector('[data-save-link]')?.getAttribute('data-save-link')
+                || window.briefStoryArticle(saId)?.link || '';
+            const j = escJs(saId);
+            const b = (cls, label, icon, onclick) =>
+                `<button type="button" class="icon-act ${cls}" onclick="${onclick}" title="${label}" aria-label="${label}"><svg aria-hidden="true"><use href="#${icon}"/></svg></button>`;
+            row.className = 'brief-story-actions';
+            row.innerHTML =
+                b('brief-act-read', 'Mark Read', 'icon-dot-filled', `window.briefStoryAct('read', '${j}', this)`) +
+                b('brief-act-later', 'Read Later', 'icon-bookmark', `window.briefStoryAct('later', '${j}', this)`) +
+                `<button type="button" class="icon-act brief-save-btn" data-save-id="${esc(saId)}" data-save-link="${esc(link)}" onclick="window.toggleBriefStorySaved('${j}', this)" title="Save" aria-label="Save"><svg aria-hidden="true"><use href="#icon-star"/></svg></button>` +
+                b('brief-act-share', 'Share', 'icon-share', `window.briefStoryAct('share', '${j}', this)`) +
+                b('brief-open-reader', 'Open in Reader', 'icon-newspaper', `window.openArticleInReader('${j}')`) +
+                (link ? `<a class="icon-act brief-source-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '');
+        };
+
+        window.updateBriefStoryActionButtons = function (root) {
+            const byId = new Map((window.articles || []).map(a => [a.id, a]));
+            (root || document).querySelectorAll('.brief-story-card[data-sa-id]').forEach(card => {
+                const id = card.getAttribute('data-sa-id');
+                const art = byId.get(id) || window.briefStoryArticle(id);
+                if (!art) return;
+                window.setActBtn(card.querySelector('.brief-act-read'), !!art.unread,
+                    art.unread ? 'icon-dot-filled' : 'icon-dot-hollow', art.unread ? 'Mark Read' : 'Mark Unread');
+                window.setActBtn(card.querySelector('.brief-act-later'), !!art.readLater,
+                    art.readLater ? 'icon-bookmark-filled' : 'icon-bookmark', art.readLater ? 'Remove from Read Later' : 'Read Later');
+            });
+            window.updateBriefStorySaveButtons?.();
+        };
+
+        window.briefStoryAct = async function (kind, id, btn) {
+            const art = window.briefStoryArticle(id);
+            if (!art || !art.link) { window.showToast?.('Article details unavailable', true); return; }
+            if (kind === 'share') {
+                try {
+                    if (navigator.share) await navigator.share({ title: art.title, url: art.link });
+                    else { await navigator.clipboard.writeText(art.link); window.showToast('Link copied to clipboard'); }
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return;   // share sheet dismissed - not a failure
+                    try { await navigator.clipboard.writeText(art.link); window.showToast('Link copied to clipboard'); }
+                    catch (e2) { window.showToast('Could not share', true); }
+                }
+                return;
+            }
+            if (kind === 'read') {
+                toggleUnread(art);
+                saveReadState();
+            } else if (kind === 'later') {
+                toggleReadLater(art);
+                saveReadLaterState();
+                window.showToast?.(art.readLater ? 'Added to Read Later' : 'Removed from Read Later');
+            }
+            refreshUI();
+            updateActionButton();   // reader row if this is the open story, plus every card
+        };
+
         window.toggleBriefStorySaved = async function (articleId, btnEl) {
             let art = (window.articles || []).find(a => a.id === articleId);
             if (!art && Array.isArray(window._readArchiveCache)) {
@@ -13251,19 +13387,7 @@
             else await window.savedBucket.add(art);
 
             const isSaved = !wasSaved;
-            if (btnEl) {
-                btnEl.setAttribute('title', isSaved ? 'Unsave' : 'Save Article');
-                btnEl.setAttribute('aria-label', btnEl.title);
-                btnEl.classList.toggle('text-amber-500', isSaved);
-                btnEl.classList.toggle('dark:text-amber-400', isSaved);
-                btnEl.classList.toggle('is-saved', isSaved);
-                btnEl.classList.toggle('text-gray-500', !isSaved);
-                btnEl.classList.toggle('dark:text-gray-400', !isSaved);
-                const iconUse = btnEl.querySelector('use');
-                if (iconUse) {
-                    iconUse.setAttribute('href', isSaved ? '#icon-star-filled' : '#icon-star');
-                }
-            }
+            if (btnEl) window.setActBtn(btnEl, isSaved, isSaved ? 'icon-star-filled' : 'icon-star', isSaved ? 'Unsave' : 'Save');
             window.showToast?.(isSaved ? "Saved" : "Unsaved");
             if (window.syncBriefArticleActionButtons) window.syncBriefArticleActionButtons();
             if (window.updateBriefStorySaveButtons) window.updateBriefStorySaveButtons();
@@ -13275,17 +13399,7 @@
                 const link = btn.getAttribute('data-save-link');
                 if (!link) return;
                 const isSaved = window.savedBucket.has(link);
-                btn.setAttribute('title', isSaved ? 'Unsave' : 'Save Article');
-                btn.setAttribute('aria-label', btn.title);
-                btn.classList.toggle('text-amber-500', isSaved);
-                btn.classList.toggle('dark:text-amber-400', isSaved);
-                btn.classList.toggle('is-saved', isSaved);
-                btn.classList.toggle('text-gray-500', !isSaved);
-                btn.classList.toggle('dark:text-gray-400', !isSaved);
-                const iconUse = btn.querySelector('use');
-                if (iconUse) {
-                    iconUse.setAttribute('href', isSaved ? '#icon-star-filled' : '#icon-star');
-                }
+                window.setActBtn(btn, isSaved, isSaved ? 'icon-star-filled' : 'icon-star', isSaved ? 'Unsave' : 'Save');
             });
         };
 
@@ -14218,60 +14332,40 @@
             }
         };
 
+        // ACTION BUTTONS (build 273): borderless, and a button that is ON shows its filled
+        // glyph in the accent - Read = dot (filled while unread), Later = filled bookmark,
+        // Save = filled star. One setter for the reader row and every brief card, so the
+        // two can never disagree. It also retires the old per-state Tailwind classes:
+        // bg-green-50 painted Later near-white in dark mode, and Save's amber classes
+        // were never compiled at all.
+        window.setActBtn = function (btn, on, icon, label) {
+            if (!btn) return;
+            btn.classList.add('icon-act');
+            btn.classList.toggle('is-on', !!on);
+            btn.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
+            if (label) { btn.title = label; btn.setAttribute('aria-label', label); }
+        };
+
         window.updateActionButton = () => {
-            const b = document.getElementById('read-later-action-btn');
+            const laterBtn = document.getElementById('read-later-action-btn');
             const shareBtn = document.getElementById('share-btn');
             const ttsBtn = document.getElementById('tts-btn');
             const unreadBtn = document.getElementById('unread-action-btn');
             const savedBtn = document.getElementById('saved-action-btn');
+            const origBtn = document.getElementById('open-original-btn');
             const deskNavGroup = document.getElementById('desk-nav-group');
-            const hasArticle = !!window.currentArticle;
-            [b, shareBtn, ttsBtn, unreadBtn, savedBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            const art = window.currentArticle;
+            const hasArticle = !!art;
+            [laterBtn, shareBtn, ttsBtn, unreadBtn, savedBtn, origBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            window.updateBriefStoryActionButtons?.();
             if (!hasArticle) return;
 
-            const BASE = 'p-1.5 rounded-md border transition-colors cursor-pointer';
-            if (window.currentArticle.unread) {
-                unreadBtn.title = 'Mark Read';
-                unreadBtn.setAttribute('aria-label', 'Mark Read');
-                unreadBtn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-check"/></svg>';
-                unreadBtn.className = `${BASE} border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30`;
-            } else {
-                unreadBtn.title = 'Mark Unread';
-                unreadBtn.setAttribute('aria-label', 'Mark Unread');
-                unreadBtn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-mark-unread"/></svg>';
-                unreadBtn.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
-            }
-            if (window.currentSmartFeed === 'read-later') {
-                b.title = 'Remove from Read Later';
-                b.setAttribute('aria-label', 'Remove from Read Later');
-                b.innerHTML = '<svg class="w-4 h-4"><use href="#icon-bookmark-x"/></svg>';
-                b.className = `${BASE} border-red-500 text-red-500 hover:bg-red-50`;
-            } else if (window.currentArticle.readLater) {
-                b.title = 'Remove from Read Later';
-                b.setAttribute('aria-label', 'Remove from Read Later');
-                b.innerHTML = '<svg class="w-4 h-4"><use href="#icon-bookmark-filled"/></svg>';
-                b.className = `${BASE} border-green-500 text-green-500 bg-green-50`;
-            } else {
-                b.title = 'Add to Read Later';
-                b.setAttribute('aria-label', 'Add to Read Later');
-                b.innerHTML = '<svg class="w-4 h-4"><use href="#icon-bookmark"/></svg>';
-                b.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
-            }
-            // Saved button — separate state from Read Later.
-            if (savedBtn) {
-                const isSaved = !!(window.savedBucket && window.currentArticle.link && window.savedBucket.has(window.currentArticle.link));
-                if (isSaved) {
-                    savedBtn.title = 'Unsave';
-                    savedBtn.setAttribute('aria-label', 'Unsave');
-                    savedBtn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-star-filled"/></svg>';
-                    savedBtn.className = `${BASE} border-amber-500 text-amber-500 bg-amber-50 dark:bg-amber-900/20`;
-                } else {
-                    savedBtn.title = 'Save';
-                    savedBtn.setAttribute('aria-label', 'Save');
-                    savedBtn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-star"/></svg>';
-                    savedBtn.className = `${BASE} border-gray-400 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700`;
-                }
-            }
+            window.setActBtn(unreadBtn, !!art.unread, art.unread ? 'icon-dot-filled' : 'icon-dot-hollow', art.unread ? 'Mark Read' : 'Mark Unread');
+            // Read Later bucket copies don't always carry .readLater, so the view counts too.
+            const isLater = window.currentSmartFeed === 'read-later' || !!art.readLater;
+            window.setActBtn(laterBtn, isLater, isLater ? 'icon-bookmark-filled' : 'icon-bookmark', isLater ? 'Remove from Read Later' : 'Read Later');
+            const isSaved = !!(window.savedBucket && art.link && window.savedBucket.has(art.link));
+            window.setActBtn(savedBtn, isSaved, isSaved ? 'icon-star-filled' : 'icon-star', isSaved ? 'Unsave' : 'Save');
             if (window.syncBriefArticleActionButtons) window.syncBriefArticleActionButtons();
             if (window.updateBriefStorySaveButtons) window.updateBriefStorySaveButtons();
         };
@@ -15804,7 +15898,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 272;
+        window.APP_BUILD = 273;
 
         (async function initApp() {
             try {
@@ -15927,7 +16021,7 @@
                         window._viewMode = 'compact';
                         const btn = document.getElementById('view-density-toggle');
                         if (btn) {
-                            btn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-list"/></svg>';
+                            btn.innerHTML = '<svg aria-hidden="true"><use href="#icon-rows-4"/></svg>';
                             btn.title = 'Compact Wire (click for Standard Stream)';
                             btn.setAttribute('aria-label', 'Compact Wire (click for Standard Stream)');
                         }
@@ -15937,7 +16031,7 @@
                         window._viewMode = 'standard';
                         const btn = document.getElementById('view-density-toggle');
                         if (btn) {
-                            btn.innerHTML = '<svg class="w-4 h-4"><use href="#icon-compact-lines"/></svg>';
+                            btn.innerHTML = '<svg aria-hidden="true"><use href="#icon-rows-2"/></svg>';
                             btn.title = 'Standard Stream (click for Compact Wire)';
                             btn.setAttribute('aria-label', 'Standard Stream (click for Compact Wire)');
                         }
@@ -16706,7 +16800,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v272';
+const CACHE_NAME = 'rss-reader-v273';
 const APP_SHELL = [
     '/',
     'index.html'
