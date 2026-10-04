@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 278** deployed to production (Phase 5 complete, plus follow-ups) |
+| Current State | **Active — Build 279** deployed to production (Phase 5 complete, plus follow-ups) |
 | Last Updated | 2026-10-04 |
 
 ---
@@ -68,11 +68,12 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–278)
+### Follow-ups (Builds 275–279)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
 - **Mark-read row (278):** one short line at the end of every section ("Mark N read") marks the stories still showing above it plus the other outlets' copies grouped under them (`data-cov`), then shows "Marked N read · Undo" for 5 seconds. The heading check still marks the whole folder.
+- **A story's copies go with it (279):** marking a single brief story read (opening it, its Read dot, the reader's Read button, a list swipe) also marks the other outlets' copies grouped under it, so none returns as a "new" story in the next Today. Copies are registered from each card's `data-cov` when a brief is shown (`window._briefCopies`); marking the story unread puts back only the copies its read mark took along. The section row marks its copies explicitly and keeps its own exact Undo.
 - **Reader bar alignment (278):** build 271 assumed the article column had `md:ml-4` / `lg:ml-8`, but those classes are not in the compiled CSS. The bar is now padded to the column's real edges (1rem / 1.5rem + 42rem). Category pills are regular weight.
 
 ---

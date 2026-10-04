@@ -10228,6 +10228,10 @@
             return 'Uncategorized';
         }
 
+        // Each brief story's grouped copies - lead id -> the other outlets' article ids -
+        // read from the cards' data-cov whenever a brief is shown (build 279).
+        window._briefCopies = new Map();
+
         // The section-end Mark-read button (build 278); restored after Undo / settling.
         const BRIEF_MARK_ROW_HTML = '<button type="button" class="brief-mark-section-btn" onclick="window.markBriefSectionRead(this)" title="Mark the stories above as read" aria-label="Mark the stories above as read"><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-mark-section-label">Mark read</span></button>';
 
@@ -10488,6 +10492,11 @@
                 briefContainer.appendChild(footerDiv);
             }
 
+            // Register each story's copies, so marking it read takes them along (build 279).
+            container.querySelectorAll('.brief-story-card[data-sa-id][data-cov]').forEach(card => {
+                try { window._briefCopies.set(card.getAttribute('data-sa-id'), JSON.parse(card.getAttribute('data-cov'))); } catch (e) { }
+            });
+
             // Mark-read row at the end of every section, Top Stories included (build 278).
             container.querySelectorAll('.brief-cat-section').forEach(sec => {
                 if (sec.querySelector('.brief-cat-end')) return;
@@ -10556,6 +10565,7 @@
                 window.articles.forEach(a => { if (a.id === id) a.unread = false; });
                 window._readLinks.add(article.link);
                 archiveReadArticle(article);
+                syncStoryCopies(id, false);   // its grouped copies are read too (build 279)
                 saveReadState();
             }
 
@@ -11410,6 +11420,12 @@
                 updateBadges();
                 return;
             }
+            applyReadState(article);
+            syncStoryCopies(article.id, article.unread);
+        }
+        // Writes article.unread through to the read-link set, the keep-unread set and the
+        // read archive. Split out of toggleUnread (build 279) so copies get the same.
+        function applyReadState(article) {
             if (!article.unread) {
                 window._readLinks.add(article.link);
                 window._unreadToggledLinks.delete(article.link);
@@ -11420,6 +11436,36 @@
                 // archive record so the boot self-heal can't resurrect it as read.
                 window._unreadToggledLinks.add(article.link);
                 try { window.appDB?.delete('readArchive', article.link); } catch (e) { }
+            }
+        }
+        // A STORY'S COPIES GO WITH IT (build 279, on request). Marking a brief story read -
+        // opening it, its Read dot, the reader's Read button, a list swipe - also marks
+        // the other outlets' copies grouped under it (window._briefCopies), so none of
+        // them comes back as a "new" story in the next Today. Marking it unread again
+        // puts back only the copies that its read mark took along. One level, no cascade.
+        window._copiesTakenAlong = new Map();   // lead id -> copy articles its read mark changed
+        function syncStoryCopies(leadId, unread) {
+            if (!unread) {
+                const ids = window._briefCopies?.get(leadId);
+                if (!ids || !ids.length) return;
+                const took = [];
+                ids.forEach(cid => {
+                    const c = (window.articles || []).find(a => a.id === cid);
+                    if (!c || c.isBrief || !c.unread) return;
+                    c.unread = false;
+                    applyReadState(c);
+                    took.push(c);
+                });
+                if (took.length) window._copiesTakenAlong.set(leadId, (window._copiesTakenAlong.get(leadId) || []).concat(took));
+            } else {
+                const took = window._copiesTakenAlong.get(leadId);
+                if (!took) return;
+                window._copiesTakenAlong.delete(leadId);
+                took.forEach(c => {
+                    if (c.unread) return;
+                    c.unread = true;
+                    applyReadState(c);
+                });
             }
         }
         function toggleReadLater(article) {
@@ -12911,7 +12957,9 @@
                 window.updateActionButton?.();
             };
             window.briefKeepInPlace(end, () => {
-                marked.forEach(a => toggleUnread(a));   // unread -> read, with the archive bookkeeping
+                // Not toggleUnread: the copies are already in `marked`, and Undo must put
+                // back exactly what this tap changed - no taking-along on either side.
+                marked.forEach(a => { a.unread = false; applyReadState(a); });
                 sec.classList.add('is-just-marked');
                 apply();
             });
@@ -12929,7 +12977,7 @@
             end.querySelector('.brief-undo-btn').onclick = () => {
                 clearTimeout(timer);
                 window.briefKeepInPlace(end, () => {
-                    marked.forEach(a => { if (!a.unread) toggleUnread(a); });
+                    marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
                     sec.classList.remove('is-just-marked');
                     end.innerHTML = BRIEF_MARK_ROW_HTML;
                     apply();
@@ -16098,7 +16146,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 278;
+        window.APP_BUILD = 279;
 
         (async function initApp() {
             try {
@@ -17000,7 +17048,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v278';
+const CACHE_NAME = 'rss-reader-v279';
 const APP_SHELL = [
     '/',
     'index.html'
