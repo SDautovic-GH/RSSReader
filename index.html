@@ -4544,6 +4544,43 @@
             display: none;
         }
 
+        /* "N NEW STORIES" (build 306, on request): at the top of Today when a refresh
+           brought stories it is not showing while you were already reading. Tap to
+           rebuild Today at the top; nothing moves until then. Accent-filled: the one
+           primary action on screen. Hosted by the pane that shows Today. */
+        .today-new-pill {
+            display: none;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 30;
+            align-items: center;
+            min-height: 36px;
+            padding: 0 16px;
+            border: none;
+            border-radius: 9999px;
+            background: #4493f8;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .today-new-pill.is-on {
+            display: inline-flex;
+        }
+
+        #timeline-pane > .today-new-pill {
+            top: 84px;   /* under the 74px column header */
+        }
+
+        #viewer-pane > .today-new-pill {
+            top: calc(max(env(safe-area-inset-top, 0px), 50px) + 10px);
+        }
+
         /* READ STORIES LEAVE THE BRIEF (build 278, on request). Whatever marks a story
            read - opening it, its Read dot, a section's Mark-read row, a folder check,
            another device - takes it out of Today, in the column or the reader
@@ -11282,7 +11319,11 @@
             el.textContent = rel ? `Updated ${rel}` : '';
         };
         // Tick the relative time so "just now" ages to "1m ago" without a refresh.
-        setInterval(() => { if (window._lastRefreshAt) window.updateHeaderStatus(); }, 60000);
+        setInterval(() => {
+            if (!window._lastRefreshAt) return;
+            window.updateHeaderStatus();
+            window.updateTodayStatus?.();   // "Updated 5m ago" ages too (build 306)
+        }, 60000);
 
         // --- OPML & FEED CONFIG ---
         window.importSubscriptions = async (event) => {
@@ -11641,6 +11682,7 @@
             }
             window._refreshInFlight = true;
             _setHintRefreshing(true);
+            window.updateTodayStatus?.();   // "Updating..." (build 306)
             // If the timeline is currently showing an empty state, immediately swap it
             // to the "Refreshing feeds" spinner so the user sees the refresh took hold
             // (otherwise they stare at "All caught up" until articles arrive). Keyed so
@@ -11671,6 +11713,12 @@
                 // Drain a coalesced request that arrived while this batch was running.
                 // Deferred to a fresh microtask so _refreshInFlight is observably false
                 // before re-entry and we don't grow the stack on repeated coalescing.
+                // Today (build 306): status and new stories once the LAST queued pass is
+                // done - not between passes, when "Updating..." should stay up.
+                if (!window._refreshPending) {
+                    window.updateTodayStatus?.();
+                    window.checkTodayForNewStories?.();
+                }
                 if (window._refreshPending) {
                     const nextOpts = window._refreshPending;
                     window._refreshPending = null;
@@ -12267,14 +12315,17 @@
             };
         };
 
-        window.renderTodayColumn = function () {
+        // prebuilt (build 306): a brief checkTodayForNewStories() already built.
+        window.renderTodayColumn = function (prebuilt) {
             const col = document.getElementById('today-column');
             if (!col) return;
             const keepScroll = col.scrollTop;
-            window._todayBrief = window.buildTodayBrief();
+            window._todayBrief = prebuilt || window.buildTodayBrief();
+            window._todayNewCount = 0;
             col.innerHTML = window._todayBrief.body;
             normalizeBriefDOM(col);
             col.scrollTop = keepScroll;
+            window.updateTodayStatus?.();
             // A rebuild can reorder or drop stories: keep prev/next walking the brief
             // as it now stands.
             const s = window._returnToBriefState;
@@ -12339,6 +12390,89 @@
             bar.scrollBy({ left: (p.left + p.width / 2) - (b.left + b.width / 2), behavior: 'smooth' });
         };
 
+        // ===== TODAY KNOWS HOW CURRENT IT IS (build 306, on request) =====
+        // Its heading reads "Updating..." while a refresh runs and "Updated 5m ago" after
+        // (there was no sign at all, and Today was never rebuilt by the refresh it waited
+        // on). When a refresh brings stories Today is not showing: if you have not started
+        // reading - Today on screen, at its top, no story open - it is rebuilt in place;
+        // otherwise a "N new stories" pill appears at its top, and nothing moves until you
+        // tap it. Runs after every refresh: at launch, on return, every 30 minutes.
+        window._todayNewCount = 0;
+        let _todayPill = null;
+        function todayNewPill() {
+            if (!_todayPill) {
+                _todayPill = document.createElement('button');
+                _todayPill.type = 'button';
+                _todayPill.className = 'today-new-pill';
+                _todayPill.onclick = () => window.showNewTodayStories();
+            }
+            return _todayPill;
+        }
+        // Where Today is on screen right now: 'column' (desktop), 'reader' (phone), or null.
+        function todayOnScreen() {
+            if (window._todayInColumn) return 'column';
+            if (isMobile() && window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) return 'reader';
+            return null;
+        }
+
+        window.updateTodayStatus = function () {
+            const text = (window._refreshInFlight || window._refreshPending) ? 'Updating…'
+                : (window._lastRefreshAt ? `Updated ${formatRelativeTime(window._lastRefreshAt)}` : '');
+            document.querySelectorAll('[data-today-status]').forEach(el => { el.textContent = text ? `• ${text}` : ''; });
+            const where = todayOnScreen();
+            const n = window._todayNewCount;
+            const pill = todayNewPill();
+            const show = !!where && n > 0;
+            if (show) {
+                const host = document.getElementById(where === 'column' ? 'timeline-pane' : 'viewer-pane');
+                if (host && pill.parentElement !== host) host.appendChild(pill);
+                pill.textContent = `↑ ${n} new ${n === 1 ? 'story' : 'stories'}`;
+            }
+            pill.classList.toggle('is-on', show);
+        };
+
+        // Rebuild Today where it is on screen. fresh: a brief already built; toTop: jump up.
+        function rebuildTodayInPlace(fresh, toTop) {
+            const where = todayOnScreen();
+            if (where === 'column') {
+                window.renderTodayColumn(fresh);
+                if (toTop) document.getElementById('today-column').scrollTop = 0;
+            } else if (where === 'reader') {
+                window._todayBrief = fresh || window.buildTodayBrief();
+                window._todayNewCount = 0;
+                selectArticle(window.TODAY_BRIEF_ID);   // renders it at the top
+            }
+            window.updateTodayStatus();
+        }
+        window.showNewTodayStories = () => rebuildTodayInPlace(null, true);
+
+        // After a refresh: are there stories Today is not showing? A story counts as new
+        // when neither its lead article nor any outlet grouped under it is in Today now.
+        window.checkTodayForNewStories = function () {
+            if (!window._todayBrief) return;
+            const cardsIn = (body) => {
+                const cards = [];
+                for (const m of body.matchAll(/data-sa-id="([^"]+)"(?: data-cov="([^"]*)")?/g)) {
+                    let cov = [];
+                    if (m[2]) { try { cov = JSON.parse(m[2].replace(/&quot;/g, '"')); } catch (e) { } }
+                    cards.push({ id: m[1], cov });
+                }
+                return cards;
+            };
+            const shown = new Set();
+            cardsIn(window._todayBrief.body).forEach(c => { shown.add(c.id); c.cov.forEach(x => shown.add(x)); });
+            const fresh = window.buildTodayBrief();
+            const n = cardsIn(fresh.body).filter(c => !shown.has(c.id) && !c.cov.some(x => shown.has(x))).length;
+            if (!n) return;
+            const where = todayOnScreen();
+            const idle = where === 'column'
+                ? (!window.currentArticle || window.currentArticle.isBrief) && document.getElementById('today-column').scrollTop < 40
+                : where === 'reader' && document.getElementById('reader-view').scrollTop < 40;
+            if (idle) { rebuildTodayInPlace(fresh); return; }
+            window._todayNewCount = n;
+            window.updateTodayStatus();
+        };
+
         window.openToday = async function () {
             window._returnToBriefState = null;
             // Timeline unread pool alignment
@@ -12362,6 +12496,7 @@
             }
             window.showTodayColumn(false);
             window._todayBrief = window.buildTodayBrief();
+            window._todayNewCount = 0;   // build 306
             selectArticle(window.TODAY_BRIEF_ID);
             if (typeof isMobile === 'function' && isMobile()) {
                 setMobilePane('viewer');
@@ -12684,6 +12819,7 @@
                                 <svg class="w-3.5 h-3.5 mr-1 flex-shrink-0"><use href="#icon-newspaper"/></svg>${esc(slotDef.badgeLabel)} Brief
                             </span>
                             <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0">• ${esc(slotDef.windowLabel)}</span>
+                            <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0" data-today-status></span>
                         </div>
                         <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — ${esc(datePartFormatted)}</h2>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
@@ -14757,6 +14893,8 @@
             viewerPane.classList.toggle('has-article', !!art);
             viewerPane.classList.toggle('is-today-brief', isToday);
             viewerPane.classList.toggle('is-brief-view', isAnyBrief);
+            // Today's status line and its "N new stories" pill follow what is on screen (306).
+            window.updateTodayStatus?.();
             // Full screen and a tucked tab bar are for stories: both end when none is open.
             if (!art || isAnyBrief) {
                 window.setReadingFullScreen?.(false);
@@ -15176,7 +15314,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 305;
+        window.APP_BUILD = 306;
 
         (async function initApp() {
             try {
@@ -16070,7 +16208,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v305';
+const CACHE_NAME = 'rss-reader-v306';
 const APP_SHELL = [
     '/',
     'index.html'
