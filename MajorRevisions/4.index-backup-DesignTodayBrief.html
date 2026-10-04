@@ -2510,8 +2510,16 @@
            (between the byline text and the border) and below (between the border
            and the first paragraph of the body). Pixel values are immune to
            app-zoom rem scaling that was visually compressing Tailwind utilities. */
+        /* TIGHTER STORY HEADER (build 300, on request): action row -> divider 14 -> 8px.
+           With the title -> author 24 -> 12, author -> actions 10 -> 6 and divider -> text
+           28 -> 16 below, the empty space between headline and text went from 76 to 42px.
+           The title's 12px still exceeds the 6 / 8px inside the byline block, so it leads. */
         #article-byline {
-            padding-bottom: 14px;
+            padding-bottom: 8px;
+        }
+
+        #article-title {
+            margin-bottom: 12px;   /* was Tailwind mb-6 (24px); unlayered, so this wins */
         }
 
         /* MAKE THE HEADER/BODY BOUNDARY OBVIOUS (build 205, 2026-09-04, on request:
@@ -2533,7 +2541,7 @@
         }
 
         #article-body {
-            padding-top: 28px;
+            padding-top: 16px;   /* 28px since build 205; the stronger divider colour stays (build 300) */
         }
 
         .dynamic-list-preview,
@@ -3093,7 +3101,7 @@
             #article-list,
             #reader-view,
             #sidebar-pane .overflow-y-auto {
-                padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+                padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px)) !important;
             }
 
             #resizer {
@@ -3110,15 +3118,6 @@
 
             #sidebar-pane.mobile-active {
                 flex-direction: column;
-            }
-
-            /* Hide desktop toolbar equivalents on mobile */
-            #desk-nav-group,
-            #prev-article-btn,
-            #next-article-btn,
-            #tts-btn,
-            #view-density-toggle {
-                display: none !important;
             }
 
             /* Mobile sidebar — consistent font size for smart feeds AND category folders */
@@ -3228,7 +3227,7 @@
                 padding-left: 0 !important;
                 padding-right: 0 !important;
                 padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 16px) !important;
-                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 86px) !important;
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 90px) !important;
                 box-sizing: border-box !important;
             }
 
@@ -3360,15 +3359,18 @@
                 background: none;
             }
 
-            /* Full-screen read area: content rests comfortably below the status bar / Dynamic Island */
+            /* Full-screen read area: content rests comfortably below the status bar / Dynamic Island.
+               The list carries that offset itself again (build 299). Build 264 moved it onto a
+               category chip bar above the list and cut this to 8px; build 266 removed that bar
+               but left the 8px, so the first card's source line and title sat under the clock. */
             #timeline-pane.mobile-active #article-list {
-                padding-top: 8px !important;
-                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 86px) !important;
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 16px) !important;
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 90px) !important;
             }
 
             #viewer-pane.mobile-active #reader-view {
                 padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 14px) !important;
-                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 86px) !important;
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 90px) !important;
             }
 
             #sidebar-pane>div:nth-of-type(2) svg {
@@ -3396,45 +3398,17 @@
                 font-size: 0.875rem !important;
             }
 
-            /* Mobile viewer header — shown when viewing an article, with back button and actions */
+            /* NO READER TOP BAR ON THE PHONE (build 301, on request). Back's job moved to the
+               tabs: Today returns to the story's place in Today, Following to the list it came
+               from. The story starts just below the status bar, like Today; while it scrolls
+               down the tab bar steps aside too (tabbar-tucked), so reading is full screen. */
             #viewer-header {
                 display: none !important;
             }
 
-            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header {
-                display: flex !important;
-                /* BELOW THE STATUS BAR (build 269, 2026-10-04). The pane runs under the
-                   clock/Dynamic Island, and this bar was in flow at y=0 - i.e. entirely
-                   inside that strip, behind the OS blur: rendered, but invisible and
-                   untappable. The offset uses the same max(safe-area, 50px) base as the
-                   reader's own top padding, which the rule after the dark variant then
-                   drops - so the article text does not move; the bar just appears in
-                   the band that used to sit empty above it. */
-                margin-top: max(env(safe-area-inset-top, 0px), 50px) !important;
-                height: 52px !important;
-                min-height: 52px !important;
-                padding-left: 12px !important;
-                padding-right: 12px !important;
-                background: rgba(255, 255, 255, 0.88) !important;
-                backdrop-filter: blur(20px) !important;
-                -webkit-backdrop-filter: blur(20px) !important;
-                border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
-                position: sticky !important;
-                top: 0 !important;
-                z-index: 20 !important;
-            }
-
-            .dark #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header {
-                background: rgba(17, 24, 39, 0.88) !important;
-                border-bottom-color: rgba(255, 255, 255, 0.08) !important;
-            }
-
-            /* The bar above now carries the status-bar offset, so the reader keeps only
-               its small gap - otherwise the safe area would be counted twice. */
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
-                padding-top: 14px !important;
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 8px) !important;
             }
-
 
             /* Articles list topbar hidden on mobile — unread count lives in the Reader tab */
             #timeline-header {
@@ -3568,15 +3542,15 @@
             pointer-events: auto;
         }
 
-        /* 52px tall (build 296, on request; was 62): ~60pt under the 115% page zoom, 52pt
-           at 100% - still above the classic 49pt tab bar, with 44px tap targets. Every
-           offset that clears the bar moved down by the same 10px. */
+        /* 56px tall (build 298, on request; 62 originally, 52 in build 296 was too small):
+           ~64pt under the 115% page zoom, 56pt at 100%, with 46px tap targets. Every offset
+           that clears the bar sits 6px below its original value to match. */
         #mobile-tab-bar .tab-pill {
             display: flex;
             align-items: stretch;
             gap: 2px;
-            height: 52px;
-            padding: 4px;
+            height: 56px;
+            padding: 5px 4px;
             border-radius: 999px;
             /* Edge-lit glass finish: brighter at both rounded ends (90deg), a soft
                top sheen (180deg), over the translucent base — plus an inset top-rim
@@ -3779,7 +3753,7 @@
             /* track the layout-anchored tab bar */
             left: 0;
             right: 0;
-            bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+            bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
             z-index: 49;
             padding: 0 18px 2px;
             pointer-events: none;
@@ -4433,35 +4407,37 @@
             box-shadow: inset 3px 0 0 #4493f8 !important;
         }
 
-        /* READING CONTROLS (builds 283-288, on request): Previous + Next as a pair on the
-           right (#reader-nav) and the full-screen exit on the left, in the tab bar's dark
-           glass with 44px touch targets, along the bottom of the reader - on a phone just
-           above the tab bar, on desktop on the article column's edges (1rem / 1.5rem +
-           42rem; centred in full screen). Each shows only when it has somewhere to go. */
-        #reader-nav {
+        /* TAB BAR STEPS ASIDE WHILE READING (build 301, on request). On the phone, scrolling
+           down a story slides the tab bar off the bottom; scrolling up a little, or reaching
+           the end, brings it back - reading is full screen without a button. Transform only:
+           the bar's layout anchor (the pixel-locked body, see #mobile-tab-bar) never moves,
+           so the 115% page-zoom mis-anchoring cannot come back. Later than the shared
+           transition list above, so this transition wins. */
+        #mobile-tab-bar {
+            transition: transform 0.25s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+        }
+
+        body.tabbar-tucked #mobile-tab-bar {
+            transform: translateY(calc(100% + 40px));
+        }
+
+        body.tabbar-tucked #mobile-tab-bar > * {
+            pointer-events: none;
+        }
+
+        /* FULL-SCREEN EXIT (build 284; alone since build 297, when the ‹ › buttons were
+           removed on request): the tab bar's dark glass, a 44px round button at the bottom
+           left of the story column. */
+        #fullscreen-exit {
             display: none;
             position: absolute;
             z-index: 35;
-            align-items: center;
-            gap: 8px;
             bottom: 24px;
-            right: max(1rem, calc(100% - 43rem));
-        }
-
-        #viewer-pane.has-reader-prev #reader-nav,
-        #viewer-pane.has-reader-next #reader-nav {
-            display: inline-flex;
-            animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        #reader-prev,
-        #reader-next,
-        #fullscreen-exit {
-            display: none;
+            width: 44px;
+            min-height: 44px;
+            padding: 0;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            min-height: 44px;
             border-radius: 9999px;
             background: rgba(30, 30, 34, 0.82);
             color: #ffffff;
@@ -4469,66 +4445,24 @@
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
             backdrop-filter: blur(24px) saturate(1.6);
             -webkit-backdrop-filter: blur(24px) saturate(1.6);
-            font-size: 15px;
-            font-weight: 600;
             cursor: pointer;
             transition: transform 0.12s ease;
             -webkit-tap-highlight-color: transparent;
         }
 
-        #viewer-pane.has-reader-prev #reader-prev,
-        #viewer-pane.has-reader-next #reader-next,
         body.is-fullscreen #fullscreen-exit {
             display: inline-flex;
-        }
-
-        #fullscreen-exit {
-            position: absolute;
-            z-index: 35;
             animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* Icon-only pair, ‹ and › (build 289, on request). After a brief's last story the
-           › becomes the Today tab's sun: tap it to go back to Today. */
-        #reader-prev,
-        #reader-next {
-            width: 44px;
-            padding: 0;
-        }
-
-        #reader-next .reader-next-today,
-        #reader-next.is-last .reader-next-chevron {
-            display: none;
-        }
-
-        #reader-next.is-last .reader-next-today {
-            display: block;
-        }
-
-        #fullscreen-exit {
-            width: 44px;
-            padding: 0;
-            bottom: 24px;
-        }
-
-        #reader-prev svg,
-        #reader-next svg,
         #fullscreen-exit svg {
             width: 18px;
             height: 18px;
             flex-shrink: 0;
         }
 
-        #reader-prev:active,
-        #reader-next:active,
         #fullscreen-exit:active {
             transform: scale(0.94);
-        }
-
-        @media (min-width: 64rem) {
-            #reader-nav {
-                right: max(1.5rem, calc(100% - 43.5rem));
-            }
         }
 
         /* FULL SCREEN (build 284, on request): the open story alone - no sidebar, list or
@@ -4538,7 +4472,6 @@
         body.is-fullscreen #timeline-pane,
         body.is-fullscreen #resizer,
         body.is-fullscreen #viewer-header,
-        body.is-fullscreen #viewer-pane.mobile-active.has-article #viewer-header,
         body.is-fullscreen #mobile-tab-bar {
             display: none !important;
         }
@@ -4548,47 +4481,18 @@
             margin-right: auto !important;
         }
 
-        /* No ‹ › arrows in full screen (build 294, on request) - just the story and the
-           exit button; arrow keys and swipes still move between stories. */
-        body.is-fullscreen #reader-nav {
-            display: none !important;
-        }
-
         body.is-fullscreen #fullscreen-exit {
             left: max(1rem, calc(50% - 21rem));
         }
 
-        @media (max-width: 900px) {
-            #reader-nav {
-                bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-                right: 14px;
-            }
-
-            body.is-fullscreen #fullscreen-exit {
-                bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-            }
-
-            body.is-fullscreen #fullscreen-exit {
-                left: 14px;
-            }
-
-            /* No top bar: the story starts below the status bar, as Today does. */
-            body.is-fullscreen #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 14px) !important;
-            }
-
-            /* Room at the end so the story's last lines scroll clear of the controls. */
-            #viewer-pane.mobile-active.has-reader-next #reader-view,
-            #viewer-pane.mobile-active.has-reader-prev #reader-view {
-                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 140px) !important;
-            }
-        }
-
         @media (min-width: 901px) {
-            #viewer-pane.has-reader-next #reader-view,
-            #viewer-pane.has-reader-prev #reader-view,
             body.is-fullscreen #reader-view {
                 padding-bottom: 88px !important;
+            }
+
+            /* Desktop: 16px above the story at every width (build 300; lg:p-6 gave 24px). */
+            #reader-view {
+                padding-top: 16px;
             }
         }
 
@@ -4638,6 +4542,43 @@
         body.today-no-images .brief-thumb,
         body.today-no-images .brief-hero {
             display: none;
+        }
+
+        /* "N NEW STORIES" (build 306, on request): at the top of Today when a refresh
+           brought stories it is not showing while you were already reading. Tap to
+           rebuild Today at the top; nothing moves until then. Accent-filled: the one
+           primary action on screen. Hosted by the pane that shows Today. */
+        .today-new-pill {
+            display: none;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 30;
+            align-items: center;
+            min-height: 36px;
+            padding: 0 16px;
+            border: none;
+            border-radius: 9999px;
+            background: #4493f8;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .today-new-pill.is-on {
+            display: inline-flex;
+        }
+
+        #timeline-pane > .today-new-pill {
+            top: 84px;   /* under the 74px column header */
+        }
+
+        #viewer-pane > .today-new-pill {
+            top: calc(max(env(safe-area-inset-top, 0px), 50px) + 10px);
         }
 
         /* READ STORIES LEAVE THE BRIEF (build 278, on request). Whatever marks a story
@@ -4766,7 +4707,7 @@
                 font-size: 1em !important;
                 line-height: normal;
                 padding-top: 3px !important;
-                padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)) !important;
+                padding-bottom: calc(114px + env(safe-area-inset-bottom, 0px)) !important;
                 /* Mobile floating bar clearance + breathing room */
             }
         }
@@ -4984,7 +4925,8 @@
             flex-basis: 100%;
             align-items: center;
             gap: 2px;
-            margin: 10px 0 0 -7px;   /* the buttons' own inset, so the first glyph sits on the text edge */
+            margin: 6px 0 0 -7px;    /* 6px under the author line (build 300; was 10); -7px = the buttons'
+                                        own inset, so the first glyph sits on the text edge */
         }
 
         /* Brief cards keep their compact size, but the existing card rules force grey with
@@ -5012,20 +4954,6 @@
         }
         #viewer-back-btn:hover {
             background: rgba(68, 147, 248, 0.12) !important;
-        }
-
-        /* MOBILE BACK AT iOS SIZE (build 275, on request). text-xs (12px) was tiny beside
-           the 32px action icons; 15px under the 115% page zoom is about iOS's own 17pt
-           back button, and the chevron grows from 16px to 18px to match. Unlayered, so
-           it beats the compiled text-xs / w-4 / h-4 utilities. Desktop keeps text-xs. */
-        @media (max-width: 900px) {
-            #viewer-back-btn {
-                font-size: 15px;
-            }
-            #viewer-back-btn svg {
-                width: 18px;
-                height: 18px;
-            }
         }
 
         /* DESKTOP READER BAR = THE ARTICLE COLUMN'S WIDTH (build 271, corrected in 278).
@@ -6169,6 +6097,11 @@
             }
         }
 
+        /* Desktop header Refresh spins while a refresh you asked for runs (build 304). */
+        #header-refresh-btn.is-refreshing svg {
+            animation: ptr-spin 0.8s linear infinite;
+        }
+
         @keyframes ptr-spin {
             to {
                 transform: rotate(360deg);
@@ -6737,33 +6670,9 @@
             </div>
 
 
-            <!-- READING CONTROLS along the bottom of the reader (builds 283-288, on request):
-                 Previous + Next (right) for any open story - the brief's stories, or the list
-                 it came from; Next reads "Back to Today" after a brief's last story - and the
-                 full-screen exit (left). Shown by classes on
-                 #viewer-pane / <body>, never by removing Tailwind's `hidden`: that class is
-                 a layered !important, which no unlayered rule can undo (why the build 283
-                 pill, inside a `hidden` wrapper, never appeared). -->
-            <div id="reader-nav">
-                <button id="reader-prev" type="button" onclick="window.navigateArticle(-1)" title="Previous"
-                    aria-label="Previous story">
-                    <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                        stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
-                </button>
-                <button id="reader-next" type="button" onclick="window.readerNextOrBack()" title="Next"
-                    aria-label="Next story">
-                    <svg class="reader-next-chevron" fill="none" stroke="currentColor" stroke-width="2.5"
-                        stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                    <!-- After a brief's last story: the Today tab's sun - back to Today -->
-                    <svg class="reader-next-today" fill="none" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <use href="#icon-sun" />
-                    </svg>
-                </button>
-            </div>
+            <!-- Full-screen exit, bottom left (build 284). Shown by body.is-fullscreen, never
+                 by removing Tailwind's `hidden`: that class is a layered !important, which no
+                 unlayered rule can undo. -->
             <button id="fullscreen-exit" type="button" onclick="window.setReadingFullScreen(false)"
                 title="Exit full screen (Esc)" aria-label="Exit full screen">
                 <svg aria-hidden="true">
@@ -7473,6 +7382,19 @@
         // Hashes the cloud says are read. Cannot be expanded back to URLs — by design;
         // membership is all the app needs.
         window._readHashes = new Set();
+        // CLOUD READ MARKS ARE KEPT ON THE DEVICE (build 305). They used to live in memory
+        // only, so every launch started from this device's own read list: stories read on
+        // another device showed as unread (17) until the cloud snapshot arrived ~20s later
+        // (2) - and, never saved, the same again on the next launch. Saved after each
+        // snapshot that brings new marks; loaded at startup before anything is counted.
+        let _persistHashesTimer = null;
+        window.persistReadHashes = function () {
+            clearTimeout(_persistHashesTimer);
+            _persistHashesTimer = setTimeout(() => {
+                window.appDB?.put('metadata', Array.from(window._readHashes), 'readHashes')
+                    .catch(e => console.warn('Read hashes save error:', e?.message));
+            }, 3000);
+        };
         // SINGLE SOURCE OF TRUTH for "is this link read?". Checks the local URL set
         // first, then the cloud hash set. On a hash hit it REHYDRATES the URL into
         // _readLinks, so a device rebuilds URL-level history as it encounters articles —
@@ -7736,13 +7658,26 @@
                 });
             }
 
+            // Writes the articles AND deletes every stored one not among them (build 302), so
+            // the store mirrors what the app holds. It only ever added before: every article
+            // fetched since install stayed, and startup read all of them to keep 2 days' worth;
+            // dropped stories also came back for a session after each restart.
             async bulkPutArticles(articles) {
                 if (!articles.length) return;
                 const db = await this.open();
+                const keep = new Set(articles.map(a => a.id));
                 return new Promise((resolve, reject) => {
                     const tx = db.transaction('articles', 'readwrite');
                     const store = tx.objectStore('articles');
                     articles.forEach(a => store.put(a));
+                    // Only once startup has read the store back - otherwise a save made after
+                    // a failed restore would prune it down to the little that is in memory.
+                    if (window._articleCacheRestored) {
+                        const keysReq = store.getAllKeys();
+                        keysReq.onsuccess = () => {
+                            (keysReq.result || []).forEach(k => { if (!keep.has(k)) store.delete(k); });
+                        };
+                    }
                     tx.oncomplete = () => resolve();
                     tx.onerror = () => reject(tx.error);
                 });
@@ -8404,6 +8339,27 @@
             return html;
         }
 
+        // KEEP UNREAD STORIES FOR 4 DAYS (builds 302-303, on request). A refresh replaces a
+        // feed's articles with what the feed serves now - its newest 20 (RSS) or its current
+        // page (Bluesky). Unread stories a busy feed had already pushed past that used to
+        // vanish from Today, Unread, the folders and the badge before you saw them. Now an
+        // unread story younger than 4 days survives its feed moving on; it leaves when you
+        // read it or when it turns 4 days old. restoreArticleCache keeps the same horizon for
+        // unread, so a restart does not cut it short.
+        const RETAIN_UNREAD_MS = 4 * 24 * 3600000;
+        function retainedUnread(feedArticles) {
+            const cutoff = Date.now() - RETAIN_UNREAD_MS;
+            return feedArticles.filter(a => a.unread && !a.isBrief && !window.isLinkRead(a.link) && (a._ts || 0) >= cutoff);
+        }
+        // After a feed's fresh items are in: put back the kept ones the feed no longer serves.
+        function restoreRetained(kept) {
+            if (!kept.length) return;
+            const present = new Set(window.articles.map(a => a.link));
+            kept.forEach(a => {
+                if (!present.has(a.link)) { window.articles.push(a); present.add(a.link); }
+            });
+        }
+
         async function fetchBlueskyArticles(feedUrl, sourceName, maxItems, isBackground) {
             const actor = extractBlueskyActor(feedUrl);
             if (!actor) return false;
@@ -8449,7 +8405,9 @@
 
             // Preserve existing IDs by link so DOM onclick handlers stay valid after re-fetch
             const _existingBskyIds = new Map();
-            window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName).forEach(a => _existingBskyIds.set(a.link, a.id));
+            const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
+            _feedOld.forEach(a => _existingBskyIds.set(a.link, a.id));
+            const _keep = retainedUnread(_feedOld);   // build 302
             window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
             let newCount = 0;
 
@@ -8495,6 +8453,7 @@
                 });
                 if (isNew && isBackground) newCount++;
             }
+            restoreRetained(_keep);
 
             if (!isBackground) {
                 renderTimeline(true);
@@ -8620,7 +8579,9 @@
 
                 // Preserve existing IDs by link so DOM onclick handlers stay valid after re-fetch
                 const _existingIds = new Map();
-                window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName).forEach(a => _existingIds.set(a.link, a.id));
+                const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
+                _feedOld.forEach(a => _existingIds.set(a.link, a.id));
+                const _keep = retainedUnread(_feedOld);   // build 302
                 window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
                 // Invalidate excerpt cache for any re-fetched articles
                 window.articles.forEach(a => { if (a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName) a._excerptHtml = null; });
@@ -8698,6 +8659,7 @@
                     window.articles.push(art);
                     if (isNew && isBackground) newCount++;
                 });
+                restoreRetained(_keep);
 
                 if (!isBackground) {
                     renderTimeline(true);
@@ -9945,9 +9907,7 @@
                     if (Array.isArray(s.storyIds)) s.storyIndex = s.storyIds.indexOf(article.id);
                 }
             }
-            if (typeof updateBriefReturnUI === 'function') {
-                updateBriefReturnUI();
-            }
+            window.syncBriefCards?.();
             if (!article.isBrief) {
                 window.articles.forEach(a => { if (a.id === id) a.unread = false; });
                 window._readLinks.add(article.link);
@@ -10491,7 +10451,7 @@
                 && !document.getElementById('img-lightbox')?.classList.contains('open')) {
                 e.preventDefault();
                 if (e.key === 'ArrowLeft') window.navigateArticle(-1);
-                else if (document.getElementById('viewer-pane')?.classList.contains('has-reader-next')) window.readerNextOrBack();
+                else if (window.readerNext().show) window.readerNextOrBack();
                 return;
             }
             if (!window.currentTimeline || window.currentTimeline.length === 0) return;
@@ -11104,7 +11064,7 @@
 
         window.setCategoryFilter = (cat) => {
             window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
-            if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); }
+            if (window._returnToBriefState) window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = 'all';
             window.currentCategoryFilter = cat;
@@ -11121,7 +11081,7 @@
         };
         window.setSourceFilter = (source) => {
             window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
-            if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); }
+            if (window._returnToBriefState) window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = 'all';
             window.currentCategoryFilter = null;
@@ -11359,7 +11319,11 @@
             el.textContent = rel ? `Updated ${rel}` : '';
         };
         // Tick the relative time so "just now" ages to "1m ago" without a refresh.
-        setInterval(() => { if (window._lastRefreshAt) window.updateHeaderStatus(); }, 60000);
+        setInterval(() => {
+            if (!window._lastRefreshAt) return;
+            window.updateHeaderStatus();
+            window.updateTodayStatus?.();   // "Updated 5m ago" ages too (build 306)
+        }, 60000);
 
         // --- OPML & FEED CONFIG ---
         window.importSubscriptions = async (event) => {
@@ -11481,10 +11445,7 @@
         };
         window.setSmartFeed = async (type) => {
             window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
-            if (window._returnToBriefState) {
-                window._returnToBriefState = null;
-                window.hideBriefReturnUI?.();
-            }
+            window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
@@ -11721,6 +11682,7 @@
             }
             window._refreshInFlight = true;
             _setHintRefreshing(true);
+            window.updateTodayStatus?.();   // "Updating..." (build 306)
             // If the timeline is currently showing an empty state, immediately swap it
             // to the "Refreshing feeds" spinner so the user sees the refresh took hold
             // (otherwise they stare at "All caught up" until articles arrive). Keyed so
@@ -11751,6 +11713,12 @@
                 // Drain a coalesced request that arrived while this batch was running.
                 // Deferred to a fresh microtask so _refreshInFlight is observably false
                 // before re-entry and we don't grow the stack on repeated coalescing.
+                // Today (build 306): status and new stories once the LAST queued pass is
+                // done - not between passes, when "Updating..." should stay up.
+                if (!window._refreshPending) {
+                    window.updateTodayStatus?.();
+                    window.checkTodayForNewStories?.();
+                }
                 if (window._refreshPending) {
                     const nextOpts = window._refreshPending;
                     window._refreshPending = null;
@@ -11759,10 +11727,25 @@
             }
         };
 
-        window.refreshAll = () => {
-            // No refresh toasts (user preference). Feedback is the in-timeline spinner
-            // when empty; when articles are showing, new items simply appear in place.
-            window.runFullRefresh();
+        // A refresh you asked for (the desktop header button, the phone's Following hint,
+        // an empty list's Refresh). No refresh toasts (user preference). Build 304: the
+        // desktop button spins until the refresh - and any pass queued behind one already
+        // running - is done, and the desktop Today column is then rebuilt in place (scroll
+        // and open story kept), so what was fetched shows. Before, Today never showed it:
+        // refreshUI deliberately leaves an open brief alone. The automatic refresh still
+        // does, so stories do not reshuffle under you while you read.
+        window.refreshAll = async () => {
+            const btn = document.getElementById('header-refresh-btn');
+            btn?.classList.add('is-refreshing');
+            try {
+                await window.runFullRefresh();
+                while (window._refreshInFlight || window._refreshPending) {
+                    await new Promise(r => setTimeout(r, 300));
+                }
+            } finally {
+                btn?.classList.remove('is-refreshing');
+                if (window._todayInColumn) window.renderTodayColumn?.();
+            }
         };
 
         // --- AUTO REFRESH ---
@@ -11809,6 +11792,13 @@
         // --- NAVIGATE PREV/NEXT ---
         window._navSnapshot = [];
 
+        // An article the reader can open by id: the live list, or the read archive.
+        window.readerArticleById = function (id) {
+            return (window.articles || []).find(a => a.id === id)
+                || (Array.isArray(window._readArchiveCache) ? window._readArchiveCache.find(a => a.id === id || a.link === id) : null)
+                || null;
+        };
+
         window.navigateArticle = (direction) => {
             // 1. If currently reading an article opened from a Brief:
             if (window._returnToBriefState && Array.isArray(window._returnToBriefState.storyIds) && window._returnToBriefState.storyIds.length > 0) {
@@ -11816,7 +11806,13 @@
                 const curId = window.currentArticle?.id || bState.articleId;
                 let curIdx = bState.storyIds.indexOf(curId);
                 if (curIdx === -1) curIdx = bState.storyIndex ?? -1;
-                const newIdx = curIdx + direction;
+                // Step over stories no longer in the app (build 302): with unread kept for
+                // 48 hours these can only be ones you already read whose feed moved on -
+                // Today has hidden them anyway. Opening one was the "not in local cache" error.
+                let newIdx = curIdx + direction;
+                while (newIdx >= 0 && newIdx < bState.storyIds.length && !window.readerArticleById(bState.storyIds[newIdx])) {
+                    newIdx += direction;
+                }
                 if (newIdx >= 0 && newIdx < bState.storyIds.length) {
                     const nextStoryId = bState.storyIds[newIdx];
                     bState.articleId = nextStoryId;
@@ -12319,14 +12315,17 @@
             };
         };
 
-        window.renderTodayColumn = function () {
+        // prebuilt (build 306): a brief checkTodayForNewStories() already built.
+        window.renderTodayColumn = function (prebuilt) {
             const col = document.getElementById('today-column');
             if (!col) return;
             const keepScroll = col.scrollTop;
-            window._todayBrief = window.buildTodayBrief();
+            window._todayBrief = prebuilt || window.buildTodayBrief();
+            window._todayNewCount = 0;
             col.innerHTML = window._todayBrief.body;
             normalizeBriefDOM(col);
             col.scrollTop = keepScroll;
+            window.updateTodayStatus?.();
             // A rebuild can reorder or drop stories: keep prev/next walking the brief
             // as it now stands.
             const s = window._returnToBriefState;
@@ -12356,7 +12355,6 @@
             const cur = window.currentArticle;
             const id = cur && !cur.isBrief ? cur.id : null;
             window._returnToBriefState = null;
-            window.hideBriefReturnUI?.();
             window.clearReaderPane();
             window.syncBriefCards();
             if (!id) return;
@@ -12392,9 +12390,91 @@
             bar.scrollBy({ left: (p.left + p.width / 2) - (b.left + b.width / 2), behavior: 'smooth' });
         };
 
+        // ===== TODAY KNOWS HOW CURRENT IT IS (build 306, on request) =====
+        // Its heading reads "Updating..." while a refresh runs and "Updated 5m ago" after
+        // (there was no sign at all, and Today was never rebuilt by the refresh it waited
+        // on). When a refresh brings stories Today is not showing: if you have not started
+        // reading - Today on screen, at its top, no story open - it is rebuilt in place;
+        // otherwise a "N new stories" pill appears at its top, and nothing moves until you
+        // tap it. Runs after every refresh: at launch, on return, every 30 minutes.
+        window._todayNewCount = 0;
+        let _todayPill = null;
+        function todayNewPill() {
+            if (!_todayPill) {
+                _todayPill = document.createElement('button');
+                _todayPill.type = 'button';
+                _todayPill.className = 'today-new-pill';
+                _todayPill.onclick = () => window.showNewTodayStories();
+            }
+            return _todayPill;
+        }
+        // Where Today is on screen right now: 'column' (desktop), 'reader' (phone), or null.
+        function todayOnScreen() {
+            if (window._todayInColumn) return 'column';
+            if (isMobile() && window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) return 'reader';
+            return null;
+        }
+
+        window.updateTodayStatus = function () {
+            const text = (window._refreshInFlight || window._refreshPending) ? 'Updating…'
+                : (window._lastRefreshAt ? `Updated ${formatRelativeTime(window._lastRefreshAt)}` : '');
+            document.querySelectorAll('[data-today-status]').forEach(el => { el.textContent = text ? `• ${text}` : ''; });
+            const where = todayOnScreen();
+            const n = window._todayNewCount;
+            const pill = todayNewPill();
+            const show = !!where && n > 0;
+            if (show) {
+                const host = document.getElementById(where === 'column' ? 'timeline-pane' : 'viewer-pane');
+                if (host && pill.parentElement !== host) host.appendChild(pill);
+                pill.textContent = `↑ ${n} new ${n === 1 ? 'story' : 'stories'}`;
+            }
+            pill.classList.toggle('is-on', show);
+        };
+
+        // Rebuild Today where it is on screen. fresh: a brief already built; toTop: jump up.
+        function rebuildTodayInPlace(fresh, toTop) {
+            const where = todayOnScreen();
+            if (where === 'column') {
+                window.renderTodayColumn(fresh);
+                if (toTop) document.getElementById('today-column').scrollTop = 0;
+            } else if (where === 'reader') {
+                window._todayBrief = fresh || window.buildTodayBrief();
+                window._todayNewCount = 0;
+                selectArticle(window.TODAY_BRIEF_ID);   // renders it at the top
+            }
+            window.updateTodayStatus();
+        }
+        window.showNewTodayStories = () => rebuildTodayInPlace(null, true);
+
+        // After a refresh: are there stories Today is not showing? A story counts as new
+        // when neither its lead article nor any outlet grouped under it is in Today now.
+        window.checkTodayForNewStories = function () {
+            if (!window._todayBrief) return;
+            const cardsIn = (body) => {
+                const cards = [];
+                for (const m of body.matchAll(/data-sa-id="([^"]+)"(?: data-cov="([^"]*)")?/g)) {
+                    let cov = [];
+                    if (m[2]) { try { cov = JSON.parse(m[2].replace(/&quot;/g, '"')); } catch (e) { } }
+                    cards.push({ id: m[1], cov });
+                }
+                return cards;
+            };
+            const shown = new Set();
+            cardsIn(window._todayBrief.body).forEach(c => { shown.add(c.id); c.cov.forEach(x => shown.add(x)); });
+            const fresh = window.buildTodayBrief();
+            const n = cardsIn(fresh.body).filter(c => !shown.has(c.id) && !c.cov.some(x => shown.has(x))).length;
+            if (!n) return;
+            const where = todayOnScreen();
+            const idle = where === 'column'
+                ? (!window.currentArticle || window.currentArticle.isBrief) && document.getElementById('today-column').scrollTop < 40
+                : where === 'reader' && document.getElementById('reader-view').scrollTop < 40;
+            if (idle) { rebuildTodayInPlace(fresh); return; }
+            window._todayNewCount = n;
+            window.updateTodayStatus();
+        };
+
         window.openToday = async function () {
             window._returnToBriefState = null;
-            window.hideBriefReturnUI?.();
             // Timeline unread pool alignment
             if (window.currentSmartFeed !== 'all' || window.currentCategoryFilter || window.currentSourceFilter) {
                 window.currentSmartFeed = 'all';
@@ -12416,6 +12496,7 @@
             }
             window.showTodayColumn(false);
             window._todayBrief = window.buildTodayBrief();
+            window._todayNewCount = 0;   // build 306
             selectArticle(window.TODAY_BRIEF_ID);
             if (typeof isMobile === 'function' && isMobile()) {
                 setMobilePane('viewer');
@@ -12738,6 +12819,7 @@
                                 <svg class="w-3.5 h-3.5 mr-1 flex-shrink-0"><use href="#icon-newspaper"/></svg>${esc(slotDef.badgeLabel)} Brief
                             </span>
                             <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0">• ${esc(slotDef.windowLabel)}</span>
+                            <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0" data-today-status></span>
                         </div>
                         <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — ${esc(datePartFormatted)}</h2>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
@@ -12942,63 +13024,30 @@
             });
         };
 
-        // Runs on every story open: the reading controls (Previous / Next) and the brief's
-        // cards. (The in-article "Back to Brief" banner and footer it once toggled could
-        // never show - hidden on mobile, never set on desktop - and went in build 292.)
-        window.updateBriefReturnUI = function () {
-            // The Next button, for any open story (build 286): ›, or the Today sun once this
-            // is the last story of the brief it came from (icon-only since build 289).
-            const nx = window.readerNext();
-            document.getElementById('viewer-pane')?.classList.toggle('has-reader-next', nx.show);
-            document.getElementById('viewer-pane')?.classList.toggle('has-reader-prev', window.readerHasPrev());
-            const nextBtn = document.getElementById('reader-next');
-            if (nextBtn && nx.show) {
-                const last = nx.fromBrief && !nx.hasNext;
-                nextBtn.classList.toggle('is-last', last);
-                nextBtn.setAttribute('aria-label', last ? 'Back to Today' : 'Next story');
-                nextBtn.title = last ? 'Back to Today' : 'Next';
-            }
-            window.syncBriefCards?.();
-        };
-
-        // What Next does for the open story - the same choice navigateArticle() makes:
-        // the next story of the brief it was opened from (Today), else the next article
-        // of the list it was opened from (Unread, a folder, Saved, Read Later, History).
-        // Build 286: stories opened from a list had no Next, so full screen - which hides
-        // the list - left only j/k to move on.
+        // What Right arrow in full screen does for the open story - the same choice
+        // navigateArticle() makes: the next story of the brief it was opened from (Today),
+        // else the next article of the list it was opened from (Unread, a folder, Saved,
+        // Read Later, History). show: is there anywhere to go.
         window.readerNext = function () {
             const art = window.currentArticle;
             if (!art || art.isBrief) return { show: false };
             const s = window._returnToBriefState;
             if (s && Array.isArray(s.storyIds) && s.storyIds.length > 0) {
                 const i = s.storyIds.indexOf(art.id);
-                return { show: true, fromBrief: true, hasNext: i >= 0 && i < s.storyIds.length - 1 };
+                const hasNext = i >= 0 && s.storyIds.slice(i + 1).some(id => window.readerArticleById(id));
+                return { show: true, fromBrief: true, hasNext };
             }
             const nav = window._navSnapshot.length ? window._navSnapshot : (window.currentTimeline || []);
             const i = nav.findIndex(a => a.id === art.id);
             return { show: i >= 0 && i < nav.length - 1, fromBrief: false, hasNext: true };
         };
 
-        // Is there a story or article before the open one, from the same brief or list?
-        // (Previous button and Left arrow in full screen, build 288 - navigateArticle(-1).)
-        window.readerHasPrev = function () {
-            const art = window.currentArticle;
-            if (!art || art.isBrief) return false;
-            const s = window._returnToBriefState;
-            if (s && Array.isArray(s.storyIds) && s.storyIds.length > 0) return s.storyIds.indexOf(art.id) > 0;
-            const nav = window._navSnapshot.length ? window._navSnapshot : (window.currentTimeline || []);
-            return nav.findIndex(a => a.id === art.id) > 0;
-        };
-
-        // The Next pill: the next story or article, or back to Today after a brief's last.
+        // Right arrow in full screen: the next story or article, or back to Today after a
+        // brief's last.
         window.readerNextOrBack = function () {
             const nx = window.readerNext();
             if (nx.fromBrief && !nx.hasNext) window.returnToBrief();
             else window.navigateArticle(1);
-        };
-
-        window.hideBriefReturnUI = function () {
-            document.getElementById('viewer-pane')?.classList.remove('has-reader-next', 'has-reader-prev');
         };
 
         window.returnToBrief = function () {
@@ -13012,7 +13061,6 @@
                 return;
             }
             window._returnToBriefState = null;
-            if (window.hideBriefReturnUI) window.hideBriefReturnUI();
 
             // 1. Select the brief article in reader view
             selectArticle(state.briefId);
@@ -13032,7 +13080,14 @@
                     const targetCard = window.briefLandingCard(document.getElementById('brief-card-' + cardId) ||
                         document.querySelector(`[data-sa-id="${cardId}"]`));
                     if (targetCard) {
-                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if (readerView && typeof state.cardTop === 'number') {
+                            // Build 301: the landing story at the same height on screen as the
+                            // one you tapped, so Today reopens where you were reading it.
+                            readerView.scrollTop += targetCard.getBoundingClientRect().top
+                                - readerView.getBoundingClientRect().top - state.cardTop;
+                        } else {
+                            targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
                         targetCard.classList.add('brief-card-return-pulse');
                         setTimeout(() => {
                             targetCard.classList.remove('brief-card-return-pulse');
@@ -13051,10 +13106,7 @@
         };
 
         window.openArticleInReader = function (articleId) {
-            let art = (window.articles || []).find(a => a.id === articleId);
-            if (!art && Array.isArray(window._readArchiveCache)) {
-                art = window._readArchiveCache.find(a => a.id === articleId || a.link === articleId);
-            }
+            const art = window.readerArticleById(articleId);
             if (art) {
                 if (window._todayInColumn && !art.isBrief) {
                     // DESKTOP TODAY COLUMN: the brief stays on screen beside the reader, so
@@ -13080,6 +13132,8 @@
                     const storyCards = Array.from(readerView?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
                         .filter(c => !c.classList.contains('brief-card-read') || c.getAttribute('data-sa-id') === art.id);
                     const storyIds = storyCards.map(c => c.getAttribute('data-sa-id')).filter(Boolean);
+                    // Where the tapped story sat on screen, so the return lands at that height.
+                    const tapped = storyCards.find(c => c.getAttribute('data-sa-id') === art.id);
 
                     window._returnToBriefState = {
                         briefId: window.currentArticle.id,
@@ -13087,7 +13141,8 @@
                         sourceCardId: articleId,
                         storyIds: storyIds.length ? storyIds : [art.id],
                         storyIndex: storyIds.indexOf(art.id) >= 0 ? storyIds.indexOf(art.id) : 0,
-                        scrollTop: readerView ? readerView.scrollTop : 0
+                        scrollTop: readerView ? readerView.scrollTop : 0,
+                        cardTop: tapped && readerView ? tapped.getBoundingClientRect().top - readerView.getBoundingClientRect().top : null
                     };
                 } else if (window._returnToBriefState) {
                     window._returnToBriefState.articleId = art.id;
@@ -13463,9 +13518,10 @@
         };
 
         // FULL SCREEN (builds 284/294, on request): the open story alone - no arrows, just
-        // the exit button at the bottom left. Entered by double-tapping / double-clicking
-        // the top bar; left by that button or Esc (the bar is hidden in full screen, so a
-        // double-tap cannot leave it). Arrow keys and swipes still move between stories.
+        // the exit button at the bottom left. Desktop: entered by double-clicking the top
+        // bar; left by that button or Esc (the bar is hidden in full screen, so a
+        // double-click cannot leave it). The phone has no top bar since build 301: there the
+        // tab bar steps aside while a story scrolls, which is its full screen. Arrow keys and swipes still move between stories.
         // Stories only; it ends when the story closes or Today comes back
         // (updateViewerBackBtn). On desktop the browser goes full screen too, and leaving
         // that (Esc) leaves this.
@@ -13497,22 +13553,29 @@
             window.setReadingFullScreen(true);
         };
 
-        // Phone: double-tap the top bar - its empty part, not a button - for full screen. iOS Safari does not reliably send dblclick, so taps are timed here.
+        // Phone: the tab bar steps aside while a story scrolls down and returns on a small
+        // scroll up, near the top, or at the end (build 301, on request - see tabbar-tucked).
+        // isMobile() only inside the handler: never at top level (TDZ).
         (function () {
-            const bar = document.getElementById('viewer-header');
-            if (!bar) return;
-            let lastTap = 0;
-            bar.addEventListener('touchend', (e) => {
-                if (e.target.closest('button, a')) { lastTap = 0; return; }
-                const now = Date.now();
-                if (now - lastTap < 350) {
-                    lastTap = 0;
-                    e.preventDefault();   // no zoom, no stray click
-                    window.setReadingFullScreen(true);
-                } else {
-                    lastTap = now;
+            const rv = document.getElementById('reader-view');
+            if (!rv) return;
+            let lastY = 0;
+            rv.addEventListener('scroll', () => {
+                const y = rv.scrollTop;
+                const art = window.currentArticle;
+                const reading = isMobile() && window._mobilePane === 'viewer' && art && !art.isBrief;
+                const body = document.body;
+                if (!reading || y < 60 || y + rv.clientHeight >= rv.scrollHeight - 40) {
+                    body.classList.remove('tabbar-tucked');
+                    lastY = y;
+                } else if (y - lastY > 8) {
+                    body.classList.add('tabbar-tucked');
+                    lastY = y;
+                } else if (lastY - y > 8) {
+                    body.classList.remove('tabbar-tucked');
+                    lastY = y;
                 }
-            });
+            }, { passive: true });
         })();
         window.openExternal = () => { if (window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
@@ -14590,15 +14653,15 @@
 
         // --- ARTICLE CACHE ---
         async function saveArticleCache() {
-            // Keep the limit but increase it significantly (IndexedDB can handle thousands)
-            // NOTE: the leading .slice() is a REQUIRED defensive copy - .sort() mutates
+            // NOTE: the .slice() before .sort() is a REQUIRED defensive copy - .sort() mutates
             // in place, and window.articles is the live global the timeline/navigation
             // read. Do NOT "optimize" it away by sorting in place; that reorders the
-            // whole app's article list. The trailing .slice(0, 2000) caps history.
-            const cache = window.articles
-                .slice()
-                .sort((a, b) => (b._ts || 0) - (a._ts || 0))
-                .slice(0, 2000) // 4x increase in history capacity
+            // whole app's article list.
+            // The 2000 newest, plus every unread or Read Later article beyond that (build 302):
+            // the store now mirrors this set, so nothing unread may fall outside it.
+            const byTime = window.articles.slice().sort((a, b) => (b._ts || 0) - (a._ts || 0));
+            const cache = byTime
+                .filter((a, i) => i < 2000 || a.unread || a.readLater)
                 .map(a => ({
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
                     bskyHandle: a.bskyHandle, bskyIsRepost: a.bskyIsRepost, bskyOriginalAuthor: a.bskyOriginalAuthor,
@@ -14631,13 +14694,16 @@
                     }
                 }
 
-                if (!Array.isArray(cache) || cache.length === 0) return;
+                if (!Array.isArray(cache) || cache.length === 0) { window._articleCacheRestored = true; return; }
 
-                // 2-day cutoff for general articles, but ALWAYS keep Read Later items
+                // 2-day cutoff for general articles; unread ones are kept for 4 days, the
+                // retention horizon (RETAIN_UNREAD_MS, build 303) - their feed may no longer
+                // serve them, so dropping them here would lose them. Read Later always stays.
                 const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
+                const unreadCutoff = Date.now() - RETAIN_UNREAD_MS;
                 const fresh = cache.filter(a => {
                     const ts = a._ts || new Date(a.timestamp).getTime();
-                    return ts >= cutoff || a.readLater;
+                    return ts >= cutoff || a.readLater || (ts >= unreadCutoff && !window.isLinkRead(a.link));
                 });
 
                 window._bodyCache = {};
@@ -14654,6 +14720,7 @@
                     if (!a.body) a.body = '';
                 });
                 window.articles = fresh;
+                window._articleCacheRestored = true;   // saves may now prune the store (build 302)
             } catch (e) { console.warn('DB Restore error:', e.message); }
         }
 
@@ -14778,12 +14845,31 @@
         };
 
         // Tab click handlers:
+        // TABS DO BACK'S JOB (build 301, on request; the phone has no reader top bar).
+        // Today, from a story opened in Today: back to Today at that story's place - it has
+        // left Today, so the next unread sits where it was. Today again (or from anywhere
+        // else): Today rebuilt, at the top.
         window.onTodayTabClick = async () => {
+            const s = window._returnToBriefState;
+            const cur = window.currentArticle;
+            if (window._mobilePane === 'viewer' && cur && !cur.isBrief && s && s.briefId === window.TODAY_BRIEF_ID) {
+                setMobileTab('today');
+                window.returnToBrief();
+                return;
+            }
             setMobileTab('today');
             await window.openToday();
         };
 
+        // Following, one level per tap: a story opened from a list -> that list, at the
+        // article; the list -> your folders; your folders -> their top.
         window.onFollowingTabClick = () => {
+            const cur = window.currentArticle;
+            if (window._mobilePane === 'viewer' && window._activeTab === 'following'
+                && cur && !cur.isBrief && !window._returnToBriefState) {
+                setMobilePane('timeline');   // scrolls the list to the open article's row
+                return;
+            }
             setMobileTab('following');
             if (window._mobilePane === 'sidebar') {
                 const sb = document.getElementById('sidebar-pane');
@@ -14807,8 +14893,13 @@
             viewerPane.classList.toggle('has-article', !!art);
             viewerPane.classList.toggle('is-today-brief', isToday);
             viewerPane.classList.toggle('is-brief-view', isAnyBrief);
-            // Full screen is for stories: left when none is open.
-            if (!art || isAnyBrief) window.setReadingFullScreen?.(false);
+            // Today's status line and its "N new stories" pill follow what is on screen (306).
+            window.updateTodayStatus?.();
+            // Full screen and a tucked tab bar are for stories: both end when none is open.
+            if (!art || isAnyBrief) {
+                window.setReadingFullScreen?.(false);
+                document.body.classList.remove('tabbar-tucked');
+            }
 
             if (!art || isToday) {
                 if (backBtn) backBtn.classList.add('hidden');
@@ -14841,26 +14932,19 @@
         }
         window.updateViewerBackBtn = updateViewerBackBtn;
 
+        // Desktop only since build 301 - the phone has no reader top bar (the tabs do this).
         window.onViewerBackClick = () => {
-            if (window._todayInColumn && typeof isMobile === 'function' && !isMobile()) {
+            if (window._todayInColumn) {
                 window.closeStoryToTodayColumn();
                 return;
             }
-            if (window._returnToBriefState) {
-                window.returnToBrief();
-            } else if (typeof isMobile === 'function' && isMobile()) {
-                if (window._activeTab === 'following') {
-                    setMobilePane('sidebar');
-                } else {
-                    openToday();
-                }
-            } else {
-                openToday();
-            }
+            if (window._returnToBriefState) window.returnToBrief();
+            else openToday();
         };
 
         window.setMobilePane = (pane) => {
             window._mobilePane = pane;
+            if (pane !== 'viewer') document.body.classList.remove('tabbar-tucked');
             const paneMap = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
             Object.entries(paneMap).forEach(([key, id]) => {
                 const el = document.getElementById(id);
@@ -15177,6 +15261,9 @@
             _isMobileCache = window.innerWidth <= 900;
             if (wasMobile !== _isMobileCache) {
                 reseedPerDeviceSliders();
+                // Full screen is desktop-only and the tucked tab bar phone-only (build 301).
+                if (_isMobileCache) window.setReadingFullScreen?.(false);
+                else document.body.classList.remove('tabbar-tucked');
                 // Today lives in a different pane on each side of the breakpoint.
                 if (window._todayInColumn || window.currentArticle?.id === window.TODAY_BRIEF_ID) window.openToday?.();
             }
@@ -15227,7 +15314,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 296;
+        window.APP_BUILD = 306;
 
         (async function initApp() {
             try {
@@ -15300,6 +15387,12 @@
                         const archivedLinks = await window.appDB.getAllKeys('readArchive');
                         archivedLinks.forEach(l => window._readLinks.add(l));
                     } catch (e) { console.warn('readArchive self-heal skipped:', e?.message); }
+                    // Cloud read marks saved on this device (build 305), applied before the
+                    // article cache is restored and counted.
+                    try {
+                        const savedHashes = await window.appDB.get('metadata', 'readHashes');
+                        if (Array.isArray(savedHashes)) savedHashes.forEach(h => window._readHashes.add(h));
+                    } catch (e) { console.warn('Saved read hashes skipped:', e?.message); }
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
                     // Automatic briefs are gone (build 281): drop what they stored.
@@ -15757,7 +15850,7 @@
                         if (!window._readHashes.has(h)) { window._readHashes.add(h); added++; }
                     }
                     window._cloudReadStateSeeded = true;
-                    if (added > 0) changed = true;
+                    if (added > 0) { changed = true; window.persistReadHashes(); }
                 }
                 // LEGACY FORMAT: full URLs. Still merged so a device running older cached
                 // code (or a doc not yet migrated) keeps working. Their hashes are folded
@@ -15770,6 +15863,7 @@
                         window._readHashes.add(h);
                     });
                     window._cloudReadStateSeeded = true;
+                    window.persistReadHashes();
                     // Merge additively — but explicit keep-unread toggles win over a
                     // stale cloud copy (merge-writes never remove, so the doc may
                     // still list a link the user deliberately toggled back to unread).
@@ -16114,7 +16208,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v296';
+const CACHE_NAME = 'rss-reader-v306';
 const APP_SHELL = [
     '/',
     'index.html'
