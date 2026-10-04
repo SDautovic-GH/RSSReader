@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 289** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 290** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-04 |
 
 ---
@@ -86,6 +86,19 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Unread badge on Today (285, on request):** the total-unread badge moved from the Following tab to the Today tab (same count, same 99+ cap).
 - **Reader bar alignment (278):** build 271 assumed the article column had `md:ml-4` / `lg:ml-8`, but those classes are not in the compiled CSS. The bar is now padded to the column's real edges (1rem / 1.5rem + 42rem). Category pills are regular weight.
 
+### Phase 6: Imagery (Build 290)
+- **Thumbnails:** every Today story with a picture shows a 72px square thumbnail on the right (cropped to fill), with the text wrapping beside it; stories without one stay full-width text. The picture is the story's `article.image` (feed attachment, media:thumbnail/content, or first body image), else one from the grouped copies (`briefStoryImage()`).
+- **Hero:** the first story with a picture in the first section (Top Stories) gets a full-width 16:9 image above its headline.
+- **Guardrails:**
+  - Images are lazy, so they load only near the screen.
+  - Boxes are reserved with a faint fill, so nothing jumps.
+  - A failed or tiny picture (<100x60: icons, emoji, tracking pixels) removes its box.
+  - A hero under 600px wide becomes a thumbnail.
+  - Avatar URLs are never used, which covers profile pictures from Bluesky, Mastodon and Gravatar.
+  - Tapping a picture opens the story; the reader's image lightbox ignores Today pictures.
+  - On a phone, `!important` sizing beats `.article-content img`.
+- **Setting:** Settings > Today > Show images (on by default, per device, `newsreader_today_images`). Off hides the boxes, and hidden lazy images are never fetched.
+
 ---
 
 ## 4. Phase Status & Roadmap
@@ -98,7 +111,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 | **3. Mobile Navigation** | 3-action bottom bar, reader push/back header, launch default | **Completed** (Build 266) |
 | **4. Folder Categories** | Strict adoption of Following folders, cache persistence | **Completed** (Build 267) |
 | **5. Desktop Layout** | Brief column + reader pane integration, consolidated actions | **Completed** (Builds 268–274) |
-| **6. Imagery Refinements** | Hero image presentation for lead stories | Planned |
+| **6. Imagery Refinements** | Story thumbnails + hero image for the lead Top Story | **Completed** (Build 290) |
 
 ---
 

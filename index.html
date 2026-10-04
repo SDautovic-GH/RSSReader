@@ -4687,6 +4687,54 @@
             }
         }
 
+        /* TODAY IMAGES (build 290, phase 6, on request): a square thumbnail on the right of
+           each story with a picture, text wrapping beside it, and one wide 16:9 hero for the
+           first Top Story. Boxes are reserved (no jump when a picture arrives) with a faint
+           fill while loading. The !important lines beat .article-content img - on a phone
+           Today renders inside the reader's #article-body. Off in Settings > Today. */
+        .brief-thumb,
+        .brief-hero {
+            overflow: hidden;
+            background: rgba(127, 127, 127, 0.12);
+            cursor: pointer;
+        }
+
+        .brief-thumb {
+            float: right;
+            width: 72px;
+            height: 72px;
+            margin: 2px 0 8px 12px;
+            border-radius: 10px;
+        }
+
+        .brief-hero {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            margin: 0 0 10px;
+            border-radius: 12px;
+        }
+
+        .brief-thumb img,
+        .brief-hero img {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            max-height: none !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            object-fit: cover !important;
+            cursor: pointer !important;
+        }
+
+        .brief-story-card .brief-story-actions {
+            clear: both;
+        }
+
+        body.today-no-images .brief-thumb,
+        body.today-no-images .brief-hero {
+            display: none;
+        }
+
         /* READ STORIES LEAVE THE BRIEF (build 278, on request). Whatever marks a story
            read - opening it, its Read dot, a section's Mark-read row, a folder check,
            another device - takes it out of Today, in the column or the reader
@@ -7579,6 +7627,15 @@
                 <div>
                     <h3 class="settings-section-label">Today</h3>
                     <div class="settings-list">
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Show images</label>
+                                <p class="text-[12px] text-gray-400 mt-1">A thumbnail beside each story, and a large
+                                    picture for the top story</p>
+                            </div>
+                            <button id="today-images-toggle" onclick="toggleTodayImages()" class="toggle-switch"
+                                data-on="true" aria-label="Show images"></button>
+                        </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Stories per Category</span>
@@ -7933,6 +7990,11 @@
         window._readLinks = new Set();
         window._readLaterLinks = new Set();
         window._pinnedArticleIds = new Set();
+        // Today images (build 290): on unless switched off in Settings > Today. Hidden
+        // lazy images are never fetched, so off also means no image traffic.
+        window._todayImages = localStorage.getItem('newsreader_today_images') !== '0';
+        document.body.classList.toggle('today-no-images', !window._todayImages);
+        document.getElementById('today-images-toggle')?.setAttribute('data-on', window._todayImages ? 'true' : 'false');
         // Stories per Category: 5-50, or 'all' = every unread story (build 280, slider far right).
         window._briefStoriesPerCat = localStorage.getItem('newsreader_brief_stories_per_cat') === 'all'
             ? Infinity
@@ -12965,9 +13027,37 @@
         };
 
         // Renders brief sections (header + story cards) for any buildStoryClusters() output.
+        // TODAY IMAGES (build 290, phase 6, on request). A story's picture: its own
+        // article.image (feed attachment, media:thumbnail/content, or first body image),
+        // else one from the other outlets' copies grouped under it. Never a profile
+        // picture (Bluesky / Mastodon / Gravatar avatars all carry "avatar" in the URL).
+        function briefStoryImage(st) {
+            const ok = u => typeof u === 'string' && /^https?:\/\//i.test(u) && !/avatar/i.test(u);
+            if (ok(st.image)) return st.image;
+            const alt = (st.coverage || []).find(a => a && ok(a.image));
+            return alt ? alt.image : '';
+        }
+
+        // Image guardrails, run from each image's own onload / onerror: a picture that
+        // fails, or is too small to be a photo (icons, emoji, tracking pixels), leaves no
+        // box behind; a hero too small to look sharp at full width becomes a thumbnail.
+        window.briefImgLoaded = function (img) {
+            const box = img.parentElement;
+            if (!box) return;
+            if (img.naturalWidth < 100 || img.naturalHeight < 60) { box.remove(); return; }
+            if (box.classList.contains('brief-hero') && img.naturalWidth < 600) {
+                box.classList.replace('brief-hero', 'brief-thumb');
+            }
+        };
+        window.briefImgFailed = function (img) {
+            img.parentElement?.remove();
+        };
+
         function renderBriefSectionsHtml(categorySections, opts = {}) {
             let html = '';
-            categorySections.forEach(cs => {
+            // The hero: the first story with a picture in the first section (Top Stories).
+            let heroDone = false;
+            categorySections.forEach((cs, sectionIdx) => {
                 html += `
                     <div id="brief-cat-${cs.slug}" class="brief-cat-section mb-5 scroll-mt-20"${cs.noMarkRead ? ' data-no-mark-read="1"' : ''}>
                         <div class="brief-cat-header flex items-center justify-between pb-1 mb-2.5 flex-nowrap gap-2">
@@ -12996,6 +13086,14 @@
                     // build would bring one back as a "new" story.
                     const covIds = (st.coverage || []).map(a => a && a.id).filter(x => x && x !== st.id);
                     const covAttr = covIds.length ? ` data-cov="${esc(JSON.stringify(covIds))}"` : '';
+                    // Picture (build 290): lazy - loads only near the screen; the box is
+                    // reserved by CSS; tapping it opens the story like the headline does.
+                    const imgUrl = briefStoryImage(st);
+                    const isHero = !!imgUrl && !heroDone && sectionIdx === 0;
+                    if (isHero) heroDone = true;
+                    const mediaHtml = imgUrl
+                        ? `<div class="${isHero ? 'brief-hero' : 'brief-thumb'}" onclick="window.openArticleInReader('${saId}')"><img src="${esc(imgUrl)}" alt="" loading="lazy" decoding="async" onload="window.briefImgLoaded(this)" onerror="window.briefImgFailed(this)"></div>`
+                        : '';
 
                     // Detect social / microblog post (Bluesky, Mastodon, or identical title & excerpt)
                     const isSocial = (st.feedUrl && isBlueskyFeed(st.feedUrl)) ||
@@ -13028,6 +13126,7 @@
 
                     html += `
                         <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}>
+                            ${mediaHtml}
                             <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
                                 ${favHtml}
                                 <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
@@ -13667,6 +13766,13 @@
             }
         };
 
+        window.toggleTodayImages = () => {
+            window._todayImages = !window._todayImages;
+            try { localStorage.setItem('newsreader_today_images', window._todayImages ? '1' : '0'); } catch (e) { }
+            document.getElementById('today-images-toggle')?.setAttribute('data-on', window._todayImages ? 'true' : 'false');
+            document.body.classList.toggle('today-no-images', !window._todayImages);
+        };
+
         // The slider's last step (51) is All: every unread story in each folder (build 280).
         window.updateBriefStoriesPerCat = (val) => {
             const raw = parseInt(val, 10) || 10;
@@ -14270,6 +14376,7 @@
             document.getElementById('article-body').addEventListener('click', (e) => {
                 const img = e.target.closest('img');
                 if (!img) return;
+                if (img.closest('.brief-thumb, .brief-hero')) return;   // Today pictures open the story (build 290)
                 if (img.naturalWidth < 60 && img.naturalWidth > 0) return;
                 if (img.classList.contains('bsky-quote-avatar')) return;
                 const src = img.dataset.fullsize || img.src;
@@ -15798,7 +15905,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 289;
+        window.APP_BUILD = 290;
 
         (async function initApp() {
             try {
@@ -16685,7 +16792,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v289';
+const CACHE_NAME = 'rss-reader-v290';
 const APP_SHELL = [
     '/',
     'index.html'
