@@ -7603,13 +7603,26 @@
                 });
             }
 
+            // Writes the articles AND deletes every stored one not among them (build 302), so
+            // the store mirrors what the app holds. It only ever added before: every article
+            // fetched since install stayed, and startup read all of them to keep 2 days' worth;
+            // dropped stories also came back for a session after each restart.
             async bulkPutArticles(articles) {
                 if (!articles.length) return;
                 const db = await this.open();
+                const keep = new Set(articles.map(a => a.id));
                 return new Promise((resolve, reject) => {
                     const tx = db.transaction('articles', 'readwrite');
                     const store = tx.objectStore('articles');
                     articles.forEach(a => store.put(a));
+                    // Only once startup has read the store back - otherwise a save made after
+                    // a failed restore would prune it down to the little that is in memory.
+                    if (window._articleCacheRestored) {
+                        const keysReq = store.getAllKeys();
+                        keysReq.onsuccess = () => {
+                            (keysReq.result || []).forEach(k => { if (!keep.has(k)) store.delete(k); });
+                        };
+                    }
                     tx.oncomplete = () => resolve();
                     tx.onerror = () => reject(tx.error);
                 });
@@ -8271,6 +8284,26 @@
             return html;
         }
 
+        // KEEP UNREAD STORIES FOR 48 HOURS (build 302, on request). A refresh replaces a
+        // feed's articles with what the feed serves now - its newest 20 (RSS) or its current
+        // page (Bluesky). Unread stories a busy feed had already pushed past that used to
+        // vanish from Today, Unread, the folders and the badge before you saw them. Now an
+        // unread story younger than 48 hours survives its feed moving on; it leaves when you
+        // read it or when it turns 48 hours old (the same horizon the startup restore uses).
+        const RETAIN_UNREAD_MS = 48 * 3600000;
+        function retainedUnread(feedArticles) {
+            const cutoff = Date.now() - RETAIN_UNREAD_MS;
+            return feedArticles.filter(a => a.unread && !a.isBrief && !window.isLinkRead(a.link) && (a._ts || 0) >= cutoff);
+        }
+        // After a feed's fresh items are in: put back the kept ones the feed no longer serves.
+        function restoreRetained(kept) {
+            if (!kept.length) return;
+            const present = new Set(window.articles.map(a => a.link));
+            kept.forEach(a => {
+                if (!present.has(a.link)) { window.articles.push(a); present.add(a.link); }
+            });
+        }
+
         async function fetchBlueskyArticles(feedUrl, sourceName, maxItems, isBackground) {
             const actor = extractBlueskyActor(feedUrl);
             if (!actor) return false;
@@ -8316,7 +8349,9 @@
 
             // Preserve existing IDs by link so DOM onclick handlers stay valid after re-fetch
             const _existingBskyIds = new Map();
-            window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName).forEach(a => _existingBskyIds.set(a.link, a.id));
+            const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
+            _feedOld.forEach(a => _existingBskyIds.set(a.link, a.id));
+            const _keep = retainedUnread(_feedOld);   // build 302
             window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
             let newCount = 0;
 
@@ -8362,6 +8397,7 @@
                 });
                 if (isNew && isBackground) newCount++;
             }
+            restoreRetained(_keep);
 
             if (!isBackground) {
                 renderTimeline(true);
@@ -8487,7 +8523,9 @@
 
                 // Preserve existing IDs by link so DOM onclick handlers stay valid after re-fetch
                 const _existingIds = new Map();
-                window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName).forEach(a => _existingIds.set(a.link, a.id));
+                const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
+                _feedOld.forEach(a => _existingIds.set(a.link, a.id));
+                const _keep = retainedUnread(_feedOld);   // build 302
                 window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
                 // Invalidate excerpt cache for any re-fetched articles
                 window.articles.forEach(a => { if (a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName) a._excerptHtml = null; });
@@ -8565,6 +8603,7 @@
                     window.articles.push(art);
                     if (isNew && isBackground) newCount++;
                 });
+                restoreRetained(_keep);
 
                 if (!isBackground) {
                     renderTimeline(true);
@@ -11671,6 +11710,13 @@
         // --- NAVIGATE PREV/NEXT ---
         window._navSnapshot = [];
 
+        // An article the reader can open by id: the live list, or the read archive.
+        window.readerArticleById = function (id) {
+            return (window.articles || []).find(a => a.id === id)
+                || (Array.isArray(window._readArchiveCache) ? window._readArchiveCache.find(a => a.id === id || a.link === id) : null)
+                || null;
+        };
+
         window.navigateArticle = (direction) => {
             // 1. If currently reading an article opened from a Brief:
             if (window._returnToBriefState && Array.isArray(window._returnToBriefState.storyIds) && window._returnToBriefState.storyIds.length > 0) {
@@ -11678,7 +11724,13 @@
                 const curId = window.currentArticle?.id || bState.articleId;
                 let curIdx = bState.storyIds.indexOf(curId);
                 if (curIdx === -1) curIdx = bState.storyIndex ?? -1;
-                const newIdx = curIdx + direction;
+                // Step over stories no longer in the app (build 302): with unread kept for
+                // 48 hours these can only be ones you already read whose feed moved on -
+                // Today has hidden them anyway. Opening one was the "not in local cache" error.
+                let newIdx = curIdx + direction;
+                while (newIdx >= 0 && newIdx < bState.storyIds.length && !window.readerArticleById(bState.storyIds[newIdx])) {
+                    newIdx += direction;
+                }
                 if (newIdx >= 0 && newIdx < bState.storyIds.length) {
                     const nextStoryId = bState.storyIds[newIdx];
                     bState.articleId = nextStoryId;
@@ -12812,7 +12864,8 @@
             const s = window._returnToBriefState;
             if (s && Array.isArray(s.storyIds) && s.storyIds.length > 0) {
                 const i = s.storyIds.indexOf(art.id);
-                return { show: true, fromBrief: true, hasNext: i >= 0 && i < s.storyIds.length - 1 };
+                const hasNext = i >= 0 && s.storyIds.slice(i + 1).some(id => window.readerArticleById(id));
+                return { show: true, fromBrief: true, hasNext };
             }
             const nav = window._navSnapshot.length ? window._navSnapshot : (window.currentTimeline || []);
             const i = nav.findIndex(a => a.id === art.id);
@@ -12883,10 +12936,7 @@
         };
 
         window.openArticleInReader = function (articleId) {
-            let art = (window.articles || []).find(a => a.id === articleId);
-            if (!art && Array.isArray(window._readArchiveCache)) {
-                art = window._readArchiveCache.find(a => a.id === articleId || a.link === articleId);
-            }
+            const art = window.readerArticleById(articleId);
             if (art) {
                 if (window._todayInColumn && !art.isBrief) {
                     // DESKTOP TODAY COLUMN: the brief stays on screen beside the reader, so
@@ -14433,15 +14483,15 @@
 
         // --- ARTICLE CACHE ---
         async function saveArticleCache() {
-            // Keep the limit but increase it significantly (IndexedDB can handle thousands)
-            // NOTE: the leading .slice() is a REQUIRED defensive copy - .sort() mutates
+            // NOTE: the .slice() before .sort() is a REQUIRED defensive copy - .sort() mutates
             // in place, and window.articles is the live global the timeline/navigation
             // read. Do NOT "optimize" it away by sorting in place; that reorders the
-            // whole app's article list. The trailing .slice(0, 2000) caps history.
-            const cache = window.articles
-                .slice()
-                .sort((a, b) => (b._ts || 0) - (a._ts || 0))
-                .slice(0, 2000) // 4x increase in history capacity
+            // whole app's article list.
+            // The 2000 newest, plus every unread or Read Later article beyond that (build 302):
+            // the store now mirrors this set, so nothing unread may fall outside it.
+            const byTime = window.articles.slice().sort((a, b) => (b._ts || 0) - (a._ts || 0));
+            const cache = byTime
+                .filter((a, i) => i < 2000 || a.unread || a.readLater)
                 .map(a => ({
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
                     bskyHandle: a.bskyHandle, bskyIsRepost: a.bskyIsRepost, bskyOriginalAuthor: a.bskyOriginalAuthor,
@@ -14474,7 +14524,7 @@
                     }
                 }
 
-                if (!Array.isArray(cache) || cache.length === 0) return;
+                if (!Array.isArray(cache) || cache.length === 0) { window._articleCacheRestored = true; return; }
 
                 // 2-day cutoff for general articles, but ALWAYS keep Read Later items
                 const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
@@ -14497,6 +14547,7 @@
                     if (!a.body) a.body = '';
                 });
                 window.articles = fresh;
+                window._articleCacheRestored = true;   // saves may now prune the store (build 302)
             } catch (e) { console.warn('DB Restore error:', e.message); }
         }
 
@@ -15088,7 +15139,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 301;
+        window.APP_BUILD = 302;
 
         (async function initApp() {
             try {
@@ -15975,7 +16026,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v301';
+const CACHE_NAME = 'rss-reader-v302';
 const APP_SHELL = [
     '/',
     'index.html'
