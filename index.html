@@ -9878,30 +9878,40 @@
                 ? window.feeds
                 : (window.accountStates?.local || []);
 
+            const getFeedCat = (f) => {
+                if (!f) return null;
+                const c = (f.category || f.folder || '').trim();
+                return (c && c.toLowerCase() !== 'uncategorized') ? c : null;
+            };
+
             // 1. Direct match by feedUrl
             if (a.feedUrl) {
                 const f = feeds.find(x => x.url === a.feedUrl);
-                if (f && f.category && f.category !== 'Uncategorized') return f.category;
+                const c = getFeedCat(f);
+                if (c) return c;
 
                 // Normalized URL match (ignore protocol and trailing slash)
                 const cleanA = a.feedUrl.replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase();
                 const fClean = feeds.find(x => x.url && x.url.replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase() === cleanA);
-                if (fClean && fClean.category && fClean.category !== 'Uncategorized') return fClean.category;
+                const cClean = getFeedCat(fClean);
+                if (cClean) return cClean;
             }
 
             // 2. Direct match by source name
             if (a.source) {
                 const sNorm = a.source.trim().toLowerCase();
                 const f = feeds.find(x => x.name && x.name.trim().toLowerCase() === sNorm);
-                if (f && f.category && f.category !== 'Uncategorized') return f.category;
+                const c = getFeedCat(f);
+                if (c) return c;
 
-                // Substring / token matching (e.g. "NYT Technology" vs "NYT > Technology" or "New York Times - Technology")
+                // Substring / token matching (e.g. "NYT Politics" matching "NYT" or vice versa)
                 const fSub = feeds.find(x => {
                     if (!x.name) return false;
                     const n = x.name.trim().toLowerCase();
                     return n.includes(sNorm) || sNorm.includes(n);
                 });
-                if (fSub && fSub.category && fSub.category !== 'Uncategorized') return fSub.category;
+                const cSub = getFeedCat(fSub);
+                if (cSub) return cSub;
             }
 
             // 3. Fallback: match by article link domain
@@ -9915,19 +9925,23 @@
                             return aHost === fH || aHost.endsWith('.' + fH) || fH.endsWith('.' + aHost);
                         } catch (e) { return false; }
                     });
-                    if (fHost && fHost.category && fHost.category !== 'Uncategorized') return fHost.category;
+                    const cHost = getFeedCat(fHost);
+                    if (cHost) return cHost;
                 } catch (e) { }
             }
 
             // 4. Fallback for social feeds if user has a Fediverse/Social folder
             if ((a.feedUrl && isBlueskyFeed(a.feedUrl)) || (a.link && typeof isMastodonPost === 'function' && isMastodonPost(a.link))) {
-                const fedCat = feeds.find(x => x.category && /fediverse|mastodon|bluesky|social/i.test(x.category));
-                if (fedCat) return fedCat.category;
+                const fedCat = feeds.find(x => (x.category || x.folder) && /fediverse|mastodon|bluesky|social/i.test(x.category || x.folder));
+                if (fedCat) return fedCat.category || fedCat.folder;
             }
 
             // 5. Fallback: check feed object if category was assigned
             const fallbackFeed = feeds.find(x => (a.feedUrl && x.url === a.feedUrl) || (a.source && x.name === a.source));
-            return fallbackFeed?.category || 'Uncategorized';
+            const cFinal = getFeedCat(fallbackFeed);
+            if (cFinal) return cFinal;
+
+            return 'Uncategorized';
         }
 
         function normalizeBriefDOM(container) {
@@ -14993,11 +15007,6 @@
         // Tab click handlers:
         window.onTodayTabClick = async () => {
             setMobileTab('today');
-            if (window._mobilePane === 'viewer' && window.currentArticle && window.currentArticle.id === window.TODAY_BRIEF_ID) {
-                const rv = document.getElementById('reader-view');
-                if (rv) rv.scrollTo({ top: 0, behavior: 'smooth' });
-                return;
-            }
             await window.openToday();
         };
 
@@ -15515,7 +15524,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 266;
+        window.APP_BUILD = 267;
 
         (async function initApp() {
             try {
@@ -15906,6 +15915,7 @@
                     if (window._localFetchTimer) { clearTimeout(window._localFetchTimer); window._localFetchTimer = null; }
                     window.accountStates.local = dbFeeds;
                     window.feeds = dbFeeds;
+                    if (typeof saveLocalFeeds === 'function') saveLocalFeeds();
                     preloadAllFavicons();
                     updateFaviconStyles();
                     restoreCategoryOrder();
@@ -15913,6 +15923,10 @@
                     updateEmptyState();
                     if (typeof window.checkAndGenerateBriefs === 'function') {
                         window.checkAndGenerateBriefs();
+                    }
+                    // Re-render Today brief now that feed folders are loaded
+                    if (window.currentArticle && window.currentArticle.id === window.TODAY_BRIEF_ID && typeof window.openToday === 'function') {
+                        window.openToday();
                     }
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
@@ -16410,7 +16424,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v266';
+const CACHE_NAME = 'rss-reader-v267';
 const APP_SHELL = [
     '/',
     'index.html'
