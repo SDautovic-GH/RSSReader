@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 274** deployed to production (Phase 5 complete) |
+| Current State | **Active — Build 278** deployed to production (Phase 5 complete, plus follow-ups) |
 | Last Updated | 2026-10-04 |
 
 ---
@@ -68,6 +68,13 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
+### Follow-ups (Builds 275–278)
+- **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
+- **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
+- **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
+- **Mark-read row (278):** one short line at the end of every section ("Mark N read") marks the stories still showing above it plus the other outlets' copies grouped under them (`data-cov`), then shows "Marked N read · Undo" for 5 seconds. The heading check still marks the whole folder.
+- **Reader bar alignment (278):** build 271 assumed the article column had `md:ml-4` / `lg:ml-8`, but those classes are not in the compiled CSS. The bar is now padded to the column's real edges (1rem / 1.5rem + 42rem). Category pills are regular weight.
+
 ---
 
 ## 4. Phase Status & Roadmap
@@ -93,3 +100,5 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 5. **Brief Beside the Reader (desktop):** Today lives in the middle column on desktop so reading a story never replaces the brief. Mobile keeps the full-screen push/back flow.
 6. **Actions Live on the Item:** Read, Later, Save and Share belong to each story (reader row under the headline, brief card rows), not to the top bar. The top bar keeps navigation and view controls only.
 7. **One Navigator per Platform:** on desktop the sidebar folders navigate and the brief has no pill bar; a pill and a same-named folder doing different things was the confusion being removed. Mobile, with no sidebar on screen, keeps the pills.
+8. **Read Means Gone:** a read story leaves the brief rather than dimming in place, so what remains is what is left to read. Bulk marking marks only what you have scrolled past (plus its grouped copies), never unseen stories, and always offers Undo in place. Stories per Category goes up to 50 (Settings, saved per device), so a section can hold a whole folder's day.
+9. **Bottom Bar Stays at Three Tabs:** Today, Following, Search. Actions (refresh, listen, mark read) and occasional places (Saved, Read Later, History, Briefs) stay out of it.

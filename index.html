@@ -4542,10 +4542,92 @@
             box-shadow: inset 3px 0 0 #4493f8 !important;
         }
 
-        /* Read stories stay where they are - nothing reshuffles under the cursor -
-           but recede, so what is left to read stands out. */
-        #today-column .brief-story-card.brief-card-read:not(.brief-card-active) {
-            opacity: 0.55;
+        /* READ STORIES LEAVE THE BRIEF (build 278, on request). Whatever marks a story
+           read - opening it, its Read dot, a section's Mark-read row, a folder check,
+           another device - takes it out of every brief on screen, Today or stored
+           (syncBriefCards). The story open beside the desktop Today column stays until
+           you move on. A section with nothing left goes too, except while it shows its
+           Undo; so does its pill and, once nothing is left at all, the pill bar. */
+        .brief-story-card.brief-card-read:not(.brief-card-active),
+        .brief-cat-section.brief-section-empty:not(.is-just-marked),
+        .brief-jump-pill.brief-gone,
+        .brief-jump-bar.brief-gone {
+            display: none !important;
+        }
+
+        /* briefKeepInPlace() holds the reading position itself when stories above it
+           leave (iOS Safari has no native scroll anchoring). The browser's own anchoring
+           would fight it, so it is off wherever a brief scrolls. */
+        #today-column,
+        #reader-view:has(#article-body.is-brief-body) {
+            overflow-anchor: none;
+        }
+
+        .brief-all-read-note {
+            margin: 2.5rem 0;
+            text-align: center;
+            font-weight: 600;
+            color: #8b949e;
+        }
+
+        /* MARK-READ ROW at the end of each section (build 278, on request): marks the
+           stories still showing above it read, then offers Undo in the same spot for a
+           few seconds. One short right-aligned line, grey like the other actions; the
+           -10px lines the text up with the column's right edge despite the padding. */
+        .brief-cat-end {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 4px;
+            margin: 2px -10px -0.75rem 0;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #8b949e;
+        }
+
+        html:not(.dark) .brief-cat-end,
+        html:not(.dark) .brief-all-read-note {
+            color: #57606a;
+        }
+
+        .brief-cat-end.is-empty {
+            display: none;
+        }
+
+        .brief-mark-section-btn,
+        .brief-undo-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .brief-mark-section-btn:hover {
+            color: #4493f8;
+            background: rgba(68, 147, 248, 0.12);
+        }
+
+        .brief-undo-btn {
+            color: #4493f8;
+        }
+
+        .brief-marked-note {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .brief-cat-end svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
         }
 
         /* DAILY BRIEFS TYPOGRAPHY & APP ZOOM / FONT SCALING */
@@ -4720,7 +4802,7 @@
             padding: 5px 12px;
             border-radius: 9999px;
             font-size: 0.85em !important;
-            font-weight: 600;
+            font-weight: 400;   /* regular, not semibold (build 278, on request) */
             white-space: nowrap !important;
             text-decoration: none;
             background: rgba(255, 255, 255, 0.08);
@@ -4846,17 +4928,20 @@
             }
         }
 
-        /* DESKTOP READER BAR = THE ARTICLE COLUMN'S WIDTH (build 271, on request). The
-           bar spanned the whole pane, so on a large monitor its buttons sat far off to
-           the right of the text. The article column is max-w-2xl (42rem), left-anchored
-           at the reader's padding + its own margin: md p-4 + ml-4 = 2rem, lg p-6 + ml-8
-           = 3.5rem. Padding the bar to the same edges lines Back up with the text's
-           left edge and the buttons with its right edge; max() keeps the reader's own
-           side padding when the pane is narrower than the column. Desktop only. */
+        /* DESKTOP READER BAR = THE ARTICLE COLUMN'S WIDTH (build 271, corrected in 278).
+           The bar spanned the whole pane, so on a large monitor its buttons sat far off
+           to the right of the text. The article column is max-w-2xl (42rem) at the
+           reader's padding: md p-4 = 1rem, lg p-6 = 1.5rem. Its md:ml-4 / lg:ml-8
+           classes do nothing - they are not in the compiled CSS - which build 271
+           missed, so Back sat 1-2rem right of the text and the buttons past its right
+           edge (user screenshot, build 277). Padding the bar to the column's real edges
+           lines Back up with the text's left edge and the buttons with its right edge;
+           max() keeps the reader's own side padding when the pane is narrower than the
+           column. Desktop only. */
         @media (min-width: 901px) {
             #viewer-header {
-                padding-left: 2rem !important;
-                padding-right: max(1rem, calc(100% - 44rem)) !important;
+                padding-left: 1rem !important;
+                padding-right: max(1rem, calc(100% - 43rem)) !important;
             }
             #viewer-back-btn {
                 margin-left: -0.75rem !important;   /* its own px-3, so the chevron sits on the text edge */
@@ -4864,8 +4949,8 @@
         }
         @media (min-width: 64rem) {
             #viewer-header {
-                padding-left: 3.5rem !important;
-                padding-right: max(1.5rem, calc(100% - 45.5rem)) !important;
+                padding-left: 1.5rem !important;
+                padding-right: max(1.5rem, calc(100% - 43.5rem)) !important;
             }
         }
 
@@ -10143,6 +10228,9 @@
             return 'Uncategorized';
         }
 
+        // The section-end Mark-read button (build 278); restored after Undo / settling.
+        const BRIEF_MARK_ROW_HTML = '<button type="button" class="brief-mark-section-btn" onclick="window.markBriefSectionRead(this)" title="Mark the stories above as read" aria-label="Mark the stories above as read"><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-mark-section-label">Mark read</span></button>';
+
         function normalizeBriefDOM(container) {
             if (!container) return;
             // Clean up stored legacy briefs (e.g. from IndexedDB before build 215)
@@ -10399,6 +10487,17 @@
                 `;
                 briefContainer.appendChild(footerDiv);
             }
+
+            // Mark-read row at the end of every section, Top Stories included (build 278).
+            container.querySelectorAll('.brief-cat-section').forEach(sec => {
+                if (sec.querySelector('.brief-cat-end')) return;
+                const end = document.createElement('div');
+                end.className = 'brief-cat-end';
+                end.innerHTML = BRIEF_MARK_ROW_HTML;
+                sec.appendChild(end);
+            });
+            // Stories already read leave before the brief is first seen.
+            window.syncBriefCards?.(container);
 
             // Update live unread states on buttons
             window.updateBriefMarkReadButtons?.();
@@ -11292,7 +11391,7 @@
                 }
             });
         }
-        function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); if (window.currentArticle?.isBrief || window._todayInColumn) window.updateBriefMarkReadButtons?.(); window.syncTodayColumnCards?.(); }
+        function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); if (window.currentArticle?.isBrief || window._todayInColumn) window.updateBriefMarkReadButtons?.(); window.syncBriefCards?.(); }
         // After a user action empties the Articles list on mobile, jump to Feeds
         // instead of leaving the user staring at an empty pane.
         function maybeGoHomeIfTimelineEmpty() {
@@ -12694,20 +12793,148 @@
             document.getElementById('timeline-today-title')?.classList.toggle('hidden', !on);
         };
 
-        // Highlight the story open in the reader; dim the ones already read.
-        window.syncTodayColumnCards = function () {
-            if (!window._todayInColumn) return;
-            const col = document.getElementById('today-column');
-            if (!col) return;
+        // READ STORIES LEAVE THE BRIEF (build 278, on request). One pass over every brief
+        // on screen - the desktop Today column and a brief in the reader (mobile Today,
+        // stored briefs) - after anything changes read state: refreshUI() calls it, and
+        // so does normalizeBriefDOM() for a brief being shown. Read stories are hidden
+        // (CSS), except the one open beside the Today column; section counts, pills,
+        // the Mark-read row's count and an all-read note follow what is left.
+        window.syncBriefCards = function (only) {
+            const roots = only ? [only]
+                : [document.getElementById('today-column'), document.querySelector('#article-body.is-brief-body')].filter(Boolean);
+            if (!roots.length) return;
+            const live = new Map((window.articles || []).map(a => [a.id, a]));
+            const readLinks = window._readLinks;
             const cur = window.currentArticle;
-            const activeId = cur && !cur.isBrief ? cur.id : null;
-            const byId = new Map((window.articles || []).map(a => [a.id, a]));
-            col.querySelectorAll('.brief-story-card[data-sa-id]').forEach(card => {
-                const id = card.getAttribute('data-sa-id');
-                const art = byId.get(id);
-                card.classList.toggle('brief-card-active', id === activeId);
-                card.classList.toggle('brief-card-read', !!art && !art.unread);
+            const activeId = window._todayInColumn && cur && !cur.isBrief ? cur.id : null;
+            roots.forEach(root => {
+                const inColumn = root.id === 'today-column';
+                let anySection = false, anyLeft = false;
+                root.querySelectorAll('.brief-cat-section').forEach(sec => {
+                    anySection = true;
+                    let shown = 0, unread = 0;
+                    sec.querySelectorAll('.brief-story-card[data-sa-id]').forEach(card => {
+                        const id = card.getAttribute('data-sa-id');
+                        const art = live.get(id);
+                        // Not in the live list (an old stored brief): read if its link is.
+                        const link = art ? art.link : card.querySelector('[data-save-link]')?.getAttribute('data-save-link');
+                        const read = art ? !art.unread : !!(link && readLinks && readLinks.has(link));
+                        const active = inColumn && id === activeId;
+                        card.classList.toggle('brief-card-active', active);
+                        card.classList.toggle('brief-card-read', read);
+                        if (!read || active) shown++;
+                        if (!read) unread++;
+                    });
+                    const justMarked = sec.classList.contains('is-just-marked');
+                    sec.classList.toggle('brief-section-empty', shown === 0);
+                    if (shown > 0 || justMarked) anyLeft = true;
+                    const countEl = sec.querySelector('.brief-cat-count');
+                    if (countEl) countEl.textContent = `${shown} ${shown === 1 ? 'story' : 'stories'}`;
+                    const pill = sec.id ? root.querySelector(`.brief-jump-pill[href="#${CSS.escape(sec.id)}"]`) : null;
+                    if (pill) {
+                        if (!pill.dataset.name) pill.dataset.name = pill.textContent.replace(/\s*\(\d+\)\s*$/, '').trim();
+                        pill.textContent = `${pill.dataset.name} (${shown})`;
+                        pill.classList.toggle('brief-gone', shown === 0);
+                    }
+                    const end = sec.querySelector('.brief-cat-end');
+                    if (end && !justMarked) {
+                        end.classList.toggle('is-empty', unread === 0);
+                        const label = end.querySelector('.brief-mark-section-label');
+                        if (label) label.textContent = `Mark ${unread} read`;
+                    }
+                });
+                root.querySelector('.brief-jump-bar')?.classList.toggle('brief-gone', anySection && !anyLeft);
+                let note = root.querySelector('.brief-all-read-note');
+                if (anySection && !anyLeft) {
+                    if (!note) {
+                        note = document.createElement('p');
+                        note.className = 'brief-all-read-note';
+                        note.textContent = "You're all caught up.";
+                        const first = root.querySelector('.brief-cat-section');
+                        first.parentNode.insertBefore(note, first);
+                    }
+                } else if (note) {
+                    note.remove();
+                }
             });
+        };
+
+        // iOS Safari has no CSS scroll anchoring, so when stories above the reading
+        // position leave, the page would jump. Keep `anchor` where it is on screen
+        // across fn() - in every browser, as native anchoring is off for briefs (CSS).
+        window.briefKeepInPlace = function (anchor, fn) {
+            const scroller = anchor ? (anchor.closest('#today-column') || anchor.closest('#reader-view')) : null;
+            const before = scroller ? anchor.getBoundingClientRect().top : 0;
+            fn();
+            if (scroller && anchor.isConnected && anchor.getClientRects().length) {
+                const delta = anchor.getBoundingClientRect().top - before;
+                if (delta) scroller.scrollTop += delta;
+            }
+        };
+
+        // Where Back lands now that the story just read has left the brief: its own card
+        // if it still shows, else the next unread story after it, else the last before.
+        window.briefLandingCard = function (card) {
+            if (!card) return null;
+            const shown = c => c.getClientRects().length > 0;
+            if (shown(card)) return card;
+            const root = card.closest('#today-column, #article-body') || document;
+            const all = Array.from(root.querySelectorAll('.brief-story-card[data-sa-id]'));
+            const i = all.indexOf(card);
+            return all.slice(i + 1).find(shown) || all.slice(0, Math.max(i, 0)).reverse().find(shown) || null;
+        };
+
+        // The section's Mark-read row: the stories still showing above it, plus the
+        // other outlets' copies grouped under each (data-cov), go read in one tap. The
+        // row stays put while they leave and offers Undo for 5 seconds, which puts back
+        // exactly what this tap changed; then the emptied section goes too.
+        window.markBriefSectionRead = function (btn) {
+            const sec = btn && btn.closest('.brief-cat-section');
+            const end = btn && btn.closest('.brief-cat-end');
+            if (!sec || !end) return;
+            const live = new Map((window.articles || []).map(a => [a.id, a]));
+            const marked = new Set();
+            const take = id => {
+                const a = live.get(id);
+                if (a && a.unread && !a.isBrief) marked.add(a);
+            };
+            const cards = Array.from(sec.querySelectorAll('.brief-story-card[data-sa-id]:not(.brief-card-read)'));
+            cards.forEach(card => {
+                take(card.getAttribute('data-sa-id'));
+                try { JSON.parse(card.getAttribute('data-cov') || '[]').forEach(take); } catch (e) { }
+            });
+            if (!marked.size) { window.syncBriefCards(); return; }
+            const apply = () => {
+                saveReadState();
+                refreshUI();          // -> syncBriefCards
+                updateBadges();
+                window.updateActionButton?.();
+            };
+            window.briefKeepInPlace(end, () => {
+                marked.forEach(a => toggleUnread(a));   // unread -> read, with the archive bookkeeping
+                sec.classList.add('is-just-marked');
+                apply();
+            });
+            end.innerHTML = `<span class="brief-marked-note"><svg aria-hidden="true"><use href="#icon-check"/></svg>Marked ${cards.length} read</span><span aria-hidden="true">&middot;</span><button type="button" class="brief-undo-btn">Undo</button>`;
+            const timer = setTimeout(() => {
+                if (!sec.isConnected) return;
+                let next = sec.nextElementSibling;
+                while (next && !next.getClientRects().length) next = next.nextElementSibling;
+                window.briefKeepInPlace(next, () => {
+                    sec.classList.remove('is-just-marked');
+                    end.innerHTML = BRIEF_MARK_ROW_HTML;
+                    window.syncBriefCards();
+                });
+            }, 5000);
+            end.querySelector('.brief-undo-btn').onclick = () => {
+                clearTimeout(timer);
+                window.briefKeepInPlace(end, () => {
+                    marked.forEach(a => { if (!a.unread) toggleUnread(a); });
+                    sec.classList.remove('is-just-marked');
+                    end.innerHTML = BRIEF_MARK_ROW_HTML;
+                    apply();
+                });
+            };
         };
 
         window.renderTodayColumn = function () {
@@ -12728,7 +12955,7 @@
                 s.storyIndex = idx >= 0 ? idx : 0;
             }
             window.updateBriefMarkReadButtons?.();
-            window.syncTodayColumnCards();
+            window.syncBriefCards();
         };
 
         // Reader back to its "select an article" state.
@@ -12749,10 +12976,11 @@
             window._returnToBriefState = null;
             window.hideBriefReturnUI?.();
             window.clearReaderPane();
-            window.syncTodayColumnCards();
+            window.syncBriefCards();
             if (!id) return;
-            const card = Array.from(document.querySelectorAll('#today-column .brief-story-card[data-sa-id]'))
-                .find(c => c.getAttribute('data-sa-id') === id);
+            // The story just read has left the brief (build 278): land on the next unread.
+            const card = window.briefLandingCard(Array.from(document.querySelectorAll('#today-column .brief-story-card[data-sa-id]'))
+                .find(c => c.getAttribute('data-sa-id') === id));
             if (card) {
                 card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 card.classList.add('brief-card-return-pulse');
@@ -12889,6 +13117,11 @@
                         ? `<span class="brief-story-also text-gray-500 whitespace-nowrap truncate max-w-[160px]">• Also: ${esc(st.alsoReportedBy.join(', '))}</span>`
                         : '';
                     const saId = escJs(st.id);
+                    // The other outlets' copies grouped under this story (build 278), so the
+                    // section's Mark-read row can mark them too - left unread, the next Today
+                    // build would bring one back as a "new" story.
+                    const covIds = (st.coverage || []).map(a => a && a.id).filter(x => x && x !== st.id);
+                    const covAttr = covIds.length ? ` data-cov="${esc(JSON.stringify(covIds))}"` : '';
 
                     // Detect social / microblog post (Bluesky, Mastodon, or identical title & excerpt)
                     const isSocial = (st.feedUrl && isBlueskyFeed(st.feedUrl)) ||
@@ -12920,7 +13153,7 @@
                     }
 
                     html += `
-                        <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}">
+                        <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}>
                             <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
                                 ${favHtml}
                                 <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
@@ -13464,7 +13697,7 @@
             if (endCard) endCard.classList.toggle('hidden', !showReturn);
             if (mobFab) mobFab.classList.toggle('active', showReturn);
             if (isFromBrief && window.currentArticle) window.syncBriefArticleActionButtons?.();
-            window.syncTodayColumnCards?.();
+            window.syncBriefCards?.();
         };
 
         window.hideBriefReturnUI = function () {
@@ -13506,8 +13739,9 @@
                 let found = false;
                 const cardId = state.sourceCardId || state.articleId;
                 if (cardId) {
-                    const targetCard = document.getElementById('brief-card-' + cardId) ||
-                        document.querySelector(`[data-sa-id="${cardId}"]`);
+                    // The story just read has left the brief (build 278): land on the next unread.
+                    const targetCard = window.briefLandingCard(document.getElementById('brief-card-' + cardId) ||
+                        document.querySelector(`[data-sa-id="${cardId}"]`));
                     if (targetCard) {
                         targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         targetCard.classList.add('brief-card-return-pulse');
@@ -13538,7 +13772,9 @@
                     // there is nothing to go back to - but prev/next (j/k, the chevrons)
                     // should still walk the brief, so take its story order from the column.
                     const col = document.getElementById('today-column');
+                    // Read stories have left the brief (build 278): walk what is left.
                     const colIds = Array.from(col?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
+                        .filter(c => !c.classList.contains('brief-card-read') || c.getAttribute('data-sa-id') === art.id)
                         .map(c => c.getAttribute('data-sa-id')).filter(Boolean);
                     const colIdx = colIds.indexOf(art.id);
                     window._returnToBriefState = {
@@ -13552,7 +13788,8 @@
                     };
                 } else if (window.currentArticle && window.currentArticle.isBrief) {
                     const readerView = document.getElementById('reader-view');
-                    const storyCards = Array.from(readerView?.querySelectorAll('.brief-story-card[data-sa-id]') || []);
+                    const storyCards = Array.from(readerView?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
+                        .filter(c => !c.classList.contains('brief-card-read') || c.getAttribute('data-sa-id') === art.id);
                     const storyIds = storyCards.map(c => c.getAttribute('data-sa-id')).filter(Boolean);
 
                     window._returnToBriefState = {
@@ -15861,7 +16098,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 277;
+        window.APP_BUILD = 278;
 
         (async function initApp() {
             try {
@@ -16763,7 +17000,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v277';
+const CACHE_NAME = 'rss-reader-v278';
 const APP_SHELL = [
     '/',
     'index.html'
