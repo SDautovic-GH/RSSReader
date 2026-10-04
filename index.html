@@ -4584,6 +4584,30 @@
             padding-bottom: 0 !important;
         }
 
+        /* DESKTOP TODAY COLUMN (brief-first phase 5, build 268). The brief renders in
+           the middle column on desktop, so these mirror #article-body.is-brief-body
+           below plus the reader's font: the brief looks the same in either pane. */
+        #today-column {
+            padding: 3px 14px 2rem;
+            font-size: var(--view-font-size, 1em);
+            font-family: var(--view-font-family, inherit);
+            line-height: normal;
+        }
+
+        /* The story currently open in the reader. !important because every card
+           variant declares background: transparent !important; the #today-column id
+           still wins on specificity. */
+        #today-column .brief-story-card.brief-card-active {
+            background: rgba(68, 147, 248, 0.08) !important;
+            box-shadow: inset 3px 0 0 #4493f8 !important;
+        }
+
+        /* Read stories stay where they are - nothing reshuffles under the cursor -
+           but recede, so what is left to read stands out. */
+        #today-column .brief-story-card.brief-card-read:not(.brief-card-active) {
+            opacity: 0.55;
+        }
+
         /* DAILY BRIEFS TYPOGRAPHY & APP ZOOM / FONT SCALING */
         #article-body.is-brief-body {
             padding-top: 3px !important;
@@ -6731,6 +6755,8 @@
                         <span id="dedup-badge"
                             class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
+                    <span id="timeline-today-title"
+                        class="hidden whitespace-nowrap text-[15px] font-normal normal-case tracking-normal">Today</span>
                 </div>
                 <button id="desk-search-trigger" onclick="toggleSearchSheet()"
                     class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 ml-2 flex-shrink-0"
@@ -6761,6 +6787,10 @@
             </div>
 
             <div id="article-list" class="flex-1 overflow-y-auto"></div>
+            <!-- DESKTOP TODAY COLUMN (brief-first phase 5, build 268): the live brief on
+                 desktop. Shown instead of #article-list while Today is selected; picking
+                 Unread, a folder or a feed swaps the list back. See showTodayColumn(). -->
+            <div id="today-column" class="hidden flex-1 overflow-y-auto"></div>
             <!-- Floating position pill — fades in on scroll -->
             <div id="list-position-pill" aria-hidden="true">1 / 1</div>
             <!-- Progressive top frost (mobile) — six stacked blur layers, see CSS -->
@@ -11087,7 +11117,7 @@
                 }
             });
         }
-        function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); if (window.currentArticle?.isBrief) window.updateBriefMarkReadButtons?.(); }
+        function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); if (window.currentArticle?.isBrief || window._todayInColumn) window.updateBriefMarkReadButtons?.(); window.syncTodayColumnCards?.(); }
         // After a user action empties the Articles list on mobile, jump to Feeds
         // instead of leaving the user staring at an empty pane.
         function maybeGoHomeIfTimelineEmpty() {
@@ -11349,6 +11379,7 @@
         }
 
         window.setCategoryFilter = (cat) => {
+            window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
             if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); }
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = 'all';
@@ -11365,6 +11396,7 @@
             renderTimeline();
         };
         window.setSourceFilter = (source) => {
+            window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
             if (window._returnToBriefState) { window._returnToBriefState = null; window.hideBriefReturnUI?.(); }
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = 'all';
@@ -11721,6 +11753,7 @@
             if (window.currentSmartFeed === 'recently-read') setSmartFeed('recently-read');
         };
         window.setSmartFeed = async (type) => {
+            window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
             if (type !== 'briefs' && window._returnToBriefState) {
                 window._returnToBriefState = null;
                 window.hideBriefReturnUI?.();
@@ -12457,6 +12490,83 @@
             };
         };
 
+        // ===== DESKTOP TODAY COLUMN (brief-first redesign, phase 5, build 268) =====
+        // On mobile the Today brief is a full-screen "article" in the viewer pane and
+        // "< Today" pushes back to it. On desktop that put the brief and every story
+        // opened from it in the SAME right-hand pane - opening a story replaced the
+        // brief - while the middle column kept showing the plain unread list beside it.
+        // Desktop now renders the brief in the middle column (#today-column, a sibling
+        // of #article-list) and leaves the reader to the stories. The markup is
+        // identical either way: buildTodayBrief() + normalizeBriefDOM(), which only
+        // touches the container it is given. Every story click (title, excerpt, open
+        // button) goes through openArticleInReader(), so that and the few places that
+        // assumed the brief sits in the reader - the return UI, returnToBrief(), the
+        // viewer back button and the mark-read refresh - are all that know about it.
+        // Unread, a folder or a feed in the sidebar swaps the plain list back in.
+        window._todayInColumn = false;
+
+        window.showTodayColumn = function (on) {
+            const col = document.getElementById('today-column');
+            window._todayInColumn = !!on;
+            if (col) {
+                col.classList.toggle('hidden', !on);
+                // EMPTIED when hidden, never merely hidden: a brief's ids (brief-cat-*,
+                // brief-card-*) must exist once in the document. A display:none copy
+                // would win every getElementById, and a brief opened in the reader
+                // later would have jump pills that scroll an invisible section.
+                if (!on) col.innerHTML = '';
+            }
+            document.getElementById('article-list')?.classList.toggle('hidden', !!on);
+            document.getElementById('timeline-count-group')?.classList.toggle('hidden', !!on);
+            document.getElementById('timeline-today-title')?.classList.toggle('hidden', !on);
+        };
+
+        // Highlight the story open in the reader; dim the ones already read.
+        window.syncTodayColumnCards = function () {
+            if (!window._todayInColumn) return;
+            const col = document.getElementById('today-column');
+            if (!col) return;
+            const cur = window.currentArticle;
+            const activeId = cur && !cur.isBrief ? cur.id : null;
+            const byId = new Map((window.articles || []).map(a => [a.id, a]));
+            col.querySelectorAll('.brief-story-card[data-sa-id]').forEach(card => {
+                const id = card.getAttribute('data-sa-id');
+                const art = byId.get(id);
+                card.classList.toggle('brief-card-active', id === activeId);
+                card.classList.toggle('brief-card-read', !!art && !art.unread);
+            });
+        };
+
+        window.renderTodayColumn = function () {
+            const col = document.getElementById('today-column');
+            if (!col) return;
+            const keepScroll = col.scrollTop;
+            window._todayBrief = window.buildTodayBrief();
+            col.innerHTML = window._todayBrief.body;
+            normalizeBriefDOM(col);
+            col.scrollTop = keepScroll;
+            // A rebuild can reorder or drop stories: keep prev/next walking the brief
+            // as it now stands.
+            const s = window._returnToBriefState;
+            if (s && s.inColumn) {
+                s.storyIds = Array.from(col.querySelectorAll('.brief-story-card[data-sa-id]'))
+                    .map(c => c.getAttribute('data-sa-id')).filter(Boolean);
+                const idx = s.storyIds.indexOf(s.articleId);
+                s.storyIndex = idx >= 0 ? idx : 0;
+            }
+            window.updateBriefMarkReadButtons?.();
+            window.syncTodayColumnCards();
+        };
+
+        // Reader back to its "select an article" state.
+        window.clearReaderPane = function () {
+            document.getElementById('article-content')?.classList.add('hidden');
+            document.getElementById('empty-state')?.classList.remove('hidden');
+            window.currentArticle = null;
+            window.updateActionButton?.();
+            window.updateViewerBackBtn?.();
+        };
+
         window.openToday = async function () {
             window._returnToBriefState = null;
             window.hideBriefReturnUI?.();
@@ -12467,9 +12577,20 @@
                 window.currentSourceFilter = null;
                 if (typeof renderTimeline === 'function') renderTimeline();
             }
-            window._todayBrief = window.buildTodayBrief();
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
             document.getElementById('feed-btn-today')?.classList.add('active-item');
+            if (typeof isMobile === 'function' && !isMobile()) {
+                // DESKTOP: the brief takes the middle column; the reader stays for stories.
+                window.showTodayColumn(true);
+                window.renderTodayColumn();
+                // The reader may still hold the brief itself (opened at mobile width
+                // before the window was widened) - it now lives in the column.
+                if (window.currentArticle && window.currentArticle.id === window.TODAY_BRIEF_ID) window.clearReaderPane();
+                window.updateViewerBackBtn?.();
+                return;
+            }
+            window.showTodayColumn(false);
+            window._todayBrief = window.buildTodayBrief();
             selectArticle(window.TODAY_BRIEF_ID);
             if (typeof isMobile === 'function' && isMobile()) {
                 setMobilePane('viewer');
@@ -12818,7 +12939,7 @@
             if (categorySections.length > 0) {
                 html += `<div class="brief-jump-bar">`;
                 categorySections.forEach(cs => {
-                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill" onclick="event.preventDefault(); document.getElementById('brief-cat-${cs.slug}')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">${esc(cs.name)} (${cs.stories.length})</a>`;
+                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill" onclick="event.preventDefault(); (this.closest('.brief-container') || document).querySelector('#brief-cat-${cs.slug}')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">${esc(cs.name)} (${cs.stories.length})</a>`;
                 });
                 html += `</div>`;
             }
@@ -13068,11 +13189,15 @@
                     window.currentArticle.id === window._returnToBriefState.sourceCardId)
             );
 
-            if (deskBtn) deskBtn.classList.toggle('hidden', !isFromBrief);
-            if (topBanner) topBanner.classList.toggle('hidden', !isFromBrief);
-            if (endCard) endCard.classList.toggle('hidden', !isFromBrief);
-            if (mobFab) mobFab.classList.toggle('active', isFromBrief);
+            // Desktop Today column: the brief is still on screen, so no "back to brief"
+            // chrome. The card's save state still follows the reader.
+            const showReturn = isFromBrief && !(window._todayInColumn && window._returnToBriefState?.inColumn);
+            if (deskBtn) deskBtn.classList.toggle('hidden', !showReturn);
+            if (topBanner) topBanner.classList.toggle('hidden', !showReturn);
+            if (endCard) endCard.classList.toggle('hidden', !showReturn);
+            if (mobFab) mobFab.classList.toggle('active', showReturn);
             if (isFromBrief && window.currentArticle) window.syncBriefArticleActionButtons?.();
+            window.syncTodayColumnCards?.();
         };
 
         window.hideBriefReturnUI = function () {
@@ -13090,6 +13215,20 @@
         window.returnToBrief = function () {
             if (!window._returnToBriefState) return;
             const state = window._returnToBriefState;
+            if (state.inColumn && window._todayInColumn) {
+                // Desktop: the brief never left the screen. Re-selecting it would render a
+                // second copy into the reader, so bring the story's card into view instead
+                // - and keep the state, so prev/next keeps walking the brief.
+                const id = state.sourceCardId || state.articleId;
+                const card = Array.from(document.querySelectorAll('#today-column .brief-story-card[data-sa-id]'))
+                    .find(c => c.getAttribute('data-sa-id') === id);
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('brief-card-return-pulse');
+                    setTimeout(() => card.classList.remove('brief-card-return-pulse'), 2500);
+                }
+                return;
+            }
             window._returnToBriefState = null;
             if (window.hideBriefReturnUI) window.hideBriefReturnUI();
 
@@ -13134,7 +13273,24 @@
                 art = window._readArchiveCache.find(a => a.id === articleId || a.link === articleId);
             }
             if (art) {
-                if (window.currentArticle && window.currentArticle.isBrief) {
+                if (window._todayInColumn && !art.isBrief) {
+                    // DESKTOP TODAY COLUMN: the brief stays on screen beside the reader, so
+                    // there is nothing to go back to - but prev/next (j/k, the chevrons)
+                    // should still walk the brief, so take its story order from the column.
+                    const col = document.getElementById('today-column');
+                    const colIds = Array.from(col?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
+                        .map(c => c.getAttribute('data-sa-id')).filter(Boolean);
+                    const colIdx = colIds.indexOf(art.id);
+                    window._returnToBriefState = {
+                        briefId: window.TODAY_BRIEF_ID,
+                        articleId: art.id,
+                        sourceCardId: articleId,
+                        storyIds: colIds.length ? colIds : [art.id],
+                        storyIndex: colIdx >= 0 ? colIdx : 0,
+                        scrollTop: col ? col.scrollTop : 0,
+                        inColumn: true
+                    };
+                } else if (window.currentArticle && window.currentArticle.isBrief) {
                     const readerView = document.getElementById('reader-view');
                     const storyCards = Array.from(readerView?.querySelectorAll('.brief-story-card[data-sa-id]') || []);
                     const storyIds = storyCards.map(c => c.getAttribute('data-sa-id')).filter(Boolean);
@@ -14558,8 +14714,12 @@
         window.markAllBriefCategoriesRead = window.markBriefCategoriesRead;
 
         window.updateBriefMarkReadButtons = function (forceAllRead = false) {
-            const container = document.getElementById('article-body');
-            if (!container) return;
+            // A brief can be on screen in the reader (#article-body) or, on desktop, in the
+            // Today column (build 268). Both are searched; the body below only ever calls
+            // container.querySelectorAll, which this stands in for.
+            const holders = [document.getElementById('article-body'), document.getElementById('today-column')].filter(Boolean);
+            if (!holders.length) return;
+            const container = { querySelectorAll: sel => holders.flatMap(h => Array.from(h.querySelectorAll(sel))) };
 
             let anyUnread = false;
 
@@ -15131,7 +15291,10 @@
             if (viewerHeader) {
                 viewerHeader.style.display = 'flex';
             }
-            if (backBtn) {
+            if (backBtn && window._todayInColumn && typeof isMobile === 'function' && !isMobile()) {
+                // Desktop Today column: Today is already on screen beside the reader.
+                backBtn.classList.add('hidden');
+            } else if (backBtn) {
                 backBtn.classList.remove('hidden');
                 if (window._returnToBriefState) {
                     const fromToday = window._returnToBriefState.briefId === window.TODAY_BRIEF_ID;
@@ -15476,7 +15639,11 @@
         window.addEventListener('resize', () => {
             const wasMobile = _isMobileCache;
             _isMobileCache = window.innerWidth <= 900;
-            if (wasMobile !== _isMobileCache) reseedPerDeviceSliders();
+            if (wasMobile !== _isMobileCache) {
+                reseedPerDeviceSliders();
+                // Today lives in a different pane on each side of the breakpoint.
+                if (window._todayInColumn || window.currentArticle?.id === window.TODAY_BRIEF_ID) window.openToday?.();
+            }
         }, { passive: true });
 
         window.addEventListener('resize', () => {
@@ -15524,7 +15691,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 267;
+        window.APP_BUILD = 268;
 
         (async function initApp() {
             try {
@@ -15925,7 +16092,9 @@
                         window.checkAndGenerateBriefs();
                     }
                     // Re-render Today brief now that feed folders are loaded
-                    if (window.currentArticle && window.currentArticle.id === window.TODAY_BRIEF_ID && typeof window.openToday === 'function') {
+                    if (window._todayInColumn) {
+                        window.renderTodayColumn?.();   // desktop: re-cluster in place, keep the open story
+                    } else if (window.currentArticle && window.currentArticle.id === window.TODAY_BRIEF_ID && typeof window.openToday === 'function') {
                         window.openToday();
                     }
                     if (_firstSnapshot) {
@@ -16424,7 +16593,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v267';
+const CACHE_NAME = 'rss-reader-v268';
 const APP_SHELL = [
     '/',
     'index.html'
