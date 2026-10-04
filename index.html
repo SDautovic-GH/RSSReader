@@ -4498,15 +4498,31 @@
             box-shadow: inset 3px 0 0 #4493f8 !important;
         }
 
-        /* READING CONTROLS (builds 283-284, on request): Next story and the full-screen
-           exit, in the tab bar's dark glass with 44px touch targets, along the bottom of
-           the reader - on a phone just above the tab bar, on desktop on the article
-           column's edges (1rem / 1.5rem + 42rem; centred in full screen). */
-        #reader-next,
-        #fullscreen-exit {
+        /* READING CONTROLS (builds 283-288, on request): Previous + Next as a pair on the
+           right (#reader-nav) and the full-screen exit on the left, in the tab bar's dark
+           glass with 44px touch targets, along the bottom of the reader - on a phone just
+           above the tab bar, on desktop on the article column's edges (1rem / 1.5rem +
+           42rem; centred in full screen). Each shows only when it has somewhere to go. */
+        #reader-nav {
             display: none;
             position: absolute;
             z-index: 35;
+            align-items: center;
+            gap: 8px;
+            bottom: 24px;
+            right: max(1rem, calc(100% - 43rem));
+        }
+
+        #viewer-pane.has-reader-prev #reader-nav,
+        #viewer-pane.has-reader-next #reader-nav {
+            display: inline-flex;
+            animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #reader-prev,
+        #reader-next,
+        #fullscreen-exit {
+            display: none;
             align-items: center;
             justify-content: center;
             gap: 4px;
@@ -4525,16 +4541,25 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        #viewer-pane.has-reader-prev #reader-prev,
         #viewer-pane.has-reader-next #reader-next,
         body.is-fullscreen #fullscreen-exit {
             display: inline-flex;
+        }
+
+        #fullscreen-exit {
+            position: absolute;
+            z-index: 35;
             animation: briefFabSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #reader-prev {
+            width: 44px;
+            padding: 0;
         }
 
         #reader-next {
             padding: 0 14px 0 18px;
-            bottom: 24px;
-            right: max(1rem, calc(100% - 43rem));
         }
 
         #reader-next.is-last {
@@ -4565,6 +4590,7 @@
             bottom: 24px;
         }
 
+        #reader-prev svg,
         #reader-next svg,
         #fullscreen-exit svg {
             width: 18px;
@@ -4572,13 +4598,14 @@
             flex-shrink: 0;
         }
 
+        #reader-prev:active,
         #reader-next:active,
         #fullscreen-exit:active {
             transform: scale(0.94);
         }
 
         @media (min-width: 64rem) {
-            #reader-next {
+            #reader-nav {
                 right: max(1.5rem, calc(100% - 43.5rem));
             }
         }
@@ -4600,7 +4627,7 @@
             margin-right: auto !important;
         }
 
-        body.is-fullscreen #reader-next {
+        body.is-fullscreen #reader-nav {
             right: max(1rem, calc(50% - 21rem));
         }
 
@@ -4609,17 +4636,17 @@
         }
 
         @media (max-width: 900px) {
-            #reader-next {
+            #reader-nav {
                 bottom: calc(90px + env(safe-area-inset-bottom, 0px));
                 right: 14px;
             }
 
-            body.is-fullscreen #reader-next,
+            body.is-fullscreen #reader-nav,
             body.is-fullscreen #fullscreen-exit {
                 bottom: calc(16px + env(safe-area-inset-bottom, 0px));
             }
 
-            body.is-fullscreen #reader-next {
+            body.is-fullscreen #reader-nav {
                 right: 14px;
             }
 
@@ -4632,14 +4659,16 @@
                 padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 14px) !important;
             }
 
-            /* Room at the end so the story's last lines scroll clear of the Next pill. */
-            #viewer-pane.mobile-active.has-reader-next #reader-view {
+            /* Room at the end so the story's last lines scroll clear of the controls. */
+            #viewer-pane.mobile-active.has-reader-next #reader-view,
+            #viewer-pane.mobile-active.has-reader-prev #reader-view {
                 padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 150px) !important;
             }
         }
 
         @media (min-width: 901px) {
             #viewer-pane.has-reader-next #reader-view,
+            #viewer-pane.has-reader-prev #reader-view,
             body.is-fullscreen #reader-view {
                 padding-bottom: 88px !important;
             }
@@ -7201,21 +7230,30 @@
                 </button>
             </div>
 
-            <!-- READING CONTROLS along the bottom of the reader (builds 283-286, on request):
-                 Next (right) for any open story - the brief's next story, or the next article
-                 of the list it came from; "Back to Today" after a brief's last story - and the
+            <!-- READING CONTROLS along the bottom of the reader (builds 283-288, on request):
+                 Previous + Next (right) for any open story - the brief's stories, or the list
+                 it came from; Next reads "Back to Today" after a brief's last story - and the
                  full-screen exit (left). Shown by classes on
                  #viewer-pane / <body>, never by removing Tailwind's `hidden`: that class is
                  a layered !important, which no unlayered rule can undo (why the build 283
                  pill, inside a `hidden` wrapper, never appeared). -->
-            <button id="reader-next" type="button" onclick="window.readerNextOrBack()" aria-label="Next story">
-                <span id="reader-next-label">Next</span>
-                <span id="reader-next-count" class="reader-next-count"></span>
-                <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                    stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-            </button>
+            <div id="reader-nav">
+                <button id="reader-prev" type="button" onclick="window.navigateArticle(-1)" title="Previous"
+                    aria-label="Previous story">
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <button id="reader-next" type="button" onclick="window.readerNextOrBack()" aria-label="Next story">
+                    <span id="reader-next-label">Next</span>
+                    <span id="reader-next-count" class="reader-next-count"></span>
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            </div>
             <button id="fullscreen-exit" type="button" onclick="window.setReadingFullScreen(false)"
                 title="Exit full screen (Esc)" aria-label="Exit full screen">
                 <svg aria-hidden="true">
@@ -7740,6 +7778,11 @@
                 <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Previous
                         article</span><span class="flex gap-1"><kbd class="kbd">k</kbd><kbd class="kbd">↑</kbd></span>
                 </div>
+                <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Next /
+                        previous story (full screen)</span><span class="flex gap-1"><kbd class="kbd">→</kbd><kbd class="kbd">←</kbd></span>
+                </div>
+                <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Exit
+                        full screen</span><kbd class="kbd">Esc</kbd></div>
                 <div class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-4 mb-2">Article</div>
                 <div class="flex justify-between py-1.5 border-b border-gray-800"><span class="text-gray-300">Toggle
                         read/unread</span><kbd class="kbd">r</kbd></div>
@@ -10961,6 +11004,17 @@
         // --- KEYBOARD NAVIGATION ---
         document.addEventListener('keydown', (e) => {
             if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            // Full screen: Right arrow = the Next button - next story or article, or Back to
+            // Today after a brief's last - and Left arrow = the previous one, from the same
+            // brief or list (build 288, on request). Ahead of the empty-list return below: a
+            // story from Today can be open while the list is empty.
+            if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && document.body.classList.contains('is-fullscreen')
+                && !document.getElementById('img-lightbox')?.classList.contains('open')) {
+                e.preventDefault();
+                if (e.key === 'ArrowLeft') window.navigateArticle(-1);
+                else if (document.getElementById('viewer-pane')?.classList.contains('has-reader-next')) window.readerNextOrBack();
+                return;
+            }
             if (!window.currentTimeline || window.currentTimeline.length === 0) return;
 
             let currentIndex = -1;
@@ -13434,6 +13488,7 @@
             // this is the last story of the brief it came from.
             const nx = window.readerNext();
             document.getElementById('viewer-pane')?.classList.toggle('has-reader-next', nx.show);
+            document.getElementById('viewer-pane')?.classList.toggle('has-reader-prev', window.readerHasPrev());
             const nextBtn = document.getElementById('reader-next');
             if (nextBtn && nx.show) {
                 const last = nx.fromBrief && !nx.hasNext;
@@ -13464,6 +13519,17 @@
             return { show: i >= 0 && i < nav.length - 1, fromBrief: false, hasNext: true };
         };
 
+        // Is there a story or article before the open one, from the same brief or list?
+        // (Previous button and Left arrow in full screen, build 288 - navigateArticle(-1).)
+        window.readerHasPrev = function () {
+            const art = window.currentArticle;
+            if (!art || art.isBrief) return false;
+            const s = window._returnToBriefState;
+            if (s && Array.isArray(s.storyIds) && s.storyIds.length > 0) return s.storyIds.indexOf(art.id) > 0;
+            const nav = window._navSnapshot.length ? window._navSnapshot : (window.currentTimeline || []);
+            return nav.findIndex(a => a.id === art.id) > 0;
+        };
+
         // The Next pill: the next story or article, or back to Today after a brief's last.
         window.readerNextOrBack = function () {
             const nx = window.readerNext();
@@ -13479,7 +13545,7 @@
             if (deskBtn) deskBtn.classList.add('hidden');
             if (topBanner) topBanner.classList.add('hidden');
             if (endCard) endCard.classList.add('hidden');
-            document.getElementById('viewer-pane')?.classList.remove('has-reader-next');
+            document.getElementById('viewer-pane')?.classList.remove('has-reader-next', 'has-reader-prev');
         };
 
         window.returnToBrief = function () {
@@ -15716,7 +15782,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 287;
+        window.APP_BUILD = 288;
 
         (async function initApp() {
             try {
@@ -16603,7 +16669,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v287';
+const CACHE_NAME = 'rss-reader-v288';
 const APP_SHELL = [
     '/',
     'index.html'
