@@ -3757,8 +3757,8 @@
             color: inherit;
         }
 
-        /* Articles tab unread badge — iOS-style red/blue pill on the icon corner.
-           Wrap positions the badge relative to the icon (not the full button). */
+        /* Unread badge on the Today tab (Following until build 285) — iOS-style pill on
+           the icon corner. Wrap positions the badge relative to the icon (not the button). */
         .tab-ico-wrap {
             position: relative;
             display: inline-flex;
@@ -7213,20 +7213,20 @@
     <nav id="mobile-tab-bar">
         <div class="tab-pill">
             <button id="mob-tab-today" type="button" class="tab-btn active" onclick="onTodayTabClick()">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
-                    stroke-linejoin="round" viewBox="0 0 24 24">
-                    <use href="#icon-sun" />
-                </svg>
-                <span class="tab-label">Today</span>
-            </button>
-            <button id="mob-tab-following" type="button" class="tab-btn" onclick="onFollowingTabClick()">
                 <span class="tab-ico-wrap">
                     <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
                         stroke-linejoin="round" viewBox="0 0 24 24">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        <use href="#icon-sun" />
                     </svg>
-                    <span id="mob-tab-following-badge" class="tab-icon-badge hidden" aria-hidden="true">0</span>
+                    <span id="mob-tab-today-badge" class="tab-icon-badge hidden" aria-hidden="true">0</span>
                 </span>
+                <span class="tab-label">Today</span>
+            </button>
+            <button id="mob-tab-following" type="button" class="tab-btn" onclick="onFollowingTabClick()">
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+                    stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
                 <span class="tab-label">Following</span>
             </button>
             <button id="mob-tab-search" type="button" class="tab-btn tab-search" onclick="toggleSearchSheet()"
@@ -15208,15 +15208,15 @@
         window._activeTab = 'today';
 
         function updateReaderTabMode() {
-            // Keep Following badge in sync with total unread
-            const folBadge = document.getElementById('mob-tab-following-badge');
-            if (folBadge) {
+            // Total unread on the Today tab (moved from Following in build 285, on request)
+            const badge = document.getElementById('mob-tab-today-badge');
+            if (badge) {
                 const n = (window.articles || []).filter(a => a.unread).length;
                 if (n > 0) {
-                    folBadge.textContent = n > 99 ? '99+' : String(n);
-                    folBadge.classList.remove('hidden');
+                    badge.textContent = n > 99 ? '99+' : String(n);
+                    badge.classList.remove('hidden');
                 } else {
-                    folBadge.classList.add('hidden');
+                    badge.classList.add('hidden');
                 }
             }
         }
@@ -15692,7 +15692,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 284;
+        window.APP_BUILD = 285;
 
         (async function initApp() {
             try {
@@ -16579,7 +16579,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v284';
+const CACHE_NAME = 'rss-reader-v285';
 const APP_SHELL = [
     '/',
     'index.html'
