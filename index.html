@@ -3473,6 +3473,14 @@
 
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header {
                 display: flex !important;
+                /* BELOW THE STATUS BAR (build 269, 2026-10-04). The pane runs under the
+                   clock/Dynamic Island, and this bar was in flow at y=0 - i.e. entirely
+                   inside that strip, behind the OS blur: rendered, but invisible and
+                   untappable. The offset uses the same max(safe-area, 50px) base as the
+                   reader's own top padding, which the rule after the dark variant then
+                   drops - so the article text does not move; the bar just appears in
+                   the band that used to sit empty above it. */
+                margin-top: max(env(safe-area-inset-top, 0px), 50px) !important;
                 height: 52px !important;
                 min-height: 52px !important;
                 padding-left: 12px !important;
@@ -3491,7 +3499,14 @@
                 border-bottom-color: rgba(255, 255, 255, 0.08) !important;
             }
 
+            /* The bar above now carries the status-bar offset, so the reader keeps only
+               its small gap - otherwise the safe area would be counted twice. */
+            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
+                padding-top: 14px !important;
+            }
+
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #share-btn,
+            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #unread-action-btn,
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #saved-action-btn,
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header #read-later-action-btn {
                 display: inline-flex !important;
@@ -15691,7 +15706,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 268;
+        window.APP_BUILD = 269;
 
         (async function initApp() {
             try {
@@ -16593,7 +16608,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v268';
+const CACHE_NAME = 'rss-reader-v269';
 const APP_SHELL = [
     '/',
     'index.html'
