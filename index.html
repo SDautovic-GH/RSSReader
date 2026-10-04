@@ -3120,15 +3120,6 @@
                 flex-direction: column;
             }
 
-            /* Hide desktop toolbar equivalents on mobile */
-            #desk-nav-group,
-            #prev-article-btn,
-            #next-article-btn,
-            #tts-btn,
-            #view-density-toggle {
-                display: none !important;
-            }
-
             /* Mobile sidebar — consistent font size for smart feeds AND category folders */
             #sidebar-pane .smart-feed-btn,
             #sidebar-pane .dynamic-category-text,
@@ -3407,45 +3398,17 @@
                 font-size: 0.875rem !important;
             }
 
-            /* Mobile viewer header — shown when viewing an article, with back button and actions */
+            /* NO READER TOP BAR ON THE PHONE (build 301, on request). Back's job moved to the
+               tabs: Today returns to the story's place in Today, Following to the list it came
+               from. The story starts just below the status bar, like Today; while it scrolls
+               down the tab bar steps aside too (tabbar-tucked), so reading is full screen. */
             #viewer-header {
                 display: none !important;
             }
 
-            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header {
-                display: flex !important;
-                /* BELOW THE STATUS BAR (build 269, 2026-10-04). The pane runs under the
-                   clock/Dynamic Island, and this bar was in flow at y=0 - i.e. entirely
-                   inside that strip, behind the OS blur: rendered, but invisible and
-                   untappable. The offset uses the same max(safe-area, 50px) base as the
-                   reader's own top padding, which the rule after the dark variant then
-                   drops - so the article text does not move; the bar just appears in
-                   the band that used to sit empty above it. */
-                margin-top: max(env(safe-area-inset-top, 0px), 50px) !important;
-                height: 52px !important;
-                min-height: 52px !important;
-                padding-left: 12px !important;
-                padding-right: 12px !important;
-                background: rgba(255, 255, 255, 0.88) !important;
-                backdrop-filter: blur(20px) !important;
-                -webkit-backdrop-filter: blur(20px) !important;
-                border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
-                position: sticky !important;
-                top: 0 !important;
-                z-index: 20 !important;
-            }
-
-            .dark #viewer-pane.mobile-active.has-article:not(.is-today-brief) #viewer-header {
-                background: rgba(17, 24, 39, 0.88) !important;
-                border-bottom-color: rgba(255, 255, 255, 0.08) !important;
-            }
-
-            /* The bar above now carries the status-bar offset, so the reader keeps only
-               its small gap - otherwise the safe area would be counted twice. */
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
-                padding-top: 8px !important;   /* 14 -> 8 (build 300) */
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 8px) !important;
             }
-
 
             /* Articles list topbar hidden on mobile — unread count lives in the Reader tab */
             #timeline-header {
@@ -4444,6 +4407,24 @@
             box-shadow: inset 3px 0 0 #4493f8 !important;
         }
 
+        /* TAB BAR STEPS ASIDE WHILE READING (build 301, on request). On the phone, scrolling
+           down a story slides the tab bar off the bottom; scrolling up a little, or reaching
+           the end, brings it back - reading is full screen without a button. Transform only:
+           the bar's layout anchor (the pixel-locked body, see #mobile-tab-bar) never moves,
+           so the 115% page-zoom mis-anchoring cannot come back. Later than the shared
+           transition list above, so this transition wins. */
+        #mobile-tab-bar {
+            transition: transform 0.25s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+        }
+
+        body.tabbar-tucked #mobile-tab-bar {
+            transform: translateY(calc(100% + 40px));
+        }
+
+        body.tabbar-tucked #mobile-tab-bar > * {
+            pointer-events: none;
+        }
+
         /* FULL-SCREEN EXIT (build 284; alone since build 297, when the ‹ › buttons were
            removed on request): the tab bar's dark glass, a 44px round button at the bottom
            left of the story column. */
@@ -4491,7 +4472,6 @@
         body.is-fullscreen #timeline-pane,
         body.is-fullscreen #resizer,
         body.is-fullscreen #viewer-header,
-        body.is-fullscreen #viewer-pane.mobile-active.has-article #viewer-header,
         body.is-fullscreen #mobile-tab-bar {
             display: none !important;
         }
@@ -4503,21 +4483,6 @@
 
         body.is-fullscreen #fullscreen-exit {
             left: max(1rem, calc(50% - 21rem));
-        }
-
-        @media (max-width: 900px) {
-            body.is-fullscreen #fullscreen-exit {
-                bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-            }
-
-            body.is-fullscreen #fullscreen-exit {
-                left: 14px;
-            }
-
-            /* No top bar: the story starts below the status bar, as Today does. */
-            body.is-fullscreen #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
-                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 8px) !important;
-            }
         }
 
         @media (min-width: 901px) {
@@ -4952,20 +4917,6 @@
         }
         #viewer-back-btn:hover {
             background: rgba(68, 147, 248, 0.12) !important;
-        }
-
-        /* MOBILE BACK AT iOS SIZE (build 275, on request). text-xs (12px) was tiny beside
-           the 32px action icons; 15px under the 115% page zoom is about iOS's own 17pt
-           back button, and the chevron grows from 16px to 18px to match. Unlayered, so
-           it beats the compiled text-xs / w-4 / h-4 utilities. Desktop keeps text-xs. */
-        @media (max-width: 900px) {
-            #viewer-back-btn {
-                font-size: 15px;
-            }
-            #viewer-back-btn svg {
-                width: 18px;
-                height: 18px;
-            }
         }
 
         /* DESKTOP READER BAR = THE ARTICLE COLUMN'S WIDTH (build 271, corrected in 278).
@@ -12906,7 +12857,14 @@
                     const targetCard = window.briefLandingCard(document.getElementById('brief-card-' + cardId) ||
                         document.querySelector(`[data-sa-id="${cardId}"]`));
                     if (targetCard) {
-                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if (readerView && typeof state.cardTop === 'number') {
+                            // Build 301: the landing story at the same height on screen as the
+                            // one you tapped, so Today reopens where you were reading it.
+                            readerView.scrollTop += targetCard.getBoundingClientRect().top
+                                - readerView.getBoundingClientRect().top - state.cardTop;
+                        } else {
+                            targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
                         targetCard.classList.add('brief-card-return-pulse');
                         setTimeout(() => {
                             targetCard.classList.remove('brief-card-return-pulse');
@@ -12954,6 +12912,8 @@
                     const storyCards = Array.from(readerView?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
                         .filter(c => !c.classList.contains('brief-card-read') || c.getAttribute('data-sa-id') === art.id);
                     const storyIds = storyCards.map(c => c.getAttribute('data-sa-id')).filter(Boolean);
+                    // Where the tapped story sat on screen, so the return lands at that height.
+                    const tapped = storyCards.find(c => c.getAttribute('data-sa-id') === art.id);
 
                     window._returnToBriefState = {
                         briefId: window.currentArticle.id,
@@ -12961,7 +12921,8 @@
                         sourceCardId: articleId,
                         storyIds: storyIds.length ? storyIds : [art.id],
                         storyIndex: storyIds.indexOf(art.id) >= 0 ? storyIds.indexOf(art.id) : 0,
-                        scrollTop: readerView ? readerView.scrollTop : 0
+                        scrollTop: readerView ? readerView.scrollTop : 0,
+                        cardTop: tapped && readerView ? tapped.getBoundingClientRect().top - readerView.getBoundingClientRect().top : null
                     };
                 } else if (window._returnToBriefState) {
                     window._returnToBriefState.articleId = art.id;
@@ -13337,9 +13298,10 @@
         };
 
         // FULL SCREEN (builds 284/294, on request): the open story alone - no arrows, just
-        // the exit button at the bottom left. Entered by double-tapping / double-clicking
-        // the top bar; left by that button or Esc (the bar is hidden in full screen, so a
-        // double-tap cannot leave it). Arrow keys and swipes still move between stories.
+        // the exit button at the bottom left. Desktop: entered by double-clicking the top
+        // bar; left by that button or Esc (the bar is hidden in full screen, so a
+        // double-click cannot leave it). The phone has no top bar since build 301: there the
+        // tab bar steps aside while a story scrolls, which is its full screen. Arrow keys and swipes still move between stories.
         // Stories only; it ends when the story closes or Today comes back
         // (updateViewerBackBtn). On desktop the browser goes full screen too, and leaving
         // that (Esc) leaves this.
@@ -13371,22 +13333,29 @@
             window.setReadingFullScreen(true);
         };
 
-        // Phone: double-tap the top bar - its empty part, not a button - for full screen. iOS Safari does not reliably send dblclick, so taps are timed here.
+        // Phone: the tab bar steps aside while a story scrolls down and returns on a small
+        // scroll up, near the top, or at the end (build 301, on request - see tabbar-tucked).
+        // isMobile() only inside the handler: never at top level (TDZ).
         (function () {
-            const bar = document.getElementById('viewer-header');
-            if (!bar) return;
-            let lastTap = 0;
-            bar.addEventListener('touchend', (e) => {
-                if (e.target.closest('button, a')) { lastTap = 0; return; }
-                const now = Date.now();
-                if (now - lastTap < 350) {
-                    lastTap = 0;
-                    e.preventDefault();   // no zoom, no stray click
-                    window.setReadingFullScreen(true);
-                } else {
-                    lastTap = now;
+            const rv = document.getElementById('reader-view');
+            if (!rv) return;
+            let lastY = 0;
+            rv.addEventListener('scroll', () => {
+                const y = rv.scrollTop;
+                const art = window.currentArticle;
+                const reading = isMobile() && window._mobilePane === 'viewer' && art && !art.isBrief;
+                const body = document.body;
+                if (!reading || y < 60 || y + rv.clientHeight >= rv.scrollHeight - 40) {
+                    body.classList.remove('tabbar-tucked');
+                    lastY = y;
+                } else if (y - lastY > 8) {
+                    body.classList.add('tabbar-tucked');
+                    lastY = y;
+                } else if (lastY - y > 8) {
+                    body.classList.remove('tabbar-tucked');
+                    lastY = y;
                 }
-            });
+            }, { passive: true });
         })();
         window.openExternal = () => { if (window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
@@ -14652,12 +14621,31 @@
         };
 
         // Tab click handlers:
+        // TABS DO BACK'S JOB (build 301, on request; the phone has no reader top bar).
+        // Today, from a story opened in Today: back to Today at that story's place - it has
+        // left Today, so the next unread sits where it was. Today again (or from anywhere
+        // else): Today rebuilt, at the top.
         window.onTodayTabClick = async () => {
+            const s = window._returnToBriefState;
+            const cur = window.currentArticle;
+            if (window._mobilePane === 'viewer' && cur && !cur.isBrief && s && s.briefId === window.TODAY_BRIEF_ID) {
+                setMobileTab('today');
+                window.returnToBrief();
+                return;
+            }
             setMobileTab('today');
             await window.openToday();
         };
 
+        // Following, one level per tap: a story opened from a list -> that list, at the
+        // article; the list -> your folders; your folders -> their top.
         window.onFollowingTabClick = () => {
+            const cur = window.currentArticle;
+            if (window._mobilePane === 'viewer' && window._activeTab === 'following'
+                && cur && !cur.isBrief && !window._returnToBriefState) {
+                setMobilePane('timeline');   // scrolls the list to the open article's row
+                return;
+            }
             setMobileTab('following');
             if (window._mobilePane === 'sidebar') {
                 const sb = document.getElementById('sidebar-pane');
@@ -14681,8 +14669,11 @@
             viewerPane.classList.toggle('has-article', !!art);
             viewerPane.classList.toggle('is-today-brief', isToday);
             viewerPane.classList.toggle('is-brief-view', isAnyBrief);
-            // Full screen is for stories: left when none is open.
-            if (!art || isAnyBrief) window.setReadingFullScreen?.(false);
+            // Full screen and a tucked tab bar are for stories: both end when none is open.
+            if (!art || isAnyBrief) {
+                window.setReadingFullScreen?.(false);
+                document.body.classList.remove('tabbar-tucked');
+            }
 
             if (!art || isToday) {
                 if (backBtn) backBtn.classList.add('hidden');
@@ -14715,26 +14706,19 @@
         }
         window.updateViewerBackBtn = updateViewerBackBtn;
 
+        // Desktop only since build 301 - the phone has no reader top bar (the tabs do this).
         window.onViewerBackClick = () => {
-            if (window._todayInColumn && typeof isMobile === 'function' && !isMobile()) {
+            if (window._todayInColumn) {
                 window.closeStoryToTodayColumn();
                 return;
             }
-            if (window._returnToBriefState) {
-                window.returnToBrief();
-            } else if (typeof isMobile === 'function' && isMobile()) {
-                if (window._activeTab === 'following') {
-                    setMobilePane('sidebar');
-                } else {
-                    openToday();
-                }
-            } else {
-                openToday();
-            }
+            if (window._returnToBriefState) window.returnToBrief();
+            else openToday();
         };
 
         window.setMobilePane = (pane) => {
             window._mobilePane = pane;
+            if (pane !== 'viewer') document.body.classList.remove('tabbar-tucked');
             const paneMap = { sidebar: 'sidebar-pane', timeline: 'timeline-pane', viewer: 'viewer-pane' };
             Object.entries(paneMap).forEach(([key, id]) => {
                 const el = document.getElementById(id);
@@ -15051,6 +15035,9 @@
             _isMobileCache = window.innerWidth <= 900;
             if (wasMobile !== _isMobileCache) {
                 reseedPerDeviceSliders();
+                // Full screen is desktop-only and the tucked tab bar phone-only (build 301).
+                if (_isMobileCache) window.setReadingFullScreen?.(false);
+                else document.body.classList.remove('tabbar-tucked');
                 // Today lives in a different pane on each side of the breakpoint.
                 if (window._todayInColumn || window.currentArticle?.id === window.TODAY_BRIEF_ID) window.openToday?.();
             }
@@ -15101,7 +15088,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 300;
+        window.APP_BUILD = 301;
 
         (async function initApp() {
             try {
@@ -15988,7 +15975,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v300';
+const CACHE_NAME = 'rss-reader-v301';
 const APP_SHELL = [
     '/',
     'index.html'
