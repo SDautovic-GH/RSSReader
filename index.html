@@ -4831,6 +4831,14 @@
             border-color: rgba(37, 99, 235, 0.35) !important;
         }
 
+        /* The category pill last tapped (build 270) - the bar also slides to centre it. */
+        .brief-jump-pill.is-active,
+        html:not(.dark) .brief-jump-pill.is-active {
+            background: #4493f8 !important;
+            border-color: #4493f8 !important;
+            color: #ffffff !important;
+        }
+
         @media (max-width: 900px) {
             .brief-jump-bar {
                 position: static !important;
@@ -6849,13 +6857,6 @@
                                 </svg>
                             </button>
                         </div>
-                        <!-- Share Button -->
-                        <button id="share-btn" onclick="shareArticle()" title="Share" aria-label="Share"
-                            class="hidden p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                            <svg class="w-4 h-4">
-                                <use href="#icon-share" />
-                            </svg>
-                        </button>
                         <!-- TTS Button -->
                         <button id="tts-btn" onclick="toggleTTS()" title="Listen" aria-label="Listen"
                             class="hidden p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -6882,6 +6883,13 @@
                             class="hidden p-1.5 rounded-md border transition-colors">
                             <svg class="w-4 h-4">
                                 <use href="#icon-star" />
+                            </svg>
+                        </button>
+                        <!-- Share Button -->
+                        <button id="share-btn" onclick="shareArticle()" title="Share" aria-label="Share"
+                            class="hidden p-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <svg class="w-4 h-4">
+                                <use href="#icon-share" />
                             </svg>
                         </button>
                     </div>
@@ -10172,6 +10180,10 @@
                 el.classList.add('whitespace-nowrap');
             });
 
+            // Every pill - freshly composed, renamed above, or from a brief stored before
+            // build 270 - goes through briefJumpTo, so the bar slides to the tapped pill.
+            container.querySelectorAll('.brief-jump-pill').forEach(p => p.setAttribute('onclick', 'event.preventDefault(); window.briefJumpTo(this);'));
+
             // Ensure brief header has 3px top padding and 50% reduced gap between top line and title
             const bHeader = container.querySelector('.brief-header');
             if (bHeader) bHeader.style.paddingTop = '3px';
@@ -12582,6 +12594,48 @@
             window.updateViewerBackBtn?.();
         };
 
+        // Desktop Back / Escape / b with Today in the column (build 270): close the story
+        // and land on its card in the brief, so reading picks up where it left off.
+        // Same bar as mobile - Back on the left, Read / Later / Save / Share on the right.
+        window.closeStoryToTodayColumn = function () {
+            const cur = window.currentArticle;
+            const id = cur && !cur.isBrief ? cur.id : null;
+            window._returnToBriefState = null;
+            window.hideBriefReturnUI?.();
+            window.clearReaderPane();
+            window.syncTodayColumnCards();
+            if (!id) return;
+            const card = Array.from(document.querySelectorAll('#today-column .brief-story-card[data-sa-id]'))
+                .find(c => c.getAttribute('data-sa-id') === id);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('brief-card-return-pulse');
+                setTimeout(() => card.classList.remove('brief-card-return-pulse'), 2500);
+            }
+        };
+
+        // Category pills (build 270, on request): jump to the section AND slide the pill
+        // bar so the tapped pill sits in the middle, bringing its neighbours into reach.
+        // getBoundingClientRect, not offsetLeft: on mobile the bar is position:static, so
+        // the bar is not the pill's offsetParent. Scoped to the pill's own brief, since a
+        // brief can be on screen in the Today column and in the reader at the same time.
+        window.briefJumpTo = function (pill) {
+            if (!pill) return;
+            const slug = (pill.getAttribute('href') || '').replace(/^#brief-cat-/, '');
+            const root = pill.closest('.brief-container') || document;
+            if (slug) root.querySelector('#brief-cat-' + slug)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            window.centerBriefPill(pill);
+        };
+        window.centerBriefPill = function (pill) {
+            const bar = pill && pill.closest('.brief-jump-bar');
+            if (!bar) return;
+            bar.querySelectorAll('.brief-jump-pill.is-active').forEach(p => p.classList.remove('is-active'));
+            pill.classList.add('is-active');
+            const b = bar.getBoundingClientRect();
+            const p = pill.getBoundingClientRect();
+            bar.scrollBy({ left: (p.left + p.width / 2) - (b.left + b.width / 2), behavior: 'smooth' });
+        };
+
         window.openToday = async function () {
             window._returnToBriefState = null;
             window.hideBriefReturnUI?.();
@@ -12954,7 +13008,7 @@
             if (categorySections.length > 0) {
                 html += `<div class="brief-jump-bar">`;
                 categorySections.forEach(cs => {
-                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill" onclick="event.preventDefault(); (this.closest('.brief-container') || document).querySelector('#brief-cat-${cs.slug}')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">${esc(cs.name)} (${cs.stories.length})</a>`;
+                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill" onclick="event.preventDefault(); window.briefJumpTo(this);">${esc(cs.name)} (${cs.stories.length})</a>`;
                 });
                 html += `</div>`;
             }
@@ -13232,16 +13286,9 @@
             const state = window._returnToBriefState;
             if (state.inColumn && window._todayInColumn) {
                 // Desktop: the brief never left the screen. Re-selecting it would render a
-                // second copy into the reader, so bring the story's card into view instead
-                // - and keep the state, so prev/next keeps walking the brief.
-                const id = state.sourceCardId || state.articleId;
-                const card = Array.from(document.querySelectorAll('#today-column .brief-story-card[data-sa-id]'))
-                    .find(c => c.getAttribute('data-sa-id') === id);
-                if (card) {
-                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    card.classList.add('brief-card-return-pulse');
-                    setTimeout(() => card.classList.remove('brief-card-return-pulse'), 2500);
-                }
+                // second copy into the reader - so, exactly like Back, close the story and
+                // bring its card into view in the column.
+                window.closeStoryToTodayColumn();
                 return;
             }
             window._returnToBriefState = null;
@@ -15307,8 +15354,10 @@
                 viewerHeader.style.display = 'flex';
             }
             if (backBtn && window._todayInColumn && typeof isMobile === 'function' && !isMobile()) {
-                // Desktop Today column: Today is already on screen beside the reader.
-                backBtn.classList.add('hidden');
+                // Desktop Today column: Back closes the story and returns to its card in
+                // the brief beside it (closeStoryToTodayColumn) - the same bar as mobile.
+                backBtn.classList.remove('hidden');
+                if (backLabel) backLabel.textContent = 'Today';
             } else if (backBtn) {
                 backBtn.classList.remove('hidden');
                 if (window._returnToBriefState) {
@@ -15324,6 +15373,10 @@
         window.updateViewerBackBtn = updateViewerBackBtn;
 
         window.onViewerBackClick = () => {
+            if (window._todayInColumn && typeof isMobile === 'function' && !isMobile()) {
+                window.closeStoryToTodayColumn();
+                return;
+            }
             if (window._returnToBriefState) {
                 window.returnToBrief();
             } else if (typeof isMobile === 'function' && isMobile()) {
@@ -15706,7 +15759,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 269;
+        window.APP_BUILD = 270;
 
         (async function initApp() {
             try {
@@ -16608,7 +16661,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v269';
+const CACHE_NAME = 'rss-reader-v270';
 const APP_SHELL = [
     '/',
     'index.html'
