@@ -4580,7 +4580,7 @@
             align-items: center;
             gap: 4px;
             margin: 2px -10px -0.75rem 0;
-            font-size: 0.85em;
+            font-size: 0.95em;   /* was 0.85em - too small (build 280, on request) */
             font-weight: 600;
             color: #8b949e;
         }
@@ -7591,7 +7591,7 @@
                                 <span class="settings-item-label">Stories per Category</span>
                                 <span class="settings-value" id="brief-stories-val">10</span>
                             </div>
-                            <input type="range" min="5" max="50" value="10" id="brief-stories-slider"
+                            <input type="range" min="5" max="51" value="10" id="brief-stories-slider"
                                 class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
                         </div>
                     </div>
@@ -7937,7 +7937,10 @@
         window._pinnedArticleIds = new Set();
         window._briefArticles = [];
         window._briefsEnabled = (localStorage.getItem('newsreader_briefs_enabled') !== '0');
-        window._briefStoriesPerCat = Math.max(5, Math.min(50, parseInt(localStorage.getItem('newsreader_brief_stories_per_cat') || '10', 10)));
+        // Stories per Category: 5-50, or 'all' = every unread story (build 280, slider far right).
+        window._briefStoriesPerCat = localStorage.getItem('newsreader_brief_stories_per_cat') === 'all'
+            ? Infinity
+            : Math.max(5, Math.min(50, parseInt(localStorage.getItem('newsreader_brief_stories_per_cat') || '10', 10)));
         // Links the user EXPLICITLY toggled back to unread this session — the only
         // legitimate removal path from the durable read store (see saveReadState).
         window._unreadToggledLinks = new Set();
@@ -10237,6 +10240,15 @@
 
         function normalizeBriefDOM(container) {
             if (!container) return;
+            // Lookups built once per render, not a linear search per card (build 280).
+            const firstBy = (list, keysOf) => {
+                const m = new Map();
+                (Array.isArray(list) ? list : []).forEach(x => keysOf(x).forEach(k => { if (k && !m.has(k)) m.set(k, x); }));
+                return m;
+            };
+            const liveById = firstBy(window.articles, a => [a.id]);
+            const archiveByKey = firstBy(window._readArchiveCache, a => [a.id, a.link]);
+            const feedByName = firstBy(window.feeds, f => [f.name]);
             // Clean up stored legacy briefs (e.g. from IndexedDB before build 215)
             container.querySelectorAll('.brief-story-card').forEach(card => {
                 // Ensure card has id="brief-card-${saId}" so returnToBrief can scroll straight back to it
@@ -10350,9 +10362,9 @@
 
                 // Detect if card represents a social / microblog post (Bluesky, Mastodon, or single-text post)
                 const saId = card.getAttribute('data-sa-id') || card.id?.replace(/^brief-card-/, '');
-                const art = saId ? ((window.articles || []).find(a => a.id === saId) || (window._readArchiveCache || []).find(a => a.id === saId || a.link === saId)) : null;
+                const art = saId ? (liveById.get(saId) || archiveByKey.get(saId) || null) : null;
                 const srcText = card.querySelector('.brief-story-source')?.textContent?.trim();
-                const feed = window.feeds?.find(f => f.name === srcText);
+                const feed = feedByName.get(srcText);
                 const isSocial = (art && ((art.feedUrl && isBlueskyFeed(art.feedUrl)) || (art.link && typeof isMastodonPost === 'function' && isMastodonPost(art.link)) || (art.category && /fediverse|mastodon|bluesky|social/i.test(art.category)) || (!art.title)))
                     || (feed && ((feed.url && isBlueskyFeed(feed.url)) || (feed.category && /fediverse|mastodon|bluesky|social/i.test(feed.category))));
 
@@ -12536,17 +12548,34 @@
         }
 
         // --- SWIPE GESTURES ---
+        // Guardrails (build 280, on request): sliding the category pills on Today kept
+        // turning into a page swipe - and on a brief that opened the first story of the
+        // Unread list, as a brief is not in any list. Now a swipe never navigates from a
+        // brief (Today or stored), and a swipe that starts on something that scrolls
+        // sideways - the pill bar, a wide table or code block - belongs to that element.
         (function () {
             const el = document.getElementById('viewer-pane');
             if (!el) return;
-            let startX = 0, startY = 0, startTime = 0;
+            let startX = 0, startY = 0, startTime = 0, onSideScroller = false;
+            const scrollsSideways = (node) => {
+                for (let n = node; n && n !== el; n = n.parentElement) {
+                    if (n.nodeType !== 1) continue;
+                    if (n.classList.contains('brief-jump-bar')) return true;
+                    if (n.scrollWidth > n.clientWidth + 1) {
+                        const ox = getComputedStyle(n).overflowX;
+                        if (ox === 'auto' || ox === 'scroll') return true;
+                    }
+                }
+                return false;
+            };
             el.addEventListener('touchstart', e => {
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
                 startTime = Date.now();
+                onSideScroller = scrollsSideways(e.target);
             }, { passive: true });
             el.addEventListener('touchend', e => {
-                if (!window.currentArticle) return;
+                if (!window.currentArticle || window.currentArticle.isBrief || onSideScroller) return;
                 const dx = e.changedTouches[0].clientX - startX;
                 const dy = e.changedTouches[0].clientY - startY;
                 const dt = Date.now() - startTime;
@@ -13230,9 +13259,11 @@
         }
 
         function generateBrief(slotDef) {
-            // Find articles within publication window
+            // Find articles within publication window - unread only (build 280, on request):
+            // a story already read never shows up in a brief generated after it.
             const pool = window.articles || [];
             const inWindow = pool.filter(a => {
+                if (!a.unread || a.isBrief) return false;
                 const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
                 return ts >= slotDef.windowStart && ts <= slotDef.windowEnd;
             });
@@ -13876,12 +13907,15 @@
             }
         };
 
+        // The slider's last step (51) is All: every unread story in each folder (build 280).
         window.updateBriefStoriesPerCat = (val) => {
-            const num = Math.max(5, Math.min(50, parseInt(val, 10) || 10));
+            const raw = parseInt(val, 10) || 10;
+            const all = raw > 50;
+            const num = all ? Infinity : Math.max(5, Math.min(50, raw));
             window._briefStoriesPerCat = num;
-            try { localStorage.setItem('newsreader_brief_stories_per_cat', String(num)); } catch (e) { }
+            try { localStorage.setItem('newsreader_brief_stories_per_cat', all ? 'all' : String(num)); } catch (e) { }
             const label = document.getElementById('brief-stories-val');
-            if (label) label.textContent = String(num);
+            if (label) label.textContent = all ? 'All' : String(num);
         };
 
         function getLatestRegularBriefSlot(nowTs = Date.now()) {
@@ -14044,9 +14078,10 @@
             if (!modal.classList.contains('hidden')) {
                 const briefSlider = document.getElementById('brief-stories-slider');
                 if (briefSlider) {
-                    briefSlider.value = window._briefStoriesPerCat || 10;
+                    const all = window._briefStoriesPerCat === Infinity;
+                    briefSlider.value = all ? 51 : (window._briefStoriesPerCat || 10);
                     const valEl = document.getElementById('brief-stories-val');
-                    if (valEl) valEl.textContent = String(briefSlider.value);
+                    if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
                 }
                 window.renderFeedProblems?.();
             }
@@ -15083,32 +15118,49 @@
         };
 
         // --- BRIEF MARK-READ UTILITIES ---
-        window.getCategoryUnreadCount = function (catName) {
-            if (!catName || !window.articles) return 0;
-            const normCat = catName.trim().toLowerCase();
+        // Unread counts for many folders in ONE pass over the articles (build 280). Asked
+        // one folder at a time, every brief section re-scanned every article and ran the
+        // folder matcher (getCategoryForArticle, several feed scans + URL parsing) on
+        // each - sections x articles of work, after every render and refresh while a
+        // brief was on screen. Same rule as before: an unread article counts for a folder
+        // when its source or feed URL belongs to one of that folder's feeds, or when the
+        // matcher puts it there. Returns Map(lower-cased folder name -> count).
+        window.getCategoryUnreadCounts = function (catNames) {
+            const counts = new Map();
+            (catNames || []).forEach(n => { if (n) counts.set(n.trim().toLowerCase(), 0); });
+            if (!counts.size || !window.articles) return counts;
             const allFeeds = [...(window.feeds || [])];
             if (Array.isArray(window.accountStates?.local)) {
                 window.accountStates.local.forEach(f => {
                     if (!allFeeds.some(af => af.url === f.url || af.name === f.name)) allFeeds.push(f);
                 });
             }
-            const catFeeds = allFeeds.filter(f => (f.category || '').trim().toLowerCase() === normCat);
-            const catSources = new Set(catFeeds.map(f => f.name));
-            const catUrls = new Set(catFeeds.map(f => f.url));
-
-            let count = 0;
+            const bySource = new Map(), byUrl = new Map();
+            const add = (map, key, cat) => { if (!map.has(key)) map.set(key, new Set()); map.get(key).add(cat); };
+            allFeeds.forEach(f => {
+                const cat = (f.category || '').trim().toLowerCase();
+                if (!counts.has(cat)) return;
+                add(bySource, f.name, cat);
+                add(byUrl, f.url, cat);
+            });
             for (let i = 0; i < window.articles.length; i++) {
                 const a = window.articles[i];
                 if (!a.unread || a.isBrief) continue;
-                if (catSources.has(a.source) || (a.feedUrl && catUrls.has(a.feedUrl))) {
-                    count++;
-                    continue;
+                const hit = new Set();
+                bySource.get(a.source)?.forEach(c => hit.add(c));
+                if (a.feedUrl) byUrl.get(a.feedUrl)?.forEach(c => hit.add(c));
+                if (hit.size < counts.size && typeof getCategoryForArticle === 'function') {
+                    const g = getCategoryForArticle(a).trim().toLowerCase();
+                    if (counts.has(g)) hit.add(g);
                 }
-                if (typeof getCategoryForArticle === 'function' && getCategoryForArticle(a).trim().toLowerCase() === normCat) {
-                    count++;
-                }
+                hit.forEach(c => counts.set(c, counts.get(c) + 1));
             }
-            return count;
+            return counts;
+        };
+
+        window.getCategoryUnreadCount = function (catName) {
+            if (!catName) return 0;
+            return window.getCategoryUnreadCounts([catName]).get(catName.trim().toLowerCase()) || 0;
         };
 
         window.markBriefCategoryRead = function (catName, btnEl) {
@@ -15248,12 +15300,17 @@
 
             let anyUnread = false;
 
-            container.querySelectorAll('.brief-cat-section').forEach(sec => {
+            // Every section's folder count in one pass (build 280).
+            const sections = container.querySelectorAll('.brief-cat-section');
+            const counts = forceAllRead ? null : window.getCategoryUnreadCounts(
+                sections.map(sec => sec.querySelector('.brief-cat-heading')?.textContent.trim()).filter(Boolean));
+
+            sections.forEach(sec => {
                 const heading = sec.querySelector('.brief-cat-heading');
                 const btn = sec.querySelector('.brief-cat-mark-read-btn');
                 if (!heading || !btn) return;
                 const catName = heading.textContent.trim();
-                const unreadCount = forceAllRead ? 0 : window.getCategoryUnreadCount(catName);
+                const unreadCount = forceAllRead ? 0 : (counts.get(catName.toLowerCase()) || 0);
                 if (unreadCount === 0 || forceAllRead) {
                     btn.disabled = true;
                     btn.classList.add('is-read');
@@ -16146,7 +16203,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 279;
+        window.APP_BUILD = 280;
 
         (async function initApp() {
             try {
@@ -17048,7 +17105,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v279';
+const CACHE_NAME = 'rss-reader-v280';
 const APP_SHELL = [
     '/',
     'index.html'
