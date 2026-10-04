@@ -6418,7 +6418,8 @@
         }
 
         /* ===== PULL-TO-REFRESH ===== */
-        #ptr-indicator {
+        #ptr-indicator,
+        #today-ptr-indicator {
             position: absolute;
             top: -56px;
             left: 0;
@@ -6437,15 +6438,18 @@
             gap: 8px;
         }
 
-        #ptr-indicator.ptr-visible {
+        #ptr-indicator.ptr-visible,
+        #today-ptr-indicator.ptr-visible {
             opacity: 1;
         }
 
-        #ptr-indicator.ptr-ready {
+        #ptr-indicator.ptr-ready,
+        #today-ptr-indicator.ptr-ready {
             color: #34d399;
         }
 
-        #ptr-spinner {
+        #ptr-spinner,
+        #today-ptr-spinner {
             width: 20px;
             height: 20px;
             border: 2px solid rgba(88, 166, 255, 0.3);
@@ -6453,8 +6457,40 @@
             border-radius: 50%;
         }
 
-        #ptr-indicator.ptr-loading #ptr-spinner {
+        #ptr-indicator.ptr-loading #ptr-spinner,
+        #today-ptr-indicator.ptr-loading #today-ptr-spinner {
             animation: ptr-spin 0.7s linear infinite;
+        }
+
+        /* TODAY PULL-TO-REFRESH (build 277, on request). The strip clips the indicator to
+           the band just below the status bar, so it slides out from under it instead of
+           over the clock. While the refresh runs, the brief steps down to make room for
+           the spinner, as iOS does, and slides back up when it is done. Mobile only:
+           desktop Today lives in the middle column. */
+        #today-ptr-clip {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            #today-ptr-clip {
+                display: block;
+                position: absolute;
+                top: max(env(safe-area-inset-top, 0px), 50px);
+                left: 0;
+                right: 0;
+                height: 56px;
+                overflow: hidden;
+                pointer-events: none;
+                z-index: 20;
+            }
+
+            #viewer-pane.is-today-brief #article-content {
+                transition: margin-top 0.2s ease;
+            }
+
+            body.today-refreshing #viewer-pane.is-today-brief #article-content {
+                margin-top: 48px;
+            }
         }
 
         @keyframes ptr-spin {
@@ -6897,6 +6933,13 @@
         <main id="viewer-pane" class="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
             <!-- Progressive top frost (mobile) — six stacked blur layers, see CSS -->
             <div class="top-frost" aria-hidden="true"></div>
+            <!-- Today pull-to-refresh indicator (mobile, build 277) -->
+            <div id="today-ptr-clip" aria-hidden="true">
+                <div id="today-ptr-indicator">
+                    <div id="today-ptr-spinner"></div>
+                    <span id="today-ptr-label">Pull to refresh</span>
+                </div>
+            </div>
             <div id="viewer-header"
                 class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10"
                 ondblclick="toggleFullScreenManual(event)" title="Double-click header background to toggle Full Screen">
@@ -9868,21 +9911,44 @@
             }, { passive: true });
         })();
 
-        // ===== PULL-TO-REFRESH (feeds pane active — whole screen) =====
+        // ===== PULL-TO-REFRESH (mobile): Following and Today =====
         (function () {
-            const indicator = document.getElementById('ptr-indicator');
-            const label = document.getElementById('ptr-label');
             const THRESHOLD = 100;
             let _pt = null;
             let _loading = false;
 
+            // The surface a touch can pull, or null. Following: the sidebar list. Today
+            // (build 277, on request): the live brief in the reader - not a story, and not
+            // a stored brief from the Briefs folder.
+            const surfaceAt = () => {
+                if (!isMobile()) return null;
+                if (window._mobilePane === 'sidebar') {
+                    return {
+                        today: false,
+                        scroller: document.querySelector('#sidebar-pane .overflow-y-auto'),
+                        indicator: document.getElementById('ptr-indicator'),
+                        label: document.getElementById('ptr-label'),
+                    };
+                }
+                if (window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) {
+                    return {
+                        today: true,
+                        scroller: document.getElementById('reader-view'),
+                        indicator: document.getElementById('today-ptr-indicator'),
+                        label: document.getElementById('today-ptr-label'),
+                    };
+                }
+                return null;
+            };
+
             document.addEventListener('touchstart', (e) => {
-                if (!isMobile() || window._mobilePane !== 'sidebar' || _loading) return;
-                // Only activate when the sidebar scroll container is at the very top
-                const scrollable = document.querySelector('#sidebar-pane .overflow-y-auto');
-                if (scrollable && scrollable.scrollTop > 4) return;
+                if (_loading) return;
+                const s = surfaceAt();
+                if (!s || !s.indicator || !s.label) return;
+                // Only activate when the surface's scroll container is at the very top
+                if (s.scroller && s.scroller.scrollTop > 4) return;
                 const touch = e.touches[0];
-                _pt = { startY: touch.clientY, startX: touch.clientX, dirLocked: false, cancelled: false };
+                _pt = { ...s, startY: touch.clientY, startX: touch.clientX, dirLocked: false, cancelled: false };
             }, { passive: true });
 
             document.addEventListener('touchmove', (e) => {
@@ -9901,23 +9967,64 @@
                 }
 
                 const offset = Math.min(dy * 0.14, 56);
-                indicator.style.top = (offset - 56) + 'px';
-                indicator.classList.add('ptr-visible');
-                indicator.classList.toggle('ptr-ready', dy >= THRESHOLD);
-                label.textContent = dy >= THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
+                _pt.indicator.style.top = (offset - 56) + 'px';
+                _pt.indicator.classList.add('ptr-visible');
+                _pt.indicator.classList.toggle('ptr-ready', dy >= THRESHOLD);
+                _pt.label.textContent = dy >= THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
             }, { passive: true });
+
+            // Today: hold the indicator open with its spinner until the refresh - and any
+            // pass queued behind one already running - has finished, then rebuild the
+            // brief so the new stories show (refreshUI deliberately leaves an open brief
+            // alone). Following doesn't need this: its Tap-or-pull circle spins instead.
+            const refreshToday = async (p) => {
+                _loading = true;
+                p.indicator.style.top = '0px';
+                p.indicator.classList.remove('ptr-ready');
+                p.indicator.classList.add('ptr-visible', 'ptr-loading');
+                p.label.textContent = 'Refreshing...';
+                document.body.classList.add('today-refreshing');
+                try {
+                    // false = coalesced behind a refresh already in flight; ours runs after it.
+                    await window.runFullRefresh({ isBackground: true });
+                    while (window._refreshInFlight || window._refreshPending) {
+                        await new Promise(r => setTimeout(r, 300));
+                    }
+                } finally {
+                    _loading = false;
+                    document.body.classList.remove('today-refreshing');
+                    p.indicator.style.top = '-56px';
+                    p.indicator.classList.remove('ptr-visible', 'ptr-loading');
+                    p.label.textContent = 'Pull to refresh';
+                    // Only if Today is still on screen - not if a story was opened meanwhile.
+                    if (window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) {
+                        const y = p.scroller ? p.scroller.scrollTop : 0;
+                        window.openToday();
+                        // selectArticle puts the reader at the top, now and on the next frame;
+                        // if the brief was scrolled while it refreshed, keep that place.
+                        if (p.scroller && y > 0) {
+                            requestAnimationFrame(() => requestAnimationFrame(() => { p.scroller.scrollTop = y; }));
+                        }
+                    }
+                }
+            };
 
             const reset = () => {
                 if (!_pt) return;
-                const wasReady = !_pt.cancelled && indicator.classList.contains('ptr-ready');
+                const p = _pt;
+                const wasReady = !p.cancelled && p.indicator.classList.contains('ptr-ready');
                 _pt = null;
+                if (wasReady && !_loading && p.today) {
+                    refreshToday(p);
+                    return;
+                }
                 // Retract the top pull indicator immediately. The in-progress feedback
                 // is the #ptr-hint arrow circle (below the folders) spinning - driven by
                 // runFullRefresh - so we don't pin/spin this top bar (it overlapped the
                 // logo header and duplicated the feedback).
-                indicator.style.top = '-56px';
-                indicator.classList.remove('ptr-visible', 'ptr-ready');
-                label.textContent = 'Pull to refresh';
+                p.indicator.style.top = '-56px';
+                p.indicator.classList.remove('ptr-visible', 'ptr-ready');
+                p.label.textContent = 'Pull to refresh';
                 if (wasReady && !_loading) {
                     _loading = true;
                     // Background semantics: one refreshUI() at the end instead of a
@@ -9932,9 +10039,11 @@
                 }
             };
             const cancel = () => {
+                if (!_pt) return;
+                const p = _pt;
                 _pt = null;
-                indicator.style.top = '-56px';
-                indicator.classList.remove('ptr-visible', 'ptr-ready');
+                p.indicator.style.top = '-56px';
+                p.indicator.classList.remove('ptr-visible', 'ptr-ready');
             };
             document.addEventListener('touchend', reset, { passive: true });
             document.addEventListener('touchcancel', cancel, { passive: true });
@@ -15752,7 +15861,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 276;
+        window.APP_BUILD = 277;
 
         (async function initApp() {
             try {
@@ -16654,7 +16763,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v276';
+const CACHE_NAME = 'rss-reader-v277';
 const APP_SHELL = [
     '/',
     'index.html'
