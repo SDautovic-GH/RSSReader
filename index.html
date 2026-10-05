@@ -4544,6 +4544,32 @@
             clear: both;
         }
 
+        /* Settings > Today > Folders in Today (build 310): on = in Today, off = left out. */
+        .today-folder-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .today-folder-chip {
+            padding: 5px 12px;
+            border-radius: 9999px;
+            font-size: 13px;
+            line-height: 1.2;
+            border: 1px solid rgba(68, 147, 248, 0.5);
+            background: rgba(68, 147, 248, 0.12);
+            color: #4493f8;
+            cursor: pointer;
+        }
+
+        .today-folder-chip.is-off {
+            background: transparent;
+            border-color: rgba(139, 148, 158, 0.45);
+            color: #8b949e;
+            text-decoration: line-through;
+        }
+
         /* "Also from Reuters, AP" (build 308): its own line, wraps, never cut off. */
         .brief-story-also {
             margin: 2px 0 4px;
@@ -7022,6 +7048,14 @@
                             <input type="range" min="5" max="51" value="10" id="brief-stories-slider"
                                 class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
                         </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="min-w-0">
+                                <span class="settings-item-label">Folders in Today</span>
+                                <p class="text-[12px] text-gray-400 mt-1">Tap a folder to leave it out of Today. It stays
+                                    under Following.</p>
+                            </div>
+                            <div id="today-folders" class="today-folder-chips"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -7376,6 +7410,11 @@
         window._todayImages = localStorage.getItem('newsreader_today_images') !== '0';
         document.body.classList.toggle('today-no-images', !window._todayImages);
         document.getElementById('today-images-toggle')?.setAttribute('data-on', window._todayImages ? 'true' : 'false');
+        // Folders left out of Today (build 310, on request). Per account: synced via uiPrefs.
+        window._todayExcluded = (() => {
+            try { return new Set(JSON.parse(localStorage.getItem('newsreader_today_excluded') || '[]')); }
+            catch (e) { return new Set(); }
+        })();
         // Stories per Category: 5-50, or 'all' = every unread story (build 280, slider far right).
         window._briefStoriesPerCat = localStorage.getItem('newsreader_brief_stories_per_cat') === 'all'
             ? Infinity
@@ -12096,10 +12135,12 @@
         window.buildTodayBrief = function () {
             const now = Date.now();
             const windowStart = now - window.TODAY_WINDOW_HOURS * 3600000;
+            const excluded = window._todayExcluded;   // folders left out of Today (build 310)
             const pool = (window.articles || []).filter(a => {
                 if (!a.unread || a.isBrief) return false;
                 const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-                return ts >= windowStart;
+                if (ts < windowStart) return false;
+                return !(excluded && excluded.size && excluded.has(getCategoryForArticle(a)));
             });
             const built = buildStoryClusters(pool, { limitPerCat: window._briefStoriesPerCat || 10 });
             let sections = built.categorySections;
@@ -13224,6 +13265,30 @@
             document.body.classList.toggle('today-no-images', !window._todayImages);
         };
 
+        // Settings > Today > Folders in Today (build 310).
+        window.renderTodayFolderChips = function () {
+            const box = document.getElementById('today-folders');
+            if (!box) return;
+            box.innerHTML = getAppCategories().map(c => {
+                const off = window._todayExcluded.has(c);
+                return `<button type="button" class="today-folder-chip${off ? ' is-off' : ''}" data-folder="${esc(c)}"
+                    onclick="window.toggleTodayFolder(this.dataset.folder)" aria-pressed="${off ? 'false' : 'true'}"
+                    title="${off ? 'Left out of Today - tap to include' : 'In Today - tap to leave out'}">${esc(c)}</button>`;
+            }).join('');
+        };
+        window.saveTodayExcluded = function () {
+            try { localStorage.setItem('newsreader_today_excluded', JSON.stringify([...window._todayExcluded])); } catch (e) { }
+            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+        };
+        window.toggleTodayFolder = function (name) {
+            if (!name) return;
+            if (window._todayExcluded.has(name)) window._todayExcluded.delete(name);
+            else window._todayExcluded.add(name);
+            window.saveTodayExcluded();
+            window.renderTodayFolderChips();
+            rebuildTodayInPlace(null, false);   // Today on screen follows at once
+        };
+
         // The slider's last step (51) is All: every unread story in each folder (build 280).
         window.updateBriefStoriesPerCat = (val) => {
             const raw = parseInt(val, 10) || 10;
@@ -13246,6 +13311,7 @@
                     const valEl = document.getElementById('brief-stories-val');
                     if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
                 }
+                window.renderTodayFolderChips?.();
                 window.renderFeedProblems?.();
             }
         };
@@ -15372,7 +15438,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 309;
+        window.APP_BUILD = 310;
 
         (async function initApp() {
             try {
@@ -15994,6 +16060,12 @@
                         try { localStorage.setItem('newsreader_catorder', JSON.stringify(data.categoryOrder)); } catch (e) { }
                         window.renderFeeds();
                     }
+                    if (Array.isArray(data.todayExcluded)) {
+                        window._todayExcluded = new Set(data.todayExcluded);
+                        try { localStorage.setItem('newsreader_today_excluded', JSON.stringify(data.todayExcluded)); } catch (e) { }
+                        window.renderTodayFolderChips?.();
+                        if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(null, false);
+                    }
                     if (data.autoRefresh) {
                         const sel = document.getElementById('pref-auto-refresh');
                         if (sel) sel.value = data.autoRefresh;
@@ -16075,12 +16147,15 @@
                     const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
                     const paneWidth = document.getElementById('timeline-pane')?.style.width;
                     const autoRefresh = document.getElementById('pref-auto-refresh')?.value || '30';
+                    // merge (build 310): settings added later are kept by a save that does
+                    // not list them, and a field one save omits is never wiped.
                     await setDoc(uiRef, {
                         paneWidth: paneWidth || '336px',
                         categoryOrder: window._categoryOrder,
                         autoRefresh,
+                        todayExcluded: [...(window._todayExcluded || [])],
                         updatedAt: new Date().toISOString()
-                    });
+                    }, { merge: true });
                 } catch (e) { console.warn('Cloud UI prefs save failed:', e); }
             };
         }
@@ -16266,7 +16341,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v309';
+const CACHE_NAME = 'rss-reader-v310';
 const APP_SHELL = [
     '/',
     'index.html'
