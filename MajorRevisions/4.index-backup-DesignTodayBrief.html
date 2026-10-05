@@ -4377,11 +4377,16 @@
         }
 
         /* DESKTOP TODAY COLUMN (brief-first phase 5, build 268). The brief renders in
-           the middle column on desktop, so these mirror #article-body.is-brief-body
-           below plus the reader's font: the brief looks the same in either pane. */
+           the middle column on desktop, so these mirror the phone's Today, which lives in
+           #reader-view: App Zoom sets the base size, and the Article List sizes (title,
+           preview, source) scale from it. Build 307: the base was the reader's Body Size
+           (--view-font-size) - App Zoom did nothing to desktop Today while Body Size
+           resized all of it; on the phone a brief never follows Body Size. */
         #today-column {
             padding: 3px 14px 2rem;
-            font-size: var(--view-font-size, 1em);
+            font-size: calc(16px * var(--app-zoom, 1));
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
             font-family: var(--view-font-family, inherit);
             line-height: normal;
         }
@@ -4537,6 +4542,146 @@
 
         .brief-story-card .brief-story-actions {
             clear: both;
+        }
+
+        /* Settings > Today > Folders in Today (build 310): on = in Today, off = left out. */
+        .today-folder-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .today-folder-chip {
+            padding: 5px 12px;
+            border-radius: 9999px;
+            font-size: 13px;
+            line-height: 1.2;
+            border: 1px solid rgba(68, 147, 248, 0.5);
+            background: rgba(68, 147, 248, 0.12);
+            color: #4493f8;
+            cursor: pointer;
+        }
+
+        /* Muted words (build 311) */
+        .mute-add-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .mute-add-row .settings-input {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .mute-add-btn {
+            padding: 0 16px;
+            border: none;
+            border-radius: 8px;
+            background: #4493f8;
+            color: #ffffff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .mute-chip {
+            padding: 5px 10px 5px 12px;
+            border-radius: 9999px;
+            font-size: 13px;
+            line-height: 1.2;
+            border: 1px solid rgba(139, 148, 158, 0.45);
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+        }
+
+        .mute-chip::after {
+            content: '\2715';
+            margin-left: 6px;
+            opacity: 0.6;
+        }
+
+        /* Listen in the story row is the phone's (build 312); desktop has it in the top bar. */
+        @media (min-width: 901px) {
+            #listen-action-btn {
+                display: none !important;
+            }
+        }
+
+        .brief-listen-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: #4493f8;
+            font: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .brief-listen-btn svg {
+            width: 1.05em;
+            height: 1.05em;
+        }
+
+        /* New since your last visit (build 313): a small accent dot before the source. */
+        .brief-new-dot {
+            display: none;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #4493f8;
+            flex-shrink: 0;
+        }
+
+        .brief-story-card.is-new .brief-new-dot {
+            display: inline-block;
+        }
+
+        .brief-header-new {
+            color: #4493f8 !important;
+        }
+
+        .brief-muted-btn {
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: #4493f8;
+            font: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .brief-muted-tag {
+            margin-left: 4px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            background: rgba(139, 148, 158, 0.18);
+            color: #8b949e;
+            white-space: nowrap;
+        }
+
+        .today-folder-chip.is-off {
+            background: transparent;
+            border-color: rgba(139, 148, 158, 0.45);
+            color: #8b949e;
+            text-decoration: line-through;
+        }
+
+        /* "Also from Reuters, AP" (build 308): its own line, wraps, never cut off. */
+        .brief-story-also {
+            margin: 2px 0 4px;
+            font-size: 0.8em;
+            line-height: 1.35;
+            color: #8b949e;
+        }
+
+        html:not(.dark) .brief-story-also {
+            color: #57606a;
         }
 
         body.today-no-images .brief-thumb,
@@ -4938,9 +5083,16 @@
         .brief-story-actions .icon-act:hover {
             background: rgba(139, 148, 158, 0.16) !important;
         }
+        /* Story action icons a bit larger (build 308, on request): 15 -> 18px glyphs in
+           32px buttons (were 26px on desktop, 30px on the phone). */
+        .brief-story-actions .icon-act {
+            width: 2rem !important;
+            height: 2rem !important;
+        }
+
         .brief-story-actions .icon-act svg {
-            width: 0.95rem;
-            height: 0.95rem;
+            width: 1.125rem;
+            height: 1.125rem;
         }
 
         /* READER BAR BACK BUTTON (build 271). Its dark-mode background class,
@@ -6654,10 +6806,12 @@
                                             aria-label="Read Later" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-bookmark" /></svg></button>
                                         <button id="saved-action-btn" type="button" onclick="handleSavedAction()" title="Save"
                                             aria-label="Save" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-star" /></svg></button>
-                                        <button id="share-btn" type="button" onclick="shareArticle()" title="Share"
-                                            aria-label="Share" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-share" /></svg></button>
                                         <button id="open-original-btn" type="button" onclick="openExternal()" title="Open original source"
                                             aria-label="Open original source" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-external-link" /></svg></button>
+                                        <button id="listen-action-btn" type="button" onclick="toggleTTS()" title="Listen"
+                                            aria-label="Listen" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-headphones" /></svg></button>
+                                        <button id="share-btn" type="button" onclick="shareArticle()" title="Share"
+                                            aria-label="Share" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-share" /></svg></button>
                                     </div>
                                 </div>
                             </div>
@@ -6997,6 +7151,33 @@
                             </div>
                             <input type="range" min="5" max="51" value="10" id="brief-stories-slider"
                                 class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="min-w-0">
+                                <span class="settings-item-label">Folders in Today</span>
+                                <p class="text-[12px] text-gray-400 mt-1">Tap a folder to leave it out of Today. It stays
+                                    under Following.</p>
+                            </div>
+                            <div id="today-folders" class="today-folder-chips"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MUTED WORDS (build 311, on request) -->
+                <div>
+                    <h3 class="settings-section-label">Muted words</h3>
+                    <div class="settings-list">
+                        <div class="settings-row settings-row-stacked">
+                            <p class="text-[12px] text-gray-400">Stories with these words in the headline or summary are
+                                hidden from Today and your lists, and left out of the counts. Saved, Read Later, History
+                                and Search still show them, and Today shows how many are hidden.</p>
+                            <div class="mute-add-row">
+                                <input id="mute-input" type="text" class="settings-input" placeholder="Add a word or phrase"
+                                    autocomplete="off"
+                                    onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.addMuteWord(); }">
+                                <button type="button" class="mute-add-btn" onclick="window.addMuteWord()">Add</button>
+                            </div>
+                            <div id="mute-words" class="today-folder-chips"></div>
                         </div>
                     </div>
                 </div>
@@ -7352,6 +7533,57 @@
         window._todayImages = localStorage.getItem('newsreader_today_images') !== '0';
         document.body.classList.toggle('today-no-images', !window._todayImages);
         document.getElementById('today-images-toggle')?.setAttribute('data-on', window._todayImages ? 'true' : 'false');
+        // "NEW SINCE YOUR LAST VISIT" (build 313, on request). The boundary is when you last
+        // left the app (saved on every hide); a story is new when every outlet's copy of it
+        // first arrived on this device after that. Moves on when you come back after more
+        // than 5 minutes away (the same rule as the return refresh).
+        window._visitBoundary = Number(localStorage.getItem('newsreader_last_seen_at')) || 0;
+        window.visitLabel = function (ts) {
+            const d = new Date(ts), now = new Date();
+            const t = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            if (d.toDateString() === now.toDateString()) return t;
+            const y = new Date(now);
+            y.setDate(now.getDate() - 1);
+            if (d.toDateString() === y.toDateString()) return `yesterday ${t}`;
+            return `${d.toLocaleDateString([], { weekday: 'short' })} ${t}`;
+        };
+        window.addEventListener('pagehide', () => {
+            try { localStorage.setItem('newsreader_last_seen_at', String(Date.now())); } catch (e) { }
+        });
+        // Folders left out of Today (build 310, on request). Per account: synced via uiPrefs.
+        window._todayExcluded = (() => {
+            try { return new Set(JSON.parse(localStorage.getItem('newsreader_today_excluded') || '[]')); }
+            catch (e) { return new Set(); }
+        })();
+        // MUTED WORDS (build 311, on request). A story whose headline or summary opening
+        // contains one is hidden from Today and the Unread / folder / feed lists and left out
+        // of every unread count; Saved, Read Later, History and Search still show it, and
+        // Today says how many it hid ("3 muted - Show"). Whole words or phrases, any case;
+        // per account, synced via uiPrefs.
+        window._muteWords = (() => {
+            try { const v = JSON.parse(localStorage.getItem('newsreader_mute_words') || '[]'); return Array.isArray(v) ? v : []; }
+            catch (e) { return []; }
+        })();
+        window._muteVersion = 0;
+        window._showMuted = false;   // "Show" in Today: this session only
+        let _muteRe = null;
+        function buildMuteRe() {
+            const terms = window._muteWords.map(w => String(w).trim()).filter(Boolean);
+            if (!terms.length) { _muteRe = null; return; }
+            const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+            _muteRe = new RegExp(`(^|[^\\p{L}\\p{N}])(${terms.map(escRe).join('|')})(?=$|[^\\p{L}\\p{N}])`, 'iu');
+        }
+        buildMuteRe();
+        // The muted word an article matches, or '' - cached per article per mute list.
+        window.mutedTerm = function (a) {
+            if (!_muteRe || !a || a.isBrief) return '';
+            if (a._muteV === window._muteVersion) return a._muteHit;
+            const m = _muteRe.exec(`${a.title || ''} ${(a.excerpt || '').slice(0, 300)}`);
+            a._muteV = window._muteVersion;
+            a._muteHit = m ? m[2] : '';
+            return a._muteHit;
+        };
+        window.isMuted = (a) => !!window.mutedTerm(a);
         // Stories per Category: 5-50, or 'all' = every unread story (build 280, slider far right).
         window._briefStoriesPerCat = localStorage.getItem('newsreader_brief_stories_per_cat') === 'all'
             ? Infinity
@@ -8407,6 +8639,7 @@
             const _existingBskyIds = new Map();
             const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
             _feedOld.forEach(a => _existingBskyIds.set(a.link, a.id));
+            const _firstSeenByLink = new Map(_feedOld.map(a => [a.link, a._firstSeen]));   // build 313
             const _keep = retainedUnread(_feedOld);   // build 302
             window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
             let newCount = 0;
@@ -8434,6 +8667,8 @@
                 })();
                 window.articles.push({
                     id: _existingBskyIds.get(link) || crypto.randomUUID(),
+                    // When this device first fetched it (build 313): "new since your last visit"
+                    _firstSeen: _existingBskyIds.has(link) ? _firstSeenByLink.get(link) : Date.now(),
                     source: sourceName,
                     feedUrl,
                     title,
@@ -8581,6 +8816,7 @@
                 const _existingIds = new Map();
                 const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
                 _feedOld.forEach(a => _existingIds.set(a.link, a.id));
+                const _firstSeenByLink = new Map(_feedOld.map(a => [a.link, a._firstSeen]));   // build 313
                 const _keep = retainedUnread(_feedOld);   // build 302
                 window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
                 // Invalidate excerpt cache for any re-fetched articles
@@ -8630,6 +8866,8 @@
                     })();
                     const art = {
                         id: _existingIds.get(link) || crypto.randomUUID(),
+                        // When this device first fetched it (build 313): "new since your last visit"
+                        _firstSeen: _existingIds.has(link) ? _firstSeenByLink.get(link) : Date.now(),
                         source: sourceName,
                         feedUrl,
                         title: decodeEntities(getText(item, 'title')),
@@ -8930,7 +9168,8 @@
             if (!isRecentlyRead && !isSaved && !isReadLaterBucketed) {
                 // Apply normal filters
                 if (window.currentSmartFeed === 'all') {
-                    filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
+                    // Muted stories are hidden here too, unless revealed from Today (build 311)
+                    filtered = filtered.filter(a => (a.unread && (window._showMuted || !window.isMuted(a))) || window._pinnedArticleIds.has(a.id));
                 } else if (window.currentSmartFeed === 'read-later') {
                     filtered = filtered.filter(a => a.readLater || window._pinnedArticleIds.has(a.id));
                 }
@@ -10036,7 +10275,9 @@
             const shareBtn = document.getElementById('share-btn');
             if (shareBtn) shareBtn.classList.remove('hidden');
 
-            if (window._ttsActive) stopTTS();
+            // Opening anything stops Listen - except Today rebuilding itself while Today is
+            // being read (build 312), which would cut the reading off mid-story.
+            if (window._ttsActive && !(article.isBrief && window._ttsSource === 'today')) stopTTS();
 
             if (isMobile()) setMobilePane('viewer');
             if (typeof updateViewerBackBtn === 'function') updateViewerBackBtn();
@@ -10884,7 +11125,7 @@
             const unreadByUrl = {};
             const unreadByName = {};
             window.articles.forEach(a => {
-                if (!a.unread) return;
+                if (!a.unread || window.isMuted(a)) return;   // muted: not counted (build 311)
                 if (a.feedUrl) unreadByUrl[a.feedUrl] = (unreadByUrl[a.feedUrl] || 0) + 1;
                 else unreadByName[a.source] = (unreadByName[a.source] || 0) + 1;
             });
@@ -11263,7 +11504,7 @@
         }
 
         function updateBadges() {
-            const allUnread = window.articles.filter(a => a.unread).length;
+            const allUnread = window.articles.filter(a => a.unread && !window.isMuted(a)).length;   // muted not counted (311)
             const readLaterCount = window.articles.filter(a => a.readLater).length;
 
             const badgeAll = document.getElementById('badge-all');
@@ -11853,33 +12094,121 @@
         };
 
         // --- TEXT TO SPEECH ---
-        window.toggleTTS = () => {
+        // What Today says when you Listen (build 312): the stories it is SHOWING now - read
+        // and muted ones are left out - read from the page, not from the text composed when
+        // Today was built (which kept stories you had read since).
+        function todaySpokenText() {
+            const root = window._todayInColumn ? document.getElementById('today-column') : document.getElementById('article-body');
+            if (!root) return '';
+            const shown = el => el.getClientRects().length > 0;
+            const parts = [];
+            let n = 0;
+            root.querySelectorAll('.brief-cat-section').forEach(sec => {
+                const cards = Array.from(sec.querySelectorAll('.brief-story-card')).filter(shown);
+                if (!cards.length) return;
+                parts.push(`${sec.querySelector('.brief-cat-heading')?.textContent.trim() || 'Next section'}.`);
+                cards.forEach(card => {
+                    const source = card.querySelector('.brief-story-source')?.textContent.trim() || '';
+                    const title = (card.querySelector('.brief-story-title')?.textContent || '').trim();
+                    const excerpt = (card.querySelector('.brief-story-excerpt')?.textContent || '').trim().slice(0, 160);
+                    n++;
+                    parts.push(`Story ${n}${source ? `, from ${source}` : ''}. ${title ? `${title}. ` : ''}${excerpt}`);
+                });
+            });
+            return n ? `Today. ${n} ${n === 1 ? 'story' : 'stories'}. ${parts.join(' ')}` : '';
+        }
+
+        // Spoken as a queue of short pieces (build 312): one long utterance can stop part-way
+        // in some browsers. Only the last piece ends the session.
+        function ttsChunks(text) {
+            const out = [];
+            let cur = '';
+            // Sentences without a lookbehind, which older iOS Safari cannot parse.
+            for (const s of (text.replace(/\s+/g, ' ').match(/[^.!?]+[.!?]*/g) || []).map(x => x.trim()).filter(Boolean)) {
+                if ((cur + ' ' + s).length > 220 && cur) { out.push(cur); cur = s; }
+                else cur = cur ? `${cur} ${s}` : s;
+            }
+            if (cur.trim()) out.push(cur);
+            return out;
+        }
+
+        // source: 'today' reads Today; otherwise the open story (or Today when it is open).
+        window.toggleTTS = (source) => {
             if (window._ttsActive) { stopTTS(); return; }
-            if (!window.currentArticle) return;
             let text = '';
-            if (window.currentArticle.isBrief && window.currentArticle.spokenText) {
-                text = window.currentArticle.spokenText;
-            } else {
+            if (source === 'today' || window.currentArticle?.isBrief) {
+                source = 'today';
+                text = todaySpokenText();
+            } else if (window.currentArticle) {
                 text = document.getElementById('article-body')?.innerText || '';
             }
             if (!text.trim()) return;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onend = () => { window._ttsActive = false; updateTTSButton(); };
-            utterance.onerror = () => { window._ttsActive = false; updateTTSButton(); };
-            speechSynthesis.speak(utterance);
+            const pieces = ttsChunks(text);
+            speechSynthesis.cancel();
+            pieces.forEach((p, i) => {
+                const u = new SpeechSynthesisUtterance(p);
+                if (i === pieces.length - 1) u.onend = () => { window._ttsActive = false; updateTTSButton(); };
+                u.onerror = (e) => {
+                    if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
+                    window._ttsActive = false;
+                    updateTTSButton();
+                };
+                speechSynthesis.speak(u);
+            });
             window._ttsActive = true;
+            window._ttsSource = source === 'today' ? 'today' : 'story';
             updateTTSButton();
         };
         function stopTTS() { speechSynthesis.cancel(); window._ttsActive = false; updateTTSButton(); }
+
+        // SCREEN STAYS AWAKE WHILE LISTENING (build 314, on request). iOS stops the app's
+        // speech when the screen auto-locks, so a screen wake lock is held only while Listen
+        // is speaking and released the moment it ends or is stopped. Pressing the side
+        // button still locks the phone, and speech then stops - nothing in a web app can
+        // keep speech going while it is suspended. No wake lock support: Listen as before.
+        // The browser drops the lock whenever the page is hidden; it is taken again on
+        // return if Listen is still going (desktop browsers keep speaking in the background).
+        let _ttsWakeLock = null;
+        function ttsSetAwake(on) {
+            if (on) {
+                if (_ttsWakeLock || !('wakeLock' in navigator) || document.hidden) return;
+                navigator.wakeLock.request('screen').then(lock => {
+                    if (!window._ttsActive) { lock.release().catch(() => { }); return; }
+                    _ttsWakeLock = lock;
+                    lock.addEventListener('release', () => { if (_ttsWakeLock === lock) _ttsWakeLock = null; });
+                }).catch(() => { });
+            } else if (_ttsWakeLock) {
+                const lock = _ttsWakeLock;
+                _ttsWakeLock = null;
+                lock.release().catch(() => { });
+            }
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && window._ttsActive) ttsSetAwake(true);
+        });
+        // Every Listen button: the top bar's (desktop), the story row's (phone), Today's heading.
         function updateTTSButton() {
-            const btn = document.getElementById('tts-btn');
-            if (!btn) return;
-            const icon = window._ttsActive ? 'icon-stop' : 'icon-headphones';
-            const label = window._ttsActive ? 'Stop' : 'Listen';
-            btn.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
-            btn.title = label;
-            btn.setAttribute('aria-label', label);
-            btn.className = window._ttsActive ? 'icon-act is-on' : 'icon-act';
+            const active = window._ttsActive;
+            const icon = active ? 'icon-stop' : 'icon-headphones';
+            const label = active ? 'Stop' : 'Listen';
+            ['tts-btn', 'listen-action-btn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                const hidden = btn.classList.contains('hidden');
+                btn.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
+                btn.title = label;
+                btn.setAttribute('aria-label', label);
+                btn.className = (active && window._ttsSource === 'story' ? 'icon-act is-on' : 'icon-act') + (hidden ? ' hidden' : '');
+            });
+            const todayOn = active && window._ttsSource === 'today';
+            document.querySelectorAll('.brief-listen-btn').forEach(btn => {
+                btn.querySelector('use')?.setAttribute('href', todayOn ? '#icon-stop' : '#icon-headphones');
+                const l = btn.querySelector('.brief-listen-label');
+                if (l) l.textContent = todayOn ? 'Stop' : 'Listen';
+                btn.setAttribute('aria-label', todayOn ? 'Stop listening to Today' : 'Listen to Today');
+            });
+            // Runs after every start, end, error and stop: the wake lock follows (build 314).
+            ttsSetAwake(window._ttsActive);
         }
 
         // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
@@ -12072,10 +12401,15 @@
         window.buildTodayBrief = function () {
             const now = Date.now();
             const windowStart = now - window.TODAY_WINDOW_HOURS * 3600000;
+            const excluded = window._todayExcluded;   // folders left out of Today (build 310)
+            let mutedCount = 0;                        // muted stories it would show (build 311)
             const pool = (window.articles || []).filter(a => {
                 if (!a.unread || a.isBrief) return false;
                 const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-                return ts >= windowStart;
+                if (ts < windowStart) return false;
+                if (excluded && excluded.size && excluded.has(getCategoryForArticle(a))) return false;
+                if (window.isMuted(a)) { mutedCount++; return window._showMuted; }
+                return true;
             });
             const built = buildStoryClusters(pool, { limitPerCat: window._briefStoriesPerCat || 10 });
             let sections = built.categorySections;
@@ -12109,7 +12443,11 @@
                 dateStr,
                 triggerTs: now,
                 windowStart,
-                windowEnd: now
+                windowEnd: now,
+                // Listen to Today (build 312), then "3 muted - Show" / "Hide 3 muted" (build 311)
+                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-listen-btn" onclick="window.toggleTTS('today')" aria-label="Listen to Today"><svg aria-hidden="true"><use href="#${window._ttsActive && window._ttsSource === 'today' ? 'icon-stop' : 'icon-headphones'}"/></svg><span class="brief-listen-label">${window._ttsActive && window._ttsSource === 'today' ? 'Stop' : 'Listen'}</span></button>` + (mutedCount
+                    ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-muted-btn" onclick="window.toggleShowMuted()">${window._showMuted ? `Hide ${mutedCount} muted` : `${mutedCount} muted · Show`}</button>`
+                    : '')
             }, sections, totalStories);
 
             let body = composed.body;
@@ -12183,9 +12521,11 @@
             const readLinks = window._readLinks;
             const cur = window.currentArticle;
             const activeId = window._todayInColumn && cur && !cur.isBrief ? cur.id : null;
+            const boundary = window._visitBoundary;
             roots.forEach(root => {
                 const inColumn = root.id === 'today-column';
                 let anySection = false, anyLeft = false;
+                let newShown = 0;
                 root.querySelectorAll('.brief-cat-section').forEach(sec => {
                     anySection = true;
                     let shown = 0, unread = 0;
@@ -12198,6 +12538,11 @@
                         const active = inColumn && id === activeId;
                         card.classList.toggle('brief-card-active', active);
                         card.classList.toggle('brief-card-read', read);
+                        // New since your last visit (build 313)
+                        const first = Number(card.getAttribute('data-first') || 0);
+                        const isNew = !!(boundary && first > boundary && !read);
+                        card.classList.toggle('is-new', isNew);
+                        if (isNew) newShown++;
                         if (!read || active) shown++;
                         if (!read) unread++;
                     });
@@ -12220,6 +12565,9 @@
                     }
                 });
                 root.querySelector('.brief-jump-bar')?.classList.toggle('brief-gone', anySection && !anyLeft);
+                root.querySelectorAll('[data-today-new]').forEach(el => {
+                    el.textContent = newShown ? `\u2022 ${newShown} new since ${window.visitLabel(boundary)}` : '';
+                });
                 let note = root.querySelector('.brief-all-read-note');
                 if (anySection && !anyLeft) {
                     if (!note) {
@@ -12465,9 +12813,10 @@
             const n = cardsIn(fresh.body).filter(c => !shown.has(c.id) && !c.cov.some(x => shown.has(x))).length;
             if (!n) return;
             const where = todayOnScreen();
-            const idle = where === 'column'
+            // Not "idle" while Today is being read aloud (build 312): the pill instead.
+            const idle = !(window._ttsActive && window._ttsSource === 'today') && (where === 'column'
                 ? (!window.currentArticle || window.currentArticle.isBrief) && document.getElementById('today-column').scrollTop < 40
-                : where === 'reader' && document.getElementById('reader-view').scrollTop < 40;
+                : where === 'reader' && document.getElementById('reader-view').scrollTop < 40);
             if (idle) { rebuildTodayInPlace(fresh); return; }
             window._todayNewCount = n;
             window.updateTodayStatus();
@@ -12557,10 +12906,21 @@
                 cs.stories.forEach(st => {
                     const favHtml = typeof getFavicon === 'function' ? getFavicon(st.source) : '';
                     const relTime = typeof getRelativeTime === 'function' ? getRelativeTime(st.timestamp) : '';
-                    const alsoReported = (st.alsoReportedBy && st.alsoReportedBy.length > 0)
-                        ? `<span class="brief-story-also text-gray-500 whitespace-nowrap truncate max-w-[160px]">• Also: ${esc(st.alsoReportedBy.join(', '))}</span>`
+                    // Other outlets grouped under this story, on their own line under the summary
+                    // (build 308). It sat at the end of the source line, where its intended
+                    // 160px cap was never compiled, so it was squeezed to a few letters.
+                    const alsoNames = st.alsoReportedBy || [];
+                    const alsoReported = alsoNames.length
+                        ? `<div class="brief-story-also">Also from ${esc(alsoNames.slice(0, 4).join(', '))}${alsoNames.length > 4 ? ` and ${alsoNames.length - 4} more` : ''}</div>`
                         : '';
                     const saId = escJs(st.id);
+                    // When the story first arrived: its EARLIEST copy, so a new outlet joining
+                    // a story you had seen does not make it "new" (build 313). 0 = unknown.
+                    const firstSeen = Math.min(...((st.coverage && st.coverage.length) ? st.coverage : [st]).map(x => x._firstSeen || 0));
+                    const firstAttr = firstSeen > 0 ? ` data-first="${firstSeen}"` : '';
+                    // Shown only while muted stories are revealed (build 311)
+                    const mutedHit = window.mutedTerm ? window.mutedTerm(st) : '';
+                    const mutedTag = mutedHit ? `<span class="brief-muted-tag flex-shrink-0">Muted: ${esc(mutedHit)}</span>` : '';
                     // The other outlets' copies grouped under this story (build 278), so the
                     // section's Mark-read row can mark them too - left unread, the next Today
                     // build would bring one back as a "new" story.
@@ -12610,17 +12970,19 @@
                     }
 
                     html += `
-                        <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}>
+                        <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}${firstAttr}>
                             ${heroHtml}
                             <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
+                                <span class="brief-new-dot" title="New since your last visit" aria-hidden="true"></span>
                                 ${favHtml}
                                 <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
                                 <span class="brief-story-dot flex-shrink-0">•</span>
                                 <span class="brief-story-time flex-shrink-0 whitespace-nowrap">${relTime}</span>
-                                ${alsoReported}
+                                ${mutedTag}
                             </div>
                             ${thumbHtml}
                             ${storyBodyHtml}
+                            ${alsoReported}
                             <div class="brief-story-actions flex items-center gap-1.5 pt-0.5">
                                 <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-gray-500 dark:text-gray-400" title="Open in Reader" aria-label="Open in Reader">
                                     <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
@@ -12640,17 +13002,115 @@
             return html;
         }
 
+        // Same-story threshold for headline + summary opening (build 309; see buildStoryClusters).
+        const BRIEF_SUMMARY_JACCARD = 0.25;
+
         // ===== BRIEF ENGINE =====
         // Groups any article pool into ranked, de-duplicated story clusters.
         // opts.limitPerCat: max stories per section; opts.groupBy(a): section key (default: category folder).
         // Each story carries alsoReportedBy (other outlet names) and coverage (all clustered articles).
+        // ACROSS FOLDERS (build 308, on request): the whole pool is clustered at once - it was
+        // per folder, so one event reported in Headlines and Business showed twice and never
+        // as one multi-outlet story. Each story then sits in its LEAD outlet's folder.
         function buildStoryClusters(inWindow, opts = {}) {
-            // Group by category using robust multi-field feed matching
+            const catOf = a => typeof opts.groupBy === 'function' ? opts.groupBy(a) : getCategoryForArticle(a);
+            const limitPerCat = opts.limitPerCat || window._briefStoriesPerCat || 10;
+
+            // 1. Tokens: the headline, and the headline plus the summary's first ~40 words
+            const items = inWindow.slice();
+            const noTok = { all: new Set(), proper: new Set() };
+            const tTok = items.map(a => typeof dedupTokens === 'function' ? dedupTokens(a.title) : noTok);
+            const xTok = items.map(a => typeof dedupTokens === 'function'
+                ? dedupTokens(`${a.title || ''} ${(a.excerpt || '').split(/\s+/).slice(0, 40).join(' ')}`) : noTok);
+            const df = typeof buildDocFreq === 'function' ? buildDocFreq(tTok) : null;
+            const dates = items.map(a => a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0));
+            const k40 = items.map(a => (typeof normTitle === 'function' ? normTitle(a.title) : (a.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ')).trim().slice(0, 40));
+
+            // 2. SAME-STORY PAIRS -> STORIES (build 309, on request: outlets reword headlines,
+            //    and nothing was ever grouped in 55 stories). Two articles are one story when
+            //    - their headlines start the same (first 30-40 characters), or
+            //    - isSameStory(): within 24h, 2+ shared names and similar headline words, or
+            //    - NEW: within 24h, 2+ shared headline names, and headline + summary opening
+            //      share >= BRIEF_SUMMARY_JACCARD of their words.
+            //    Stories are the groups of connected pairs. Before, an article joined the FIRST
+            //    group whose LEAD headline matched, so groups split by arrival order (NPR's
+            //    Hastert obituary stranded once the others joined NYT's). Measured on 347 live
+            //    headlines from 19 outlets: 8 -> 10 cross-outlet stories, Hastert 10 articles
+            //    from 7 outlets, no wrong merges; 0.20 started merging different stories.
+            //    The word rules need two shared names, so only articles sharing one are tried.
+            const parent = items.map((_, i) => i);
+            const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+            const union = (i, j) => { const x = find(i), y = find(j); if (x !== y) parent[x] = y; };
+            const byProper = new Map();   // name token -> indexes of articles whose headline has it
+            tTok.forEach((t, i) => t.proper.forEach(p => {
+                if (!byProper.has(p)) byProper.set(p, []);
+                byProper.get(p).push(i);
+            }));
+            const sharedNames = (i, j) => {
+                let n = 0;
+                for (const p of tTok[i].proper) if (tTok[j].proper.has(p) && ++n >= _DEDUP_MIN_SHARED_PROPER) break;
+                return n;
+            };
+            for (let i = 0; i < items.length; i++) {
+                const ki = k40[i];
+                if (ki) {
+                    for (let j = i + 1; j < items.length; j++) {
+                        const kj = k40[j];
+                        if (kj && (ki === kj || ki.startsWith(kj.slice(0, 30)) || kj.startsWith(ki.slice(0, 30)))) union(i, j);
+                    }
+                }
+                const cand = new Set();
+                tTok[i].proper.forEach(p => byProper.get(p).forEach(j => { if (j > i) cand.add(j); }));
+                for (const j of cand) {
+                    if (find(i) === find(j)) continue;
+                    if (isSameStory(tTok[i], tTok[j], dates[i], dates[j], df)
+                        || (Math.abs(dates[i] - dates[j]) <= _DEDUP_WINDOW_MS
+                            && sharedNames(i, j) >= _DEDUP_MIN_SHARED_PROPER
+                            && jaccard(xTok[i].all, xTok[j].all) >= BRIEF_SUMMARY_JACCARD)) {
+                        union(i, j);
+                    }
+                }
+            }
+
+            // Each story's lead: the most authoritative outlet (lowest Memeorandum rank),
+            // then the newest. The story is filed under the lead's folder below.
+            const members = new Map();
+            items.forEach((_, i) => {
+                const r = find(i);
+                if (!members.has(r)) members.set(r, []);
+                members.get(r).push(i);
+            });
+            const clusters = [];
+            members.forEach(idx => {
+                let lead = idx[0];
+                let leadRank = typeof getSourceRank === 'function' ? getSourceRank(items[lead]) : 9999;
+                let leadDate = dates[lead];
+                for (const k of idx.slice(1)) {
+                    const r = typeof getSourceRank === 'function' ? getSourceRank(items[k]) : 9999;
+                    if (r < leadRank || (r === leadRank && dates[k] > dates[lead])) { lead = k; leadRank = r; }
+                    if (dates[k] > leadDate) leadDate = dates[k];
+                }
+                clusters.push({
+                    leadArticle: items[lead],
+                    leadRank,
+                    leadDate,
+                    sources: new Set(idx.map(k => items[k].source).filter(Boolean)),
+                    articles: idx.map(k => items[k])
+                });
+            });
+
+            // 3. Score clusters, then file each under its lead outlet's folder
+            // Base score = Memeorandum source rank (1 = NYT, 2 = Politico, etc., 9999 = unranked)
+            // Multi-outlet consensus bonus: If multiple outlets report the story, it is a major event
+            // Each additional outlet improves effective rank by 3 positions (e.g. Reuters rank 11 + 2 others -> rank 5)
             const grouped = {};
-            inWindow.forEach(a => {
-                const cat = typeof opts.groupBy === 'function' ? opts.groupBy(a) : getCategoryForArticle(a);
+            clusters.forEach(cl => {
+                const extraOutlets = Math.max(0, cl.sources.size - 1);
+                cl.effectiveRank = Math.max(1, cl.leadRank - (extraOutlets * 3));
+                cl.sourceCount = cl.sources.size;
+                const cat = catOf(cl.leadArticle);
                 if (!grouped[cat]) grouped[cat] = [];
-                grouped[cat].push(a);
+                grouped[cat].push(cl);
             });
 
             // Order categories strictly by window._categoryOrder
@@ -12659,80 +13119,12 @@
                 if (!orderedCats.includes(c) && grouped[c]?.length > 0) orderedCats.push(c);
             });
 
-            const limitPerCat = opts.limitPerCat || window._briefStoriesPerCat || 10;
             const categorySections = [];
             let totalStories = 0;
 
             for (const cat of orderedCats) {
-                const catItems = grouped[cat].slice();
-                if (catItems.length === 0) continue;
-
-                // 1. Pre-calculate tokens and doc-frequencies for intelligent fuzzy story deduplication
-                const tokens = catItems.map(a => typeof dedupTokens === 'function' ? dedupTokens(a.title) : { all: new Set(), proper: new Set() });
-                const df = typeof buildDocFreq === 'function' ? buildDocFreq(tokens) : null;
-                const dates = catItems.map(a => a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0));
-
-                // 2. Cluster articles covering the same story/event
-                const clusters = [];
-                for (let i = 0; i < catItems.length; i++) {
-                    const art = catItems[i];
-                    const rank = typeof getSourceRank === 'function' ? getSourceRank(art) : 9999;
-                    const date = dates[i];
-                    const normT = (typeof normTitle === 'function' ? normTitle(art.title) : (art.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ')).trim();
-                    const key40 = normT.slice(0, 40);
-
-                    let matchedIdx = -1;
-                    for (let c = 0; c < clusters.length; c++) {
-                        const cl = clusters[c];
-                        // Match condition 1: Title prefix matches
-                        if (key40 && cl.key40 && (key40 === cl.key40 || key40.startsWith(cl.key40.slice(0, 30)) || cl.key40.startsWith(key40.slice(0, 30)))) {
-                            matchedIdx = c;
-                            break;
-                        }
-                        // Match condition 2: isSameStory (token + proper noun overlap within 24h)
-                        if (typeof isSameStory === 'function' && isSameStory(tokens[i], cl.leadTokens, date, cl.leadDate, df)) {
-                            matchedIdx = c;
-                            break;
-                        }
-                    }
-
-                    if (matchedIdx === -1) {
-                        clusters.push({
-                            leadArticle: art,
-                            leadRank: rank,
-                            leadTokens: tokens[i],
-                            leadDate: date,
-                            key40: key40,
-                            sources: new Set(art.source ? [art.source] : []),
-                            articles: [art]
-                        });
-                    } else {
-                        const cl = clusters[matchedIdx];
-                        cl.articles.push(art);
-                        if (art.source) cl.sources.add(art.source);
-                        if (date > cl.leadDate) cl.leadDate = date;
-                        // If this newly clustered article has a higher Memeorandum authority score (lower rank number),
-                        // promote it to lead the story card!
-                        if (rank < cl.leadRank || (rank === cl.leadRank && date > (cl.leadArticle._ts || 0))) {
-                            cl.leadArticle = art;
-                            cl.leadRank = rank;
-                            cl.leadTokens = tokens[i];
-                            if (key40) cl.key40 = key40;
-                        }
-                    }
-                }
-
-                // 3. Score and rank clusters
-                // Base score = Memeorandum source rank (1 = NYT, 2 = Politico, etc., 9999 = unranked)
-                // Multi-outlet consensus bonus: If multiple outlets report the story, it is a major event
-                // Each additional outlet improves effective rank by 3 positions (e.g. Reuters rank 11 + 2 others -> rank 5)
-                clusters.forEach(cl => {
-                    const extraOutlets = Math.max(0, cl.sources.size - 1);
-                    cl.effectiveRank = Math.max(1, cl.leadRank - (extraOutlets * 3));
-                    cl.sourceCount = cl.sources.size;
-                });
-
-                clusters.sort((a, b) => {
+                const catClusters = grouped[cat];
+                catClusters.sort((a, b) => {
                     // Lowest rank number = highest authority
                     if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
                     // Multi-source consensus tiebreaker
@@ -12750,7 +13142,7 @@
                 const selectedClusters = [];
                 const remainingClusters = [];
 
-                for (const cl of clusters) {
+                for (const cl of catClusters) {
                     const src = cl.leadArticle.source || 'Unknown';
                     const curCount = sourceCounts.get(src) || 0;
                     if (selectedClusters.length < limitPerCat && curCount < perSourceCap) {
@@ -12820,6 +13212,7 @@
                             </span>
                             <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0">• ${esc(slotDef.windowLabel)}</span>
                             <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0" data-today-status></span>
+                            <span class="brief-header-window brief-header-new whitespace-nowrap flex-shrink-0" data-today-new></span>
                         </div>
                         <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — ${esc(datePartFormatted)}</h2>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
@@ -12828,6 +13221,7 @@
                             <span class="brief-meta-item whitespace-nowrap">${totalStories} stories</span>
                             <span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span>
                             <span class="brief-meta-item whitespace-nowrap">~${readTimeEst} min read</span>
+                            ${slotDef.metaExtra || ''}
                         </div>
                     </div>
             `;
@@ -12927,9 +13321,9 @@
                 b('brief-act-read', 'Mark Read', 'icon-dot-filled', `window.briefStoryAct('read', '${j}', this)`) +
                 b('brief-act-later', 'Read Later', 'icon-bookmark', `window.briefStoryAct('later', '${j}', this)`) +
                 `<button type="button" class="icon-act brief-save-btn" data-save-id="${esc(saId)}" data-save-link="${esc(link)}" onclick="window.toggleBriefStorySaved('${j}', this)" title="Save" aria-label="Save"><svg aria-hidden="true"><use href="#icon-star"/></svg></button>` +
-                b('brief-act-share', 'Share', 'icon-share', `window.briefStoryAct('share', '${j}', this)`) +
                 b('brief-open-reader', 'Open in Reader', 'icon-newspaper', `window.openArticleInReader('${j}')`) +
-                (link ? `<a class="icon-act brief-source-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '');
+                (link ? `<a class="icon-act brief-source-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '') +
+                b('brief-act-share', 'Share', 'icon-share', `window.briefStoryAct('share', '${j}', this)`);   // last (build 308)
         };
 
         window.updateBriefStoryActionButtons = function (root) {
@@ -13166,6 +13560,73 @@
             document.body.classList.toggle('today-no-images', !window._todayImages);
         };
 
+        // Muted words (build 311): Settings chips, add / remove, and Today's Show / Hide.
+        window.renderMuteChips = function () {
+            const box = document.getElementById('mute-words');
+            if (!box) return;
+            box.innerHTML = window._muteWords.map((w, i) =>
+                `<button type="button" class="mute-chip" onclick="window.removeMuteWord(${i})" title="Stop muting" aria-label="Stop muting ${esc(w)}">${esc(w)}</button>`
+            ).join('');
+        };
+        // fromCloud: applying another device's list - do not save it straight back.
+        window.setMuteWords = function (list, fromCloud) {
+            const seen = new Set();
+            window._muteWords = (list || []).map(w => String(w).trim()).filter(w => {
+                const k = w.toLowerCase();
+                if (!w || seen.has(k)) return false;
+                seen.add(k);
+                return true;
+            });
+            try { localStorage.setItem('newsreader_mute_words', JSON.stringify(window._muteWords)); } catch (e) { }
+            if (!fromCloud && typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+            window._muteVersion++;
+            buildMuteRe();
+            window.renderMuteChips();
+            renderTimeline(true);
+            renderFeeds();
+            updateBadges();
+            if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(null, false);
+        };
+        window.addMuteWord = function () {
+            const input = document.getElementById('mute-input');
+            const w = (input?.value || '').trim();
+            if (!w) return;
+            window.setMuteWords([...window._muteWords, w]);
+            input.value = '';
+        };
+        window.removeMuteWord = function (i) {
+            window.setMuteWords(window._muteWords.filter((_, k) => k !== i));
+        };
+        window.toggleShowMuted = function () {
+            window._showMuted = !window._showMuted;
+            renderTimeline(true);
+            rebuildTodayInPlace(null, false);
+        };
+
+        // Settings > Today > Folders in Today (build 310).
+        window.renderTodayFolderChips = function () {
+            const box = document.getElementById('today-folders');
+            if (!box) return;
+            box.innerHTML = getAppCategories().map(c => {
+                const off = window._todayExcluded.has(c);
+                return `<button type="button" class="today-folder-chip${off ? ' is-off' : ''}" data-folder="${esc(c)}"
+                    onclick="window.toggleTodayFolder(this.dataset.folder)" aria-pressed="${off ? 'false' : 'true'}"
+                    title="${off ? 'Left out of Today - tap to include' : 'In Today - tap to leave out'}">${esc(c)}</button>`;
+            }).join('');
+        };
+        window.saveTodayExcluded = function () {
+            try { localStorage.setItem('newsreader_today_excluded', JSON.stringify([...window._todayExcluded])); } catch (e) { }
+            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+        };
+        window.toggleTodayFolder = function (name) {
+            if (!name) return;
+            if (window._todayExcluded.has(name)) window._todayExcluded.delete(name);
+            else window._todayExcluded.add(name);
+            window.saveTodayExcluded();
+            window.renderTodayFolderChips();
+            rebuildTodayInPlace(null, false);   // Today on screen follows at once
+        };
+
         // The slider's last step (51) is All: every unread story in each folder (build 280).
         window.updateBriefStoriesPerCat = (val) => {
             const raw = parseInt(val, 10) || 10;
@@ -13188,6 +13649,8 @@
                     const valEl = document.getElementById('brief-stories-val');
                     if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
                 }
+                window.renderTodayFolderChips?.();
+                window.renderMuteChips?.();
                 window.renderFeedProblems?.();
             }
         };
@@ -13841,13 +14304,14 @@
             const laterBtn = document.getElementById('read-later-action-btn');
             const shareBtn = document.getElementById('share-btn');
             const ttsBtn = document.getElementById('tts-btn');
+            const listenBtn = document.getElementById('listen-action-btn');
             const unreadBtn = document.getElementById('unread-action-btn');
             const savedBtn = document.getElementById('saved-action-btn');
             const origBtn = document.getElementById('open-original-btn');
             const deskNavGroup = document.getElementById('desk-nav-group');
             const art = window.currentArticle;
             const hasArticle = !!art;
-            [laterBtn, shareBtn, ttsBtn, unreadBtn, savedBtn, origBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            [laterBtn, shareBtn, ttsBtn, listenBtn, unreadBtn, savedBtn, origBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
             window.updateBriefStoryActionButtons?.();
             if (!hasArticle) return;
 
@@ -14268,7 +14732,7 @@
             });
             for (let i = 0; i < window.articles.length; i++) {
                 const a = window.articles[i];
-                if (!a.unread || a.isBrief) continue;
+                if (!a.unread || a.isBrief || window.isMuted(a)) continue;   // muted not counted (311)
                 const hit = new Set();
                 bySource.get(a.source)?.forEach(c => hit.add(c));
                 if (a.feedUrl) byUrl.get(a.feedUrl)?.forEach(c => hit.add(c));
@@ -14666,7 +15130,7 @@
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
                     bskyHandle: a.bskyHandle, bskyIsRepost: a.bskyIsRepost, bskyOriginalAuthor: a.bskyOriginalAuthor,
                     timestamp: a.timestamp, _ts: a._ts, excerpt: a.excerpt, link: a.link,
-                    unread: a.unread, readLater: a.readLater, image: a.image,
+                    unread: a.unread, readLater: a.readLater, image: a.image, _firstSeen: a._firstSeen,
                     body: a._fullBodyLoaded ? (a.body || '').slice(0, 100000) : '',
                     _fullBodyLoaded: !!a._fullBodyLoaded
                 }));
@@ -15293,12 +15757,16 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 _hiddenAt = Date.now();
+                try { localStorage.setItem('newsreader_last_seen_at', String(_hiddenAt)); } catch (e) { }   // build 313
             } else {
                 // Catch-up render on return: refresh the timestamps/badges that the
                 // gated tick skipped while hidden.
                 renderFeeds();
                 updateBadges?.();
                 if (_hiddenAt && Date.now() - _hiddenAt > 5 * 60 * 1000) {
+                    // A new visit: "new" now means since you left (build 313).
+                    window._visitBoundary = _hiddenAt;
+                    window.syncBriefCards?.();
                     // Skip the auto resume-fetch on a metered/Data-Saver connection;
                     // the user can still pull-to-refresh manually if they want it.
                     if (window.feeds.length > 0 && !window._isMeteredConnection()) {
@@ -15314,7 +15782,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 306;
+        window.APP_BUILD = 314;
 
         (async function initApp() {
             try {
@@ -15936,6 +16404,13 @@
                         try { localStorage.setItem('newsreader_catorder', JSON.stringify(data.categoryOrder)); } catch (e) { }
                         window.renderFeeds();
                     }
+                    if (Array.isArray(data.muteWords)) window.setMuteWords?.(data.muteWords, true);
+                    if (Array.isArray(data.todayExcluded)) {
+                        window._todayExcluded = new Set(data.todayExcluded);
+                        try { localStorage.setItem('newsreader_today_excluded', JSON.stringify(data.todayExcluded)); } catch (e) { }
+                        window.renderTodayFolderChips?.();
+                        if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(null, false);
+                    }
                     if (data.autoRefresh) {
                         const sel = document.getElementById('pref-auto-refresh');
                         if (sel) sel.value = data.autoRefresh;
@@ -16017,12 +16492,16 @@
                     const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
                     const paneWidth = document.getElementById('timeline-pane')?.style.width;
                     const autoRefresh = document.getElementById('pref-auto-refresh')?.value || '30';
+                    // merge (build 310): settings added later are kept by a save that does
+                    // not list them, and a field one save omits is never wiped.
                     await setDoc(uiRef, {
                         paneWidth: paneWidth || '336px',
                         categoryOrder: window._categoryOrder,
                         autoRefresh,
+                        todayExcluded: [...(window._todayExcluded || [])],
+                        muteWords: window._muteWords || [],
                         updatedAt: new Date().toISOString()
-                    });
+                    }, { merge: true });
                 } catch (e) { console.warn('Cloud UI prefs save failed:', e); }
             };
         }
@@ -16208,7 +16687,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v306';
+const CACHE_NAME = 'rss-reader-v314';
 const APP_SHELL = [
     '/',
     'index.html'
