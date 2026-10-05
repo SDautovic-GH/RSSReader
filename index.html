@@ -4627,6 +4627,24 @@
             height: 1.05em;
         }
 
+        /* New since your last visit (build 313): a small accent dot before the source. */
+        .brief-new-dot {
+            display: none;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #4493f8;
+            flex-shrink: 0;
+        }
+
+        .brief-story-card.is-new .brief-new-dot {
+            display: inline-block;
+        }
+
+        .brief-header-new {
+            color: #4493f8 !important;
+        }
+
         .brief-muted-btn {
             padding: 0;
             border: none;
@@ -7515,6 +7533,23 @@
         window._todayImages = localStorage.getItem('newsreader_today_images') !== '0';
         document.body.classList.toggle('today-no-images', !window._todayImages);
         document.getElementById('today-images-toggle')?.setAttribute('data-on', window._todayImages ? 'true' : 'false');
+        // "NEW SINCE YOUR LAST VISIT" (build 313, on request). The boundary is when you last
+        // left the app (saved on every hide); a story is new when every outlet's copy of it
+        // first arrived on this device after that. Moves on when you come back after more
+        // than 5 minutes away (the same rule as the return refresh).
+        window._visitBoundary = Number(localStorage.getItem('newsreader_last_seen_at')) || 0;
+        window.visitLabel = function (ts) {
+            const d = new Date(ts), now = new Date();
+            const t = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            if (d.toDateString() === now.toDateString()) return t;
+            const y = new Date(now);
+            y.setDate(now.getDate() - 1);
+            if (d.toDateString() === y.toDateString()) return `yesterday ${t}`;
+            return `${d.toLocaleDateString([], { weekday: 'short' })} ${t}`;
+        };
+        window.addEventListener('pagehide', () => {
+            try { localStorage.setItem('newsreader_last_seen_at', String(Date.now())); } catch (e) { }
+        });
         // Folders left out of Today (build 310, on request). Per account: synced via uiPrefs.
         window._todayExcluded = (() => {
             try { return new Set(JSON.parse(localStorage.getItem('newsreader_today_excluded') || '[]')); }
@@ -8604,6 +8639,7 @@
             const _existingBskyIds = new Map();
             const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
             _feedOld.forEach(a => _existingBskyIds.set(a.link, a.id));
+            const _firstSeenByLink = new Map(_feedOld.map(a => [a.link, a._firstSeen]));   // build 313
             const _keep = retainedUnread(_feedOld);   // build 302
             window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
             let newCount = 0;
@@ -8631,6 +8667,8 @@
                 })();
                 window.articles.push({
                     id: _existingBskyIds.get(link) || crypto.randomUUID(),
+                    // When this device first fetched it (build 313): "new since your last visit"
+                    _firstSeen: _existingBskyIds.has(link) ? _firstSeenByLink.get(link) : Date.now(),
                     source: sourceName,
                     feedUrl,
                     title,
@@ -8778,6 +8816,7 @@
                 const _existingIds = new Map();
                 const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
                 _feedOld.forEach(a => _existingIds.set(a.link, a.id));
+                const _firstSeenByLink = new Map(_feedOld.map(a => [a.link, a._firstSeen]));   // build 313
                 const _keep = retainedUnread(_feedOld);   // build 302
                 window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
                 // Invalidate excerpt cache for any re-fetched articles
@@ -8827,6 +8866,8 @@
                     })();
                     const art = {
                         id: _existingIds.get(link) || crypto.randomUUID(),
+                        // When this device first fetched it (build 313): "new since your last visit"
+                        _firstSeen: _existingIds.has(link) ? _firstSeenByLink.get(link) : Date.now(),
                         source: sourceName,
                         feedUrl,
                         title: decodeEntities(getText(item, 'title')),
@@ -12452,9 +12493,11 @@
             const readLinks = window._readLinks;
             const cur = window.currentArticle;
             const activeId = window._todayInColumn && cur && !cur.isBrief ? cur.id : null;
+            const boundary = window._visitBoundary;
             roots.forEach(root => {
                 const inColumn = root.id === 'today-column';
                 let anySection = false, anyLeft = false;
+                let newShown = 0;
                 root.querySelectorAll('.brief-cat-section').forEach(sec => {
                     anySection = true;
                     let shown = 0, unread = 0;
@@ -12467,6 +12510,11 @@
                         const active = inColumn && id === activeId;
                         card.classList.toggle('brief-card-active', active);
                         card.classList.toggle('brief-card-read', read);
+                        // New since your last visit (build 313)
+                        const first = Number(card.getAttribute('data-first') || 0);
+                        const isNew = !!(boundary && first > boundary && !read);
+                        card.classList.toggle('is-new', isNew);
+                        if (isNew) newShown++;
                         if (!read || active) shown++;
                         if (!read) unread++;
                     });
@@ -12489,6 +12537,9 @@
                     }
                 });
                 root.querySelector('.brief-jump-bar')?.classList.toggle('brief-gone', anySection && !anyLeft);
+                root.querySelectorAll('[data-today-new]').forEach(el => {
+                    el.textContent = newShown ? `\u2022 ${newShown} new since ${window.visitLabel(boundary)}` : '';
+                });
                 let note = root.querySelector('.brief-all-read-note');
                 if (anySection && !anyLeft) {
                     if (!note) {
@@ -12835,6 +12886,10 @@
                         ? `<div class="brief-story-also">Also from ${esc(alsoNames.slice(0, 4).join(', '))}${alsoNames.length > 4 ? ` and ${alsoNames.length - 4} more` : ''}</div>`
                         : '';
                     const saId = escJs(st.id);
+                    // When the story first arrived: its EARLIEST copy, so a new outlet joining
+                    // a story you had seen does not make it "new" (build 313). 0 = unknown.
+                    const firstSeen = Math.min(...((st.coverage && st.coverage.length) ? st.coverage : [st]).map(x => x._firstSeen || 0));
+                    const firstAttr = firstSeen > 0 ? ` data-first="${firstSeen}"` : '';
                     // Shown only while muted stories are revealed (build 311)
                     const mutedHit = window.mutedTerm ? window.mutedTerm(st) : '';
                     const mutedTag = mutedHit ? `<span class="brief-muted-tag flex-shrink-0">Muted: ${esc(mutedHit)}</span>` : '';
@@ -12887,9 +12942,10 @@
                     }
 
                     html += `
-                        <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}>
+                        <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}${firstAttr}>
                             ${heroHtml}
                             <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
+                                <span class="brief-new-dot" title="New since your last visit" aria-hidden="true"></span>
                                 ${favHtml}
                                 <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
                                 <span class="brief-story-dot flex-shrink-0">•</span>
@@ -13128,6 +13184,7 @@
                             </span>
                             <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0">• ${esc(slotDef.windowLabel)}</span>
                             <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0" data-today-status></span>
+                            <span class="brief-header-window brief-header-new whitespace-nowrap flex-shrink-0" data-today-new></span>
                         </div>
                         <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — ${esc(datePartFormatted)}</h2>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
@@ -15045,7 +15102,7 @@
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
                     bskyHandle: a.bskyHandle, bskyIsRepost: a.bskyIsRepost, bskyOriginalAuthor: a.bskyOriginalAuthor,
                     timestamp: a.timestamp, _ts: a._ts, excerpt: a.excerpt, link: a.link,
-                    unread: a.unread, readLater: a.readLater, image: a.image,
+                    unread: a.unread, readLater: a.readLater, image: a.image, _firstSeen: a._firstSeen,
                     body: a._fullBodyLoaded ? (a.body || '').slice(0, 100000) : '',
                     _fullBodyLoaded: !!a._fullBodyLoaded
                 }));
@@ -15672,12 +15729,16 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 _hiddenAt = Date.now();
+                try { localStorage.setItem('newsreader_last_seen_at', String(_hiddenAt)); } catch (e) { }   // build 313
             } else {
                 // Catch-up render on return: refresh the timestamps/badges that the
                 // gated tick skipped while hidden.
                 renderFeeds();
                 updateBadges?.();
                 if (_hiddenAt && Date.now() - _hiddenAt > 5 * 60 * 1000) {
+                    // A new visit: "new" now means since you left (build 313).
+                    window._visitBoundary = _hiddenAt;
+                    window.syncBriefCards?.();
                     // Skip the auto resume-fetch on a metered/Data-Saver connection;
                     // the user can still pull-to-refresh manually if they want it.
                     if (window.feeds.length > 0 && !window._isMeteredConnection()) {
@@ -15693,7 +15754,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 312;
+        window.APP_BUILD = 313;
 
         (async function initApp() {
             try {
@@ -16598,7 +16659,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v312';
+const CACHE_NAME = 'rss-reader-v313';
 const APP_SHELL = [
     '/',
     'index.html'
