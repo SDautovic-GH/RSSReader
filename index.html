@@ -4563,6 +4563,65 @@
             cursor: pointer;
         }
 
+        /* Muted words (build 311) */
+        .mute-add-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .mute-add-row .settings-input {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .mute-add-btn {
+            padding: 0 16px;
+            border: none;
+            border-radius: 8px;
+            background: #4493f8;
+            color: #ffffff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .mute-chip {
+            padding: 5px 10px 5px 12px;
+            border-radius: 9999px;
+            font-size: 13px;
+            line-height: 1.2;
+            border: 1px solid rgba(139, 148, 158, 0.45);
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+        }
+
+        .mute-chip::after {
+            content: '\2715';
+            margin-left: 6px;
+            opacity: 0.6;
+        }
+
+        .brief-muted-btn {
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: #4493f8;
+            font: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .brief-muted-tag {
+            margin-left: 4px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            background: rgba(139, 148, 158, 0.18);
+            color: #8b949e;
+            white-space: nowrap;
+        }
+
         .today-folder-chip.is-off {
             background: transparent;
             border-color: rgba(139, 148, 158, 0.45);
@@ -7059,6 +7118,25 @@
                     </div>
                 </div>
 
+                <!-- MUTED WORDS (build 311, on request) -->
+                <div>
+                    <h3 class="settings-section-label">Muted words</h3>
+                    <div class="settings-list">
+                        <div class="settings-row settings-row-stacked">
+                            <p class="text-[12px] text-gray-400">Stories with these words in the headline or summary are
+                                hidden from Today and your lists, and left out of the counts. Saved, Read Later, History
+                                and Search still show them, and Today shows how many are hidden.</p>
+                            <div class="mute-add-row">
+                                <input id="mute-input" type="text" class="settings-input" placeholder="Add a word or phrase"
+                                    autocomplete="off"
+                                    onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.addMuteWord(); }">
+                                <button type="button" class="mute-add-btn" onclick="window.addMuteWord()">Add</button>
+                            </div>
+                            <div id="mute-words" class="today-folder-chips"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- SIDEBAR -->
                 <div>
                     <h3 class="settings-section-label">Sidebar</h3>
@@ -7415,6 +7493,35 @@
             try { return new Set(JSON.parse(localStorage.getItem('newsreader_today_excluded') || '[]')); }
             catch (e) { return new Set(); }
         })();
+        // MUTED WORDS (build 311, on request). A story whose headline or summary opening
+        // contains one is hidden from Today and the Unread / folder / feed lists and left out
+        // of every unread count; Saved, Read Later, History and Search still show it, and
+        // Today says how many it hid ("3 muted - Show"). Whole words or phrases, any case;
+        // per account, synced via uiPrefs.
+        window._muteWords = (() => {
+            try { const v = JSON.parse(localStorage.getItem('newsreader_mute_words') || '[]'); return Array.isArray(v) ? v : []; }
+            catch (e) { return []; }
+        })();
+        window._muteVersion = 0;
+        window._showMuted = false;   // "Show" in Today: this session only
+        let _muteRe = null;
+        function buildMuteRe() {
+            const terms = window._muteWords.map(w => String(w).trim()).filter(Boolean);
+            if (!terms.length) { _muteRe = null; return; }
+            const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+            _muteRe = new RegExp(`(^|[^\\p{L}\\p{N}])(${terms.map(escRe).join('|')})(?=$|[^\\p{L}\\p{N}])`, 'iu');
+        }
+        buildMuteRe();
+        // The muted word an article matches, or '' - cached per article per mute list.
+        window.mutedTerm = function (a) {
+            if (!_muteRe || !a || a.isBrief) return '';
+            if (a._muteV === window._muteVersion) return a._muteHit;
+            const m = _muteRe.exec(`${a.title || ''} ${(a.excerpt || '').slice(0, 300)}`);
+            a._muteV = window._muteVersion;
+            a._muteHit = m ? m[2] : '';
+            return a._muteHit;
+        };
+        window.isMuted = (a) => !!window.mutedTerm(a);
         // Stories per Category: 5-50, or 'all' = every unread story (build 280, slider far right).
         window._briefStoriesPerCat = localStorage.getItem('newsreader_brief_stories_per_cat') === 'all'
             ? Infinity
@@ -8993,7 +9100,8 @@
             if (!isRecentlyRead && !isSaved && !isReadLaterBucketed) {
                 // Apply normal filters
                 if (window.currentSmartFeed === 'all') {
-                    filtered = filtered.filter(a => a.unread || window._pinnedArticleIds.has(a.id));
+                    // Muted stories are hidden here too, unless revealed from Today (build 311)
+                    filtered = filtered.filter(a => (a.unread && (window._showMuted || !window.isMuted(a))) || window._pinnedArticleIds.has(a.id));
                 } else if (window.currentSmartFeed === 'read-later') {
                     filtered = filtered.filter(a => a.readLater || window._pinnedArticleIds.has(a.id));
                 }
@@ -10947,7 +11055,7 @@
             const unreadByUrl = {};
             const unreadByName = {};
             window.articles.forEach(a => {
-                if (!a.unread) return;
+                if (!a.unread || window.isMuted(a)) return;   // muted: not counted (build 311)
                 if (a.feedUrl) unreadByUrl[a.feedUrl] = (unreadByUrl[a.feedUrl] || 0) + 1;
                 else unreadByName[a.source] = (unreadByName[a.source] || 0) + 1;
             });
@@ -11326,7 +11434,7 @@
         }
 
         function updateBadges() {
-            const allUnread = window.articles.filter(a => a.unread).length;
+            const allUnread = window.articles.filter(a => a.unread && !window.isMuted(a)).length;   // muted not counted (311)
             const readLaterCount = window.articles.filter(a => a.readLater).length;
 
             const badgeAll = document.getElementById('badge-all');
@@ -12136,11 +12244,14 @@
             const now = Date.now();
             const windowStart = now - window.TODAY_WINDOW_HOURS * 3600000;
             const excluded = window._todayExcluded;   // folders left out of Today (build 310)
+            let mutedCount = 0;                        // muted stories it would show (build 311)
             const pool = (window.articles || []).filter(a => {
                 if (!a.unread || a.isBrief) return false;
                 const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
                 if (ts < windowStart) return false;
-                return !(excluded && excluded.size && excluded.has(getCategoryForArticle(a)));
+                if (excluded && excluded.size && excluded.has(getCategoryForArticle(a))) return false;
+                if (window.isMuted(a)) { mutedCount++; return window._showMuted; }
+                return true;
             });
             const built = buildStoryClusters(pool, { limitPerCat: window._briefStoriesPerCat || 10 });
             let sections = built.categorySections;
@@ -12174,7 +12285,11 @@
                 dateStr,
                 triggerTs: now,
                 windowStart,
-                windowEnd: now
+                windowEnd: now,
+                // "3 muted - Show" / "Hide 3 muted" (build 311)
+                metaExtra: mutedCount
+                    ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-muted-btn" onclick="window.toggleShowMuted()">${window._showMuted ? `Hide ${mutedCount} muted` : `${mutedCount} muted · Show`}</button>`
+                    : ''
             }, sections, totalStories);
 
             let body = composed.body;
@@ -12630,6 +12745,9 @@
                         ? `<div class="brief-story-also">Also from ${esc(alsoNames.slice(0, 4).join(', '))}${alsoNames.length > 4 ? ` and ${alsoNames.length - 4} more` : ''}</div>`
                         : '';
                     const saId = escJs(st.id);
+                    // Shown only while muted stories are revealed (build 311)
+                    const mutedHit = window.mutedTerm ? window.mutedTerm(st) : '';
+                    const mutedTag = mutedHit ? `<span class="brief-muted-tag flex-shrink-0">Muted: ${esc(mutedHit)}</span>` : '';
                     // The other outlets' copies grouped under this story (build 278), so the
                     // section's Mark-read row can mark them too - left unread, the next Today
                     // build would bring one back as a "new" story.
@@ -12686,6 +12804,7 @@
                                 <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
                                 <span class="brief-story-dot flex-shrink-0">•</span>
                                 <span class="brief-story-time flex-shrink-0 whitespace-nowrap">${relTime}</span>
+                                ${mutedTag}
                             </div>
                             ${thumbHtml}
                             ${storyBodyHtml}
@@ -12927,6 +13046,7 @@
                             <span class="brief-meta-item whitespace-nowrap">${totalStories} stories</span>
                             <span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span>
                             <span class="brief-meta-item whitespace-nowrap">~${readTimeEst} min read</span>
+                            ${slotDef.metaExtra || ''}
                         </div>
                     </div>
             `;
@@ -13265,6 +13385,49 @@
             document.body.classList.toggle('today-no-images', !window._todayImages);
         };
 
+        // Muted words (build 311): Settings chips, add / remove, and Today's Show / Hide.
+        window.renderMuteChips = function () {
+            const box = document.getElementById('mute-words');
+            if (!box) return;
+            box.innerHTML = window._muteWords.map((w, i) =>
+                `<button type="button" class="mute-chip" onclick="window.removeMuteWord(${i})" title="Stop muting" aria-label="Stop muting ${esc(w)}">${esc(w)}</button>`
+            ).join('');
+        };
+        // fromCloud: applying another device's list - do not save it straight back.
+        window.setMuteWords = function (list, fromCloud) {
+            const seen = new Set();
+            window._muteWords = (list || []).map(w => String(w).trim()).filter(w => {
+                const k = w.toLowerCase();
+                if (!w || seen.has(k)) return false;
+                seen.add(k);
+                return true;
+            });
+            try { localStorage.setItem('newsreader_mute_words', JSON.stringify(window._muteWords)); } catch (e) { }
+            if (!fromCloud && typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+            window._muteVersion++;
+            buildMuteRe();
+            window.renderMuteChips();
+            renderTimeline(true);
+            renderFeeds();
+            updateBadges();
+            if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(null, false);
+        };
+        window.addMuteWord = function () {
+            const input = document.getElementById('mute-input');
+            const w = (input?.value || '').trim();
+            if (!w) return;
+            window.setMuteWords([...window._muteWords, w]);
+            input.value = '';
+        };
+        window.removeMuteWord = function (i) {
+            window.setMuteWords(window._muteWords.filter((_, k) => k !== i));
+        };
+        window.toggleShowMuted = function () {
+            window._showMuted = !window._showMuted;
+            renderTimeline(true);
+            rebuildTodayInPlace(null, false);
+        };
+
         // Settings > Today > Folders in Today (build 310).
         window.renderTodayFolderChips = function () {
             const box = document.getElementById('today-folders');
@@ -13312,6 +13475,7 @@
                     if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
                 }
                 window.renderTodayFolderChips?.();
+                window.renderMuteChips?.();
                 window.renderFeedProblems?.();
             }
         };
@@ -14392,7 +14556,7 @@
             });
             for (let i = 0; i < window.articles.length; i++) {
                 const a = window.articles[i];
-                if (!a.unread || a.isBrief) continue;
+                if (!a.unread || a.isBrief || window.isMuted(a)) continue;   // muted not counted (311)
                 const hit = new Set();
                 bySource.get(a.source)?.forEach(c => hit.add(c));
                 if (a.feedUrl) byUrl.get(a.feedUrl)?.forEach(c => hit.add(c));
@@ -15438,7 +15602,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 310;
+        window.APP_BUILD = 311;
 
         (async function initApp() {
             try {
@@ -16060,6 +16224,7 @@
                         try { localStorage.setItem('newsreader_catorder', JSON.stringify(data.categoryOrder)); } catch (e) { }
                         window.renderFeeds();
                     }
+                    if (Array.isArray(data.muteWords)) window.setMuteWords?.(data.muteWords, true);
                     if (Array.isArray(data.todayExcluded)) {
                         window._todayExcluded = new Set(data.todayExcluded);
                         try { localStorage.setItem('newsreader_today_excluded', JSON.stringify(data.todayExcluded)); } catch (e) { }
@@ -16154,6 +16319,7 @@
                         categoryOrder: window._categoryOrder,
                         autoRefresh,
                         todayExcluded: [...(window._todayExcluded || [])],
+                        muteWords: window._muteWords || [],
                         updatedAt: new Date().toISOString()
                     }, { merge: true });
                 } catch (e) { console.warn('Cloud UI prefs save failed:', e); }
@@ -16341,7 +16507,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v310';
+const CACHE_NAME = 'rss-reader-v311';
 const APP_SHELL = [
     '/',
     'index.html'
