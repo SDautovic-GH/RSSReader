@@ -12668,6 +12668,9 @@
             return html;
         }
 
+        // Same-story threshold for headline + summary opening (build 309; see buildStoryClusters).
+        const BRIEF_SUMMARY_JACCARD = 0.25;
+
         // ===== BRIEF ENGINE =====
         // Groups any article pool into ranked, de-duplicated story clusters.
         // opts.limitPerCat: max stories per section; opts.groupBy(a): section key (default: category folder).
@@ -12679,73 +12682,88 @@
             const catOf = a => typeof opts.groupBy === 'function' ? opts.groupBy(a) : getCategoryForArticle(a);
             const limitPerCat = opts.limitPerCat || window._briefStoriesPerCat || 10;
 
-            // 1. Tokens and doc-frequencies for fuzzy same-story matching, over the whole pool
+            // 1. Tokens: the headline, and the headline plus the summary's first ~40 words
             const items = inWindow.slice();
-            const tokens = items.map(a => typeof dedupTokens === 'function' ? dedupTokens(a.title) : { all: new Set(), proper: new Set() });
-            const df = typeof buildDocFreq === 'function' ? buildDocFreq(tokens) : null;
+            const noTok = { all: new Set(), proper: new Set() };
+            const tTok = items.map(a => typeof dedupTokens === 'function' ? dedupTokens(a.title) : noTok);
+            const xTok = items.map(a => typeof dedupTokens === 'function'
+                ? dedupTokens(`${a.title || ''} ${(a.excerpt || '').split(/\s+/).slice(0, 40).join(' ')}`) : noTok);
+            const df = typeof buildDocFreq === 'function' ? buildDocFreq(tTok) : null;
             const dates = items.map(a => a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0));
+            const k40 = items.map(a => (typeof normTitle === 'function' ? normTitle(a.title) : (a.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ')).trim().slice(0, 40));
 
-            // 2. Cluster articles covering the same story/event. isSameStory needs at least
-            //    two shared proper nouns with the cluster's lead, so it is only tried on clusters
-            //    whose lead shares one (byProper) - the same matches as testing every cluster,
-            //    without the cost that grows with the square of the pool.
-            const clusters = [];
-            const byProper = new Map();   // proper-noun token -> indexes of clusters whose lead had it
-            const indexLead = (c, tok) => tok.proper.forEach(p => {
-                if (!byProper.has(p)) byProper.set(p, new Set());
-                byProper.get(p).add(c);
-            });
+            // 2. SAME-STORY PAIRS -> STORIES (build 309, on request: outlets reword headlines,
+            //    and nothing was ever grouped in 55 stories). Two articles are one story when
+            //    - their headlines start the same (first 30-40 characters), or
+            //    - isSameStory(): within 24h, 2+ shared names and similar headline words, or
+            //    - NEW: within 24h, 2+ shared headline names, and headline + summary opening
+            //      share >= BRIEF_SUMMARY_JACCARD of their words.
+            //    Stories are the groups of connected pairs. Before, an article joined the FIRST
+            //    group whose LEAD headline matched, so groups split by arrival order (NPR's
+            //    Hastert obituary stranded once the others joined NYT's). Measured on 347 live
+            //    headlines from 19 outlets: 8 -> 10 cross-outlet stories, Hastert 10 articles
+            //    from 7 outlets, no wrong merges; 0.20 started merging different stories.
+            //    The word rules need two shared names, so only articles sharing one are tried.
+            const parent = items.map((_, i) => i);
+            const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+            const union = (i, j) => { const x = find(i), y = find(j); if (x !== y) parent[x] = y; };
+            const byProper = new Map();   // name token -> indexes of articles whose headline has it
+            tTok.forEach((t, i) => t.proper.forEach(p => {
+                if (!byProper.has(p)) byProper.set(p, []);
+                byProper.get(p).push(i);
+            }));
+            const sharedNames = (i, j) => {
+                let n = 0;
+                for (const p of tTok[i].proper) if (tTok[j].proper.has(p) && ++n >= _DEDUP_MIN_SHARED_PROPER) break;
+                return n;
+            };
             for (let i = 0; i < items.length; i++) {
-                const art = items[i];
-                const rank = typeof getSourceRank === 'function' ? getSourceRank(art) : 9999;
-                const date = dates[i];
-                const normT = (typeof normTitle === 'function' ? normTitle(art.title) : (art.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ')).trim();
-                const key40 = normT.slice(0, 40);
-                const candidates = new Set();
-                tokens[i].proper.forEach(p => byProper.get(p)?.forEach(c => candidates.add(c)));
-
-                let matchedIdx = -1;
-                for (let c = 0; c < clusters.length; c++) {
-                    const cl = clusters[c];
-                    // Match condition 1: Title prefix matches
-                    if (key40 && cl.key40 && (key40 === cl.key40 || key40.startsWith(cl.key40.slice(0, 30)) || cl.key40.startsWith(key40.slice(0, 30)))) {
-                        matchedIdx = c;
-                        break;
-                    }
-                    // Match condition 2: isSameStory (token + proper noun overlap within 24h)
-                    if (candidates.has(c) && typeof isSameStory === 'function' && isSameStory(tokens[i], cl.leadTokens, date, cl.leadDate, df)) {
-                        matchedIdx = c;
-                        break;
+                const ki = k40[i];
+                if (ki) {
+                    for (let j = i + 1; j < items.length; j++) {
+                        const kj = k40[j];
+                        if (kj && (ki === kj || ki.startsWith(kj.slice(0, 30)) || kj.startsWith(ki.slice(0, 30)))) union(i, j);
                     }
                 }
-
-                if (matchedIdx === -1) {
-                    clusters.push({
-                        leadArticle: art,
-                        leadRank: rank,
-                        leadTokens: tokens[i],
-                        leadDate: date,
-                        key40: key40,
-                        sources: new Set(art.source ? [art.source] : []),
-                        articles: [art]
-                    });
-                    indexLead(clusters.length - 1, tokens[i]);
-                } else {
-                    const cl = clusters[matchedIdx];
-                    cl.articles.push(art);
-                    if (art.source) cl.sources.add(art.source);
-                    if (date > cl.leadDate) cl.leadDate = date;
-                    // If this newly clustered article has a higher Memeorandum authority score (lower rank number),
-                    // promote it to lead the story card!
-                    if (rank < cl.leadRank || (rank === cl.leadRank && date > (cl.leadArticle._ts || 0))) {
-                        cl.leadArticle = art;
-                        cl.leadRank = rank;
-                        cl.leadTokens = tokens[i];
-                        if (key40) cl.key40 = key40;
-                        indexLead(matchedIdx, tokens[i]);
+                const cand = new Set();
+                tTok[i].proper.forEach(p => byProper.get(p).forEach(j => { if (j > i) cand.add(j); }));
+                for (const j of cand) {
+                    if (find(i) === find(j)) continue;
+                    if (isSameStory(tTok[i], tTok[j], dates[i], dates[j], df)
+                        || (Math.abs(dates[i] - dates[j]) <= _DEDUP_WINDOW_MS
+                            && sharedNames(i, j) >= _DEDUP_MIN_SHARED_PROPER
+                            && jaccard(xTok[i].all, xTok[j].all) >= BRIEF_SUMMARY_JACCARD)) {
+                        union(i, j);
                     }
                 }
             }
+
+            // Each story's lead: the most authoritative outlet (lowest Memeorandum rank),
+            // then the newest. The story is filed under the lead's folder below.
+            const members = new Map();
+            items.forEach((_, i) => {
+                const r = find(i);
+                if (!members.has(r)) members.set(r, []);
+                members.get(r).push(i);
+            });
+            const clusters = [];
+            members.forEach(idx => {
+                let lead = idx[0];
+                let leadRank = typeof getSourceRank === 'function' ? getSourceRank(items[lead]) : 9999;
+                let leadDate = dates[lead];
+                for (const k of idx.slice(1)) {
+                    const r = typeof getSourceRank === 'function' ? getSourceRank(items[k]) : 9999;
+                    if (r < leadRank || (r === leadRank && dates[k] > dates[lead])) { lead = k; leadRank = r; }
+                    if (dates[k] > leadDate) leadDate = dates[k];
+                }
+                clusters.push({
+                    leadArticle: items[lead],
+                    leadRank,
+                    leadDate,
+                    sources: new Set(idx.map(k => items[k].source).filter(Boolean)),
+                    articles: idx.map(k => items[k])
+                });
+            });
 
             // 3. Score clusters, then file each under its lead outlet's folder
             // Base score = Memeorandum source rank (1 = NYT, 2 = Politico, etc., 9999 = unranked)
@@ -15354,7 +15372,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 308;
+        window.APP_BUILD = 309;
 
         (async function initApp() {
             try {
@@ -16248,7 +16266,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v308';
+const CACHE_NAME = 'rss-reader-v309';
 const APP_SHELL = [
     '/',
     'index.html'
