@@ -4602,6 +4602,50 @@
             opacity: 0.6;
         }
 
+        /* STOP LISTENING (build 315): shown by body.tts-on, in the tab bar's dark glass. Fixed
+           on desktop; on the phone absolute in the pixel-locked body like the tab bar (a
+           fixed element mis-anchors under the 115% page zoom), just above the bar, and it
+           stays when the bar slides away. */
+        .tts-stop-pill {
+            display: none;
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%);
+            z-index: 60;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 18px;
+            border-radius: 9999px;
+            background: rgba(30, 30, 34, 0.88);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-backdrop-filter: blur(24px) saturate(1.6);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tts-stop-pill svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        body.tts-on .tts-stop-pill {
+            display: inline-flex;
+        }
+
+        @media (max-width: 900px) {
+            .tts-stop-pill {
+                position: absolute;
+                bottom: calc(max(0px, env(safe-area-inset-bottom, 0px) - 8px) + 76px);
+            }
+        }
+
         /* Listen in the story row is the phone's (build 312); desktop has it in the top bar. */
         @media (min-width: 901px) {
             #listen-action-btn {
@@ -6835,6 +6879,13 @@
             </button>
         </main>
     </div>
+
+    <!-- STOP LISTENING (build 315, on request): on screen whenever Listen is speaking, so it
+         can be stopped from anywhere - the Listen buttons may be scrolled away. -->
+    <button id="tts-stop-pill" type="button" class="tts-stop-pill" onclick="stopTTS()" aria-label="Stop listening">
+        <svg aria-hidden="true"><use href="#icon-stop" /></svg>
+        <span>Stop listening</span>
+    </button>
 
     <!-- MOBILE BOTTOM TAB BAR — Apple News / Google News style -->
     <nav id="mobile-tab-bar">
@@ -12184,6 +12235,10 @@
             }
         }
         document.addEventListener('visibilitychange', () => {
+            // Phone (build 315): locking or leaving the app ends Listen. iOS only paused the
+            // speech, so unlocking started it again - pressing the side button was the
+            // closest thing to a Stop button. Desktop keeps reading in the background.
+            if (document.hidden && window._ttsActive && isMobile()) { stopTTS(); return; }
             if (!document.hidden && window._ttsActive) ttsSetAwake(true);
         });
         // Every Listen button: the top bar's (desktop), the story row's (phone), Today's heading.
@@ -12207,8 +12262,10 @@
                 if (l) l.textContent = todayOn ? 'Stop' : 'Listen';
                 btn.setAttribute('aria-label', todayOn ? 'Stop listening to Today' : 'Listen to Today');
             });
-            // Runs after every start, end, error and stop: the wake lock follows (build 314).
+            // Runs after every start, end, error and stop: the wake lock (build 314) and the
+            // Stop listening control (build 315) follow.
             ttsSetAwake(window._ttsActive);
+            document.body.classList.toggle('tts-on', !!window._ttsActive);
         }
 
         // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
@@ -15782,7 +15839,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 314;
+        window.APP_BUILD = 315;
 
         (async function initApp() {
             try {
@@ -16687,7 +16744,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v314';
+const CACHE_NAME = 'rss-reader-v315';
 const APP_SHELL = [
     '/',
     'index.html'
