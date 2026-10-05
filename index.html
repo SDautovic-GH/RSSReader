@@ -4544,6 +4544,18 @@
             clear: both;
         }
 
+        /* "Also from Reuters, AP" (build 308): its own line, wraps, never cut off. */
+        .brief-story-also {
+            margin: 2px 0 4px;
+            font-size: 0.8em;
+            line-height: 1.35;
+            color: #8b949e;
+        }
+
+        html:not(.dark) .brief-story-also {
+            color: #57606a;
+        }
+
         body.today-no-images .brief-thumb,
         body.today-no-images .brief-hero {
             display: none;
@@ -4943,9 +4955,16 @@
         .brief-story-actions .icon-act:hover {
             background: rgba(139, 148, 158, 0.16) !important;
         }
+        /* Story action icons a bit larger (build 308, on request): 15 -> 18px glyphs in
+           32px buttons (were 26px on desktop, 30px on the phone). */
+        .brief-story-actions .icon-act {
+            width: 2rem !important;
+            height: 2rem !important;
+        }
+
         .brief-story-actions .icon-act svg {
-            width: 0.95rem;
-            height: 0.95rem;
+            width: 1.125rem;
+            height: 1.125rem;
         }
 
         /* READER BAR BACK BUTTON (build 271). Its dark-mode background class,
@@ -6659,10 +6678,10 @@
                                             aria-label="Read Later" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-bookmark" /></svg></button>
                                         <button id="saved-action-btn" type="button" onclick="handleSavedAction()" title="Save"
                                             aria-label="Save" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-star" /></svg></button>
-                                        <button id="share-btn" type="button" onclick="shareArticle()" title="Share"
-                                            aria-label="Share" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-share" /></svg></button>
                                         <button id="open-original-btn" type="button" onclick="openExternal()" title="Open original source"
                                             aria-label="Open original source" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-external-link" /></svg></button>
+                                        <button id="share-btn" type="button" onclick="shareArticle()" title="Share"
+                                            aria-label="Share" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-share" /></svg></button>
                                     </div>
                                 </div>
                             </div>
@@ -12562,8 +12581,12 @@
                 cs.stories.forEach(st => {
                     const favHtml = typeof getFavicon === 'function' ? getFavicon(st.source) : '';
                     const relTime = typeof getRelativeTime === 'function' ? getRelativeTime(st.timestamp) : '';
-                    const alsoReported = (st.alsoReportedBy && st.alsoReportedBy.length > 0)
-                        ? `<span class="brief-story-also text-gray-500 whitespace-nowrap truncate max-w-[160px]">• Also: ${esc(st.alsoReportedBy.join(', '))}</span>`
+                    // Other outlets grouped under this story, on their own line under the summary
+                    // (build 308). It sat at the end of the source line, where its intended
+                    // 160px cap was never compiled, so it was squeezed to a few letters.
+                    const alsoNames = st.alsoReportedBy || [];
+                    const alsoReported = alsoNames.length
+                        ? `<div class="brief-story-also">Also from ${esc(alsoNames.slice(0, 4).join(', '))}${alsoNames.length > 4 ? ` and ${alsoNames.length - 4} more` : ''}</div>`
                         : '';
                     const saId = escJs(st.id);
                     // The other outlets' copies grouped under this story (build 278), so the
@@ -12622,10 +12645,10 @@
                                 <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
                                 <span class="brief-story-dot flex-shrink-0">•</span>
                                 <span class="brief-story-time flex-shrink-0 whitespace-nowrap">${relTime}</span>
-                                ${alsoReported}
                             </div>
                             ${thumbHtml}
                             ${storyBodyHtml}
+                            ${alsoReported}
                             <div class="brief-story-actions flex items-center gap-1.5 pt-0.5">
                                 <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-gray-500 dark:text-gray-400" title="Open in Reader" aria-label="Open in Reader">
                                     <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
@@ -12649,13 +12672,93 @@
         // Groups any article pool into ranked, de-duplicated story clusters.
         // opts.limitPerCat: max stories per section; opts.groupBy(a): section key (default: category folder).
         // Each story carries alsoReportedBy (other outlet names) and coverage (all clustered articles).
+        // ACROSS FOLDERS (build 308, on request): the whole pool is clustered at once - it was
+        // per folder, so one event reported in Headlines and Business showed twice and never
+        // as one multi-outlet story. Each story then sits in its LEAD outlet's folder.
         function buildStoryClusters(inWindow, opts = {}) {
-            // Group by category using robust multi-field feed matching
+            const catOf = a => typeof opts.groupBy === 'function' ? opts.groupBy(a) : getCategoryForArticle(a);
+            const limitPerCat = opts.limitPerCat || window._briefStoriesPerCat || 10;
+
+            // 1. Tokens and doc-frequencies for fuzzy same-story matching, over the whole pool
+            const items = inWindow.slice();
+            const tokens = items.map(a => typeof dedupTokens === 'function' ? dedupTokens(a.title) : { all: new Set(), proper: new Set() });
+            const df = typeof buildDocFreq === 'function' ? buildDocFreq(tokens) : null;
+            const dates = items.map(a => a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0));
+
+            // 2. Cluster articles covering the same story/event. isSameStory needs at least
+            //    two shared proper nouns with the cluster's lead, so it is only tried on clusters
+            //    whose lead shares one (byProper) - the same matches as testing every cluster,
+            //    without the cost that grows with the square of the pool.
+            const clusters = [];
+            const byProper = new Map();   // proper-noun token -> indexes of clusters whose lead had it
+            const indexLead = (c, tok) => tok.proper.forEach(p => {
+                if (!byProper.has(p)) byProper.set(p, new Set());
+                byProper.get(p).add(c);
+            });
+            for (let i = 0; i < items.length; i++) {
+                const art = items[i];
+                const rank = typeof getSourceRank === 'function' ? getSourceRank(art) : 9999;
+                const date = dates[i];
+                const normT = (typeof normTitle === 'function' ? normTitle(art.title) : (art.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ')).trim();
+                const key40 = normT.slice(0, 40);
+                const candidates = new Set();
+                tokens[i].proper.forEach(p => byProper.get(p)?.forEach(c => candidates.add(c)));
+
+                let matchedIdx = -1;
+                for (let c = 0; c < clusters.length; c++) {
+                    const cl = clusters[c];
+                    // Match condition 1: Title prefix matches
+                    if (key40 && cl.key40 && (key40 === cl.key40 || key40.startsWith(cl.key40.slice(0, 30)) || cl.key40.startsWith(key40.slice(0, 30)))) {
+                        matchedIdx = c;
+                        break;
+                    }
+                    // Match condition 2: isSameStory (token + proper noun overlap within 24h)
+                    if (candidates.has(c) && typeof isSameStory === 'function' && isSameStory(tokens[i], cl.leadTokens, date, cl.leadDate, df)) {
+                        matchedIdx = c;
+                        break;
+                    }
+                }
+
+                if (matchedIdx === -1) {
+                    clusters.push({
+                        leadArticle: art,
+                        leadRank: rank,
+                        leadTokens: tokens[i],
+                        leadDate: date,
+                        key40: key40,
+                        sources: new Set(art.source ? [art.source] : []),
+                        articles: [art]
+                    });
+                    indexLead(clusters.length - 1, tokens[i]);
+                } else {
+                    const cl = clusters[matchedIdx];
+                    cl.articles.push(art);
+                    if (art.source) cl.sources.add(art.source);
+                    if (date > cl.leadDate) cl.leadDate = date;
+                    // If this newly clustered article has a higher Memeorandum authority score (lower rank number),
+                    // promote it to lead the story card!
+                    if (rank < cl.leadRank || (rank === cl.leadRank && date > (cl.leadArticle._ts || 0))) {
+                        cl.leadArticle = art;
+                        cl.leadRank = rank;
+                        cl.leadTokens = tokens[i];
+                        if (key40) cl.key40 = key40;
+                        indexLead(matchedIdx, tokens[i]);
+                    }
+                }
+            }
+
+            // 3. Score clusters, then file each under its lead outlet's folder
+            // Base score = Memeorandum source rank (1 = NYT, 2 = Politico, etc., 9999 = unranked)
+            // Multi-outlet consensus bonus: If multiple outlets report the story, it is a major event
+            // Each additional outlet improves effective rank by 3 positions (e.g. Reuters rank 11 + 2 others -> rank 5)
             const grouped = {};
-            inWindow.forEach(a => {
-                const cat = typeof opts.groupBy === 'function' ? opts.groupBy(a) : getCategoryForArticle(a);
+            clusters.forEach(cl => {
+                const extraOutlets = Math.max(0, cl.sources.size - 1);
+                cl.effectiveRank = Math.max(1, cl.leadRank - (extraOutlets * 3));
+                cl.sourceCount = cl.sources.size;
+                const cat = catOf(cl.leadArticle);
                 if (!grouped[cat]) grouped[cat] = [];
-                grouped[cat].push(a);
+                grouped[cat].push(cl);
             });
 
             // Order categories strictly by window._categoryOrder
@@ -12664,80 +12767,12 @@
                 if (!orderedCats.includes(c) && grouped[c]?.length > 0) orderedCats.push(c);
             });
 
-            const limitPerCat = opts.limitPerCat || window._briefStoriesPerCat || 10;
             const categorySections = [];
             let totalStories = 0;
 
             for (const cat of orderedCats) {
-                const catItems = grouped[cat].slice();
-                if (catItems.length === 0) continue;
-
-                // 1. Pre-calculate tokens and doc-frequencies for intelligent fuzzy story deduplication
-                const tokens = catItems.map(a => typeof dedupTokens === 'function' ? dedupTokens(a.title) : { all: new Set(), proper: new Set() });
-                const df = typeof buildDocFreq === 'function' ? buildDocFreq(tokens) : null;
-                const dates = catItems.map(a => a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0));
-
-                // 2. Cluster articles covering the same story/event
-                const clusters = [];
-                for (let i = 0; i < catItems.length; i++) {
-                    const art = catItems[i];
-                    const rank = typeof getSourceRank === 'function' ? getSourceRank(art) : 9999;
-                    const date = dates[i];
-                    const normT = (typeof normTitle === 'function' ? normTitle(art.title) : (art.title || '').toLowerCase().replace(/[^a-z0-9]/g, ' ')).trim();
-                    const key40 = normT.slice(0, 40);
-
-                    let matchedIdx = -1;
-                    for (let c = 0; c < clusters.length; c++) {
-                        const cl = clusters[c];
-                        // Match condition 1: Title prefix matches
-                        if (key40 && cl.key40 && (key40 === cl.key40 || key40.startsWith(cl.key40.slice(0, 30)) || cl.key40.startsWith(key40.slice(0, 30)))) {
-                            matchedIdx = c;
-                            break;
-                        }
-                        // Match condition 2: isSameStory (token + proper noun overlap within 24h)
-                        if (typeof isSameStory === 'function' && isSameStory(tokens[i], cl.leadTokens, date, cl.leadDate, df)) {
-                            matchedIdx = c;
-                            break;
-                        }
-                    }
-
-                    if (matchedIdx === -1) {
-                        clusters.push({
-                            leadArticle: art,
-                            leadRank: rank,
-                            leadTokens: tokens[i],
-                            leadDate: date,
-                            key40: key40,
-                            sources: new Set(art.source ? [art.source] : []),
-                            articles: [art]
-                        });
-                    } else {
-                        const cl = clusters[matchedIdx];
-                        cl.articles.push(art);
-                        if (art.source) cl.sources.add(art.source);
-                        if (date > cl.leadDate) cl.leadDate = date;
-                        // If this newly clustered article has a higher Memeorandum authority score (lower rank number),
-                        // promote it to lead the story card!
-                        if (rank < cl.leadRank || (rank === cl.leadRank && date > (cl.leadArticle._ts || 0))) {
-                            cl.leadArticle = art;
-                            cl.leadRank = rank;
-                            cl.leadTokens = tokens[i];
-                            if (key40) cl.key40 = key40;
-                        }
-                    }
-                }
-
-                // 3. Score and rank clusters
-                // Base score = Memeorandum source rank (1 = NYT, 2 = Politico, etc., 9999 = unranked)
-                // Multi-outlet consensus bonus: If multiple outlets report the story, it is a major event
-                // Each additional outlet improves effective rank by 3 positions (e.g. Reuters rank 11 + 2 others -> rank 5)
-                clusters.forEach(cl => {
-                    const extraOutlets = Math.max(0, cl.sources.size - 1);
-                    cl.effectiveRank = Math.max(1, cl.leadRank - (extraOutlets * 3));
-                    cl.sourceCount = cl.sources.size;
-                });
-
-                clusters.sort((a, b) => {
+                const catClusters = grouped[cat];
+                catClusters.sort((a, b) => {
                     // Lowest rank number = highest authority
                     if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
                     // Multi-source consensus tiebreaker
@@ -12755,7 +12790,7 @@
                 const selectedClusters = [];
                 const remainingClusters = [];
 
-                for (const cl of clusters) {
+                for (const cl of catClusters) {
                     const src = cl.leadArticle.source || 'Unknown';
                     const curCount = sourceCounts.get(src) || 0;
                     if (selectedClusters.length < limitPerCat && curCount < perSourceCap) {
@@ -12932,9 +12967,9 @@
                 b('brief-act-read', 'Mark Read', 'icon-dot-filled', `window.briefStoryAct('read', '${j}', this)`) +
                 b('brief-act-later', 'Read Later', 'icon-bookmark', `window.briefStoryAct('later', '${j}', this)`) +
                 `<button type="button" class="icon-act brief-save-btn" data-save-id="${esc(saId)}" data-save-link="${esc(link)}" onclick="window.toggleBriefStorySaved('${j}', this)" title="Save" aria-label="Save"><svg aria-hidden="true"><use href="#icon-star"/></svg></button>` +
-                b('brief-act-share', 'Share', 'icon-share', `window.briefStoryAct('share', '${j}', this)`) +
                 b('brief-open-reader', 'Open in Reader', 'icon-newspaper', `window.openArticleInReader('${j}')`) +
-                (link ? `<a class="icon-act brief-source-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '');
+                (link ? `<a class="icon-act brief-source-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '') +
+                b('brief-act-share', 'Share', 'icon-share', `window.briefStoryAct('share', '${j}', this)`);   // last (build 308)
         };
 
         window.updateBriefStoryActionButtons = function (root) {
@@ -15319,7 +15354,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 307;
+        window.APP_BUILD = 308;
 
         (async function initApp() {
             try {
@@ -16213,7 +16248,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v307';
+const CACHE_NAME = 'rss-reader-v308';
 const APP_SHELL = [
     '/',
     'index.html'
