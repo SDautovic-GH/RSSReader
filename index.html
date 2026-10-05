@@ -12160,6 +12160,32 @@
             updateTTSButton();
         };
         function stopTTS() { speechSynthesis.cancel(); window._ttsActive = false; updateTTSButton(); }
+
+        // SCREEN STAYS AWAKE WHILE LISTENING (build 314, on request). iOS stops the app's
+        // speech when the screen auto-locks, so a screen wake lock is held only while Listen
+        // is speaking and released the moment it ends or is stopped. Pressing the side
+        // button still locks the phone, and speech then stops - nothing in a web app can
+        // keep speech going while it is suspended. No wake lock support: Listen as before.
+        // The browser drops the lock whenever the page is hidden; it is taken again on
+        // return if Listen is still going (desktop browsers keep speaking in the background).
+        let _ttsWakeLock = null;
+        function ttsSetAwake(on) {
+            if (on) {
+                if (_ttsWakeLock || !('wakeLock' in navigator) || document.hidden) return;
+                navigator.wakeLock.request('screen').then(lock => {
+                    if (!window._ttsActive) { lock.release().catch(() => { }); return; }
+                    _ttsWakeLock = lock;
+                    lock.addEventListener('release', () => { if (_ttsWakeLock === lock) _ttsWakeLock = null; });
+                }).catch(() => { });
+            } else if (_ttsWakeLock) {
+                const lock = _ttsWakeLock;
+                _ttsWakeLock = null;
+                lock.release().catch(() => { });
+            }
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && window._ttsActive) ttsSetAwake(true);
+        });
         // Every Listen button: the top bar's (desktop), the story row's (phone), Today's heading.
         function updateTTSButton() {
             const active = window._ttsActive;
@@ -12181,6 +12207,8 @@
                 if (l) l.textContent = todayOn ? 'Stop' : 'Listen';
                 btn.setAttribute('aria-label', todayOn ? 'Stop listening to Today' : 'Listen to Today');
             });
+            // Runs after every start, end, error and stop: the wake lock follows (build 314).
+            ttsSetAwake(window._ttsActive);
         }
 
         // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
@@ -15754,7 +15782,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 313;
+        window.APP_BUILD = 314;
 
         (async function initApp() {
             try {
@@ -16659,7 +16687,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v313';
+const CACHE_NAME = 'rss-reader-v314';
 const APP_SHELL = [
     '/',
     'index.html'
