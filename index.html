@@ -4602,11 +4602,12 @@
             opacity: 0.6;
         }
 
-        /* STOP LISTENING (build 315): shown by body.tts-on, in the tab bar's dark glass. Fixed
-           on desktop; on the phone absolute in the pixel-locked body like the tab bar (a
-           fixed element mis-anchors under the 115% page zoom), just above the bar, and it
-           stays when the bar slides away. */
-        .tts-stop-pill {
+        /* LISTEN PLAYER (builds 315-316): shown by body.tts-on for the whole session, in the
+           tab bar's dark glass - "Listening" / "Paused", Pause or Resume, Stop. Fixed on
+           desktop; on the phone absolute in the pixel-locked body like the tab bar (a fixed
+           element mis-anchors under the 115% page zoom), just above the bar, and it stays
+           when the bar slides away. */
+        .tts-player {
             display: none;
             position: fixed;
             left: 50%;
@@ -4614,9 +4615,9 @@
             transform: translateX(-50%);
             z-index: 60;
             align-items: center;
-            gap: 8px;
-            min-height: 44px;
-            padding: 0 18px;
+            gap: 4px;
+            min-height: 48px;
+            padding: 2px 4px 2px 18px;
             border-radius: 9999px;
             background: rgba(30, 30, 34, 0.88);
             color: #ffffff;
@@ -4624,23 +4625,45 @@
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
             backdrop-filter: blur(24px) saturate(1.6);
             -webkit-backdrop-filter: blur(24px) saturate(1.6);
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
 
-        .tts-stop-pill svg {
-            width: 16px;
-            height: 16px;
+        .tts-player-label {
+            margin-right: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            white-space: nowrap;
         }
 
-        body.tts-on .tts-stop-pill {
+        .tts-player button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: none;
+            border-radius: 9999px;
+            background: transparent;
+            color: #ffffff;
+            cursor: pointer;
+        }
+
+        .tts-player button:active {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .tts-player svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        body.tts-on .tts-player {
             display: inline-flex;
         }
 
         @media (max-width: 900px) {
-            .tts-stop-pill {
+            .tts-player {
                 position: absolute;
                 bottom: calc(max(0px, env(safe-area-inset-bottom, 0px) - 8px) + 76px);
             }
@@ -6406,6 +6429,14 @@
             <symbol id="icon-stop" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                 <rect x="6" y="6" width="12" height="12" rx="1" />
             </symbol>
+            <!-- Listen player (build 316) -->
+            <symbol id="icon-pause" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <rect x="6" y="5" width="4" height="14" rx="1" />
+                <rect x="14" y="5" width="4" height="14" rx="1" />
+            </symbol>
+            <symbol id="icon-play" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" />
+            </symbol>
             <symbol id="icon-mark-unread" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="9" />
@@ -6880,12 +6911,17 @@
         </main>
     </div>
 
-    <!-- STOP LISTENING (build 315, on request): on screen whenever Listen is speaking, so it
-         can be stopped from anywhere - the Listen buttons may be scrolled away. -->
-    <button id="tts-stop-pill" type="button" class="tts-stop-pill" onclick="stopTTS()" aria-label="Stop listening">
-        <svg aria-hidden="true"><use href="#icon-stop" /></svg>
-        <span>Stop listening</span>
-    </button>
+    <!-- LISTEN PLAYER (builds 315-316, on request): on screen for the whole Listen session,
+         playing or paused, so it can be paused, resumed or stopped from anywhere. -->
+    <div id="tts-player" class="tts-player" role="group" aria-label="Listen">
+        <span id="tts-player-label" class="tts-player-label">Listening</span>
+        <button id="tts-pause-btn" type="button" onclick="window.togglePauseTTS()" title="Pause" aria-label="Pause">
+            <svg aria-hidden="true"><use href="#icon-pause" /></svg>
+        </button>
+        <button type="button" onclick="stopTTS()" title="Stop" aria-label="Stop listening">
+            <svg aria-hidden="true"><use href="#icon-stop" /></svg>
+        </button>
+    </div>
 
     <!-- MOBILE BOTTOM TAB BAR — Apple News / Google News style -->
     <nav id="mobile-tab-bar">
@@ -12183,6 +12219,43 @@
             return out;
         }
 
+        // LISTEN SESSION (builds 312-316). The text is spoken as a queue of short pieces, and
+        // _ttsIndex follows the piece being spoken, so Pause stops and Resume starts again at
+        // that sentence (speechSynthesis.pause() is unreliable on iOS). _ttsActive = a session
+        // exists, playing or paused; _ttsPaused = paused. Each queue carries a run token, so
+        // the late events of a cancelled queue are ignored.
+        window._ttsPieces = null;
+        window._ttsIndex = 0;
+        window._ttsPaused = false;
+        let _ttsRun = 0;
+        function ttsSpeakFrom(i) {
+            const run = ++_ttsRun;
+            speechSynthesis.cancel();
+            // A beat after cancel(): some engines drop an utterance queued in the same tick.
+            setTimeout(() => {
+                if (run !== _ttsRun) return;
+                const pieces = window._ttsPieces || [];
+                for (let k = i; k < pieces.length; k++) {
+                    const u = new SpeechSynthesisUtterance(pieces[k]);
+                    u.onstart = () => { if (run === _ttsRun) window._ttsIndex = k; };
+                    if (k === pieces.length - 1) u.onend = () => { if (run === _ttsRun) endTTS(); };
+                    u.onerror = (e) => {
+                        if (run !== _ttsRun) return;
+                        if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
+                        endTTS();
+                    };
+                    speechSynthesis.speak(u);
+                }
+            }, 60);
+        }
+        function endTTS() {
+            _ttsRun++;
+            window._ttsActive = false;
+            window._ttsPaused = false;
+            window._ttsPieces = null;
+            updateTTSButton();
+        }
+
         // source: 'today' reads Today; otherwise the open story (or Today when it is open).
         window.toggleTTS = (source) => {
             if (window._ttsActive) { stopTTS(); return; }
@@ -12194,37 +12267,42 @@
                 text = document.getElementById('article-body')?.innerText || '';
             }
             if (!text.trim()) return;
-            const pieces = ttsChunks(text);
-            speechSynthesis.cancel();
-            pieces.forEach((p, i) => {
-                const u = new SpeechSynthesisUtterance(p);
-                if (i === pieces.length - 1) u.onend = () => { window._ttsActive = false; updateTTSButton(); };
-                u.onerror = (e) => {
-                    if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
-                    window._ttsActive = false;
-                    updateTTSButton();
-                };
-                speechSynthesis.speak(u);
-            });
+            window._ttsPieces = ttsChunks(text);
+            window._ttsIndex = 0;
+            window._ttsPaused = false;
             window._ttsActive = true;
             window._ttsSource = source === 'today' ? 'today' : 'story';
+            ttsSpeakFrom(0);
             updateTTSButton();
         };
-        function stopTTS() { speechSynthesis.cancel(); window._ttsActive = false; updateTTSButton(); }
+        function stopTTS() { speechSynthesis.cancel(); endTTS(); }
+        window.pauseTTS = function () {
+            if (!window._ttsActive || window._ttsPaused) return;
+            _ttsRun++;                     // the cancelled queue's events no longer count
+            speechSynthesis.cancel();
+            window._ttsPaused = true;
+            updateTTSButton();
+        };
+        window.resumeTTS = function () {
+            if (!window._ttsActive || !window._ttsPaused) return;
+            window._ttsPaused = false;
+            ttsSpeakFrom(window._ttsIndex);
+            updateTTSButton();
+        };
+        window.togglePauseTTS = () => (window._ttsPaused ? window.resumeTTS() : window.pauseTTS());
 
         // SCREEN STAYS AWAKE WHILE LISTENING (build 314, on request). iOS stops the app's
-        // speech when the screen auto-locks, so a screen wake lock is held only while Listen
-        // is speaking and released the moment it ends or is stopped. Pressing the side
-        // button still locks the phone, and speech then stops - nothing in a web app can
-        // keep speech going while it is suspended. No wake lock support: Listen as before.
-        // The browser drops the lock whenever the page is hidden; it is taken again on
-        // return if Listen is still going (desktop browsers keep speaking in the background).
+        // speech when the screen auto-locks, so a screen wake lock is held while Listen is
+        // PLAYING and released the moment it pauses, ends or stops. The browser drops the
+        // lock whenever the page is hidden; it is taken again on return if still playing.
+        // No wake lock support: Listen as before.
         let _ttsWakeLock = null;
+        const ttsPlaying = () => window._ttsActive && !window._ttsPaused;
         function ttsSetAwake(on) {
             if (on) {
                 if (_ttsWakeLock || !('wakeLock' in navigator) || document.hidden) return;
                 navigator.wakeLock.request('screen').then(lock => {
-                    if (!window._ttsActive) { lock.release().catch(() => { }); return; }
+                    if (!ttsPlaying()) { lock.release().catch(() => { }); return; }
                     _ttsWakeLock = lock;
                     lock.addEventListener('release', () => { if (_ttsWakeLock === lock) _ttsWakeLock = null; });
                 }).catch(() => { });
@@ -12235,13 +12313,14 @@
             }
         }
         document.addEventListener('visibilitychange', () => {
-            // Phone (build 315): locking or leaving the app ends Listen. iOS only paused the
-            // speech, so unlocking started it again - pressing the side button was the
-            // closest thing to a Stop button. Desktop keeps reading in the background.
-            if (document.hidden && window._ttsActive && isMobile()) { stopTTS(); return; }
-            if (!document.hidden && window._ttsActive) ttsSetAwake(true);
+            // Phone (builds 315-316): locking or leaving the app PAUSES Listen, and it stays
+            // paused on return - tap Resume to carry on from that sentence. (iOS only froze
+            // the speech, so unlocking used to start it again.) Desktop keeps reading.
+            if (document.hidden && ttsPlaying() && isMobile()) { window.pauseTTS(); return; }
+            if (!document.hidden && ttsPlaying()) ttsSetAwake(true);
         });
-        // Every Listen button: the top bar's (desktop), the story row's (phone), Today's heading.
+        // Every Listen button (top bar on desktop, story row on the phone, Today's heading) and
+        // the player. A Listen button reads "Stop" for the whole session, playing or paused.
         function updateTTSButton() {
             const active = window._ttsActive;
             const icon = active ? 'icon-stop' : 'icon-headphones';
@@ -12262,10 +12341,19 @@
                 if (l) l.textContent = todayOn ? 'Stop' : 'Listen';
                 btn.setAttribute('aria-label', todayOn ? 'Stop listening to Today' : 'Listen to Today');
             });
-            // Runs after every start, end, error and stop: the wake lock (build 314) and the
-            // Stop listening control (build 315) follow.
-            ttsSetAwake(window._ttsActive);
-            document.body.classList.toggle('tts-on', !!window._ttsActive);
+            // The player (build 316): "Listening" / "Paused", and Pause or Resume.
+            const paused = active && window._ttsPaused;
+            const lbl = document.getElementById('tts-player-label');
+            if (lbl) lbl.textContent = paused ? 'Paused' : 'Listening';
+            const pb = document.getElementById('tts-pause-btn');
+            if (pb) {
+                pb.querySelector('use')?.setAttribute('href', paused ? '#icon-play' : '#icon-pause');
+                pb.title = paused ? 'Resume' : 'Pause';
+                pb.setAttribute('aria-label', pb.title);
+            }
+            document.body.classList.toggle('tts-on', !!active);
+            // The wake lock follows: held only while playing (build 314).
+            ttsSetAwake(ttsPlaying());
         }
 
         // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
@@ -15839,7 +15927,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 315;
+        window.APP_BUILD = 316;
 
         (async function initApp() {
             try {
@@ -16744,7 +16832,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v315';
+const CACHE_NAME = 'rss-reader-v316';
 const APP_SHELL = [
     '/',
     'index.html'
