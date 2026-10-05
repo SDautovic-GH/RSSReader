@@ -4602,6 +4602,31 @@
             opacity: 0.6;
         }
 
+        /* Listen in the story row is the phone's (build 312); desktop has it in the top bar. */
+        @media (min-width: 901px) {
+            #listen-action-btn {
+                display: none !important;
+            }
+        }
+
+        .brief-listen-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: #4493f8;
+            font: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .brief-listen-btn svg {
+            width: 1.05em;
+            height: 1.05em;
+        }
+
         .brief-muted-btn {
             padding: 0;
             border: none;
@@ -6765,6 +6790,8 @@
                                             aria-label="Save" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-star" /></svg></button>
                                         <button id="open-original-btn" type="button" onclick="openExternal()" title="Open original source"
                                             aria-label="Open original source" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-external-link" /></svg></button>
+                                        <button id="listen-action-btn" type="button" onclick="toggleTTS()" title="Listen"
+                                            aria-label="Listen" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-headphones" /></svg></button>
                                         <button id="share-btn" type="button" onclick="shareArticle()" title="Share"
                                             aria-label="Share" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-share" /></svg></button>
                                     </div>
@@ -10207,7 +10234,9 @@
             const shareBtn = document.getElementById('share-btn');
             if (shareBtn) shareBtn.classList.remove('hidden');
 
-            if (window._ttsActive) stopTTS();
+            // Opening anything stops Listen - except Today rebuilding itself while Today is
+            // being read (build 312), which would cut the reading off mid-story.
+            if (window._ttsActive && !(article.isBrief && window._ttsSource === 'today')) stopTTS();
 
             if (isMobile()) setMobilePane('viewer');
             if (typeof updateViewerBackBtn === 'function') updateViewerBackBtn();
@@ -12024,33 +12053,93 @@
         };
 
         // --- TEXT TO SPEECH ---
-        window.toggleTTS = () => {
+        // What Today says when you Listen (build 312): the stories it is SHOWING now - read
+        // and muted ones are left out - read from the page, not from the text composed when
+        // Today was built (which kept stories you had read since).
+        function todaySpokenText() {
+            const root = window._todayInColumn ? document.getElementById('today-column') : document.getElementById('article-body');
+            if (!root) return '';
+            const shown = el => el.getClientRects().length > 0;
+            const parts = [];
+            let n = 0;
+            root.querySelectorAll('.brief-cat-section').forEach(sec => {
+                const cards = Array.from(sec.querySelectorAll('.brief-story-card')).filter(shown);
+                if (!cards.length) return;
+                parts.push(`${sec.querySelector('.brief-cat-heading')?.textContent.trim() || 'Next section'}.`);
+                cards.forEach(card => {
+                    const source = card.querySelector('.brief-story-source')?.textContent.trim() || '';
+                    const title = (card.querySelector('.brief-story-title')?.textContent || '').trim();
+                    const excerpt = (card.querySelector('.brief-story-excerpt')?.textContent || '').trim().slice(0, 160);
+                    n++;
+                    parts.push(`Story ${n}${source ? `, from ${source}` : ''}. ${title ? `${title}. ` : ''}${excerpt}`);
+                });
+            });
+            return n ? `Today. ${n} ${n === 1 ? 'story' : 'stories'}. ${parts.join(' ')}` : '';
+        }
+
+        // Spoken as a queue of short pieces (build 312): one long utterance can stop part-way
+        // in some browsers. Only the last piece ends the session.
+        function ttsChunks(text) {
+            const out = [];
+            let cur = '';
+            // Sentences without a lookbehind, which older iOS Safari cannot parse.
+            for (const s of (text.replace(/\s+/g, ' ').match(/[^.!?]+[.!?]*/g) || []).map(x => x.trim()).filter(Boolean)) {
+                if ((cur + ' ' + s).length > 220 && cur) { out.push(cur); cur = s; }
+                else cur = cur ? `${cur} ${s}` : s;
+            }
+            if (cur.trim()) out.push(cur);
+            return out;
+        }
+
+        // source: 'today' reads Today; otherwise the open story (or Today when it is open).
+        window.toggleTTS = (source) => {
             if (window._ttsActive) { stopTTS(); return; }
-            if (!window.currentArticle) return;
             let text = '';
-            if (window.currentArticle.isBrief && window.currentArticle.spokenText) {
-                text = window.currentArticle.spokenText;
-            } else {
+            if (source === 'today' || window.currentArticle?.isBrief) {
+                source = 'today';
+                text = todaySpokenText();
+            } else if (window.currentArticle) {
                 text = document.getElementById('article-body')?.innerText || '';
             }
             if (!text.trim()) return;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onend = () => { window._ttsActive = false; updateTTSButton(); };
-            utterance.onerror = () => { window._ttsActive = false; updateTTSButton(); };
-            speechSynthesis.speak(utterance);
+            const pieces = ttsChunks(text);
+            speechSynthesis.cancel();
+            pieces.forEach((p, i) => {
+                const u = new SpeechSynthesisUtterance(p);
+                if (i === pieces.length - 1) u.onend = () => { window._ttsActive = false; updateTTSButton(); };
+                u.onerror = (e) => {
+                    if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
+                    window._ttsActive = false;
+                    updateTTSButton();
+                };
+                speechSynthesis.speak(u);
+            });
             window._ttsActive = true;
+            window._ttsSource = source === 'today' ? 'today' : 'story';
             updateTTSButton();
         };
         function stopTTS() { speechSynthesis.cancel(); window._ttsActive = false; updateTTSButton(); }
+        // Every Listen button: the top bar's (desktop), the story row's (phone), Today's heading.
         function updateTTSButton() {
-            const btn = document.getElementById('tts-btn');
-            if (!btn) return;
-            const icon = window._ttsActive ? 'icon-stop' : 'icon-headphones';
-            const label = window._ttsActive ? 'Stop' : 'Listen';
-            btn.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
-            btn.title = label;
-            btn.setAttribute('aria-label', label);
-            btn.className = window._ttsActive ? 'icon-act is-on' : 'icon-act';
+            const active = window._ttsActive;
+            const icon = active ? 'icon-stop' : 'icon-headphones';
+            const label = active ? 'Stop' : 'Listen';
+            ['tts-btn', 'listen-action-btn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                const hidden = btn.classList.contains('hidden');
+                btn.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
+                btn.title = label;
+                btn.setAttribute('aria-label', label);
+                btn.className = (active && window._ttsSource === 'story' ? 'icon-act is-on' : 'icon-act') + (hidden ? ' hidden' : '');
+            });
+            const todayOn = active && window._ttsSource === 'today';
+            document.querySelectorAll('.brief-listen-btn').forEach(btn => {
+                btn.querySelector('use')?.setAttribute('href', todayOn ? '#icon-stop' : '#icon-headphones');
+                const l = btn.querySelector('.brief-listen-label');
+                if (l) l.textContent = todayOn ? 'Stop' : 'Listen';
+                btn.setAttribute('aria-label', todayOn ? 'Stop listening to Today' : 'Listen to Today');
+            });
         }
 
         // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
@@ -12286,10 +12375,10 @@
                 triggerTs: now,
                 windowStart,
                 windowEnd: now,
-                // "3 muted - Show" / "Hide 3 muted" (build 311)
-                metaExtra: mutedCount
+                // Listen to Today (build 312), then "3 muted - Show" / "Hide 3 muted" (build 311)
+                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-listen-btn" onclick="window.toggleTTS('today')" aria-label="Listen to Today"><svg aria-hidden="true"><use href="#${window._ttsActive && window._ttsSource === 'today' ? 'icon-stop' : 'icon-headphones'}"/></svg><span class="brief-listen-label">${window._ttsActive && window._ttsSource === 'today' ? 'Stop' : 'Listen'}</span></button>` + (mutedCount
                     ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-muted-btn" onclick="window.toggleShowMuted()">${window._showMuted ? `Hide ${mutedCount} muted` : `${mutedCount} muted · Show`}</button>`
-                    : ''
+                    : '')
             }, sections, totalStories);
 
             let body = composed.body;
@@ -12645,9 +12734,10 @@
             const n = cardsIn(fresh.body).filter(c => !shown.has(c.id) && !c.cov.some(x => shown.has(x))).length;
             if (!n) return;
             const where = todayOnScreen();
-            const idle = where === 'column'
+            // Not "idle" while Today is being read aloud (build 312): the pill instead.
+            const idle = !(window._ttsActive && window._ttsSource === 'today') && (where === 'column'
                 ? (!window.currentArticle || window.currentArticle.isBrief) && document.getElementById('today-column').scrollTop < 40
-                : where === 'reader' && document.getElementById('reader-view').scrollTop < 40;
+                : where === 'reader' && document.getElementById('reader-view').scrollTop < 40);
             if (idle) { rebuildTodayInPlace(fresh); return; }
             window._todayNewCount = n;
             window.updateTodayStatus();
@@ -14129,13 +14219,14 @@
             const laterBtn = document.getElementById('read-later-action-btn');
             const shareBtn = document.getElementById('share-btn');
             const ttsBtn = document.getElementById('tts-btn');
+            const listenBtn = document.getElementById('listen-action-btn');
             const unreadBtn = document.getElementById('unread-action-btn');
             const savedBtn = document.getElementById('saved-action-btn');
             const origBtn = document.getElementById('open-original-btn');
             const deskNavGroup = document.getElementById('desk-nav-group');
             const art = window.currentArticle;
             const hasArticle = !!art;
-            [laterBtn, shareBtn, ttsBtn, unreadBtn, savedBtn, origBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            [laterBtn, shareBtn, ttsBtn, listenBtn, unreadBtn, savedBtn, origBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
             window.updateBriefStoryActionButtons?.();
             if (!hasArticle) return;
 
@@ -15602,7 +15693,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 311;
+        window.APP_BUILD = 312;
 
         (async function initApp() {
             try {
@@ -16507,7 +16598,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v311';
+const CACHE_NAME = 'rss-reader-v312';
 const APP_SHELL = [
     '/',
     'index.html'
