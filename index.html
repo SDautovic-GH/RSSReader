@@ -10218,6 +10218,7 @@
             }
             if (!article) return;
 
+            const prevArticle = window.currentArticle;   // build 317: Today kept alive below
             window.currentArticle = article;
             // Manage "Back to Brief" state: clear if navigating to an unrelated article
             if (window._returnToBriefState) {
@@ -10302,10 +10303,41 @@
                 authorEl.nextElementSibling.style.display = '';
             }
             const bodyEl = document.getElementById('article-body');
+            // TODAY STAYS ALIVE WHILE A STORY IS OPEN (build 317, on request: the Today tab
+            // "fails half the time" to return to your place). Returning used to REBUILD Today
+            // and set the scroll ~60ms later - but every rebuilt picture then finished loading
+            // at its own moment and changed the layout (a small top picture becomes a
+            // thumbnail, ~150px; broken / tiny ones are removed), so whether you landed in
+            // place was a race. Now leaving Today for a story detaches its page as it is, and
+            // returning puts that same page back at the same scroll: nothing reloads, nothing
+            // moves, and the story you read simply drops out, so the next one sits where it
+            // was. Only when Today was rebuilt meanwhile (a new brief object) is it rendered
+            // afresh.
+            let keptScroll = null;
+            if (prevArticle && prevArticle.id === window.TODAY_BRIEF_ID && !article.isBrief && bodyEl.classList.contains('is-brief-body')) {
+                const frag = document.createDocumentFragment();
+                while (bodyEl.firstChild) frag.appendChild(bodyEl.firstChild);
+                window._todayKept = { brief: prevArticle, frag, scrollTop: document.getElementById('reader-view')?.scrollTop || 0 };
+            }
+            window._todayRestored = false;
             if (article.isBrief) {
                 bodyEl.classList.add('is-brief-body');
-                bodyEl.innerHTML = article.body;
-                normalizeBriefDOM(bodyEl);
+                const kept = window._todayKept;
+                window._todayKept = null;
+                if (kept && kept.brief === article) {
+                    bodyEl.textContent = '';
+                    bodyEl.appendChild(kept.frag);
+                    keptScroll = kept.scrollTop;
+                    window._todayRestored = true;
+                    // Bring the kept page up to date with what changed while you read:
+                    // read stories leave, Later / Save states, folder checks.
+                    window.syncBriefCards?.(bodyEl);
+                    window.updateBriefStoryActionButtons?.(bodyEl);
+                    window.updateBriefMarkReadButtons?.();
+                } else {
+                    bodyEl.innerHTML = article.body;
+                    normalizeBriefDOM(bodyEl);
+                }
             } else {
                 bodyEl.classList.remove('is-brief-body');
                 bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type', 'preload'] });
@@ -10317,7 +10349,7 @@
                 ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
             }
             const readerElEarly = document.getElementById('reader-view');
-            if (readerElEarly) readerElEarly.scrollTop = 0;
+            if (readerElEarly) readerElEarly.scrollTop = keptScroll ?? 0;   // kept Today: where you were (317)
 
             if (!article.isBrief) attemptFullContentLoad(article);
 
@@ -10371,11 +10403,12 @@
 
             const readerEl = document.getElementById('reader-view');
             if (readerEl) {
-                readerEl.scrollTop = 0;
+                const top = keptScroll ?? 0;   // kept Today: back where you were (build 317)
+                readerEl.scrollTop = top;
                 // After the pane is laid out (especially on mobile, where viewer-pane
                 // toggles from display:none → flex), assert scrollTop again — iOS Safari
                 // discards scrollTop set on a hidden scroll container.
-                requestAnimationFrame(() => { readerEl.scrollTop = 0; });
+                requestAnimationFrame(() => { readerEl.scrollTop = top; });
             }
 
             const listEl = document.getElementById('article-list');
@@ -13013,17 +13046,27 @@
         // Image guardrails, run from each image's own onload / onerror: a picture that
         // fails, or is too small to be a photo (icons, emoji, tracking pixels), leaves no
         // box behind; a hero too small to look sharp at full width becomes a thumbnail.
+        // What each picture turned out to be (build 317): 'bad' (failed or too small),
+        // 'thumb' (too small for the hero) or 'ok'. A rebuilt Today draws each known picture
+        // in its final form at once, so it no longer changes the layout as it loads.
+        window._briefImgVerdict = new Map();
         window.briefImgLoaded = function (img) {
             const box = img.parentElement;
-            if (!box) return;
-            if (img.naturalWidth < 100 || img.naturalHeight < 60) { box.remove(); return; }
-            if (box.classList.contains('brief-hero') && img.naturalWidth < 600) {
+            const url = img.getAttribute('src');
+            if (img.naturalWidth < 100 || img.naturalHeight < 60) {
+                window._briefImgVerdict.set(url, 'bad');
+                box?.remove();
+                return;
+            }
+            window._briefImgVerdict.set(url, img.naturalWidth < 600 ? 'thumb' : 'ok');
+            if (box && box.classList.contains('brief-hero') && img.naturalWidth < 600) {
                 box.classList.replace('brief-hero', 'brief-thumb');
                 // A thumbnail's place is after the source / time line (build 291).
                 box.parentElement?.querySelector(':scope > .brief-story-meta')?.after(box);
             }
         };
         window.briefImgFailed = function (img) {
+            window._briefImgVerdict.set(img.getAttribute('src'), 'bad');
             img.parentElement?.remove();
         };
 
@@ -13073,8 +13116,9 @@
                     const covAttr = covIds.length ? ` data-cov="${esc(JSON.stringify(covIds))}"` : '';
                     // Picture (build 290): lazy - loads only near the screen; the box is
                     // reserved by CSS; tapping it opens the story like the headline does.
-                    const imgUrl = briefStoryImage(st);
-                    const isHero = !!imgUrl && !heroDone && sectionIdx === 0;
+                    const verdict = window._briefImgVerdict?.get(briefStoryImage(st));
+                    const imgUrl = verdict === 'bad' ? '' : briefStoryImage(st);   // known bad: no box (317)
+                    const isHero = !!imgUrl && !heroDone && sectionIdx === 0 && verdict !== 'thumb';
                     if (isHero) heroDone = true;
                     const mediaHtml = imgUrl
                         ? `<div class="${isHero ? 'brief-hero' : 'brief-thumb'}" onclick="window.openArticleInReader('${saId}')"><img src="${esc(imgUrl)}" alt="" loading="lazy" decoding="async" onload="window.briefImgLoaded(this)" onerror="window.briefImgFailed(this)"></div>`
@@ -13621,10 +13665,14 @@
                     if (targetCard) {
                         if (readerView && typeof state.cardTop === 'number') {
                             // Build 301: the landing story at the same height on screen as the
-                            // one you tapped, so Today reopens where you were reading it.
+                            // one you tapped, so Today reopens where you were reading it. On a
+                            // kept page (build 317) this is exact, and usually 0px: the page is
+                            // back at its own scroll and only the stories you read have left.
+                            // It moves only when stories ABOVE the tapped one left too (you
+                            // swiped back to them).
                             readerView.scrollTop += targetCard.getBoundingClientRect().top
                                 - readerView.getBoundingClientRect().top - state.cardTop;
-                        } else {
+                        } else if (!window._todayRestored) {
                             targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                         targetCard.classList.add('brief-card-return-pulse');
@@ -15463,9 +15511,13 @@
             const cur = window.currentArticle;
             if (window._mobilePane === 'viewer' && cur && !cur.isBrief && s && s.briefId === window.TODAY_BRIEF_ID) {
                 setMobileTab('today');
+                window._todayReturnedAt = Date.now();
                 window.returnToBrief();
                 return;
             }
+            // A second tap within a second of that return is the same tap repeated, not
+            // "Today again, from the top" (build 317) - it used to throw your place away.
+            if (cur?.id === window.TODAY_BRIEF_ID && Date.now() - (window._todayReturnedAt || 0) < 1000) return;
             setMobileTab('today');
             await window.openToday();
         };
@@ -15927,7 +15979,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 316;
+        window.APP_BUILD = 317;
 
         (async function initApp() {
             try {
@@ -16832,7 +16884,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v316';
+const CACHE_NAME = 'rss-reader-v317';
 const APP_SHELL = [
     '/',
     'index.html'
