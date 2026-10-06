@@ -7767,8 +7767,10 @@
         window._persistFeedHealth = () => {
             try {
                 const out = {};
+                // Only feeds you follow (build 319): removed feeds used to stay in it for good.
+                const followed = new Set((window.feeds || []).map(f => f.url));
                 for (const [url, h] of Object.entries(window._feedHealth)) {
-                    if (!h) continue;
+                    if (!h || !followed.has(url)) continue;
                     if (h.slow || h.lastSuccess) out[url] = { slow: !!h.slow, lastSuccess: h.lastSuccess || null };
                 }
                 localStorage.setItem('newsreader_feed_health', JSON.stringify(out));
@@ -7785,7 +7787,7 @@
         class RSSReaderDB {
             constructor() {
                 this.dbName = 'RSSReaderDB';
-                this.version = 5;
+                this.version = 6;
                 this.db = null;
             }
 
@@ -7795,13 +7797,23 @@
                     const request = indexedDB.open(this.dbName, this.version);
                     request.onupgradeneeded = (e) => {
                         const db = e.target.result;
+                        // v6 (build 319): the articles store has NO indexes. Its four were never
+                        // read, and Edge kept the entries of every article that had left the
+                        // store: measured 2026-10-06, ~416,000 stale entries in 'timestamp' and
+                        // 'feedUrl' - 87 MB of a 121 MB database holding 1,139 articles (1.8 MB).
+                        // ('unread' / 'readLater' held nothing: true/false are not valid index
+                        // keys.) Dropping them deletes all of that and stops the build-up. Do not
+                        // add an index here again without code that reads it.
                         if (!db.objectStoreNames.contains('articles')) {
-                            const store = db.createObjectStore('articles', { keyPath: 'id' });
-                            store.createIndex('timestamp', '_ts', { unique: false });
-                            store.createIndex('feedUrl', 'feedUrl', { unique: false });
-                            store.createIndex('unread', 'unread', { unique: false });
-                            store.createIndex('readLater', 'readLater', { unique: false });
+                            db.createObjectStore('articles', { keyPath: 'id' });
+                        } else {
+                            const arts = e.target.transaction.objectStore('articles');
+                            ['timestamp', 'feedUrl', 'unread', 'readLater'].forEach(n => {
+                                if (arts.indexNames.contains(n)) arts.deleteIndex(n);
+                            });
                         }
+                        // Automatic briefs were removed in build 281; their store goes too.
+                        if (db.objectStoreNames.contains('briefs')) db.deleteObjectStore('briefs');
                         if (!db.objectStoreNames.contains('feeds')) db.createObjectStore('feeds', { keyPath: 'url' });
                         if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata');
                         if (!db.objectStoreNames.contains('favicons')) db.createObjectStore('favicons');
@@ -7822,21 +7834,16 @@
                             sv.createIndex('addedAt', 'addedAt', { unique: false });
                         }
                     };
-                    request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
+                    request.onsuccess = (e) => {
+                        this.db = e.target.result;
+                        // A newer build upgrading the database from another tab (build 319): let
+                        // go - or that tab waits until this one closes - and reload into it.
+                        this.db.onversionchange = () => { this.db.close(); this.db = null; location.reload(); };
+                        resolve(this.db);
+                    };
+                    // Another tab still runs a build from before the handler above.
+                    request.onblocked = () => window.showToast?.('Close other RSS Reader tabs to finish updating', true);
                     request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
-                });
-            }
-
-            // Automatic briefs were removed in build 281. Installs from before then still
-            // have their store (up to 4 stored briefs); empty it - nothing reads it now.
-            async clearRetiredBriefs() {
-                const db = await this.open();
-                if (!db.objectStoreNames.contains('briefs')) return;
-                return new Promise((resolve) => {
-                    const tx = db.transaction('briefs', 'readwrite');
-                    tx.objectStore('briefs').clear();
-                    tx.oncomplete = () => resolve();
-                    tx.onerror = () => resolve();
                 });
             }
 
@@ -8769,7 +8776,9 @@
             } else if (window.currentSourceFilter === sourceName) {
                 renderTimeline(true);
             }
-            saveArticleCache();
+            // No save here (build 319): like an RSS feed, the batch saves once at its end. This
+            // per-feed save re-wrote the whole article store after each of the 31 Bluesky feeds
+            // - 32 full saves per refresh, the last of which the refresh waited behind.
             return true;
         }
 
@@ -11879,20 +11888,23 @@
             // which spikes renderer memory and OOM-crashes the tab on mobile when the
             // feed list is large. Capping concurrency keeps the peak flat regardless
             // of feed count, at the cost of a slightly longer (but smoother) refresh.
-            // Self-healing order: feeds previously flagged 'slow' (primary proxy blocked,
-            // or all proxies failed/timed out — e.g. Cloudflare-protected feeds) go to the
-            // BACK of the queue. The healthy majority then fills the first wave and completes
-            // fast; a known-slow feed can only stall a worker after the good feeds are done,
-            // so it no longer creates the mid-refresh pause. Order within each group is
-            // preserved. First run (no health data yet) leaves order unchanged.
-            const all = (feeds || []).slice();
+            // SLOW FEEDS GET THEIR OWN LANE (build 319, on request: "can Updating be sped
+            // up"). Feeds flagged 'slow' (they needed the fallback proxy, or failed - e.g. a
+            // Cloudflare-protected host the Worker cannot reach) used to go to the BACK of the
+            // queue so they could not stall the healthy first wave. But a refresh is done only
+            // when its last feed is, so a slow feed at the back added its whole wait to EVERY
+            // refresh. Measured on the user's 65 feeds (2026-10-06): BleepingComputer's 0.6s
+            // Worker refusal + 7.6s fallback timeout was ~7s of a ~28s phone refresh. Now one
+            // extra worker starts on the slow feeds at once, beside the normal pool, so their
+            // waits overlap the healthy feeds; pool workers that run out of healthy feeds help
+            // with the slow ones left. The lane never takes a healthy feed, so the extra
+            // concurrency lasts only while slow feeds remain. First run (no health data): no
+            // slow feeds, no lane.
             const fast = [], slow = [];
-            for (const f of all) {
+            for (const f of (feeds || [])) {
                 (window._feedHealth[f.url] && window._feedHealth[f.url].slow ? slow : fast).push(f);
             }
-            const list = fast.concat(slow);
             const CONCURRENCY = isMobile() ? 3 : 6;
-            let next = 0;
 
             // PROGRESSIVE RENDERING + MID-REFRESH STABILITY.
             // The old batch-end-only render left the app looking dead for the whole
@@ -11926,22 +11938,23 @@
                 refreshUI();
             };
 
-            async function worker() {
-                while (next < list.length) {
-                    const i = next++;
-                    const f = list[i];
+            async function worker(take) {
+                for (let f = take(); f; f = take()) {
                     try {
                         await fetchRecentArticles(f.url, f.name, maxItems, isBackground);
                     } catch (e) { /* fetchRecentArticles already swallows its own errors */ }
                     progressiveRender();
                     // Small stagger between a worker's successive feeds smooths the
                     // proxy load without serializing the whole batch.
-                    if (next < list.length) await new Promise(r => setTimeout(r, delayMs));
+                    if (fast.length || slow.length) await new Promise(r => setTimeout(r, delayMs));
                 }
             }
 
             const workers = [];
-            for (let w = 0; w < Math.min(CONCURRENCY, list.length); w++) workers.push(worker());
+            for (let w = 0; w < Math.min(CONCURRENCY, fast.length + slow.length); w++) {
+                workers.push(worker(() => fast.shift() || slow.shift()));
+            }
+            if (slow.length) workers.push(worker(() => slow.shift()));
             await Promise.allSettled(workers);
 
             // Coalesced cache write — one heavy IDB serialize for the whole batch
@@ -13815,10 +13828,24 @@
             if (label) label.textContent = all ? 'All' : String(num);
         };
 
+        // What the app keeps on this device (build 319, on request): IndexedDB and local
+        // storage as the browser counts them, beside the build in the Settings footer.
+        async function updateBuildStamp() {
+            const stamp = document.getElementById('build-stamp');
+            if (!stamp) return;
+            let used = '';
+            try {
+                const est = await navigator.storage?.estimate?.();
+                if (est && typeof est.usage === 'number') used = ` · ${(est.usage / 1048576).toFixed(1)} MB stored`;
+            } catch (e) { }
+            stamp.textContent = `RSS Reader · build ${window.APP_BUILD}${used}`;
+        }
+
         window.toggleSettings = () => {
             const modal = document.getElementById('settings-modal');
             modal.classList.toggle('hidden');
             if (!modal.classList.contains('hidden')) {
+                updateBuildStamp();
                 const briefSlider = document.getElementById('brief-stories-slider');
                 if (briefSlider) {
                     const all = window._briefStoriesPerCat === Infinity;
@@ -15963,7 +15990,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 318;
+        window.APP_BUILD = 319;
 
         (async function initApp() {
             try {
@@ -16044,8 +16071,8 @@
                     } catch (e) { console.warn('Saved read hashes skipped:', e?.message); }
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
-                    // Automatic briefs are gone (build 281): drop what they stored.
-                    Promise.resolve(window.appDB?.clearRetiredBriefs?.()).catch(() => { });
+                    // Automatic briefs are gone (build 281): their switch too (the v6 upgrade
+                    // deletes their store).
                     try { localStorage.removeItem('newsreader_briefs_enabled'); } catch (e) { }
                     // Prune readArchive: drop entries older than the longest window we support
                     // (30 days, used by full-history search). Done in the background so it
@@ -16136,30 +16163,20 @@
 
                 // 7. Start Background Sync
                 //
-                // Startup has TWO possible fetch triggers, and exactly ONE should run:
-                //   (a) this 4s fallback timer, using the locally-restored feed list, and
-                //   (b) the Firestore first-snapshot (syncCloudFeeds), using the synced list.
-                // Whichever happens first claims the startup fetch via _startupFetchDone.
-                // The snapshot cancels this timer when it wins the race; if the snapshot is
-                // slow and this timer already ran, the snapshot re-fetches ONLY when it
-                // actually brought different feeds (see syncCloudFeeds). This is the design
-                // fix for the old two-full-batches behavior — one fetch in the common case.
-                window._startupFetchDone = false;
-                if (window.feeds.length > 0) {
+                // Startup has TWO possible fetch triggers, and exactly ONE should run in the
+                // common case: (a) right here, with the locally restored feed list, and (b) the
+                // Firestore first snapshot (syncCloudFeeds), with the synced list. Whichever
+                // comes first claims the startup fetch via _startupFetchDone; the snapshot
+                // fetches again ONLY when it brought different feeds. Build 319: (a) starts at
+                // once. It used to wait 1.5s for the snapshot to come first, which only delayed
+                // fresh stories - the local list IS the synced list, saved on the last visit.
+                if (window.feeds.length > 0 && !window._startupFetchDone) {
                     console.log('App: Starting background fetch...');
-                    window._localFetchTimer = setTimeout(() => {
-                        window._localFetchTimer = null;
-                        if (window._startupFetchDone) return;      // snapshot already fetched
-                        if (window.feeds.length > 0) {
-                            window._startupFetchDone = true;
-                            // Remember which feeds this pass covered, so a later snapshot can
-                            // tell whether it needs to fetch anything new.
-                            window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
-                            window.runFullRefresh({ isBackground: true });
-                        }
-                    }, 1500);  // was 4000 -- with progressive rendering the first items
-                    // can paint ~2s after fetch start, so a long grace period
-                    // for the Firestore snapshot just reads as dead air.
+                    window._startupFetchDone = true;
+                    // Which feeds this pass covers, so the snapshot can tell whether it needs
+                    // to fetch anything new.
+                    window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
+                    window.runFullRefresh({ isBackground: true });
                 }
 
                 // Listeners
@@ -16345,7 +16362,6 @@
                 const dbFeeds = [];
                 snap.forEach(d => dbFeeds.push({ ...d.data(), docId: d.id }));
                 if (dbFeeds.length > 0) {
-                    if (window._localFetchTimer) { clearTimeout(window._localFetchTimer); window._localFetchTimer = null; }
                     window.accountStates.local = dbFeeds;
                     window.feeds = dbFeeds;
                     if (typeof saveLocalFeeds === 'function') saveLocalFeeds();
@@ -16362,9 +16378,7 @@
                     }
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
-                        // The local 4s fallback timer was already cancelled at the top of
-                        // this handler (runs on every snapshot). window.feeds === dbFeeds
-                        // here (assigned just above).
+                        // window.feeds === dbFeeds here (assigned just above).
                         // Fetch on startup ONLY when there's real work to do:
                         //   - no startup fetch has run yet (we won the race, or the timer's
                         //     feed list was empty), OR
@@ -16868,7 +16882,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v318';
+const CACHE_NAME = 'rss-reader-v319';
 const APP_SHELL = [
     '/',
     'index.html'
