@@ -12702,10 +12702,15 @@
         // refresh ending a few seconds after you return - and pushed every story down 19px.
         // The same happens when stories above you leave (read elsewhere, swept in at the end
         // of a refresh), when "N new since" changes, or when a late picture changes size.
-        // Every such change runs through this: the first story card on screen (the one
-        // crossing the top edge, or the first below it) is kept exactly where it is. If that
-        // card itself leaves (you marked it read), nothing is held and the page closes up,
-        // as before. Not at the very top (scrollTop 0): there the header simply grows.
+        // Every such change runs through this: the first thing on screen - a section
+        // heading, a story card or a section's Mark-read row, whichever crosses the top edge
+        // or comes first below it - is kept exactly where it is. If that thing itself leaves
+        // (you marked it read, its section closed), nothing is held and the page closes up.
+        // Build 321: it used to look at story cards only, so when a heading or row at the
+        // top went, it held the NEXT section's first card and pulled older stories in above.
+        // Today's own header is never the anchor: its status line growing is exactly what
+        // must be absorbed. Not at the very top (scrollTop 0): there the header simply grows.
+        const TODAY_ANCHORS = '.brief-cat-header, .brief-story-card[data-sa-id], .brief-cat-end, .brief-all-read-note';
         window.keepTodayInPlace = function (fn) {
             const scrollers = [
                 window._todayInColumn ? document.getElementById('today-column') : null,
@@ -12713,7 +12718,7 @@
             ].filter(s => s && s.scrollTop > 0 && s.getClientRects().length);
             const held = scrollers.map(s => {
                 const edge = s.getBoundingClientRect().top;
-                const card = Array.from(s.querySelectorAll('.brief-story-card[data-sa-id]'))
+                const card = Array.from(s.querySelectorAll(TODAY_ANCHORS))
                     .find(c => c.getClientRects().length && c.getBoundingClientRect().bottom > edge);
                 return card ? { s, card, y: card.getBoundingClientRect().top } : null;
             }).filter(Boolean);
@@ -12807,6 +12812,20 @@
             }
         };
 
+        // What follows `el` slides up into the space it just moved up by (build 321): `el`
+        // and every section after its own is drawn `dy` px lower, then eased to where it
+        // now is. Transform only, so nothing is laid out again; skipped for Reduce Motion.
+        window.briefSlideUp = function (el, dy) {
+            if (!el || !(dy > 1) || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+            const sec = el.closest('.brief-cat-section');
+            const els = [el];
+            for (let n = (sec || el).nextElementSibling; n; n = n.nextElementSibling) els.push(n);
+            els.forEach(e => { e.style.transition = 'none'; e.style.transform = `translateY(${dy}px)`; });
+            void el.offsetHeight;
+            els.forEach(e => { e.style.transition = 'transform 0.24s cubic-bezier(0.2, 0, 0, 1)'; e.style.transform = ''; });
+            setTimeout(() => els.forEach(e => { e.style.transition = ''; }), 300);
+        };
+
         // Where Back lands now that the story just read has left the brief: its own card
         // if it still shows, else the next unread story after it, else the last before.
         window.briefLandingCard = function (card) {
@@ -12820,9 +12839,20 @@
         };
 
         // The section's Mark-read row: the stories still showing above it, plus the
-        // other outlets' copies grouped under each (data-cov), go read in one tap. The
-        // row stays put while they leave and offers Undo for 5 seconds, which puts back
-        // exactly what this tap changed; then the emptied section goes too.
+        // other outlets' copies grouped under each (data-cov), go read in one tap, and the
+        // section offers Undo for 5 seconds, which puts back exactly what this tap changed;
+        // then the emptied section goes too.
+        // IT CLOSES UP; IT DOES NOT JUMP (build 321, on request: "jumping after tapping Mark
+        // X read ... it is annoying"). The row used to be held under your finger while the
+        // stories above it left - measured at 339px: the page scrolled back 1,094px in one
+        // frame and everything above the row became the previous section's stories, ones
+        // you had already passed; 5 seconds later older stories slid in at the top again.
+        // Now the read stories go, the section's heading moves to the top - as far down as
+        // Today's first line sits at rest (the scroller's top padding: below the status bar
+        // on the phone; the section's scroll-mt-20 is not in the compiled Tailwind and gives
+        // 0) - with "Marked N read - Undo" under it, and what follows
+        // slides up beneath; when the 5 seconds end, the next section closes up under what
+        // is above it. Undo puts the screen back as it was before the tap.
         window.markBriefSectionRead = function (btn) {
             const sec = btn && btn.closest('.brief-cat-section');
             const end = btn && btn.closest('.brief-cat-end');
@@ -12845,32 +12875,41 @@
                 updateBadges();
                 window.updateActionButton?.();
             };
-            window.briefKeepInPlace(end, () => {
-                // Not toggleUnread: the copies are already in `marked`, and Undo must put
-                // back exactly what this tap changed - no taking-along on either side.
-                marked.forEach(a => { a.unread = false; applyReadState(a); });
-                sec.classList.add('is-just-marked');
-                apply();
-            });
+            const scroller = end.closest('#today-column') || end.closest('#reader-view');
+            const rowBefore = end.getBoundingClientRect().top;
+            // Not toggleUnread: the copies are already in `marked`, and Undo must put
+            // back exactly what this tap changed - no taking-along on either side.
+            marked.forEach(a => { a.unread = false; applyReadState(a); });
+            sec.classList.add('is-just-marked');
+            apply();
             end.innerHTML = `<span class="brief-marked-note"><svg aria-hidden="true"><use href="#icon-check"/></svg>Marked ${cards.length} read</span><span aria-hidden="true">&middot;</span><button type="button" class="brief-undo-btn">Undo</button>`;
+            if (scroller) {
+                // The heading to the top if you had scrolled past it; left where it is if not.
+                const gap = parseFloat(getComputedStyle(scroller).paddingTop) || 0;
+                const headTop = sec.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+                if (headTop < gap) scroller.scrollTop += headTop - gap;
+            }
+            window.briefSlideUp(end, rowBefore - end.getBoundingClientRect().top);
             const timer = setTimeout(() => {
                 if (!sec.isConnected) return;
                 let next = sec.nextElementSibling;
                 while (next && !next.getClientRects().length) next = next.nextElementSibling;
-                window.briefKeepInPlace(next, () => {
+                const nextBefore = next ? next.getBoundingClientRect().top : 0;
+                window.keepTodayInPlace(() => {
                     sec.classList.remove('is-just-marked');
                     end.innerHTML = BRIEF_MARK_ROW_HTML;
                     window.syncBriefCards();
                 });
+                if (next) window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
             }, 5000);
             end.querySelector('.brief-undo-btn').onclick = () => {
                 clearTimeout(timer);
-                window.briefKeepInPlace(end, () => {
-                    marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
-                    sec.classList.remove('is-just-marked');
-                    end.innerHTML = BRIEF_MARK_ROW_HTML;
-                    apply();
-                });
+                marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
+                sec.classList.remove('is-just-marked');
+                end.innerHTML = BRIEF_MARK_ROW_HTML;
+                apply();
+                // The screen as it was before the tap: the row back where you tapped it.
+                if (scroller) scroller.scrollTop += end.getBoundingClientRect().top - rowBefore;
             };
         };
 
@@ -16031,7 +16070,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 320;
+        window.APP_BUILD = 321;
 
         (async function initApp() {
             try {
@@ -16923,7 +16962,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v320';
+const CACHE_NAME = 'rss-reader-v321';
 const APP_SHELL = [
     '/',
     'index.html'
