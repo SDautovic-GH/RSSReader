@@ -10310,9 +10310,13 @@
             // afresh.
             let keptScroll = null;
             if (prevArticle && prevArticle.id === window.TODAY_BRIEF_ID && !article.isBrief && bodyEl.classList.contains('is-brief-body')) {
+                // Read the scroll FIRST (build 320): with the page detached the reader is
+                // empty, its scroll is 0, and 317-319 kept that 0 - Today came back at the
+                // top for ~130ms (traced) until returnToBrief moved it into place.
+                const scrollTop = document.getElementById('reader-view')?.scrollTop || 0;
                 const frag = document.createDocumentFragment();
                 while (bodyEl.firstChild) frag.appendChild(bodyEl.firstChild);
-                window._todayKept = { brief: prevArticle, frag, scrollTop: document.getElementById('reader-view')?.scrollTop || 0 };
+                window._todayKept = { brief: prevArticle, frag, scrollTop };
             }
             window._todayRestored = false;
             if (article.isBrief) {
@@ -12690,6 +12694,37 @@
         // so does normalizeBriefDOM() for a brief being shown. Read stories are hidden
         // (CSS), except the one open beside the Today column; section counts, pills,
         // the Mark-read row's count and an all-read note follow what is left.
+        // TODAY HOLDS STILL (build 320, on request: "a jump 3-5 seconds after coming back").
+        // iOS Safari has no CSS scroll anchoring and it is off for briefs everywhere (CSS), so
+        // anything above the reading position that changed height moved the whole page.
+        // Measured at the phone's width (339px CSS at 115% Page Zoom): the header's status
+        // line wraps to a second row when "Updating..." becomes "Updated just now" - the
+        // refresh ending a few seconds after you return - and pushed every story down 19px.
+        // The same happens when stories above you leave (read elsewhere, swept in at the end
+        // of a refresh), when "N new since" changes, or when a late picture changes size.
+        // Every such change runs through this: the first story card on screen (the one
+        // crossing the top edge, or the first below it) is kept exactly where it is. If that
+        // card itself leaves (you marked it read), nothing is held and the page closes up,
+        // as before. Not at the very top (scrollTop 0): there the header simply grows.
+        window.keepTodayInPlace = function (fn) {
+            const scrollers = [
+                window._todayInColumn ? document.getElementById('today-column') : null,
+                document.querySelector('#article-body.is-brief-body') ? document.getElementById('reader-view') : null,
+            ].filter(s => s && s.scrollTop > 0 && s.getClientRects().length);
+            const held = scrollers.map(s => {
+                const edge = s.getBoundingClientRect().top;
+                const card = Array.from(s.querySelectorAll('.brief-story-card[data-sa-id]'))
+                    .find(c => c.getClientRects().length && c.getBoundingClientRect().bottom > edge);
+                return card ? { s, card, y: card.getBoundingClientRect().top } : null;
+            }).filter(Boolean);
+            fn();
+            held.forEach(({ s, card, y }) => {
+                if (!card.isConnected || !card.getClientRects().length) return;
+                const delta = card.getBoundingClientRect().top - y;
+                if (delta) s.scrollTop += delta;
+            });
+        };
+
         window.syncBriefCards = function (only) {
             const roots = only ? [only]
                 : [document.getElementById('today-column'), document.querySelector('#article-body.is-brief-body')].filter(Boolean);
@@ -12699,7 +12734,7 @@
             const cur = window.currentArticle;
             const activeId = window._todayInColumn && cur && !cur.isBrief ? cur.id : null;
             const boundary = window._visitBoundary;
-            roots.forEach(root => {
+            window.keepTodayInPlace(() => roots.forEach(root => {
                 const inColumn = root.id === 'today-column';
                 let anySection = false, anyLeft = false;
                 let newShown = 0;
@@ -12756,7 +12791,7 @@
                 } else if (note) {
                     note.remove();
                 }
-            });
+            }));
         };
 
         // iOS Safari has no CSS scroll anchoring, so when stories above the reading
@@ -12942,7 +12977,10 @@
         window.updateTodayStatus = function () {
             const text = (window._refreshInFlight || window._refreshPending) ? 'Updating…'
                 : (window._lastRefreshAt ? `Updated ${formatRelativeTime(window._lastRefreshAt)}` : '');
-            document.querySelectorAll('[data-today-status]').forEach(el => { el.textContent = text ? `• ${text}` : ''; });
+            const line = text ? `• ${text}` : '';
+            window.keepTodayInPlace(() => document.querySelectorAll('[data-today-status]').forEach(el => {
+                if (el.textContent !== line) el.textContent = line;
+            }));
             const where = todayOnScreen();
             const n = window._todayNewCount;
             const pill = todayNewPill();
@@ -13053,19 +13091,22 @@
             const url = img.getAttribute('src');
             if (img.naturalWidth < 100 || img.naturalHeight < 60) {
                 window._briefImgVerdict.set(url, 'bad');
-                box?.remove();
+                if (box) window.keepTodayInPlace(() => box.remove());
                 return;
             }
             window._briefImgVerdict.set(url, img.naturalWidth < 600 ? 'thumb' : 'ok');
             if (box && box.classList.contains('brief-hero') && img.naturalWidth < 600) {
-                box.classList.replace('brief-hero', 'brief-thumb');
-                // A thumbnail's place is after the source / time line (build 291).
-                box.parentElement?.querySelector(':scope > .brief-story-meta')?.after(box);
+                window.keepTodayInPlace(() => {
+                    box.classList.replace('brief-hero', 'brief-thumb');
+                    // A thumbnail's place is after the source / time line (build 291).
+                    box.parentElement?.querySelector(':scope > .brief-story-meta')?.after(box);
+                });
             }
         };
         window.briefImgFailed = function (img) {
             window._briefImgVerdict.set(img.getAttribute('src'), 'bad');
-            img.parentElement?.remove();
+            const box = img.parentElement;
+            if (box) window.keepTodayInPlace(() => box.remove());
         };
 
         function renderBriefSectionsHtml(categorySections, opts = {}) {
@@ -15990,7 +16031,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 319;
+        window.APP_BUILD = 320;
 
         (async function initApp() {
             try {
@@ -16882,7 +16923,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v319';
+const CACHE_NAME = 'rss-reader-v320';
 const APP_SHELL = [
     '/',
     'index.html'
