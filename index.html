@@ -3300,9 +3300,13 @@
                fullscreen with viewport-fit=cover. The h-[74px] utility
                pins box height, so padding alone is eaten by box-sizing —
                also override height to auto on mobile. */
+            /* The logo sits 12px under the clock strip, as on Today (build 335, on request: it
+               was right at the strip here and 23px under it on Today). The same max(.., 50px)
+               as Today's, so both match on every iPhone. 10px, not 12: the 40px buttons make
+               the row 40px tall, and the 36px logo is centred in it, 2px down. */
             #sidebar-pane>#sidebar-header {
                 height: auto !important;
-                padding: env(safe-area-inset-top, 0px) 14px 0.75rem !important;   /* was 1.25rem (326) */
+                padding: calc(max(env(safe-area-inset-top, 0px), 50px) + 10px) 14px 0.75rem !important;   /* bottom was 1.25rem (326) */
             }
 
             /* Timeline + viewer panes have no visible header on mobile.
@@ -3389,23 +3393,8 @@
                 padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 90px) !important;
             }
 
-            #sidebar-pane>#sidebar-header svg {
-                width: 1.5rem !important;
-                height: 1.5rem !important;
-            }
-
-            #sidebar-pane>#sidebar-header h1 {
-                font-size: 1.1rem !important;
-            }
-
-            #sidebar-pane>#sidebar-header button {
-                padding: 0.5rem !important;
-            }
-
-            #sidebar-pane>#sidebar-header button svg {
-                width: 1.5rem !important;
-                height: 1.5rem !important;
-            }
+            /* Following's header title, status and buttons are sized by the classes it shares
+               with Today's header (.app-title, .app-subtitle, .app-header-btn; build 335). */
 
             /* Timeline header — taller with larger text and button */
             #timeline-pane>div:first-child {
@@ -3431,6 +3420,14 @@
 
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
                 padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 8px) !important;
+            }
+
+            /* Today's header row starts 10px under the clock strip, as Following's (build 335):
+               1px here, then 3px each from #article-body, .brief-container and .brief-header.
+               Both rows are 40px (the buttons), so both logos sit 12px under it. This was 14px,
+               and the logo sat 23px under the strip. */
+            #viewer-pane.mobile-active.is-today-brief #reader-view {
+                padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 1px) !important;
             }
 
             /* Articles list topbar hidden on mobile — unread count lives in the Reader tab */
@@ -4935,7 +4932,7 @@
         @media (max-width: 900px) {
             #article-body.is-brief-body {
                 padding-top: 3px !important;
-                padding-bottom: 2rem !important;
+                padding-bottom: 0 !important;   /* was 2rem (335): see .brief-container */
                 font-size: 1em !important;
                 line-height: normal !important;
             }
@@ -4962,8 +4959,11 @@
                 font-size: 1em !important;
                 line-height: normal;
                 padding-top: 3px !important;
-                padding-bottom: calc(114px + env(safe-area-inset-bottom, 0px)) !important;
-                /* Mobile floating bar clearance + breathing room */
+                /* No room of its own under Today's end (build 335, on request): #reader-view's
+                   bottom padding already clears the tab bar. This 114px, #article-body's 2rem
+                   and the footer's 2.5rem left 212px empty under "Mark All Read in Folders";
+                   now ~26px (more with an iPhone's home bar, which the padding also adds). */
+                padding-bottom: 0 !important;
             }
         }
 
@@ -5012,10 +5012,51 @@
             white-space: nowrap !important;
         }
 
+        /* THE APP LOGO, ONE DEFINITION (build 335, on request: "one logo ... for both"): the
+           RSS mark (#icon-rss) on the blue rounded square, in Following's header and Today's
+           heading alike. A 22px mark on the desktop (the sidebar's, as before); 1.5rem on the
+           phone, so 36px with the 0.375rem padding. Change it here and both follow. */
+        .app-logo {
+            display: inline-flex;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+            padding: 0.375rem;
+            border-radius: 0.5rem;
+            background: var(--color-blue-600);
+            color: #fff;
+            box-shadow: 0 1px 3px 0 #0000001a, 0 1px 2px -1px #0000001a;
+        }
+
+        .app-logo svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        @media (max-width: 900px) {
+            .app-logo svg {
+                width: 1.5rem;
+                height: 1.5rem;
+            }
+        }
+
         /* The app logo in Today's heading is the phone's (build 334); the desktop's sidebar
            already shows it, so the desktop heading keeps "Today -". */
         .brief-header-logo {
             display: none;
+        }
+
+        /* Words and controls for one size only (build 335; 334 called it brief-desk-only). */
+        @media (min-width: 901px) {
+            .phone-only {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .desk-only {
+                display: none !important;
+            }
         }
 
         @media (max-width: 900px) {
@@ -5032,60 +5073,111 @@
                 font-size: 0.78em !important;
             }
 
-            /* THE LOGO ROW (build 334, on request, like Apple News): "[logo] Thu, Oct 8", and
-               the status at the same row's right end, so the status needs no row of its own.
-               The row is the heading's height and the status one line that cannot wrap, so
-               "Updating..." becoming "Updated just now - 3 new" still moves nothing (the rule
-               of 322). "Today -" (the tab bar says it), the year, "7 sections" (the pills show
-               them), "~" and " read" are the desktop's. Less space under it too: 0.85rem +
-               1rem -> 0.5rem + 0.5rem, and 0.85rem -> 0.5rem under the pills. */
+            /* ONE HEADER FOR TODAY AND FOLLOWING (build 335, on request: "Do want them looking
+               the same in the end", then "Great idea! Do it."). Following's layout: the logo, a
+               title with the status in small type under it, icon buttons at the right (Today's
+               is Listen). The shared parts are .app-logo, .app-title, .app-subtitle and
+               .app-header-btn, defined once below. Today's header still scrolls away and
+               Following's stays put. "Today -" (the tab bar says it), the year and the "7
+               sections - 65 stories - ~23 min read" line (the pills show the counts) are the
+               desktop's; the phone keeps only "N muted - Show", when there is any. The status is
+               a line of fixed height that cannot wrap, so "Updating..." becoming "Updated just
+               now - 3 new" moves nothing (the rule of 322). Less space under it than before 334:
+               0.85rem + 1rem -> 0.5rem + 0.5rem. */
+            /* Its line as Following's: 0.75rem under the row, edge to edge, in Following's grey
+               (border-gray-200 / dark:border-gray-700 there). */
             .brief-header {
-                display: grid !important;
-                grid-template-columns: auto minmax(0, 1fr);
-                column-gap: 10px;
-                align-items: baseline;
-                padding-bottom: 0.5rem !important;
+                width: auto !important;
+                margin-left: -14px !important;
+                margin-right: -14px !important;
+                padding-left: 14px !important;
+                padding-right: 14px !important;
+                padding-bottom: 0.75rem !important;
                 margin-bottom: 0.5rem !important;
             }
 
-            .brief-header > .brief-header-title {
-                grid-row: 1;
-                grid-column: 1;
-                margin-bottom: 4px !important;
+            html:not(.dark) .brief-header {
+                border-bottom-color: var(--color-gray-200) !important;
             }
 
-            .brief-header > .brief-header-status {
-                grid-row: 1;
-                grid-column: 2;
-                margin: 0;
-                text-align: right;
+            html.dark .brief-header {
+                border-bottom-color: var(--color-gray-700) !important;
             }
 
-            .brief-header > .brief-header-meta {
-                grid-row: 2;
-                grid-column: 1 / -1;
+            .brief-header .app-header-row {
+                display: flex;
+                align-items: center;
             }
 
-            /* Following's logo (a blue rounded square with the RSS mark), inside the heading's
-               line: at 1.3em it stood 1px over the 1.25 line and made the row 4px taller. */
+            .brief-header .app-header-text {
+                flex: 1 1 auto;
+                min-width: 0;
+                display: flex;
+                flex-direction: column-reverse;   /* the status comes first, for the desktop */
+            }
+
             .brief-header-logo {
                 display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 1.15em;
-                height: 1.15em;
-                border-radius: 0.28em;
-                margin-right: 0.4em;
-                vertical-align: -0.2em;
+                margin-right: 0.5rem;   /* Following's space-x-2 */
             }
 
-            .brief-header-logo svg {
-                width: 0.85em;
-                height: 0.85em;
+            .brief-header-meta {
+                margin-top: 8px;
             }
 
-            .brief-desk-only {
+            .brief-header-meta:not(:has(.brief-muted-btn)) {
                 display: none !important;
+            }
+
+            /* THE HEADER PARTS BOTH SCREENS SHARE ON THE PHONE (build 335): Following's look,
+               written once - a 1.1rem bold title, an 11px status line 2px under it, 40px icon
+               buttons (a 1.5rem icon in 0.5rem padding). "html" lifts them over the brief and
+               sidebar rules they replace. */
+            html .app-title {
+                font-size: 1.1rem !important;
+                font-weight: 700 !important;
+                line-height: 1 !important;
+                letter-spacing: -0.025em;
+                margin: 0 !important;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                color: var(--color-gray-900) !important;
+            }
+
+            html.dark .app-title {
+                color: #fff !important;
+            }
+
+            html .app-subtitle {
+                display: block;
+                height: 1em;   /* one line, empty or not, so nothing moves when it fills */
+                margin: 2px 0 0 !important;
+                font-size: 11px !important;
+                font-weight: 500;
+                line-height: 1 !important;
+                letter-spacing: normal !important;
+                color: var(--color-gray-500) !important;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            html.dark .app-subtitle {
+                color: var(--color-gray-400) !important;
+            }
+
+            html .app-header-btn {
+                flex-shrink: 0;
+                padding: 0.5rem !important;
+                margin: 0 !important;
+                border-radius: 0.5rem;
+                color: var(--color-gray-500) !important;
+            }
+
+            html .app-header-btn svg {
+                width: 1.5rem !important;
+                height: 1.5rem !important;
             }
         }
 
@@ -5457,6 +5549,12 @@
             justify-content: center;
             width: 100%;
             box-sizing: border-box;
+        }
+
+        @media (max-width: 900px) {
+            .brief-footer {
+                padding-bottom: 0 !important;   /* the tab bar's clearance is #reader-view's (335) */
+            }
         }
 
         /* Story entries — Editorial Memo Flow (Desktop & Mobile) */
@@ -6648,45 +6746,46 @@
             <div id="sidebar-header"
                 class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-2 min-w-0">
-                    <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-sm flex-shrink-0">
-                        <svg class="w-[22px] h-[22px]">
+                    <div class="app-logo">
+                        <svg>
                             <use href="#icon-rss" />
                         </svg>
                     </div>
                     <div class="flex flex-col min-w-0 leading-none">
+                        <!-- "Following" on the phone, the tab's name, as Today's header names its day
+                             (build 335); the logo says which app it is. -->
                         <h1
-                            class="font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap">
-                            RSS Reader</h1>
+                            class="app-title font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap"><span class="desk-only">RSS Reader</span><span class="phone-only">Following</span></h1>
                         <!-- Live status: unread total + last-updated relative time. Populated by
                              updateHeaderStatus() on every updateBadges() and refresh completion. -->
                         <span id="header-status"
-                            class="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap truncate mt-0.5"></span>
+                            class="app-subtitle text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap truncate mt-0.5"></span>
                     </div>
                 </div>
                 <div class="flex space-x-1">
                     <button id="header-refresh-btn" onclick="refreshAll()"
-                        class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"
+                        class="app-header-btn p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"
                         title="Refresh Feeds">
                         <svg class="h-[22px] w-[22px]">
                             <use href="#icon-refresh" />
                         </svg>
                     </button>
                     <button id="header-edit-feeds-btn" onclick="openFeedManager()"
-                        class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Edit feeds"
+                        class="app-header-btn p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Edit feeds"
                         aria-label="Edit feeds">
                         <svg class="h-[22px] w-[22px]">
                             <use href="#icon-pencil" />
                         </svg>
                     </button>
                     <button id="header-add-feed-btn" onclick="openAddFeedModal()"
-                        class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Add Feed"
+                        class="app-header-btn p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Add Feed"
                         aria-label="Add Feed">
                         <svg class="h-[22px] w-[22px]">
                             <use href="#icon-plus" />
                         </svg>
                     </button>
                     <button onclick="toggleSettings()"
-                        class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"
+                        class="app-header-btn p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"
                         title="Settings">
                         <svg class="h-[22px] w-[22px]">
                             <use href="#icon-settings" />
@@ -7406,7 +7505,7 @@
                             <div class="flex justify-between items-center">
                                 <div class="min-w-0">
                                     <span class="settings-item-label">Title Size</span>
-                                    <p class="text-[12px] text-gray-400 mt-1">Stories, and Today's heading</p>
+                                    <p class="text-[12px] text-gray-400 mt-1">Stories, and Today's heading on a computer</p>
                                 </div>
                                 <span class="settings-value" id="shared-article-title-val">1.2em</span>
                             </div>
@@ -12714,6 +12813,8 @@
             }
 
             const dateStr = typeof getETParts === 'function' ? getETParts(new Date(now)).dateStr : '';
+            const ttsToday = window._ttsActive && window._ttsSource === 'today';
+            const todayListenBtn = cls => `<button type="button" class="${cls}" onclick="window.toggleTTS('today')" ${ttsToday ? 'title="Stop listening" aria-label="Stop listening to Today"' : 'title="Listen to Today" aria-label="Listen to Today"'}><svg aria-hidden="true"><use href="#${ttsToday ? 'icon-stop' : 'icon-headphones'}"/></svg></button>`;
             const composed = composeSlotBrief({
                 id: window.TODAY_BRIEF_ID,
                 slot: 'today',
@@ -12723,10 +12824,13 @@
                 triggerTs: now,
                 windowStart,
                 windowEnd: now,
-                // Listen to Today (build 312), then "3 muted - Show" / "Hide 3 muted" (build 311)
-                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-listen-btn" onclick="window.toggleTTS('today')" ${window._ttsActive && window._ttsSource === 'today' ? 'title="Stop listening" aria-label="Stop listening to Today"' : 'title="Listen to Today" aria-label="Listen to Today"'}><svg aria-hidden="true"><use href="#${window._ttsActive && window._ttsSource === 'today' ? 'icon-stop' : 'icon-headphones'}"/></svg></button>` + (mutedCount
-                    ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-muted-btn" onclick="window.toggleShowMuted()">${window._showMuted ? `Hide ${mutedCount} muted` : `${mutedCount} muted · Show`}</button>`
-                    : '')
+                // Listen to Today (build 312), then "3 muted - Show" / "Hide 3 muted" (build 311).
+                // On the phone Listen is a header button like Following's (335); both copies are
+                // .brief-listen-btn, so updateTTSButton keeps them in step.
+                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>${todayListenBtn('brief-listen-btn desk-only')}` + (mutedCount
+                    ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span><button type="button" class="brief-muted-btn" onclick="window.toggleShowMuted()">${window._showMuted ? `Hide ${mutedCount} muted` : `${mutedCount} muted · Show`}</button>`
+                    : ''),
+                headerAction: todayListenBtn('brief-listen-btn app-header-btn phone-only hover:bg-gray-200 dark:hover:bg-gray-700')
             }, sections, totalStories);
 
             let body = composed.body;
@@ -12914,7 +13018,7 @@
                     el.textContent = newShown ? `${newShown} new` : '';
                     if (newShown) {
                         const s = document.createElement('span');
-                        s.className = 'brief-desk-only';   // the phone's row has room for "3 new" (334)
+                        s.className = 'desk-only';   // the phone's status line has room for "3 new" (334)
                         s.textContent = since;
                         el.appendChild(s);
                     }
@@ -13630,16 +13734,23 @@
                     <div class="brief-header mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
                         <!-- No "LIVE BRIEF • Unread · last 24 hours" row above the status line any
                              more (build 331, on request: "I don't need it at all"). -->
-                        <!-- The phone shows "[logo] Thu, Oct 8" with the status at the row's right end,
-                             and "65 stories - 23 min"; brief-desk-only parts are the desktop's (334). -->
-                        <div class="brief-header-status"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
-                        <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight"><span class="brief-header-logo bg-blue-600 text-white" aria-hidden="true"><svg><use href="#icon-rss"/></svg></span><span class="brief-desk-only">${esc(slotDef.name)} — </span><span class="whitespace-nowrap">${esc(headingDay)}<span class="brief-desk-only">, ${esc(headingYear)}</span></span></h2>
+                        <!-- On the phone, Following's header: logo, "Thu, Oct 8" over the status, Listen at
+                             the right (build 335). The desktop shows the status, "Today - Thu, Oct 8, 2026"
+                             and the details line, as before; the logo and the button are the phone's. -->
+                        <div class="app-header-row">
+                            <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#icon-rss"/></svg></span>
+                            <div class="app-header-text">
+                                <div class="brief-header-status app-subtitle"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
+                                <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white mb-2 leading-tight"><span class="desk-only">${esc(slotDef.name)} — </span><span class="whitespace-nowrap">${esc(headingDay)}<span class="desk-only">, ${esc(headingYear)}</span></span></h2>
+                            </div>
+                            ${slotDef.headerAction || ''}
+                        </div>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
-                            <span class="brief-meta-item whitespace-nowrap brief-desk-only">${categorySections.length} sections</span>
-                            <span class="brief-meta-dot text-gray-500 flex-shrink-0 brief-desk-only">•</span>
-                            <span class="brief-meta-item whitespace-nowrap">${totalStories} stories</span>
-                            <span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span>
-                            <span class="brief-meta-item whitespace-nowrap"><span class="brief-desk-only">~</span>${readTimeEst} min<span class="brief-desk-only"> read</span></span>
+                            <span class="brief-meta-item whitespace-nowrap desk-only">${categorySections.length} sections</span>
+                            <span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>
+                            <span class="brief-meta-item whitespace-nowrap desk-only">${totalStories} stories</span>
+                            <span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>
+                            <span class="brief-meta-item whitespace-nowrap desk-only">~${readTimeEst} min read</span>
                             ${slotDef.metaExtra || ''}
                         </div>
                     </div>
@@ -16192,7 +16303,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 334;
+        window.APP_BUILD = 335;
 
         (async function initApp() {
             try {
@@ -17093,7 +17204,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v334';
+const CACHE_NAME = 'rss-reader-v335';
 const APP_SHELL = [
     '/',
     'index.html'
