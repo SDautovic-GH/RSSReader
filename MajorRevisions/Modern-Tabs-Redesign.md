@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 329** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 330** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-08 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–329)
+### Follow-ups (Builds 275–330)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,9 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **Source names: full width, and no longer ALL CAPS (330, on request: "the feed name ... cuts even though there is room on the line ... I need it to be longer", then "Perhaps we get away from ALL CAPS to first letter Caps?"):**
+  - **No width cap in Today.** The name was capped at 170px on the phone and 220px on the desktop. The lists never had one. The dot and time don't shrink, so the name now takes what is left of the line, and is cut only when the line is full. Measured at 339px on 65 Today stories: 26 names had been cut with up to 59px still free. Now no name is cut while its line has room, at 1em, at 1.3em and on the desktop.
+  - **Names as each feed writes them** ("BBC News", "The Verge") in Today, the lists and the story's source line, instead of uppercase. `capitalize` was not used: it would turn a web-address name into "Www.bleepingcomputer.com". The `uppercase` utility left the three templates, along with `normalizeBriefDOM`'s inline style. The four source-name rules now say `text-transform: none !important`, so briefs stored with the old class follow too. With natural case, fewer names are cut at 339px: 9 of 65, all on full lines. A feed named in lower case shows that way; Edit in the feed manager renames it.
 - **Source Name Size; Today's folders refill after Top Stories (329, on request: "do 1 & 2", the two points raised in 328):**
   - **Sidebar > Feed Name Size is now Article List > Source Name Size,** with the hint "Lists, Today, and the source line above a story". It never sized the sidebar's feed names, which follow Folder Size. It sits after Line Height, where Author & Date Size sits in Article Reader. Same slider id and saved key (`sharedFeedName`), so a tuned size carries over. Sidebar now holds Folder Size and Row Spacing.
   - **Each Today folder fills back up to Stories per Category after Top Stories takes its five.** Top Stories is still chosen exactly as before, from each folder's selection. `buildStoryClusters` now returns `reselect(skipIds)`, which reruns the per-folder selection (source-diversity cap included) without those stories. The clustering is not redone. Measured at 339px with 17/24/45/93/41/59 stories available: at 10, every folder shows 10 (News showed 5 before). At 5, every folder shows 5, and News no longer drops out. At All, News shows its other 88 beside the 5 in Top Stories. No story appears twice. Today is longer: 65 stories at 10 per category, against 60 before.

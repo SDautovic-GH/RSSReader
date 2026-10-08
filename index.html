@@ -2886,7 +2886,10 @@
         .brief-story-card>div:first-child>span:first-of-type {
             font-size: var(--list-source-size, 1.0em) !important;
             font-weight: 700 !important;
-            text-transform: uppercase !important;
+            /* As the feed writes it ("BBC News"), no longer ALL CAPS (build 330, on request).
+               "capitalize" would also make "Www.bleepingcomputer.com" of a web address. Kept
+               as a rule so briefs stored with the old `uppercase` class follow it too. */
+            text-transform: none !important;
             line-height: 1.25 !important;
         }
 
@@ -3143,7 +3146,7 @@
             .brief-story-card>div:first-child>span:first-of-type {
                 font-size: var(--mob-feed-name-size, 1.0em) !important;
                 font-weight: 700 !important;
-                text-transform: uppercase !important;
+                text-transform: none !important;
                 line-height: 1.25 !important;
             }
 
@@ -5504,12 +5507,14 @@
         .brief-story-card .list-source-label {
             font-size: var(--list-source-size, 1.0em) !important;
             font-weight: 700 !important;
-            text-transform: uppercase !important;
+            text-transform: none !important;
             color: #94a3b8;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 220px;
+            /* No width cap (build 330, on request): names were cut at 220px here and 170px on the
+               phone with room left on the line. The dot and time don't shrink, so the name takes
+               what is left and is cut only when the line is full, as in the lists. */
             flex-shrink: 1;
         }
 
@@ -5735,8 +5740,7 @@
             .brief-story-card .list-source-label {
                 font-size: var(--mob-feed-name-size, 1.0em) !important;
                 font-weight: 700 !important;
-                text-transform: uppercase !important;
-                max-width: 170px !important;
+                text-transform: none !important;
                 white-space: nowrap !important;
             }
 
@@ -6864,7 +6868,7 @@
                         <article id="article-content" class="hidden animate-in fade-in duration-300">
                             <div id="article-header-card">
                                 <p id="article-meta" onclick="filterByCurrentSource()"
-                                    class="flex items-center gap-1.5 text-[10px] font-bold uppercase mb-2 cursor-pointer hover:opacity-70 transition-opacity">
+                                    class="flex items-center gap-1.5 text-[10px] font-bold mb-2 cursor-pointer hover:opacity-70 transition-opacity">
                                     <img id="article-favicon" src="" class="rounded-sm hidden"
                                         style="width:1em;height:1em;object-fit:contain;vertical-align:middle">
                                     <span id="article-source-label"></span>
@@ -9515,7 +9519,7 @@
                     <div class="flex items-center justify-between mb-1 gap-2">
                         <div class="flex items-center gap-1.5 min-w-0 flex-1">
                             ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
-                            <span class="list-source-label font-bold text-gray-500 dark:text-gray-400 uppercase truncate mr-2">${favicon}${esc(sourceLabel)}</span>
+                            <span class="list-source-label font-bold text-gray-500 dark:text-gray-400 truncate mr-2">${favicon}${esc(sourceLabel)}</span>
                         </div>
                         <span class="list-date-label text-[11px] text-gray-500 dark:text-gray-500 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                     </div>
@@ -9934,9 +9938,8 @@
 
                     let sSource = sMeta.querySelector('.brief-story-source') || sMeta.querySelector('.list-source-label') || sMeta.querySelector('span:first-of-type');
                     if (sSource) {
-                        sSource.classList.add('brief-story-source', 'list-source-label', 'font-bold', 'uppercase', 'truncate');
+                        sSource.classList.add('brief-story-source', 'list-source-label', 'font-bold', 'truncate');
                         sSource.style.fontWeight = '700';
-                        sSource.style.textTransform = 'uppercase';
                     }
                     let sTime = sMeta.querySelector('.brief-story-time') || sMeta.querySelector('span:last-of-type');
                     if (sTime && sTime !== sSource) {
@@ -13321,7 +13324,7 @@
                             ${heroHtml}
                             <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
                                 ${favHtml}
-                                <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
+                                <span class="brief-story-source list-source-label font-bold truncate">${esc(st.source)}</span>
                                 <span class="brief-story-dot flex-shrink-0">•</span>
                                 <span class="brief-story-time flex-shrink-0 whitespace-nowrap">${relTime}</span>
                                 ${mutedTag}
@@ -16139,7 +16142,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 329;
+        window.APP_BUILD = 330;
 
         (async function initApp() {
             try {
@@ -17040,7 +17043,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v329';
+const CACHE_NAME = 'rss-reader-v330';
 const APP_SHELL = [
     '/',
     'index.html'
