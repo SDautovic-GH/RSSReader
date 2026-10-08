@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 324** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 325** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-08 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–324)
+### Follow-ups (Builds 275–325)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,12 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **Today's heading: "Today — Thu, Oct 8, 2026" (325, on request):** "Today — Thursday, October 8, 2026" wrapped at the phone's width with only "2026" on the second line. The heading now uses a short date (`headingDate`: weekday, month short), kept in one piece (`whitespace-nowrap`), so a large Title Size moves the whole date down, never the year alone. Listen still says the long date. Measured at 339px: one line up to Article Reader > Title Size 1.6em (the setting here is 1.2em, 19.2px); at 1.8em and above the whole date sits on line 2.
+- **Edit opens Feeds, the gear opens Settings (325, on request: in Following, "tapping pencil/edit button or gear button land on the same"):**
+  - **Why they matched:** the card reopened on whichever tab it last showed, so after Edit the gear landed on Feeds too.
+  - **Now two screens in one card, each with its own title:** Edit shows **Feeds** (the feed manager). The gear always shows **Settings** (`toggleSettings` opens Settings; `toggleSettings('feeds')` and `openFeedManager` open Feeds). The Feeds / Preferences tab row is gone.
+  - **Other entry points:** the welcome screen's "Add Your First Feed" opens Feeds, and the two "Settings → Feeds" hints now say "Edit feeds (the pencil)".
+  - **Checked at 339px:** gear → Settings, pencil → Feeds, gear after pencil → Settings, and the welcome button → Feeds; no tab row.
 - **Today's story titles bold and smaller; one order for the List and Reader settings (324, on request):**
   - **Titles:** semibold (600) again, after build 282 had made them regular, at 0.95 of Article List > Title Size (`.brief-story-title`, desktop and phone). Measured at 339px with default sizes: 17.6px regular became 16.7px semibold. A full step smaller (0.9 = 15.8px) put the headline below the 16px summary under it, so 0.95 was kept. The slider still moves them.
   - **Settings, Article List and Article Reader in one order:** Title Size, then its text (Preview Text Size / Body Text Size), Line Height, then what is particular to the section (Preview Lines and Social Preview Lines / Author & Date Size).

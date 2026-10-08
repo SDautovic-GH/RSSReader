@@ -6799,7 +6799,7 @@
                                 <p class="text-sm text-gray-500 mb-6 max-w-xs mx-auto">Your personal, ad-free news hub.
                                     Add your first feed to get started.</p>
                                 <button
-                                    onclick="if(isMobile()){setMobilePane('sidebar');toggleSettings();}else{toggleSettings();}"
+                                    onclick="if(isMobile()){setMobilePane('sidebar');}openFeedManager();"
                                     class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -6807,7 +6807,7 @@
                                     </svg>
                                     Add Your First Feed
                                 </button>
-                                <p class="text-xs text-gray-600 mt-4">Or import an OPML file from Settings → Feeds</p>
+                                <p class="text-xs text-gray-600 mt-4">Or import an OPML file from Edit feeds (the pencil)</p>
                             </div>
                             <div id="empty-state-select">
                                 <!-- Has feeds: prompt to select article -->
@@ -7016,24 +7016,16 @@
             <!-- Header -->
             <div
                 class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
-                <h2 class="font-bold text-lg">App Settings</h2>
-                <button onclick="toggleSettings()" aria-label="Close settings" style="font-size:1.6rem;line-height:1"
+                <h2 id="settings-title" class="font-bold text-lg">Settings</h2>
+                <button onclick="toggleSettings()" aria-label="Close" style="font-size:1.6rem;line-height:1"
                     class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 -mr-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">✕</button>
             </div>
 
-            <!-- Tabs -->
-            <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <button id="settings-tab-feeds" onclick="switchSettingsTab('feeds')"
-                    class="flex-1 py-2.5 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 transition-colors">
-                    Feeds
-                </button>
-                <button id="settings-tab-prefs" onclick="switchSettingsTab('prefs')"
-                    class="flex-1 py-2.5 text-sm font-semibold text-gray-400 border-b-2 border-transparent hover:text-gray-600 transition-colors">
-                    Preferences
-                </button>
-            </div>
+            <!-- TWO SCREENS IN ONE CARD (build 325, on request: the pencil and the gear "land on
+                 the same"): Following's Edit shows Feeds, the gear shows Settings - each with its
+                 own title. The Feeds / Preferences tab row is gone. -->
 
-            <!-- Tab: Feeds -->
+            <!-- Feeds (the feed manager) -->
             <div id="settings-panel-feeds" class="px-5 pt-8 pb-6 overflow-y-auto flex-1 no-scrollbar">
                 <div class="flex items-center justify-between mb-4">
                     <button onclick="openAddFeedModal()"
@@ -9040,7 +9032,7 @@
             let headline, subtext;
             if (!hasFeeds) {
                 headline = 'No feeds yet';
-                subtext = 'Add your first feed from Settings → Feeds to get started.';
+                subtext = 'Add your first feed from Edit feeds (the pencil) to get started.';
             } else if (isSaved) {
                 headline = 'Nothing saved yet';
                 subtext = 'Tap the star on any article to keep it here for future reference. Saved items sync across your devices.';
@@ -13507,6 +13499,17 @@
                 day: 'numeric',
                 year: 'numeric'
             });
+            // The heading's date is short, "Thu, Oct 8, 2026" (build 325, on request): the long
+            // one wrapped at the phone's width with only the year on the second line. It stays in
+            // one piece, so a large Title Size moves the whole date down, never the year alone.
+            // Listen still says the long one.
+            const headingDate = triggerDate.toLocaleDateString('en-US', {
+                timeZone: 'America/New_York',
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
             const shortDateFormatted = triggerDate.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
                 month: 'short',
@@ -13525,7 +13528,7 @@
                             <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0">• ${esc(slotDef.windowLabel)}</span>
                         </div>
                         <div class="brief-header-status"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
-                        <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — ${esc(datePartFormatted)}</h2>
+                        <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — <span class="whitespace-nowrap">${esc(headingDate)}</span></h2>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
                             <span class="brief-meta-item whitespace-nowrap">${categorySections.length} sections</span>
                             <span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span>
@@ -13968,10 +13971,13 @@
             stamp.textContent = `RSS Reader · build ${window.APP_BUILD}${used}`;
         }
 
-        window.toggleSettings = () => {
+        // The gear: Settings. openFeedManager passes 'feeds' for Edit (build 325) - the card used
+        // to reopen on whichever tab was shown last, so the gear landed on Feeds too.
+        window.toggleSettings = (tab) => {
             const modal = document.getElementById('settings-modal');
             modal.classList.toggle('hidden');
             if (!modal.classList.contains('hidden')) {
+                window.switchSettingsTab(tab === 'feeds' ? 'feeds' : 'prefs');
                 updateBuildStamp();
                 const briefSlider = document.getElementById('brief-stories-slider');
                 if (briefSlider) {
@@ -13987,8 +13993,8 @@
 
         // Following > Edit (build 324): Settings, on its Feeds tab - the feed manager.
         window.openFeedManager = () => {
-            if (document.getElementById('settings-modal').classList.contains('hidden')) window.toggleSettings();
-            window.switchSettingsTab('feeds');
+            if (document.getElementById('settings-modal').classList.contains('hidden')) window.toggleSettings('feeds');
+            else window.switchSettingsTab('feeds');
         };
         // A feed's stories, from the manager: Settings closes and its list opens.
         window.openFeedFromManager = (name) => {
@@ -14048,17 +14054,10 @@
             try { saved = localStorage.getItem('newsreader_theme'); } catch (e) { }
             applyTheme(saved === 'light' ? 'light' : 'dark');
         })();
+        // Which of the card's two screens shows (build 325): 'feeds' (Edit) or 'prefs' (the gear).
         window.switchSettingsTab = (tab) => {
-            ['feeds', 'prefs'].forEach(t => {
-                const panel = document.getElementById(`settings-panel-${t}`);
-                const btn = document.getElementById(`settings-tab-${t}`);
-                const active = t === tab;
-                panel.classList.toggle('hidden', !active);
-                btn.classList.toggle('text-blue-600', active);
-                btn.classList.toggle('border-blue-600', active);
-                btn.classList.toggle('text-gray-400', !active);
-                btn.classList.toggle('border-transparent', !active);
-            });
+            ['feeds', 'prefs'].forEach(t => document.getElementById(`settings-panel-${t}`).classList.toggle('hidden', t !== tab));
+            document.getElementById('settings-title').textContent = tab === 'feeds' ? 'Feeds' : 'Settings';
         };
         window.openAddFeedModal = () => {
             const cats = [...new Set(window.feeds.map(f => f.category || 'Uncategorized'))].sort();
@@ -16082,7 +16081,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 324;
+        window.APP_BUILD = 325;
 
         (async function initApp() {
             try {
@@ -16983,7 +16982,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v324';
+const CACHE_NAME = 'rss-reader-v325';
 const APP_SHELL = [
     '/',
     'index.html'
