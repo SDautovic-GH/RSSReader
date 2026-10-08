@@ -5,8 +5,8 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 321** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
-| Last Updated | 2026-10-07 |
+| Current State | **Active — Build 322** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Last Updated | 2026-10-08 |
 
 ---
 
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–321)
+### Follow-ups (Builds 275–322)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -79,6 +79,27 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Regular-weight titles (282, on request):** Today's story titles are weight 400 (were 600), like the category pills; they still stand out from the excerpt by size and colour.
 - **Next pill + heading size (283, on request):** reading a story opened from Today on mobile, a "Next" pill sits bottom right just above the tab bar (tab-bar glass, 44px target) and opens the brief's next story in one tap; after the last story it reads "Back to Today". It replaced the floating Save star and "Back to Brief" pill, which the headline row and the top bar's Back already cover. The mobile Today heading now follows Article Reader > Title Size (`--mob-article-title-size`) like desktop; it was a fixed 1.15em.
 - **Next fixed, on desktop too; full screen (284, on request):** the 283 pill never appeared: its wrapper carried Tailwind's `hidden`, which is a layered `!important` that no unlayered rule can override (the old "Back to Brief" FAB had never shown either). Next (`#brief-next`) is now driven by `#viewer-pane.has-brief-next` and shows on desktop too (bottom right of the article column, Today column included). Full screen: a top-bar button (or double-click the bar) shows the open story alone in a centred column, with no sidebar, list, top bar or tab bar, plus browser full screen on desktop. Exit is the bottom-left button or Esc. Next stays available, and full screen ends when the story closes or Today returns.
+- **A calm Today: it moves only when you touch it, and never later (322, on request: "the worst effect is the jump about 3-5 seconds after I tap mark read - that is the Undo time ... if the jump happened right away to slide up that would be more tolerable ... Surely there is something that can be done to enable calmer use of the app"):**
+  - **Your taps act at once:** `syncBriefCards(root, { now: true })`. That covers Mark N read, the Read dot, the folder check, Mark all read, desktop Back, fresh renders, and the return from a story.
+    - **Mark N read:** the whole section leaves at the tap, and the next section slides up into its place. It lands where the section began, or at Today's top line (the scroller's top padding) if the section began above the screen.
+    - **Undo:** a bar floats over the page above the tab bar (`showBriefUndo`, `#brief-undo-bar`, placed like the Listen player). Nothing moves when it goes after 5 seconds, and Undo puts the screen back exactly as it was.
+    - **What 321 did instead:** it kept the heading and a "Marked N read · Undo" row in the page for 5 seconds and then removed them, so the page moved again after you had moved on.
+    - **The slide:** the Read dot and folder check slide what follows up too (`briefSlideUp`, now Web Animations, because `.brief-story-card { transition: background 0.15s !important }` made cards snap instead of slide).
+  - **Anything automatic waits while you can see it:** a refresh, another device's read marks, a picture that turns out broken or small. Whatever has to go while on screen waits where it is: `brief-held`, with a read story dimmed to 0.45; pictures use `data-pending`, broken ones hidden in their box. It goes when a later pass finds it off the screen, at the latest 250ms after scrolling stops (setting the scroll mid-fling would stop an iOS fling). `keepTodayInPlace` makes up for it there, so nothing on screen moves. The hide rules exclude `.brief-held`.
+  - **Never rebuilt under you:**
+    - **New stories after a refresh:** always the "N new stories" pill. The idle rebuild at Today's top (306) is gone.
+    - **At launch:** Today was rebuilt up to three times a second or two after every open, each time at its top, because the cloud feed snapshot and the cloud settings (Folders in Today, muted words) re-applied unchanged lists. Each now rebuilds only when its list really changed.
+  - **Status line of its own:** "Updated 5m ago • 3 new since 8:47 AM" (`.brief-header-status`) is always one line tall. It used to share the badge's wrapping row, so it could never move the page, even at the top.
+  - **The return from a story:** the kept page gets its scroll first and is then brought up to date, so stories leaving above your place are made up for exactly. `returnToBrief` lands it before it is drawn, with no late +60ms correction and no rAF re-assert on the kept path.
+  - **Removed:** `briefKeepInPlace` (unused since 321), the in-page Undo row and its `is-just-marked` state and styles, and the `prebuilt` brief parameters.
+  - **Checked at 339px:**
+    - Mark N read: all movement is the slide, finished by ~320ms, and nothing moves at the 5-second mark.
+    - Undo: the screen is identical to before the tap.
+    - Another device's read on screen: it dims in place, and goes after scrolling with the screen held, apart from sub-pixel rounding.
+    - Status line and same-list cloud settings at the top: nothing moves.
+    - A broken picture on screen: it waits, and goes off-screen with nothing moving.
+    - Read dot: it slides.
+    - Story → Today: in place on the first frame.
 - **"Mark N read" closes up instead of jumping (321, on request: "jumping after tapping Mark X Read ... it is annoying"):**
   - **Measured at 339px:** the row was held under your finger (`briefKeepInPlace(end)`) while the stories above it left. The page scrolled back 1,094px in one frame, so everything above the row became the previous section's stories, ones already passed. 5 seconds later, when the emptied section went, `briefKeepInPlace(next)` held the next section and older stories slid in at the top again (87px).
   - **Now it closes up toward the top:** the section's heading moves to where Today's first line sits at rest. That is the scroller's top padding, below the status bar on the phone; the section's `scroll-mt-20` isn't in the compiled Tailwind and gives 0. "Marked N read · Undo" sits under the heading, and what follows slides up beneath (`briefSlideUp`: a 0.24s transform, skipped for Reduce Motion). When the 5 seconds end, the next section closes up under whatever is above it. Undo puts the screen back exactly as it was before the tap.

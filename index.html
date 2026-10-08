@@ -4698,6 +4698,104 @@
             color: #4493f8 !important;
         }
 
+        /* TODAY'S STATUS LINE (build 322): "Updated 5m ago - 3 new since 8:47 AM" has its own
+           line, always one line tall, so its text changing never moves the page. It used to
+           share the badge's wrapping row, which took a second row at the phone's width when
+           "Updating..." became "Updated just now" (measured: every story down 19px). */
+        .brief-header-status {
+            display: block;
+            height: 1.4em;
+            line-height: 1.4em;
+            margin: -2px 0 4px;
+            font-size: 0.8em;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .brief-header-status > span:not(:empty) ~ span:not(:empty)::before {
+            content: '\2022\00a0';
+            color: #64748b;
+        }
+
+        @media (max-width: 900px) {
+            .brief-header-status {
+                font-size: 0.75em;
+                letter-spacing: -0.01em;
+            }
+        }
+
+        /* UNDO BAR (build 322): "Marked 5 read - Undo" floats over the page above the tab bar,
+           in its glass, so it takes no room and nothing moves when it goes. Placed like the
+           Listen player: fixed on desktop, absolute in the pixel-locked body on the phone. */
+        #brief-undo-bar {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            z-index: 61;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 48px;
+            padding: 2px 4px 2px 16px;
+            border-radius: 9999px;
+            background: rgba(30, 30, 34, 0.92);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-backdrop-filter: blur(24px) saturate(1.6);
+            font-size: 15px;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 8px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        #brief-undo-bar.is-on {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, 0);
+        }
+
+        #brief-undo-bar svg {
+            width: 16px;
+            height: 16px;
+            margin-right: 6px;
+            vertical-align: -3px;
+        }
+
+        #brief-undo-bar button {
+            min-width: 44px;
+            min-height: 44px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 9999px;
+            background: transparent;
+            color: #4493f8;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        #brief-undo-bar button:active {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        @media (max-width: 900px) {
+            #brief-undo-bar {
+                position: absolute;
+                bottom: calc(max(0px, env(safe-area-inset-bottom, 0px) - 8px) + 76px);
+            }
+
+            body.tts-on #brief-undo-bar {
+                bottom: calc(max(0px, env(safe-area-inset-bottom, 0px) - 8px) + 132px);
+            }
+        }
+
         .brief-muted-btn {
             padding: 0;
             border: none;
@@ -4785,16 +4883,23 @@
            (syncBriefCards). The story open beside the desktop Today column stays until
            you move on. A section with nothing left goes too, except while it shows its
            Undo; so does its pill and, once nothing is left at all, the pill bar. */
-        .brief-story-card.brief-card-read:not(.brief-card-active),
-        .brief-cat-section.brief-section-empty:not(.is-just-marked),
-        .brief-jump-pill.brief-gone,
-        .brief-jump-bar.brief-gone {
+        .brief-story-card.brief-card-read:not(.brief-card-active):not(.brief-held),
+        .brief-cat-section.brief-section-empty:not(.brief-held),
+        .brief-jump-pill.brief-gone:not(.brief-held),
+        .brief-jump-bar.brief-gone:not(.brief-held) {
             display: none !important;
         }
 
-        /* briefKeepInPlace() holds the reading position itself when stories above it
-           leave (iOS Safari has no native scroll anchoring). The browser's own anchoring
-           would fight it, so it is off wherever a brief scrolls. */
+        /* CALM TODAY (build 322): something that has to go while it is on the screen, and
+           that you did not tap, waits where it is (brief-held) - a read story dimmed - and
+           goes once it is off the screen (syncBriefCards). */
+        .brief-story-card.brief-card-read.brief-held {
+            opacity: 0.45;
+        }
+
+        /* keepTodayInPlace() holds the reading position itself when things above it change
+           (iOS Safari has no native scroll anchoring). The browser's own anchoring would
+           fight it, so it is off wherever a brief scrolls. */
         #today-column,
         #reader-view:has(#article-body.is-brief-body) {
             overflow-anchor: none;
@@ -4827,12 +4932,11 @@
             color: #57606a;
         }
 
-        .brief-cat-end.is-empty {
+        .brief-cat-end.is-empty:not(.brief-held) {
             display: none;
         }
 
-        .brief-mark-section-btn,
-        .brief-undo-btn {
+        .brief-mark-section-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -4849,16 +4953,6 @@
         .brief-mark-section-btn:hover {
             color: #4493f8;
             background: rgba(68, 147, 248, 0.12);
-        }
-
-        .brief-undo-btn {
-            color: #4493f8;
-        }
-
-        .brief-marked-note {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
         }
 
         .brief-cat-end svg {
@@ -10188,7 +10282,7 @@
                 sec.appendChild(end);
             });
             // Stories already read leave before the brief is first seen.
-            window.syncBriefCards?.(container);
+            window.syncBriefCards?.(container, { now: true });
 
             // Update live unread states on buttons
             window.updateBriefMarkReadButtons?.();
@@ -10326,11 +10420,15 @@
                 if (kept && kept.brief === article) {
                     bodyEl.textContent = '';
                     bodyEl.appendChild(kept.frag);
-                    keptScroll = kept.scrollTop;
                     window._todayRestored = true;
-                    // Bring the kept page up to date with what changed while you read:
-                    // read stories leave, Later / Save states, folder checks.
-                    window.syncBriefCards?.(bodyEl);
+                    // Back at its own scroll FIRST, then brought up to date with what changed
+                    // while you read (read stories leave, Later / Save states, folder checks),
+                    // so what leaves above your place is made up for exactly (build 322).
+                    // None of it was on the screen, so it all changes at once.
+                    const rvKept = document.getElementById('reader-view');
+                    if (rvKept) rvKept.scrollTop = kept.scrollTop;
+                    window.syncBriefCards?.(bodyEl, { now: true });
+                    keptScroll = rvKept ? rvKept.scrollTop : kept.scrollTop;
                     window.updateBriefStoryActionButtons?.(bodyEl);
                     window.updateBriefMarkReadButtons?.();
                 } else {
@@ -10406,8 +10504,9 @@
                 readerEl.scrollTop = top;
                 // After the pane is laid out (especially on mobile, where viewer-pane
                 // toggles from display:none → flex), assert scrollTop again — iOS Safari
-                // discards scrollTop set on a hidden scroll container.
-                requestAnimationFrame(() => { readerEl.scrollTop = top; });
+                // discards scrollTop set on a hidden scroll container. Not for the kept
+                // Today (322): its pane is showing, and returnToBrief lands it at once.
+                if (keptScroll === null) requestAnimationFrame(() => { readerEl.scrollTop = top; });
             }
 
             const listEl = document.getElementById('article-list');
@@ -12730,7 +12829,24 @@
             });
         };
 
-        window.syncBriefCards = function (only) {
+        // Is `el` on the screen right now - in Today's scroller (the column on desktop, the
+        // reader on the phone), which is itself showing? (build 322)
+        function onTodayScreen(el) {
+            const s = el && (el.closest('#today-column') || el.closest('#reader-view'));
+            if (!s || !s.getClientRects().length || !el.getClientRects().length) return false;
+            const a = s.getBoundingClientRect(), r = el.getBoundingClientRect();
+            return r.bottom > a.top && r.top < a.bottom;
+        }
+
+        // CALM TODAY (build 322, on request: "Surely there is something that can be done to
+        // enable calmer use of the app"). Today moves only when you touch it, and only then:
+        //   - opts.now (your tap, a fresh render, the return from a story): changes at once;
+        //   - anything else (a refresh, another device's read marks): what has to go while
+        //     you can see it waits where it is (brief-held; a read story dimmed) and goes
+        //     when a later pass - at the latest when scrolling stops - finds it off the screen,
+        //     where keepTodayInPlace makes up for it, so what is on the screen does not move.
+        window.syncBriefCards = function (only, opts) {
+            const now = !!(opts && opts.now);
             const roots = only ? [only]
                 : [document.getElementById('today-column'), document.querySelector('#article-body.is-brief-body')].filter(Boolean);
             if (!roots.length) return;
@@ -12739,6 +12855,19 @@
             const cur = window.currentArticle;
             const activeId = window._todayInColumn && cur && !cur.isBrief ? cur.id : null;
             const boundary = window._visitBoundary;
+            // `cls` on el while `on`; a NEW one on something on the screen waits (brief-held),
+            // unless now. Returns whether el is still showing only because it waits.
+            const settle = (el, cls, on) => {
+                if (!on) { el.classList.remove(cls, 'brief-held'); return false; }
+                if (!el.classList.contains(cls)) {
+                    const wait = !now && onTodayScreen(el);
+                    el.classList.add(cls);
+                    el.classList.toggle('brief-held', wait);
+                    return wait;
+                }
+                if (el.classList.contains('brief-held') && (now || !onTodayScreen(el))) el.classList.remove('brief-held');
+                return el.classList.contains('brief-held');
+            };
             window.keepTodayInPlace(() => roots.forEach(root => {
                 const inColumn = root.id === 'today-column';
                 let anySection = false, anyLeft = false;
@@ -12754,7 +12883,7 @@
                         const read = art ? !art.unread : !!(link && readLinks && readLinks.has(link));
                         const active = inColumn && id === activeId;
                         card.classList.toggle('brief-card-active', active);
-                        card.classList.toggle('brief-card-read', read);
+                        settle(card, 'brief-card-read', read);
                         // New since your last visit (build 313): counted for the header only;
                         // the per-story dot was removed on request (build 318).
                         const first = Number(card.getAttribute('data-first') || 0);
@@ -12762,28 +12891,30 @@
                         if (!read || active) shown++;
                         if (!read) unread++;
                     });
-                    const justMarked = sec.classList.contains('is-just-marked');
-                    sec.classList.toggle('brief-section-empty', shown === 0);
-                    if (shown > 0 || justMarked) anyLeft = true;
+                    if (settle(sec, 'brief-section-empty', shown === 0) || shown > 0) anyLeft = true;
                     const countEl = sec.querySelector('.brief-cat-count');
                     if (countEl) countEl.textContent = `${shown} ${shown === 1 ? 'story' : 'stories'}`;
                     const pill = sec.id ? root.querySelector(`.brief-jump-pill[href="#${CSS.escape(sec.id)}"]`) : null;
                     if (pill) {
                         if (!pill.dataset.name) pill.dataset.name = pill.textContent.replace(/\s*\(\d+\)\s*$/, '').trim();
                         pill.textContent = `${pill.dataset.name} (${shown})`;
-                        pill.classList.toggle('brief-gone', shown === 0);
+                        settle(pill, 'brief-gone', shown === 0);
                     }
                     const end = sec.querySelector('.brief-cat-end');
-                    if (end && !justMarked) {
-                        end.classList.toggle('is-empty', unread === 0);
+                    if (end) {
+                        settle(end, 'is-empty', unread === 0);
                         const label = end.querySelector('.brief-mark-section-label');
-                        if (label) label.textContent = `Mark ${unread} read`;
+                        if (label) label.textContent = unread ? `Mark ${unread} read` : 'All read';
                     }
                 });
-                root.querySelector('.brief-jump-bar')?.classList.toggle('brief-gone', anySection && !anyLeft);
+                const bar = root.querySelector('.brief-jump-bar');
+                if (bar) settle(bar, 'brief-gone', anySection && !anyLeft);
                 root.querySelectorAll('[data-today-new]').forEach(el => {
-                    el.textContent = newShown ? `\u2022 ${newShown} new since ${window.visitLabel(boundary)}` : '';
+                    const t = newShown ? `${newShown} new since ${window.visitLabel(boundary)}` : '';
+                    if (el.textContent !== t) el.textContent = t;
                 });
+                // Pictures that turned out wrong while on the screen change once they are not.
+                root.querySelectorAll('[data-pending]').forEach(box => { if (now || !onTodayScreen(box)) applyBriefImgChange(box); });
                 let note = root.querySelector('.brief-all-read-note');
                 if (anySection && !anyLeft) {
                     if (!note) {
@@ -12799,31 +12930,49 @@
             }));
         };
 
-        // iOS Safari has no CSS scroll anchoring, so when stories above the reading
-        // position leave, the page would jump. Keep `anchor` where it is on screen
-        // across fn() - in every browser, as native anchoring is off for briefs (CSS).
-        window.briefKeepInPlace = function (anchor, fn) {
-            const scroller = anchor ? (anchor.closest('#today-column') || anchor.closest('#reader-view')) : null;
-            const before = scroller ? anchor.getBoundingClientRect().top : 0;
-            fn();
-            if (scroller && anchor.isConnected && anchor.getClientRects().length) {
-                const delta = anchor.getBoundingClientRect().top - before;
-                if (delta) scroller.scrollTop += delta;
-            }
-        };
-
-        // What follows `el` slides up into the space it just moved up by (build 321): `el`
-        // and every section after its own is drawn `dy` px lower, then eased to where it
-        // now is. Transform only, so nothing is laid out again; skipped for Reduce Motion.
+        // `el` and everything after it slide up into the space they just moved up by (build
+        // 321; 322: everything after it at every level, so a card's own section mates too):
+        // drawn `dy` px lower, then eased to where they now are. Transform only, so nothing is
+        // laid out again; skipped for Reduce Motion. Web Animations, not an inline transition:
+        // `.brief-story-card { transition: background 0.15s !important }` beat the inline one,
+        // so cards snapped into place instead of sliding (measured, 322).
         window.briefSlideUp = function (el, dy) {
             if (!el || !(dy > 1) || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-            const sec = el.closest('.brief-cat-section');
             const els = [el];
-            for (let n = (sec || el).nextElementSibling; n; n = n.nextElementSibling) els.push(n);
-            els.forEach(e => { e.style.transition = 'none'; e.style.transform = `translateY(${dy}px)`; });
-            void el.offsetHeight;
-            els.forEach(e => { e.style.transition = 'transform 0.24s cubic-bezier(0.2, 0, 0, 1)'; e.style.transform = ''; });
-            setTimeout(() => els.forEach(e => { e.style.transition = ''; }), 300);
+            for (let n = el; n && n !== document.body && !n.matches('.brief-container'); n = n.parentElement) {
+                for (let s = n.nextElementSibling; s; s = s.nextElementSibling) els.push(s);
+            }
+            els.forEach(e => e.animate?.([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }],
+                { duration: 240, easing: 'cubic-bezier(0.2, 0, 0, 1)' }));
+        };
+
+        // The first heading, card or Mark-read row shown after `el` in Today (build 322).
+        window.briefNextShown = function (el) {
+            const root = el && el.closest('.brief-container');
+            if (!root) return null;
+            return Array.from(root.querySelectorAll(TODAY_ANCHORS)).find(n => !el.contains(n)
+                && (el.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING) && n.getClientRects().length) || null;
+        };
+
+        // UNDO BAR (build 322): floats above the tab bar over the page, so it takes no room
+        // and nothing moves when it goes after 5 seconds. One at a time - a new one ends the
+        // last one's Undo.
+        let _briefUndoTimer = 0;
+        window.showBriefUndo = function (text, onUndo) {
+            let bar = document.getElementById('brief-undo-bar');
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.id = 'brief-undo-bar';
+                bar.setAttribute('role', 'status');
+                bar.innerHTML = '<span><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-undo-text"></span></span><button type="button">Undo</button>';
+                document.body.appendChild(bar);
+            }
+            bar.querySelector('.brief-undo-text').textContent = text;
+            const hide = () => { clearTimeout(_briefUndoTimer); bar.classList.remove('is-on'); };
+            bar.querySelector('button').onclick = () => { hide(); onUndo(); };
+            clearTimeout(_briefUndoTimer);
+            bar.classList.add('is-on');
+            _briefUndoTimer = setTimeout(hide, 5000);
         };
 
         // Where Back lands now that the story just read has left the brief: its own card
@@ -12839,24 +12988,19 @@
         };
 
         // The section's Mark-read row: the stories still showing above it, plus the
-        // other outlets' copies grouped under each (data-cov), go read in one tap, and the
-        // section offers Undo for 5 seconds, which puts back exactly what this tap changed;
-        // then the emptied section goes too.
-        // IT CLOSES UP; IT DOES NOT JUMP (build 321, on request: "jumping after tapping Mark
-        // X read ... it is annoying"). The row used to be held under your finger while the
-        // stories above it left - measured at 339px: the page scrolled back 1,094px in one
-        // frame and everything above the row became the previous section's stories, ones
-        // you had already passed; 5 seconds later older stories slid in at the top again.
-        // Now the read stories go, the section's heading moves to the top - as far down as
-        // Today's first line sits at rest (the scroller's top padding: below the status bar
-        // on the phone; the section's scroll-mt-20 is not in the compiled Tailwind and gives
-        // 0) - with "Marked N read - Undo" under it, and what follows
-        // slides up beneath; when the 5 seconds end, the next section closes up under what
-        // is above it. Undo puts the screen back as it was before the tap.
+        // other outlets' copies grouped under each (data-cov), go read in one tap.
+        // ALL AT THE TAP, NOTHING LATER (build 322, on request: "the worst effect is the jump
+        // about 3-5 seconds after I tap mark read - that is the Undo time ... if the jump
+        // happened right away to slide up that would be more tolerable"). 278-321 kept the
+        // heading and a "Marked N read - Undo" row in the page for 5 seconds and then removed
+        // them, so the page moved again after you had moved on (321 measured: 87px). Now the
+        // whole section leaves at the tap and the next one slides up into its place - to
+        // where the section began, or to Today's top line (the scroller's top padding, below
+        // the status bar) if it began above the screen. Undo is a bar floating over the page
+        // (showBriefUndo): nothing moves when it goes, and Undo puts the screen back as it was.
         window.markBriefSectionRead = function (btn) {
             const sec = btn && btn.closest('.brief-cat-section');
-            const end = btn && btn.closest('.brief-cat-end');
-            if (!sec || !end) return;
+            if (!sec) return;
             const live = new Map((window.articles || []).map(a => [a.id, a]));
             const marked = new Set();
             const take = id => {
@@ -12871,54 +13015,37 @@
             if (!marked.size) { window.syncBriefCards(); return; }
             const apply = () => {
                 saveReadState();
-                refreshUI();          // -> syncBriefCards
+                refreshUI();
                 updateBadges();
                 window.updateActionButton?.();
+                window.syncBriefCards(null, { now: true });   // your tap: at once
             };
-            const scroller = end.closest('#today-column') || end.closest('#reader-view');
-            const rowBefore = end.getBoundingClientRect().top;
+            const scroller = sec.closest('#today-column') || sec.closest('#reader-view');
+            const next = window.briefNextShown(sec);
+            const secBefore = sec.getBoundingClientRect().top;
+            const nextBefore = next ? next.getBoundingClientRect().top : 0;
             // Not toggleUnread: the copies are already in `marked`, and Undo must put
             // back exactly what this tap changed - no taking-along on either side.
             marked.forEach(a => { a.unread = false; applyReadState(a); });
-            sec.classList.add('is-just-marked');
             apply();
-            end.innerHTML = `<span class="brief-marked-note"><svg aria-hidden="true"><use href="#icon-check"/></svg>Marked ${cards.length} read</span><span aria-hidden="true">&middot;</span><button type="button" class="brief-undo-btn">Undo</button>`;
-            if (scroller) {
-                // The heading to the top if you had scrolled past it; left where it is if not.
-                const gap = parseFloat(getComputedStyle(scroller).paddingTop) || 0;
-                const headTop = sec.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-                if (headTop < gap) scroller.scrollTop += headTop - gap;
+            if (scroller && next && next.getClientRects().length) {
+                const line = scroller.getBoundingClientRect().top + (parseFloat(getComputedStyle(scroller).paddingTop) || 0);
+                scroller.scrollTop += next.getBoundingClientRect().top - Math.max(secBefore, line);
+                window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
             }
-            window.briefSlideUp(end, rowBefore - end.getBoundingClientRect().top);
-            const timer = setTimeout(() => {
-                if (!sec.isConnected) return;
-                let next = sec.nextElementSibling;
-                while (next && !next.getClientRects().length) next = next.nextElementSibling;
-                const nextBefore = next ? next.getBoundingClientRect().top : 0;
-                window.keepTodayInPlace(() => {
-                    sec.classList.remove('is-just-marked');
-                    end.innerHTML = BRIEF_MARK_ROW_HTML;
-                    window.syncBriefCards();
-                });
-                if (next) window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
-            }, 5000);
-            end.querySelector('.brief-undo-btn').onclick = () => {
-                clearTimeout(timer);
+            window.showBriefUndo(`Marked ${cards.length} read`, () => {
                 marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
-                sec.classList.remove('is-just-marked');
-                end.innerHTML = BRIEF_MARK_ROW_HTML;
                 apply();
-                // The screen as it was before the tap: the row back where you tapped it.
-                if (scroller) scroller.scrollTop += end.getBoundingClientRect().top - rowBefore;
-            };
+                // The screen as it was before the tap.
+                if (scroller && next && next.getClientRects().length) scroller.scrollTop += next.getBoundingClientRect().top - nextBefore;
+            });
         };
 
-        // prebuilt (build 306): a brief checkTodayForNewStories() already built.
-        window.renderTodayColumn = function (prebuilt) {
+        window.renderTodayColumn = function () {
             const col = document.getElementById('today-column');
             if (!col) return;
             const keepScroll = col.scrollTop;
-            window._todayBrief = prebuilt || window.buildTodayBrief();
+            window._todayBrief = window.buildTodayBrief();
             window._todayNewCount = 0;
             col.innerHTML = window._todayBrief.body;
             normalizeBriefDOM(col);
@@ -12934,7 +13061,7 @@
                 s.storyIndex = idx >= 0 ? idx : 0;
             }
             window.updateBriefMarkReadButtons?.();
-            window.syncBriefCards();
+            window.syncBriefCards(null, { now: true });
         };
 
         // Reader back to its "select an article" state.
@@ -12954,7 +13081,7 @@
             const id = cur && !cur.isBrief ? cur.id : null;
             window._returnToBriefState = null;
             window.clearReaderPane();
-            window.syncBriefCards();
+            window.syncBriefCards(null, { now: true });   // Back: your tap (322)
             if (!id) return;
             // The story just read has left the brief (build 278): land on the next unread.
             const card = window.briefLandingCard(Array.from(document.querySelectorAll('#today-column .brief-story-card[data-sa-id]'))
@@ -13016,10 +13143,7 @@
         window.updateTodayStatus = function () {
             const text = (window._refreshInFlight || window._refreshPending) ? 'Updating…'
                 : (window._lastRefreshAt ? `Updated ${formatRelativeTime(window._lastRefreshAt)}` : '');
-            const line = text ? `• ${text}` : '';
-            window.keepTodayInPlace(() => document.querySelectorAll('[data-today-status]').forEach(el => {
-                if (el.textContent !== line) el.textContent = line;
-            }));
+            document.querySelectorAll('[data-today-status]').forEach(el => { if (el.textContent !== text) el.textContent = text; });
             const where = todayOnScreen();
             const n = window._todayNewCount;
             const pill = todayNewPill();
@@ -13032,20 +13156,20 @@
             pill.classList.toggle('is-on', show);
         };
 
-        // Rebuild Today where it is on screen. fresh: a brief already built; toTop: jump up.
-        function rebuildTodayInPlace(fresh, toTop) {
+        // Rebuild Today where it is on screen; toTop: jump up.
+        function rebuildTodayInPlace(toTop) {
             const where = todayOnScreen();
             if (where === 'column') {
-                window.renderTodayColumn(fresh);
+                window.renderTodayColumn();
                 if (toTop) document.getElementById('today-column').scrollTop = 0;
             } else if (where === 'reader') {
-                window._todayBrief = fresh || window.buildTodayBrief();
+                window._todayBrief = window.buildTodayBrief();
                 window._todayNewCount = 0;
                 selectArticle(window.TODAY_BRIEF_ID);   // renders it at the top
             }
             window.updateTodayStatus();
         }
-        window.showNewTodayStories = () => rebuildTodayInPlace(null, true);
+        window.showNewTodayStories = () => rebuildTodayInPlace(true);
 
         // After a refresh: are there stories Today is not showing? A story counts as new
         // when neither its lead article nor any outlet grouped under it is in Today now.
@@ -13065,12 +13189,8 @@
             const fresh = window.buildTodayBrief();
             const n = cardsIn(fresh.body).filter(c => !shown.has(c.id) && !c.cov.some(x => shown.has(x))).length;
             if (!n) return;
-            const where = todayOnScreen();
-            // Not "idle" while Today is being read aloud (build 312): the pill instead.
-            const idle = !(window._ttsActive && window._ttsSource === 'today') && (where === 'column'
-                ? (!window.currentArticle || window.currentArticle.isBrief) && document.getElementById('today-column').scrollTop < 40
-                : where === 'reader' && document.getElementById('reader-view').scrollTop < 40);
-            if (idle) { rebuildTodayInPlace(fresh); return; }
+            // Never rebuilt under you (build 322) - not even at its top, as it was since 306:
+            // the "N new stories" pill shows, and nothing moves until you tap it.
             window._todayNewCount = n;
             window.updateTodayStatus();
         };
@@ -13125,27 +13245,40 @@
         // 'thumb' (too small for the hero) or 'ok'. A rebuilt Today draws each known picture
         // in its final form at once, so it no longer changes the layout as it loads.
         window._briefImgVerdict = new Map();
+        // A picture that turned out broken, tiny or too small for the top spot changes its
+        // card's height - so while it is on the screen it waits (data-pending, broken ones
+        // hidden in their box) and changes when syncBriefCards next finds it off the screen,
+        // at the latest when scrolling stops (build 322; calm Today).
+        function applyBriefImgChange(box) {
+            const kind = box.dataset.pending;
+            delete box.dataset.pending;
+            if (kind === 'remove') box.remove();
+            else if (kind === 'thumb') {
+                box.classList.replace('brief-hero', 'brief-thumb');
+                // A thumbnail's place is after the source / time line (build 291).
+                box.parentElement?.querySelector(':scope > .brief-story-meta')?.after(box);
+            }
+        }
+        function briefImgChange(box, kind) {
+            box.dataset.pending = kind;
+            if (!onTodayScreen(box)) window.keepTodayInPlace(() => applyBriefImgChange(box));
+        }
         window.briefImgLoaded = function (img) {
             const box = img.parentElement;
             const url = img.getAttribute('src');
             if (img.naturalWidth < 100 || img.naturalHeight < 60) {
                 window._briefImgVerdict.set(url, 'bad');
-                if (box) window.keepTodayInPlace(() => box.remove());
+                img.style.visibility = 'hidden';
+                if (box) briefImgChange(box, 'remove');
                 return;
             }
             window._briefImgVerdict.set(url, img.naturalWidth < 600 ? 'thumb' : 'ok');
-            if (box && box.classList.contains('brief-hero') && img.naturalWidth < 600) {
-                window.keepTodayInPlace(() => {
-                    box.classList.replace('brief-hero', 'brief-thumb');
-                    // A thumbnail's place is after the source / time line (build 291).
-                    box.parentElement?.querySelector(':scope > .brief-story-meta')?.after(box);
-                });
-            }
+            if (box && box.classList.contains('brief-hero') && img.naturalWidth < 600) briefImgChange(box, 'thumb');
         };
         window.briefImgFailed = function (img) {
             window._briefImgVerdict.set(img.getAttribute('src'), 'bad');
-            const box = img.parentElement;
-            if (box) window.keepTodayInPlace(() => box.remove());
+            img.style.visibility = 'hidden';   // no broken-image icon while it waits
+            if (img.parentElement) briefImgChange(img.parentElement, 'remove');
         };
 
         function renderBriefSectionsHtml(categorySections, opts = {}) {
@@ -13477,9 +13610,8 @@
                                 <svg class="w-3.5 h-3.5 mr-1 flex-shrink-0"><use href="#icon-newspaper"/></svg>${esc(slotDef.badgeLabel)} Brief
                             </span>
                             <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0">• ${esc(slotDef.windowLabel)}</span>
-                            <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0" data-today-status></span>
-                            <span class="brief-header-window brief-header-new whitespace-nowrap flex-shrink-0" data-today-new></span>
                         </div>
+                        <div class="brief-header-status"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
                         <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — ${esc(datePartFormatted)}</h2>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
                             <span class="brief-meta-item whitespace-nowrap">${categorySections.length} sections</span>
@@ -13620,6 +13752,9 @@
                 }
                 return;
             }
+            const card = kind === 'read' && btn ? btn.closest('.brief-story-card') : null;
+            const next = card ? window.briefNextShown(card) : null;
+            const nextBefore = next ? next.getBoundingClientRect().top : 0;
             if (kind === 'read') {
                 toggleUnread(art);
                 saveReadState();
@@ -13629,6 +13764,10 @@
                 window.showToast?.(art.readLater ? 'Added to Read Later' : 'Removed from Read Later');
             }
             refreshUI();
+            if (kind === 'read') {
+                window.syncBriefCards(null, { now: true });   // your tap: at once (322)
+                if (next && next.getClientRects().length) window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
+            }
             updateActionButton();   // reader row if this is the open story, plus every card
         };
 
@@ -13764,9 +13903,10 @@
                 }
             };
 
-            requestAnimationFrame(() => {
-                setTimeout(scrollToTarget, 60);
-            });
+            // The kept page is laid out already: land now, before it is drawn (build 322) -
+            // a late correction would be a jump. A rebuilt one waits for its layout.
+            if (window._todayRestored) scrollToTarget();
+            else requestAnimationFrame(() => { setTimeout(scrollToTarget, 60); });
         };
 
         window.openArticleInReader = function (articleId) {
@@ -13841,12 +13981,16 @@
         // fromCloud: applying another device's list - do not save it straight back.
         window.setMuteWords = function (list, fromCloud) {
             const seen = new Set();
-            window._muteWords = (list || []).map(w => String(w).trim()).filter(w => {
+            const words = (list || []).map(w => String(w).trim()).filter(w => {
                 const k = w.toLowerCase();
                 if (!w || seen.has(k)) return false;
                 seen.add(k);
                 return true;
             });
+            // The same list from the cloud (every launch) changes nothing - and must not
+            // rebuild Today at its top, as it did (build 322).
+            if (fromCloud && words.join('\n') === (window._muteWords || []).join('\n')) return;
+            window._muteWords = words;
             try { localStorage.setItem('newsreader_mute_words', JSON.stringify(window._muteWords)); } catch (e) { }
             if (!fromCloud && typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             window._muteVersion++;
@@ -13855,7 +13999,7 @@
             renderTimeline(true);
             renderFeeds();
             updateBadges();
-            if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(null, false);
+            if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
         };
         window.addMuteWord = function () {
             const input = document.getElementById('mute-input');
@@ -13870,7 +14014,7 @@
         window.toggleShowMuted = function () {
             window._showMuted = !window._showMuted;
             renderTimeline(true);
-            rebuildTodayInPlace(null, false);
+            rebuildTodayInPlace(false);
         };
 
         // Settings > Today > Folders in Today (build 310).
@@ -13894,7 +14038,7 @@
             else window._todayExcluded.add(name);
             window.saveTodayExcluded();
             window.renderTodayFolderChips();
-            rebuildTodayInPlace(null, false);   // Today on screen follows at once
+            rebuildTodayInPlace(false);   // Today on screen follows at once
         };
 
         // The slider's last step (51) is All: every unread story in each folder (build 280).
@@ -14324,6 +14468,17 @@
                 }
             }, { passive: true });
         })();
+        // CALM TODAY (build 322): what waited on the screen goes once it is off it - looked at
+        // when scrolling stops, as setting the scroll during an iOS fling would stop the fling.
+        ['reader-view', 'today-column'].forEach(id => {
+            const s = document.getElementById(id);
+            if (!s) return;
+            let t = 0;
+            s.addEventListener('scroll', () => {
+                clearTimeout(t);
+                t = setTimeout(() => { if (s.querySelector('.brief-held, [data-pending]')) window.syncBriefCards(); }, 250);
+            }, { passive: true });
+        });
         window.openExternal = () => { if (window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
         // ===== STANDALONE LAYOUT-HEIGHT LOCK =====
@@ -15031,6 +15186,9 @@
 
         window.markBriefCategoryRead = function (catName, btnEl) {
             if (!catName || !window.articles) return;
+            const sec = btnEl ? btnEl.closest('.brief-cat-section') : null;
+            const next = sec ? window.briefNextShown(sec) : null;
+            const nextBefore = next ? next.getBoundingClientRect().top : 0;
             const normCat = catName.trim().toLowerCase();
 
             const allFeeds = [...(window.feeds || [])];
@@ -15061,6 +15219,8 @@
             window._pinnedArticleIds?.clear?.();
             refreshUI();
             updateBadges();
+            window.syncBriefCards(null, { now: true });   // your tap: at once (322)
+            if (next && next.getClientRects().length) window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
 
             if (btnEl) {
                 btnEl.disabled = true;
@@ -15135,6 +15295,7 @@
             window._pinnedArticleIds?.clear?.();
             refreshUI();
             updateBadges();
+            window.syncBriefCards(null, { now: true });   // your tap: at once (322)
 
             window.updateBriefMarkReadButtons?.(true);
 
@@ -16070,7 +16231,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 321;
+        window.APP_BUILD = 322;
 
         (async function initApp() {
             try {
@@ -16442,6 +16603,11 @@
                 const dbFeeds = [];
                 snap.forEach(d => dbFeeds.push({ ...d.data(), docId: d.id }));
                 if (dbFeeds.length > 0) {
+                    // Only a real change to the feeds rebuilds Today (build 322). Every snapshot
+                    // used to - including the one a second or two after every launch, with the
+                    // list this device already had - and it threw you back to Today's top.
+                    const feedKey = list => list.map(f => [f.url, f.name, f.category, f.folder].join('|')).sort().join('\n');
+                    const feedsChanged = feedKey(window.feeds || []) !== feedKey(dbFeeds);
                     window.accountStates.local = dbFeeds;
                     window.feeds = dbFeeds;
                     if (typeof saveLocalFeeds === 'function') saveLocalFeeds();
@@ -16450,8 +16616,10 @@
                     restoreCategoryOrder();
                     window.renderFeeds();
                     updateEmptyState();
-                    // Re-render Today brief now that feed folders are loaded
-                    if (window._todayInColumn) {
+                    // Re-render Today when its feeds or folders really changed
+                    if (!feedsChanged) {
+                        // the list this device already had: nothing to redo
+                    } else if (window._todayInColumn) {
                         window.renderTodayColumn?.();   // desktop: re-cluster in place, keep the open story
                     } else if (window.currentArticle && window.currentArticle.id === window.TODAY_BRIEF_ID && typeof window.openToday === 'function') {
                         window.openToday();
@@ -16680,11 +16848,13 @@
                         window.renderFeeds();
                     }
                     if (Array.isArray(data.muteWords)) window.setMuteWords?.(data.muteWords, true);
-                    if (Array.isArray(data.todayExcluded)) {
+                    // Only a different list rebuilds Today (build 322): this ran on every launch
+                    // and rebuilt it at the top even when nothing had changed.
+                    if (Array.isArray(data.todayExcluded) && [...window._todayExcluded].sort().join('\n') !== [...new Set(data.todayExcluded)].sort().join('\n')) {
                         window._todayExcluded = new Set(data.todayExcluded);
                         try { localStorage.setItem('newsreader_today_excluded', JSON.stringify(data.todayExcluded)); } catch (e) { }
                         window.renderTodayFolderChips?.();
-                        if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(null, false);
+                        if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
                     }
                     if (data.autoRefresh) {
                         const sel = document.getElementById('pref-auto-refresh');
@@ -16962,7 +17132,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v321';
+const CACHE_NAME = 'rss-reader-v322';
 const APP_SHELL = [
     '/',
     'index.html'
