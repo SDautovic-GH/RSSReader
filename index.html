@@ -4872,6 +4872,14 @@
             color: #8b949e;
         }
 
+        /* "Pull down to refresh." under "You're all caught up." on the phone (build 336). */
+        .brief-pull-hint {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.85em;
+            font-weight: 400;
+        }
+
         /* MARK-READ ROW at the end of each section (build 278, on request): marks the
            stories still showing above it read, then offers Undo in the same spot for a
            few seconds. One short right-aligned line, grey like the other actions; the
@@ -5816,6 +5824,60 @@
             display: inline-block !important;
             vertical-align: middle !important;
             flex-shrink: 0 !important;
+        }
+
+        /* ONE ACTION ROW ON THE DESKTOP (build 336, on request: "rationalize action buttons
+           below stories on desktop - it seems to be messy as is"). List cards, Today cards and
+           the reader had 3, 6 and 5 buttons in three sizes (15, 18 and 19px icons), gaps of 6,
+           6 and 2px, and first icons 6, 7 and 0px in from the text. Now all three have Read,
+           Read Later, Save, Open original, Share: icon buttons (names only as tooltips, on
+           request: "I prefer buttons over text labels"), 32px with 18px icons, 4px apart, the
+           first icon on the text edge (the buttons' 7px inset taken back), grey off and the
+           accent on - Save too, which was amber in the lists. "Open in Reader" went: a click
+           on the card or the headline opens it. The phone keeps its rows. */
+        @media (min-width: 901px) {
+            .story-actions {
+                display: flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+                margin-left: -7px !important;
+            }
+
+            .story-actions .icon-act {
+                width: 32px !important;
+                height: 32px !important;
+                flex-shrink: 0;
+            }
+
+            .story-actions .icon-act svg {
+                width: 18px !important;
+                height: 18px !important;
+            }
+
+            html.dark .story-actions .icon-act {
+                color: #8b949e !important;
+            }
+
+            html:not(.dark) .story-actions .icon-act {
+                color: #57606a !important;
+            }
+
+            html.dark .story-actions .icon-act.is-on,
+            html:not(.dark) .story-actions .icon-act.is-on {
+                color: #4493f8 !important;
+            }
+
+            .story-actions .brief-open-reader {
+                display: none !important;
+            }
+
+            /* The reader's byline without the source when it only repeats the line above the
+               headline (build 336): about half the stories (707 of 1,445) had "ESPN Soccer"
+               there and again in front of the date, or no author at all. */
+            #article-byline.byline-dup #article-author,
+            #article-byline.byline-dup #article-author + span {
+                display: none !important;
+            }
         }
 
         /* Mobile Editorial Memo Flow */
@@ -7039,7 +7101,7 @@
                                          row, under the headline, for every story however it was opened.
                                          They used to sit in the top bar. Ids unchanged, so every handler,
                                          shortcut and state sync that targets them still works. -->
-                                    <div id="article-actions" class="article-actions">
+                                    <div id="article-actions" class="article-actions story-actions">
                                         <button id="unread-action-btn" type="button" onclick="toggleUnreadManual()" title="Mark Read"
                                             aria-label="Mark Read" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-dot-filled" /></svg></button>
                                         <button id="read-later-action-btn" type="button" onclick="handleReadLaterAction()" title="Read Later"
@@ -9654,7 +9716,7 @@
             const starIcon = isSaved ? '#icon-star-filled' : '#icon-star';
             const starColor = isSaved ? 'text-amber-500 dark:text-amber-400 is-saved' : 'text-gray-500 dark:text-gray-400';
             const actionsRowHtml = `
-                <div class="card-actions flex items-center gap-1.5 pt-1.5 mt-1" onclick="event.stopPropagation()">
+                <div class="card-actions phone-only flex items-center gap-1.5 pt-1.5 mt-1" onclick="event.stopPropagation()">
                     <button type="button" onclick="selectArticle('${saId}')" class="brief-action-btn text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors" title="Open in Reader" aria-label="Open in Reader">
                         <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
                     </button>
@@ -9666,6 +9728,18 @@
                         <svg class="brief-action-icon"><use href="#icon-external-link"/></svg>
                     </a>` : ''}
                 </div>`;
+            // The desktop's row (build 336): a Today card's and the reader's buttons. Read and
+            // Read Later are the right-click menu's own actions, which redraw the list.
+            const deskBtn = (on, onclick, label, icon, extra = '') =>
+                `<button type="button" class="icon-act${on ? ' is-on' : ''}${extra}" onclick="${onclick}" title="${label}" aria-label="${label}"><svg aria-hidden="true"><use href="#${icon}"/></svg></button>`;
+            const deskActionsHtml = `
+                <div class="story-actions desk-only mt-1" onclick="event.stopPropagation()">${
+                    deskBtn(a.unread, `window.toggleArticleUnread('${saId}')`, a.unread ? 'Mark Read' : 'Mark Unread', a.unread ? 'icon-dot-filled' : 'icon-dot-hollow')
+                    + deskBtn(a.readLater, `window.toggleArticleReadLater('${saId}')`, a.readLater ? 'Remove from Read Later' : 'Read Later', a.readLater ? 'icon-bookmark-filled' : 'icon-bookmark')
+                    + `<button type="button" class="icon-act brief-save-btn${isSaved ? ' is-on' : ''}" data-save-id="${saId}" data-save-link="${esc(a.link || '')}" onclick="window.toggleBriefStorySaved('${saId}', this)" title="${isSaved ? 'Unsave' : 'Save'}" aria-label="${isSaved ? 'Unsave' : 'Save'}"><svg aria-hidden="true"><use href="#${isSaved ? 'icon-star-filled' : 'icon-star'}"/></svg></button>`
+                    + (a.link && a.link !== '#' ? `<a class="icon-act" href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '')
+                    + deskBtn(false, `window.briefStoryAct('share', '${saId}', this)`, 'Share', 'icon-share')
+                }</div>`;
 
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
@@ -9682,6 +9756,7 @@
                     ${repostLine}
                     <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
                     ${actionsRowHtml}
+                    ${deskActionsHtml}
                 </div>
             </div>`;
         }
@@ -10423,6 +10498,11 @@
             const authorEl = document.getElementById('article-author');
             const dateEl = document.getElementById('article-date');
             authorEl.textContent = article.isBrief ? (article.slot ? (article.slot.toUpperCase() + ' BRIEF') : 'BRIEF') : article.author;
+            // When the author only repeats the source above the headline, or there is none, the
+            // desktop's byline is just the date (build 336).
+            const _author = (article.author || '').trim().toLowerCase();
+            document.getElementById('article-byline')?.classList.toggle('byline-dup',
+                !article.isBrief && (!_author || _author === (article.source || '').trim().toLowerCase()));
             const _d = new Date(article.timestamp);
             const _datePart = _d.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric', year: 'numeric' });
             const _timePart = _d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -12837,7 +12917,8 @@
             if (totalStories === 0) {
                 body = body
                     .replace('No new articles were captured in this delivery window.', "You're all caught up.")
-                    .replace(/Feeds may not have updated between [^<]*\./, `No unread stories from the last ${window.TODAY_WINDOW_HOURS} hours.`);
+                    // The phone: no "last 24 hours" - a hint to pull for more instead (build 336, on request).
+                    .replace(/Feeds may not have updated between [^<]*\./, `<span class="desk-only">No unread stories from the last ${window.TODAY_WINDOW_HOURS} hours.</span><span class="phone-only">Pull down to refresh.</span>`);
             }
 
             return {
@@ -13031,6 +13112,10 @@
                         note = document.createElement('p');
                         note.className = 'brief-all-read-note';
                         note.textContent = "You're all caught up.";
+                        const hint = document.createElement('span');   // the phone's (build 336, on request)
+                        hint.className = 'brief-pull-hint phone-only';
+                        hint.textContent = 'Pull down to refresh.';
+                        note.appendChild(hint);
                         const first = root.querySelector('.brief-cat-section');
                         first.parentNode.insertBefore(note, first);
                     }
@@ -13842,7 +13927,7 @@
             const j = escJs(saId);
             const b = (cls, label, icon, onclick) =>
                 `<button type="button" class="icon-act ${cls}" onclick="${onclick}" title="${label}" aria-label="${label}"><svg aria-hidden="true"><use href="#${icon}"/></svg></button>`;
-            row.className = 'brief-story-actions';
+            row.className = 'brief-story-actions story-actions';   // story-actions: the desktop's one row (336)
             row.innerHTML =
                 b('brief-act-read', 'Mark Read', 'icon-dot-filled', `window.briefStoryAct('read', '${j}', this)`) +
                 b('brief-act-later', 'Read Later', 'icon-bookmark', `window.briefStoryAct('later', '${j}', this)`) +
@@ -16303,7 +16388,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 335;
+        window.APP_BUILD = 336;
 
         (async function initApp() {
             try {
@@ -17204,7 +17289,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v335';
+const CACHE_NAME = 'rss-reader-v336';
 const APP_SHELL = [
     '/',
     'index.html'
