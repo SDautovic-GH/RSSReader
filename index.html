@@ -2740,9 +2740,9 @@
             --view-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --mob-feed-name-size: 1.0em;
             --mob-article-title-size: 1.2em;
-            --article-title-size: 1.35em;
+            --article-title-size: 1.2em;
             --mob-body-size: 1.0em;
-            --mob-author-size: 0.82em;
+            --mob-author-size: 1.1em;
             --list-title-em-size: 1.1em;
             --mob-list-preview-size: 1.0em;
             /* one step below title (was 1.1) — triage rhythm */
@@ -3193,6 +3193,14 @@
             #article-body p,
             #article-body li {
                 line-height: var(--mob-line-height) !important;
+            }
+
+            /* Today is drawn inside #article-body on the phone, so the rule above also caught
+               its summaries and beat Article List > Line Height: the slider moved the titles
+               but not the text under them (build 328, on request). */
+            #article-body .brief-story-card p,
+            #article-body .brief-story-excerpt {
+                line-height: var(--mob-list-preview-line-height) !important;
             }
 
             #article-list .dynamic-list-preview,
@@ -4972,7 +4980,7 @@
 
         .brief-container h2,
         .brief-header-title {
-            font-size: var(--article-title-size, 1.35em) !important;
+            font-size: var(--article-title-size, 1.2em) !important;
             line-height: 1.25 !important;
             font-weight: 700 !important;
             font-family: inherit !important;
@@ -5027,7 +5035,7 @@
             .brief-header-title {
                 /* Article Reader > Title Size, as on desktop (build 283, on request; was a
                    fixed 1.15em) */
-                font-size: var(--mob-article-title-size, 1.15em) !important;
+                font-size: var(--mob-article-title-size, 1.2em) !important;
                 line-height: 1.25 !important;
                 margin-top: 0 !important;
             }
@@ -5509,6 +5517,14 @@
         .dark .brief-story-card .brief-story-source,
         .dark .brief-story-card .list-source-label {
             color: #cbd5e1;
+        }
+
+        /* The name already sits in the meta row, which carries Sidebar > Feed Name Size, so it
+           takes 1em of it. Sizing both multiplied the setting: +4 steps made Today's source
+           names 31px against 22px in the lists (build 328). Four classes outrank every
+           source-name rule above, the phone ones included. */
+        .brief-story-card .brief-story-meta .brief-story-source.list-source-label {
+            font-size: 1em !important;
         }
 
         .brief-story-time {
@@ -9915,7 +9931,6 @@
                         sSource.classList.add('brief-story-source', 'list-source-label', 'font-bold', 'uppercase', 'truncate');
                         sSource.style.fontWeight = '700';
                         sSource.style.textTransform = 'uppercase';
-                        sSource.style.fontSize = isMobile() ? 'var(--mob-feed-name-size, 1.0em)' : 'var(--list-source-size, 1.0em)';
                     }
                     let sTime = sMeta.querySelector('.brief-story-time') || sMeta.querySelector('span:last-of-type');
                     if (sTime && sTime !== sSource) {
@@ -10245,7 +10260,7 @@
                 titleEl.style.display = '';
                 titleEl.textContent = article.title;
             }
-            titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
+            titleEl.style.fontSize = window._savedArticleTitleSize || '1.2em';
             const authorEl = document.getElementById('article-author');
             const dateEl = document.getElementById('article-date');
             authorEl.textContent = article.isBrief ? (article.slot ? (article.slot.toUpperCase() + ' BRIEF') : 'BRIEF') : article.author;
@@ -11247,7 +11262,10 @@
                 // nothing read in between -> unread counts unchanged -> key unchanged ->
                 // CNBC stayed lit while the timeline correctly showed Slobodna-Bosna.
                 // (Normally a read/unread change moves a count and masks this.)
-                + '||' + window.currentSmartFeed + ':' + (window.currentCategoryFilter || '') + ':' + (window.currentSourceFilter || '');
+                + '||' + window.currentSmartFeed + ':' + (window.currentCategoryFilter || '') + ':' + (window.currentSourceFilter || '')
+                // Show empty folders too: without it the switch changed nothing until an
+                // unread count moved (build 328).
+                + '||' + (window._showEmptyCategories ? 'empty' : '');
             // Always repaint the Settings feed list — it's driven by accountStates.local,
             // which the renderKey guard below does not track.
             renderLocalFeedList();
@@ -14188,7 +14206,7 @@
             body: { perDevice: true, desktopProps: ['--view-font-size'], mobileProps: ['--mob-body-size'], label: 'shared-body-val', rerender: null },
             articleTitle: { perDevice: true, desktopProps: ['--article-title-size'], mobileProps: ['--mob-article-title-size'], label: 'shared-article-title-val', rerender: null },
             meta: { perDevice: true, desktopProps: ['--article-meta-size'], mobileProps: ['--mob-author-size'], label: 'shared-meta-val', rerender: null },
-            lineHeight: { perDevice: true, desktopProps: ['--line-height', '--feed-line-height'], mobileProps: ['--mob-line-height', '--mob-feed-line-height'], label: 'shared-line-height-val', rerender: null, noEm: true },
+            lineHeight: { perDevice: true, desktopProps: ['--line-height'], mobileProps: ['--mob-line-height'], label: 'shared-line-height-val', rerender: null, noEm: true },
             previewLineHeight: { perDevice: true, desktopProps: ['--list-preview-line-height'], mobileProps: ['--mob-list-preview-line-height'], label: 'shared-preview-line-height-val', rerender: 'timeline', noEm: true },
         };
 
@@ -15240,8 +15258,9 @@
         // active viewport, so on save we preserve the inactive viewport's existing
         // value from the prefs blob.
         function saveTypographyPrefs() {
-            // Viewport re-seeding replays defaults through the same writers a real
-            // slider drag uses; that must not turn "unset" into a saved value.
+            // Viewport re-seeding and the launch restore replay values through the same
+            // writers a real slider drag uses; that must not turn "unset" into a saved
+            // value, nor save settings that are not restored yet.
             if (window._reseedingSliders) return;
             const get = id => document.getElementById(id)?.value;
             let prevPrefs = {};
@@ -15283,6 +15302,8 @@
                     ...previewLines,
                     ...previewLinesSoc,
                     dedupByTitle: window._dedupByTitle || false,
+                    // Written by updateRecentlyReadDays; left out, any save dropped it (328).
+                    recentlyReadDays: prevPrefs.recentlyReadDays,
                 }));
             } catch (e) { console.warn('Storage error:', e.message); }
         }
@@ -15324,11 +15345,17 @@
                 { key: prefs.sharedFolder, id: 'shared-folder-slider', label: 'shared-folder-val', fn: v => updateFolderSize(v) },
                 { key: prefs.feedSpacing, id: 'feed-spacing-slider', label: 'feed-spacing-val', fn: v => updateFeedSpacing(v) },
             ];
-            shared.forEach(({ key, id, fn }) => {
-                if (!key) return;
-                const el = document.getElementById(id);
-                if (el) { el.value = key; fn(key); }
-            });
+            // These writers save as they go. Here that stored the markup defaults of every
+            // setting not restored yet over the saved ones, and Auto-refresh read its default
+            // back a moment later, so it was 30 minutes after every launch (build 328).
+            window._reseedingSliders = true;
+            try {
+                shared.forEach(({ key, id, fn }) => {
+                    if (!key) return;
+                    const el = document.getElementById(id);
+                    if (el) { el.value = key; fn(key); }
+                });
+            } finally { window._reseedingSliders = false; }
 
             // Per-device sliders (Article Reader + Article List): write CSS vars
             // for BOTH viewports up front so each side has its own value at all
@@ -15417,10 +15444,11 @@
                 const el = document.getElementById('app-zoom-slider'); if (el) el.value = activeZoom;
                 const lb = document.getElementById('app-zoom-val'); if (lb) lb.textContent = `${activeZoom}%`;
             }
-            if (prefs.dedupByTitle) {
-                window._dedupByTitle = true;
+            // Saved either way, so false is a choice: the default (on) used to win (328).
+            if (typeof prefs.dedupByTitle === 'boolean') {
+                window._dedupByTitle = prefs.dedupByTitle;
                 const btn = document.getElementById('dedup-title-toggle');
-                if (btn) btn.setAttribute('data-on', 'true');
+                if (btn) btn.setAttribute('data-on', prefs.dedupByTitle ? 'true' : 'false');
             }
             fetchMemoRankings();
         }
@@ -16096,7 +16124,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 327;
+        window.APP_BUILD = 328;
 
         (async function initApp() {
             try {
@@ -16997,7 +17025,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v327';
+const CACHE_NAME = 'rss-reader-v328';
 const APP_SHELL = [
     '/',
     'index.html'
