@@ -2740,9 +2740,9 @@
             --view-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --mob-feed-name-size: 1.0em;
             --mob-article-title-size: 1.2em;
-            --article-title-size: 1.35em;
+            --article-title-size: 1.2em;
             --mob-body-size: 1.0em;
-            --mob-author-size: 0.82em;
+            --mob-author-size: 1.1em;
             --list-title-em-size: 1.1em;
             --mob-list-preview-size: 1.0em;
             /* one step below title (was 1.1) — triage rhythm */
@@ -3112,10 +3112,6 @@
                 display: flex !important;
             }
 
-            #ptr-hint {
-                display: flex !important;
-            }
-
             #sidebar-pane.mobile-active {
                 flex-direction: column;
             }
@@ -3199,6 +3195,14 @@
                 line-height: var(--mob-line-height) !important;
             }
 
+            /* Today is drawn inside #article-body on the phone, so the rule above also caught
+               its summaries and beat Article List > Line Height: the slider moved the titles
+               but not the text under them (build 328, on request). */
+            #article-body .brief-story-card p,
+            #article-body .brief-story-excerpt {
+                line-height: var(--mob-list-preview-line-height) !important;
+            }
+
             #article-list .dynamic-list-preview,
             #article-list .dynamic-list-title {
                 line-height: var(--mob-list-preview-line-height) !important;
@@ -3231,9 +3235,14 @@
                 box-sizing: border-box !important;
             }
 
+            /* 14PX SIDE MARGINS ON THE PHONE (build 326, on request: "14px across the board"
+               - 16pt at the iPhone's 115% Page Zoom, the iOS layout margin). Text sits 14px
+               from each edge in Today, a story and the lists; Following's cards start at 14px.
+               Before: Today 6px, a story 12px, the lists 17px (a 3px border + 14px), the
+               Following cards 12px and its header 20px. Here: 3px border + 11px. */
             #article-list [data-id],
             #article-list .article-item-card {
-                padding: 11px 14px !important;
+                padding: 11px 14px 11px 11px !important;
                 margin-bottom: 0 !important;
                 border-radius: 0 !important;
                 border-left: 3px solid transparent !important;
@@ -3254,39 +3263,43 @@
 
             #article-list.compact-wire [data-id],
             #article-list.compact-wire .article-item-card {
-                padding: 7px 14px !important;
+                padding: 7px 14px 7px 11px !important;
             }
 
             #article-list.compact-wire .dynamic-list-preview {
                 display: none !important;
             }
 
+            /* Today and a story: all 14px in the reader itself (was 6px, and 6px more inside a
+               story only). */
             #reader-view {
-                padding-left: 6px !important;
-                padding-right: 6px !important;
+                padding-left: 14px !important;
+                padding-right: 14px !important;
             }
 
             #article-content:not(:has(.is-brief-body)) #article-header-card,
             #article-content:not(:has(.is-brief-body)) #article-body {
-                padding-left: 6px !important;
-                padding-right: 6px !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+
+            /* Following: its cards start 14px in (the scroll area's p-3 gave 12px). */
+            #sidebar-pane > .overflow-y-auto {
+                padding-left: 14px !important;
+                padding-right: 14px !important;
             }
 
             /* ===== MOBILE TOP BAR SIZING ===== */
-            /* Sidebar header — taller, larger icons and title.
-               IMPORTANT: the actual header is the SECOND div child of
-               #sidebar-pane. The first div child is #ptr-indicator
-               (pull-to-refresh, position:absolute, off-screen). Using
-               :first-child here would silently target the PTR div and do
-               nothing visible. nth-of-type(2) targets the real header.
+            /* Sidebar header — taller, larger icons and title. Selected by its id (build
+               323): it was "the second div", from when Following's pull indicator came first.
                Top padding includes safe-area-inset-top so the header sits
                below the iOS status bar (clock/battery) when running
                fullscreen with viewport-fit=cover. The h-[74px] utility
                pins box height, so padding alone is eaten by box-sizing —
                also override height to auto on mobile. */
-            #sidebar-pane>div:nth-of-type(2) {
+            #sidebar-pane>#sidebar-header {
                 height: auto !important;
-                padding: env(safe-area-inset-top, 0px) 1.25rem 0.75rem !important;
+                padding: env(safe-area-inset-top, 0px) 14px 0.75rem !important;   /* was 1.25rem (326) */
             }
 
             /* Timeline + viewer panes have no visible header on mobile.
@@ -3373,20 +3386,20 @@
                 padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 90px) !important;
             }
 
-            #sidebar-pane>div:nth-of-type(2) svg {
+            #sidebar-pane>#sidebar-header svg {
                 width: 1.5rem !important;
                 height: 1.5rem !important;
             }
 
-            #sidebar-pane>div:nth-of-type(2) h1 {
+            #sidebar-pane>#sidebar-header h1 {
                 font-size: 1.1rem !important;
             }
 
-            #sidebar-pane>div:nth-of-type(2) button {
+            #sidebar-pane>#sidebar-header button {
                 padding: 0.5rem !important;
             }
 
-            #sidebar-pane>div:nth-of-type(2) button svg {
+            #sidebar-pane>#sidebar-header button svg {
                 width: 1.5rem !important;
                 height: 1.5rem !important;
             }
@@ -3406,6 +3419,13 @@
                 display: none !important;
             }
 
+            /* FOLLOWING HOLDS YOUR STORIES AND FEEDS (build 323, on request, like Apple News's
+               Following): Unread, Read Later, Saved, History, then your folders. Its Today row
+               only repeated the Today tab. */
+            #feed-btn-today {
+                display: none !important;
+            }
+
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
                 padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 8px) !important;
             }
@@ -3421,71 +3441,17 @@
             display: none;
         }
 
-        /* Pull-to-refresh hint is mobile-only — desktop sidebar has no PTR gesture */
-        #ptr-hint {
+        /* Unread's "12 older than today" (build 323): unread stories older than Today's 24
+           hours - kept for 4 days, shown only here, so none goes unseen. */
+        .unread-older-note {
+            font-size: 0.8em;
+            font-weight: 500;
+            color: #8b949e;
+            white-space: nowrap;
+        }
+
+        .unread-older-note:empty {
             display: none;
-        }
-
-        /* It's a <button> (tap = refresh) — strip native button chrome so it reads
-           as the same plain hint, and add a brief press feedback on the pill. */
-        #ptr-hint {
-            background: none;
-            border: none;
-            /* Generous vertical padding so the whole region (not just the circle) is a
-               comfortable tap target — keeps the effective hit area >= 44px tall. */
-            padding: 0.5rem 0;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            font: inherit;
-        }
-
-        #ptr-hint:active #ptr-hint-track {
-            background: rgba(59, 130, 246, 0.22);
-            transform: scale(0.94);
-        }
-
-        /* Rounded "track" housing the down-arrow — echoes the native PTR slot. */
-        #ptr-hint-track {
-            transition: background 0.12s ease, transform 0.12s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-            border-radius: 9999px;
-            background: rgba(59, 130, 246, 0.12);
-            border: 1px solid rgba(59, 130, 246, 0.22);
-            color: #4493f8;
-        }
-
-        #ptr-hint-track svg.ptr-hint-arrow {
-            width: 22px;
-            height: 22px;
-        }
-
-        /* Spinner ring shown in place of the arrow while a refresh is running. */
-        #ptr-hint-track .ptr-hint-spinner {
-            display: none;
-            width: 22px;
-            height: 22px;
-            border: 2.5px solid rgba(59, 130, 246, 0.3);
-            border-top-color: #4493f8;
-            border-radius: 50%;
-            animation: ptr-spin 0.7s linear infinite;
-        }
-
-        #ptr-hint.is-refreshing .ptr-hint-arrow {
-            display: none;
-        }
-
-        #ptr-hint.is-refreshing .ptr-hint-spinner {
-            display: block;
-        }
-
-        /* While refreshing, don't shrink on tap (it's busy, not pressable). */
-        #ptr-hint.is-refreshing:active #ptr-hint-track {
-            transform: none;
-            background: rgba(59, 130, 246, 0.12);
         }
 
         /* ===== DESKTOP ARTICLE NAVIGATION (Toolbar Prev / Next Segmented Group) ===== */
@@ -4544,23 +4510,12 @@
             clear: both;
         }
 
-        /* Settings > Today > Folders in Today (build 310): on = in Today, off = left out. */
+        /* A wrapping row of chips (Settings > Muted words). */
         .today-folder-chips {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
             margin-top: 8px;
-        }
-
-        .today-folder-chip {
-            padding: 5px 12px;
-            border-radius: 9999px;
-            font-size: 13px;
-            line-height: 1.2;
-            border: 1px solid rgba(68, 147, 248, 0.5);
-            background: rgba(68, 147, 248, 0.12);
-            color: #4493f8;
-            cursor: pointer;
         }
 
         /* Muted words (build 311) */
@@ -4602,6 +4557,73 @@
             opacity: 0.6;
         }
 
+        /* LISTEN PLAYER (builds 315-316): shown by body.tts-on for the whole session, in the
+           tab bar's dark glass - "Listening" / "Paused", Pause or Resume, Stop. Fixed on
+           desktop; on the phone absolute in the pixel-locked body like the tab bar (a fixed
+           element mis-anchors under the 115% page zoom), just above the bar, and it stays
+           when the bar slides away. */
+        .tts-player {
+            display: none;
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%);
+            z-index: 60;
+            align-items: center;
+            gap: 4px;
+            min-height: 48px;
+            padding: 2px 4px 2px 18px;
+            border-radius: 9999px;
+            background: rgba(30, 30, 34, 0.88);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tts-player-label {
+            margin-right: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .tts-player button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: none;
+            border-radius: 9999px;
+            background: transparent;
+            color: #ffffff;
+            cursor: pointer;
+        }
+
+        .tts-player button:active {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .tts-player svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        body.tts-on .tts-player {
+            display: inline-flex;
+        }
+
+        @media (max-width: 900px) {
+            .tts-player {
+                position: absolute;
+                bottom: calc(max(0px, env(safe-area-inset-bottom, 0px) - 8px) + 76px);
+            }
+        }
+
         /* Listen in the story row is the phone's (build 312); desktop has it in the top bar. */
         @media (min-width: 901px) {
             #listen-action-btn {
@@ -4627,22 +4649,106 @@
             height: 1.05em;
         }
 
-        /* New since your last visit (build 313): a small accent dot before the source. */
-        .brief-new-dot {
-            display: none;
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #4493f8;
-            flex-shrink: 0;
-        }
-
-        .brief-story-card.is-new .brief-new-dot {
-            display: inline-block;
-        }
-
         .brief-header-new {
             color: #4493f8 !important;
+        }
+
+        /* TODAY'S STATUS LINE (build 322): "Updated 5m ago - 3 new since 8:47 AM" has its own
+           line, always one line tall, so its text changing never moves the page. It used to
+           share the badge's wrapping row, which took a second row at the phone's width when
+           "Updating..." became "Updated just now" (measured: every story down 19px). */
+        .brief-header-status {
+            display: block;
+            height: 1.4em;
+            line-height: 1.4em;
+            margin: -2px 0 4px;
+            font-size: 0.8em;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .brief-header-status > span:not(:empty) ~ span:not(:empty)::before {
+            content: '\2022\00a0';
+            color: #64748b;
+        }
+
+        @media (max-width: 900px) {
+            .brief-header-status {
+                font-size: 0.75em;
+                letter-spacing: -0.01em;
+            }
+        }
+
+        /* UNDO BAR (build 322): "Marked 5 read - Undo" floats over the page above the tab bar,
+           in its glass, so it takes no room and nothing moves when it goes. Placed like the
+           Listen player: fixed on desktop, absolute in the pixel-locked body on the phone. */
+        #brief-undo-bar {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            z-index: 61;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 48px;
+            padding: 2px 4px 2px 16px;
+            border-radius: 9999px;
+            background: rgba(30, 30, 34, 0.92);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-backdrop-filter: blur(24px) saturate(1.6);
+            font-size: 15px;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 8px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        #brief-undo-bar.is-on {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, 0);
+        }
+
+        #brief-undo-bar svg {
+            width: 16px;
+            height: 16px;
+            margin-right: 6px;
+            vertical-align: -3px;
+        }
+
+        #brief-undo-bar button {
+            min-width: 44px;
+            min-height: 44px;
+            padding: 0 14px;
+            border: none;
+            border-radius: 9999px;
+            background: transparent;
+            color: #4493f8;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        #brief-undo-bar button:active {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        @media (max-width: 900px) {
+            #brief-undo-bar {
+                position: absolute;
+                bottom: calc(max(0px, env(safe-area-inset-bottom, 0px) - 8px) + 76px);
+            }
+
+            body.tts-on #brief-undo-bar {
+                bottom: calc(max(0px, env(safe-area-inset-bottom, 0px) - 8px) + 132px);
+            }
         }
 
         .brief-muted-btn {
@@ -4663,13 +4769,6 @@
             background: rgba(139, 148, 158, 0.18);
             color: #8b949e;
             white-space: nowrap;
-        }
-
-        .today-folder-chip.is-off {
-            background: transparent;
-            border-color: rgba(139, 148, 158, 0.45);
-            color: #8b949e;
-            text-decoration: line-through;
         }
 
         /* "Also from Reuters, AP" (build 308): its own line, wraps, never cut off. */
@@ -4732,16 +4831,23 @@
            (syncBriefCards). The story open beside the desktop Today column stays until
            you move on. A section with nothing left goes too, except while it shows its
            Undo; so does its pill and, once nothing is left at all, the pill bar. */
-        .brief-story-card.brief-card-read:not(.brief-card-active),
-        .brief-cat-section.brief-section-empty:not(.is-just-marked),
-        .brief-jump-pill.brief-gone,
-        .brief-jump-bar.brief-gone {
+        .brief-story-card.brief-card-read:not(.brief-card-active):not(.brief-held),
+        .brief-cat-section.brief-section-empty:not(.brief-held),
+        .brief-jump-pill.brief-gone:not(.brief-held),
+        .brief-jump-bar.brief-gone:not(.brief-held) {
             display: none !important;
         }
 
-        /* briefKeepInPlace() holds the reading position itself when stories above it
-           leave (iOS Safari has no native scroll anchoring). The browser's own anchoring
-           would fight it, so it is off wherever a brief scrolls. */
+        /* CALM TODAY (build 322): something that has to go while it is on the screen, and
+           that you did not tap, waits where it is (brief-held) - a read story dimmed - and
+           goes once it is off the screen (syncBriefCards). */
+        .brief-story-card.brief-card-read.brief-held {
+            opacity: 0.45;
+        }
+
+        /* keepTodayInPlace() holds the reading position itself when things above it change
+           (iOS Safari has no native scroll anchoring). The browser's own anchoring would
+           fight it, so it is off wherever a brief scrolls. */
         #today-column,
         #reader-view:has(#article-body.is-brief-body) {
             overflow-anchor: none;
@@ -4774,12 +4880,11 @@
             color: #57606a;
         }
 
-        .brief-cat-end.is-empty {
+        .brief-cat-end.is-empty:not(.brief-held) {
             display: none;
         }
 
-        .brief-mark-section-btn,
-        .brief-undo-btn {
+        .brief-mark-section-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -4796,16 +4901,6 @@
         .brief-mark-section-btn:hover {
             color: #4493f8;
             background: rgba(68, 147, 248, 0.12);
-        }
-
-        .brief-undo-btn {
-            color: #4493f8;
-        }
-
-        .brief-marked-note {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
         }
 
         .brief-cat-end svg {
@@ -4885,7 +4980,7 @@
 
         .brief-container h2,
         .brief-header-title {
-            font-size: var(--article-title-size, 1.35em) !important;
+            font-size: var(--article-title-size, 1.2em) !important;
             line-height: 1.25 !important;
             font-weight: 700 !important;
             font-family: inherit !important;
@@ -4926,8 +5021,11 @@
 
         @media (max-width: 900px) {
             .brief-header-top {
-                margin-left: -4px !important;
-                /* Shift left to use available space and prevent right-edge clipping */
+                /* Pulled left by the badge's own 6px padding, so "LIVE BRIEF" starts on the
+                   heading's 14px edge and only its tint reaches into the margin (build 327, on
+                   request: it "looks pulled to the right" - 326 had put the tint's edge on 14px,
+                   leaving the text at 20px; before that a fixed 4px pull roughly did this). */
+                margin-left: -6px !important;
                 margin-bottom: 4px !important;
                 /* 50% space reduction */
                 gap: 5px !important;
@@ -4937,7 +5035,7 @@
             .brief-header-title {
                 /* Article Reader > Title Size, as on desktop (build 283, on request; was a
                    fixed 1.15em) */
-                font-size: var(--mob-article-title-size, 1.15em) !important;
+                font-size: var(--mob-article-title-size, 1.2em) !important;
                 line-height: 1.25 !important;
                 margin-top: 0 !important;
             }
@@ -5421,6 +5519,14 @@
             color: #cbd5e1;
         }
 
+        /* The name already sits in the meta row, which carries Article List > Source Name Size, so it
+           takes 1em of it. Sizing both multiplied the setting: +4 steps made Today's source
+           names 31px against 22px in the lists (build 328). Four classes outrank every
+           source-name rule above, the phone ones included. */
+        .brief-story-card .brief-story-meta .brief-story-source.list-source-label {
+            font-size: 1em !important;
+        }
+
         .brief-story-time {
             font-size: 0.85em !important;
             font-weight: 400 !important;
@@ -5440,9 +5546,12 @@
         .brief-story-card a.brief-story-title,
         .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link),
         .brief-story-title {
-            font-size: var(--list-title-em-size, 1.1em) !important;
+            /* Bold again and a step smaller (build 324, on request: "too large, I would like
+               it smaller and bold"; 282 had made them regular). Still Article List > Title
+               Size - 0.95 of it: a full step (0.9) put it below the 16px summary under it. */
+            font-size: calc(var(--list-title-em-size, 1.1em) * 0.95) !important;
             line-height: var(--list-preview-line-height, 1.35) !important;
-            font-weight: 400 !important;   /* regular, not semibold (build 282, on request) */
+            font-weight: 600 !important;
             margin-top: 0 !important;
             /* override .article-content h4 margin-top */
             padding-top: 0 !important;
@@ -5642,7 +5751,7 @@
             .brief-story-card a.brief-story-title,
             .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link),
             .brief-story-title {
-                font-size: var(--mob-list-title-size, 1.1em) !important;
+                font-size: calc(var(--mob-list-title-size, 1.1em) * 0.95) !important;
                 line-height: var(--mob-list-preview-line-height, 1.35) !important;
                 margin-top: 0 !important;
                 padding-top: 0 !important;
@@ -5776,83 +5885,67 @@
             color: #f0f6fc;
         }
 
-        /* Feed health rows — same dark-first pattern as the rest of the modal. */
-        .feed-problem-row {
+        /* FEED MANAGER (build 324): Settings > Feeds, opened by Following's Edit - your feeds
+           by folder; each folder with its In Today switch and Rename, each feed with how it
+           is doing, Edit, Remove and (when it is not loading) Retry. */
+        .fm-summary {
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .fm-folder {
+            margin-bottom: 14px;
+        }
+
+        .fm-folder-head {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 10px 16px;
+            gap: 8px;
+            padding: 10px 4px 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
         }
 
-        .feed-problem-name {
-            font-size: 14px;
-            font-weight: 500;
-            color: #f0f6fc;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            min-width: 0;
-            flex: 1;
+        .fm-folder-name {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #4493f8;
         }
 
-        .feed-problem-detail {
+        .fm-folder-sub {
+            margin-top: 2px;
             font-size: 12px;
-            color: #f87171;
-            flex-shrink: 0;
-        }
-
-        .feed-problem-empty {
-            font-size: 14px;
             color: #94a3b8;
         }
 
-        .feed-problem-actions {
-            display: flex;
-            gap: 6px;
-            flex-shrink: 0;
-        }
-
-        .feed-problem-btn {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
+        .fm-feed-open {
+            display: block;
+            padding: 0;
             border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: #94a3b8;
-            background: rgba(148, 163, 184, 0.12);
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
         }
 
-        .feed-problem-btn:active {
-            background: rgba(148, 163, 184, 0.28);
-        }
-
-        .feed-problem-btn.remove {
+        .feed-row-cat.fm-bad {
             color: #f87171;
-            background: rgba(248, 113, 113, 0.12);
         }
 
-        .feed-problem-btn.remove:active {
-            background: rgba(248, 113, 113, 0.28);
-        }
-
-        html:not(.dark) .feed-problem-name {
-            color: #1f2937;
-        }
-
-        html:not(.dark) .feed-problem-detail {
+        html:not(.dark) .fm-summary,
+        html:not(.dark) .feed-row-cat.fm-bad {
             color: #dc2626;
         }
 
-        html:not(.dark) .feed-problem-btn {
-            color: #64748b;
-        }
-
-        html:not(.dark) .feed-problem-btn.remove {
-            color: #dc2626;
+        html:not(.dark) .fm-folder-name {
+            color: #3d6bb0;
         }
 
         html:not(.dark) .settings-item-label,
@@ -6173,8 +6266,7 @@
             }
         }
 
-        /* ===== PULL-TO-REFRESH ===== */
-        #ptr-indicator,
+        /* ===== PULL-TO-REFRESH (Today only since build 323) ===== */
         #today-ptr-indicator {
             position: absolute;
             top: -56px;
@@ -6194,17 +6286,14 @@
             gap: 8px;
         }
 
-        #ptr-indicator.ptr-visible,
         #today-ptr-indicator.ptr-visible {
             opacity: 1;
         }
 
-        #ptr-indicator.ptr-ready,
         #today-ptr-indicator.ptr-ready {
             color: #34d399;
         }
 
-        #ptr-spinner,
         #today-ptr-spinner {
             width: 20px;
             height: 20px;
@@ -6213,7 +6302,6 @@
             border-radius: 50%;
         }
 
-        #ptr-indicator.ptr-loading #ptr-spinner,
         #today-ptr-indicator.ptr-loading #today-ptr-spinner {
             animation: ptr-spin 0.7s linear infinite;
         }
@@ -6362,6 +6450,14 @@
             <symbol id="icon-stop" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                 <rect x="6" y="6" width="12" height="12" rx="1" />
             </symbol>
+            <!-- Listen player (build 316) -->
+            <symbol id="icon-pause" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <rect x="6" y="5" width="4" height="14" rx="1" />
+                <rect x="14" y="5" width="4" height="14" rx="1" />
+            </symbol>
+            <symbol id="icon-play" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" />
+            </symbol>
             <symbol id="icon-mark-unread" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="9" />
@@ -6489,11 +6585,6 @@
         <aside id="sidebar-pane"
             class="w-[328px] flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col"
             style="position:relative;">
-            <!-- Pull-to-refresh indicator -->
-            <div id="ptr-indicator">
-                <div id="ptr-spinner"></div>
-                <span id="ptr-label">Pull to refresh</span>
-            </div>
             <div id="sidebar-header"
                 class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-2 min-w-0">
@@ -6518,6 +6609,13 @@
                         title="Refresh Feeds">
                         <svg class="h-[22px] w-[22px]">
                             <use href="#icon-refresh" />
+                        </svg>
+                    </button>
+                    <button id="header-edit-feeds-btn" onclick="openFeedManager()"
+                        class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Edit feeds"
+                        aria-label="Edit feeds">
+                        <svg class="h-[22px] w-[22px]">
+                            <use href="#icon-pencil" />
                         </svg>
                     </button>
                     <button id="header-add-feed-btn" onclick="openAddFeedModal()"
@@ -6557,7 +6655,7 @@
                                 viewBox="0 0 20 20">
                                 <circle cx="10" cy="10" r="6" />
                             </svg> Unread</span>
-                        <span id="badge-all" class="feed-badge mob-unread-count text-gray-400 hidden">0</span>
+                        <span class="flex items-center gap-2"><span id="unread-older-note" class="unread-older-note"></span><span id="badge-all" class="feed-badge mob-unread-count text-gray-400 hidden">0</span></span>
                     </button>
                     <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')"
                         oncontextmenu="showFolderContextMenu(event,'smart','read-later')"
@@ -6608,23 +6706,6 @@
                         class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
                     </div>
                 </div>
-                <!-- Pull-to-refresh hint (mobile only) — sits below the category folders.
-                     The Home/sidebar pane has the PTR gesture; this animated cue signals it.
-                     Down-arrow housed in a rounded track that pulses downward, echoing the
-                     native iOS/Android PTR slot. -->
-                <button id="ptr-hint" type="button" onclick="refreshAll()" aria-label="Refresh feeds"
-                    class="flex flex-col items-center justify-center gap-2 pt-5 pb-2 w-full select-none">
-                    <span id="ptr-hint-track" aria-hidden="true">
-                        <!-- Down-arrow (idle) and spinner ring (refreshing) - CSS swaps them via .is-refreshing -->
-                        <svg class="ptr-hint-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 5v14M19 12l-7 7-7-7" />
-                        </svg>
-                        <span class="ptr-hint-spinner"></span>
-                    </span>
-                    <span id="ptr-hint-label" class="text-[11px] font-medium text-gray-500">Tap or pull to
-                        refresh</span>
-                </button>
             </div>
 
         </aside>
@@ -6750,7 +6831,7 @@
                                 <p class="text-sm text-gray-500 mb-6 max-w-xs mx-auto">Your personal, ad-free news hub.
                                     Add your first feed to get started.</p>
                                 <button
-                                    onclick="if(isMobile()){setMobilePane('sidebar');toggleSettings();}else{toggleSettings();}"
+                                    onclick="if(isMobile()){setMobilePane('sidebar');}openFeedManager();"
                                     class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -6758,7 +6839,7 @@
                                     </svg>
                                     Add Your First Feed
                                 </button>
-                                <p class="text-xs text-gray-600 mt-4">Or import an OPML file from Settings → Feeds</p>
+                                <p class="text-xs text-gray-600 mt-4">Or import an OPML file from Edit feeds (the pencil)</p>
                             </div>
                             <div id="empty-state-select">
                                 <!-- Has feeds: prompt to select article -->
@@ -6834,6 +6915,18 @@
                 </svg>
             </button>
         </main>
+    </div>
+
+    <!-- LISTEN PLAYER (builds 315-316, on request): on screen for the whole Listen session,
+         playing or paused, so it can be paused, resumed or stopped from anywhere. -->
+    <div id="tts-player" class="tts-player" role="group" aria-label="Listen">
+        <span id="tts-player-label" class="tts-player-label">Listening</span>
+        <button id="tts-pause-btn" type="button" onclick="window.togglePauseTTS()" title="Pause" aria-label="Pause">
+            <svg aria-hidden="true"><use href="#icon-pause" /></svg>
+        </button>
+        <button type="button" onclick="stopTTS()" title="Stop" aria-label="Stop listening">
+            <svg aria-hidden="true"><use href="#icon-stop" /></svg>
+        </button>
     </div>
 
     <!-- MOBILE BOTTOM TAB BAR — Apple News / Google News style -->
@@ -6955,24 +7048,16 @@
             <!-- Header -->
             <div
                 class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
-                <h2 class="font-bold text-lg">App Settings</h2>
-                <button onclick="toggleSettings()" aria-label="Close settings" style="font-size:1.6rem;line-height:1"
+                <h2 id="settings-title" class="font-bold text-lg">Settings</h2>
+                <button onclick="toggleSettings()" aria-label="Close" style="font-size:1.6rem;line-height:1"
                     class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 -mr-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">✕</button>
             </div>
 
-            <!-- Tabs -->
-            <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <button id="settings-tab-feeds" onclick="switchSettingsTab('feeds')"
-                    class="flex-1 py-2.5 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 transition-colors">
-                    Feeds
-                </button>
-                <button id="settings-tab-prefs" onclick="switchSettingsTab('prefs')"
-                    class="flex-1 py-2.5 text-sm font-semibold text-gray-400 border-b-2 border-transparent hover:text-gray-600 transition-colors">
-                    Preferences
-                </button>
-            </div>
+            <!-- TWO SCREENS IN ONE CARD (build 325, on request: the pencil and the gear "land on
+                 the same"): Following's Edit shows Feeds, the gear shows Settings - each with its
+                 own title. The Feeds / Preferences tab row is gone. -->
 
-            <!-- Tab: Feeds -->
+            <!-- Feeds (the feed manager) -->
             <div id="settings-panel-feeds" class="px-5 pt-8 pb-6 overflow-y-auto flex-1 no-scrollbar">
                 <div class="flex items-center justify-between mb-4">
                     <button onclick="openAddFeedModal()"
@@ -6994,16 +7079,6 @@
                     </div>
                 </div>
                 <div id="local-feed-list" class="pb-2"></div>
-                <!-- Feed health: feeds with no successful fetch in 48h+ (or failing
-                     repeatedly this session), with per-feed Retry / Remove actions.
-                     Lives in the Feeds tab (it's feed management, not a preference).
-                     Populated by renderFeedProblems() when Settings opens. -->
-                <div class="pt-2">
-                    <h3 class="settings-section-label">Feed health</h3>
-                    <div class="settings-list" id="feed-problems-list">
-                        <div class="feed-problem-row"><span class="feed-problem-empty">Checking&hellip;</span></div>
-                    </div>
-                </div>
             </div>
             <div id="feeds-overflow-menu"
                 class="hidden fixed w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[60] py-1">
@@ -7152,14 +7227,6 @@
                             <input type="range" min="5" max="51" value="10" id="brief-stories-slider"
                                 class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
                         </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="min-w-0">
-                                <span class="settings-item-label">Folders in Today</span>
-                                <p class="text-[12px] text-gray-400 mt-1">Tap a folder to leave it out of Today. It stays
-                                    under Following.</p>
-                            </div>
-                            <div id="today-folders" class="today-folder-chips"></div>
-                        </div>
                     </div>
                 </div>
 
@@ -7188,14 +7255,6 @@
                     <div class="settings-list">
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Feed Name Size</span>
-                                <span class="settings-value" id="shared-feed-name-val">1em</span>
-                            </div>
-                            <input type="range" min="4" max="19" value="10" id="shared-feed-name-slider"
-                                class="settings-range" oninput="updateSharedSize('feedName', this.value)">
-                        </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Folder Size</span>
                                 <span class="settings-value" id="shared-folder-val">1.05em</span>
                             </div>
@@ -7216,10 +7275,15 @@
                 <!-- ARTICLE LIST -->
                 <div>
                     <h3 class="settings-section-label">Article List</h3>
+                    <!-- ONE ORDER FOR LIST AND READER (build 324, on request): Title, its text,
+                         Line Height, then what is particular to the section. -->
                     <div class="settings-list">
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Article Title Size</span>
+                                <div class="min-w-0">
+                                    <span class="settings-item-label">Title Size</span>
+                                    <p class="text-[12px] text-gray-400 mt-1">Lists, and Today's stories a little smaller</p>
+                                </div>
                                 <span class="settings-value" id="shared-list-title-val">1.1em</span>
                             </div>
                             <input type="range" min="4" max="19" value="11" id="shared-list-title-slider"
@@ -7232,6 +7296,28 @@
                             </div>
                             <input type="range" min="4" max="19" value="10" id="shared-preview-slider"
                                 class="settings-range" oninput="updateSharedSize('preview', this.value)">
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <span class="settings-item-label">Line Height</span>
+                                <span class="settings-value" id="shared-preview-line-height-val">1.4</span>
+                            </div>
+                            <input type="range" min="8" max="24" value="14" id="shared-preview-line-height-slider"
+                                class="settings-range" oninput="updateSharedSize('previewLineHeight', this.value)">
+                        </div>
+                        <!-- Was Sidebar > Feed Name Size (moved build 329, on request): it never sized
+                             the sidebar's feed names, which follow Folder Size. Same slider and saved
+                             value; it sits where Author & Date Size sits in Article Reader. -->
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <div class="min-w-0">
+                                    <span class="settings-item-label">Source Name Size</span>
+                                    <p class="text-[12px] text-gray-400 mt-1">Lists, Today, and the source line above a story</p>
+                                </div>
+                                <span class="settings-value" id="shared-feed-name-val">1em</span>
+                            </div>
+                            <input type="range" min="4" max="19" value="10" id="shared-feed-name-slider"
+                                class="settings-range" oninput="updateSharedSize('feedName', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -7249,14 +7335,6 @@
                             <input type="range" min="2" max="20" value="10" id="lines-social-slider"
                                 class="settings-range" oninput="updateLinesSocial(this.value)">
                         </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Line Height</span>
-                                <span class="settings-value" id="shared-preview-line-height-val">1.4</span>
-                            </div>
-                            <input type="range" min="8" max="24" value="14" id="shared-preview-line-height-slider"
-                                class="settings-range" oninput="updateSharedSize('previewLineHeight', this.value)">
-                        </div>
                     </div>
                 </div>
 
@@ -7266,7 +7344,18 @@
                     <div class="settings-list">
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Body Size</span>
+                                <div class="min-w-0">
+                                    <span class="settings-item-label">Title Size</span>
+                                    <p class="text-[12px] text-gray-400 mt-1">Stories, and Today's heading</p>
+                                </div>
+                                <span class="settings-value" id="shared-article-title-val">1.2em</span>
+                            </div>
+                            <input type="range" min="4" max="22" value="12" id="shared-article-title-slider"
+                                class="settings-range" oninput="updateSharedSize('articleTitle', this.value)">
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <span class="settings-item-label">Body Text Size</span>
                                 <span class="settings-value" id="shared-body-val">1em</span>
                             </div>
                             <input type="range" min="4" max="22" value="10" id="shared-body-slider"
@@ -7279,14 +7368,6 @@
                             </div>
                             <input type="range" min="8" max="24" value="15" id="shared-line-height-slider"
                                 class="settings-range" oninput="updateSharedSize('lineHeight', this.value)">
-                        </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Title Size</span>
-                                <span class="settings-value" id="shared-article-title-val">1.2em</span>
-                            </div>
-                            <input type="range" min="4" max="22" value="12" id="shared-article-title-slider"
-                                class="settings-range" oninput="updateSharedSize('articleTitle', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -7694,8 +7775,10 @@
         window._persistFeedHealth = () => {
             try {
                 const out = {};
+                // Only feeds you follow (build 319): removed feeds used to stay in it for good.
+                const followed = new Set((window.feeds || []).map(f => f.url));
                 for (const [url, h] of Object.entries(window._feedHealth)) {
-                    if (!h) continue;
+                    if (!h || !followed.has(url)) continue;
                     if (h.slow || h.lastSuccess) out[url] = { slow: !!h.slow, lastSuccess: h.lastSuccess || null };
                 }
                 localStorage.setItem('newsreader_feed_health', JSON.stringify(out));
@@ -7712,7 +7795,7 @@
         class RSSReaderDB {
             constructor() {
                 this.dbName = 'RSSReaderDB';
-                this.version = 5;
+                this.version = 6;
                 this.db = null;
             }
 
@@ -7722,13 +7805,23 @@
                     const request = indexedDB.open(this.dbName, this.version);
                     request.onupgradeneeded = (e) => {
                         const db = e.target.result;
+                        // v6 (build 319): the articles store has NO indexes. Its four were never
+                        // read, and Edge kept the entries of every article that had left the
+                        // store: measured 2026-10-06, ~416,000 stale entries in 'timestamp' and
+                        // 'feedUrl' - 87 MB of a 121 MB database holding 1,139 articles (1.8 MB).
+                        // ('unread' / 'readLater' held nothing: true/false are not valid index
+                        // keys.) Dropping them deletes all of that and stops the build-up. Do not
+                        // add an index here again without code that reads it.
                         if (!db.objectStoreNames.contains('articles')) {
-                            const store = db.createObjectStore('articles', { keyPath: 'id' });
-                            store.createIndex('timestamp', '_ts', { unique: false });
-                            store.createIndex('feedUrl', 'feedUrl', { unique: false });
-                            store.createIndex('unread', 'unread', { unique: false });
-                            store.createIndex('readLater', 'readLater', { unique: false });
+                            db.createObjectStore('articles', { keyPath: 'id' });
+                        } else {
+                            const arts = e.target.transaction.objectStore('articles');
+                            ['timestamp', 'feedUrl', 'unread', 'readLater'].forEach(n => {
+                                if (arts.indexNames.contains(n)) arts.deleteIndex(n);
+                            });
                         }
+                        // Automatic briefs were removed in build 281; their store goes too.
+                        if (db.objectStoreNames.contains('briefs')) db.deleteObjectStore('briefs');
                         if (!db.objectStoreNames.contains('feeds')) db.createObjectStore('feeds', { keyPath: 'url' });
                         if (!db.objectStoreNames.contains('metadata')) db.createObjectStore('metadata');
                         if (!db.objectStoreNames.contains('favicons')) db.createObjectStore('favicons');
@@ -7749,21 +7842,16 @@
                             sv.createIndex('addedAt', 'addedAt', { unique: false });
                         }
                     };
-                    request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
+                    request.onsuccess = (e) => {
+                        this.db = e.target.result;
+                        // A newer build upgrading the database from another tab (build 319): let
+                        // go - or that tab waits until this one closes - and reload into it.
+                        this.db.onversionchange = () => { this.db.close(); this.db = null; location.reload(); };
+                        resolve(this.db);
+                    };
+                    // Another tab still runs a build from before the handler above.
+                    request.onblocked = () => window.showToast?.('Close other RSS Reader tabs to finish updating', true);
                     request.onerror = (e) => reject('IndexedDB error: ' + e.target.errorCode);
-                });
-            }
-
-            // Automatic briefs were removed in build 281. Installs from before then still
-            // have their store (up to 4 stored briefs); empty it - nothing reads it now.
-            async clearRetiredBriefs() {
-                const db = await this.open();
-                if (!db.objectStoreNames.contains('briefs')) return;
-                return new Promise((resolve) => {
-                    const tx = db.transaction('briefs', 'readwrite');
-                    tx.objectStore('briefs').clear();
-                    tx.oncomplete = () => resolve();
-                    tx.onerror = () => resolve();
                 });
             }
 
@@ -8696,7 +8784,9 @@
             } else if (window.currentSourceFilter === sourceName) {
                 renderTimeline(true);
             }
-            saveArticleCache();
+            // No save here (build 319): like an RSS feed, the batch saves once at its end. This
+            // per-feed save re-wrote the whole article store after each of the 31 Bluesky feeds
+            // - 32 full saves per refresh, the last of which the refresh waited behind.
             return true;
         }
 
@@ -8977,15 +9067,13 @@
             const isReadLater = window.currentSmartFeed === 'read-later';
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             const isSaved = window.currentSmartFeed === 'saved';
-            let headline, subtext, showRefresh = true;
+            let headline, subtext;
             if (!hasFeeds) {
                 headline = 'No feeds yet';
-                subtext = 'Add your first feed from Settings → Feeds to get started.';
-                showRefresh = false;
+                subtext = 'Add your first feed from Edit feeds (the pencil) to get started.';
             } else if (isSaved) {
                 headline = 'Nothing saved yet';
                 subtext = 'Tap the star on any article to keep it here for future reference. Saved items sync across your devices.';
-                showRefresh = false;
             } else if (isRecentlyRead) {
                 headline = 'No history yet';
                 subtext = `Articles you've read in the last ${getRecentlyReadDays()} days will appear here.`;
@@ -9000,13 +9088,9 @@
                 subtext = `No unread articles from ${esc(window.currentSourceFilter)}.`;
             } else {
                 headline = 'All caught up';
-                subtext = "You've read everything. Pull down to refresh.";
+                subtext = "You've read everything.";
             }
-            const refreshBtn = showRefresh ? `
-                    <button onclick="refreshAll()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold" style="background: rgba(59,130,246,0.15); color: #4493f8; border: 1px solid rgba(59,130,246,0.25);">
-                        <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
-                        Refresh
-                    </button>` : '';
+            // No Refresh button in an empty list (build 323): Today's pull refreshes.
             return `
                 <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
@@ -9014,7 +9098,6 @@
                     </div>
                     <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">${esc(headline)}</h2>
                     <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">${esc(subtext)}</p>
-                    ${refreshBtn}
                 </div>
             `;
         }
@@ -9588,27 +9671,22 @@
             }, { passive: true });
         })();
 
-        // ===== PULL-TO-REFRESH (mobile): Following and Today =====
+        // ===== PULL-TO-REFRESH (mobile): Today =====
+        // ONE PLACE TO REFRESH (build 323, on request: "we should not need two separate
+        // refreshes"). Following had its own pull and a "Tap or pull to refresh" circle, and
+        // its lists one more; all ran the same refresh. Now Today's pull is the one you use,
+        // next to the automatic ones (on open, on return after 5 minutes, the timer).
         (function () {
             const THRESHOLD = 100;
             let _pt = null;
             let _loading = false;
 
-            // The surface a touch can pull, or null. Following: the sidebar list. Today
-            // (build 277, on request): the live brief in the reader - not a story.
+            // The surface a touch can pull, or null: the live brief in the reader (build 277,
+            // on request) - not a story.
             const surfaceAt = () => {
                 if (!isMobile()) return null;
-                if (window._mobilePane === 'sidebar') {
-                    return {
-                        today: false,
-                        scroller: document.querySelector('#sidebar-pane .overflow-y-auto'),
-                        indicator: document.getElementById('ptr-indicator'),
-                        label: document.getElementById('ptr-label'),
-                    };
-                }
                 if (window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) {
                     return {
-                        today: true,
                         scroller: document.getElementById('reader-view'),
                         indicator: document.getElementById('today-ptr-indicator'),
                         label: document.getElementById('today-ptr-label'),
@@ -9649,10 +9727,8 @@
                 _pt.label.textContent = dy >= THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
             }, { passive: true });
 
-            // Today: hold the indicator open with its spinner until the refresh - and any
-            // pass queued behind one already running - has finished, then rebuild the
-            // brief so the new stories show (refreshUI deliberately leaves an open brief
-            // alone). Following doesn't need this: its Tap-or-pull circle spins instead.
+            // Hold the indicator open with its spinner until the refresh - and any pass
+            // queued behind one already running - has finished, then show what came in.
             const refreshToday = async (p) => {
                 _loading = true;
                 p.indicator.style.top = '0px';
@@ -9668,19 +9744,27 @@
                     }
                 } finally {
                     _loading = false;
-                    document.body.classList.remove('today-refreshing');
+                    // CALM (build 323): the refresh ends ~20 s after the pull. Still at the top,
+                    // waiting for it: the space the spinner took closes and Today shows what
+                    // came in. Scrolled down to read meanwhile: nothing moves - the space closes
+                    // where you cannot see it, made up for, and new stories wait behind the
+                    // "N new stories" pill. (Before, Today was rebuilt either way and the scroll
+                    // put back a frame later: a jump to the top and back.)
+                    const sc = p.scroller;
+                    const atTop = !sc || sc.scrollTop <= 4;
+                    if (atTop) document.body.classList.remove('today-refreshing');
+                    else {
+                        const ac = document.getElementById('article-content');
+                        if (ac) ac.style.transition = 'none';
+                        window.keepTodayInPlace(() => document.body.classList.remove('today-refreshing'));
+                        requestAnimationFrame(() => { if (ac) ac.style.transition = ''; });
+                    }
                     p.indicator.style.top = '-56px';
                     p.indicator.classList.remove('ptr-visible', 'ptr-loading');
                     p.label.textContent = 'Pull to refresh';
                     // Only if Today is still on screen - not if a story was opened meanwhile.
-                    if (window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) {
-                        const y = p.scroller ? p.scroller.scrollTop : 0;
+                    if (atTop && window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) {
                         window.openToday();
-                        // selectArticle puts the reader at the top, now and on the next frame;
-                        // if the brief was scrolled while it refreshed, keep that place.
-                        if (p.scroller && y > 0) {
-                            requestAnimationFrame(() => requestAnimationFrame(() => { p.scroller.scrollTop = y; }));
-                        }
                     }
                 }
             };
@@ -9690,29 +9774,13 @@
                 const p = _pt;
                 const wasReady = !p.cancelled && p.indicator.classList.contains('ptr-ready');
                 _pt = null;
-                if (wasReady && !_loading && p.today) {
+                if (wasReady && !_loading) {
                     refreshToday(p);
                     return;
                 }
-                // Retract the top pull indicator immediately. The in-progress feedback
-                // is the #ptr-hint arrow circle (below the folders) spinning - driven by
-                // runFullRefresh - so we don't pin/spin this top bar (it overlapped the
-                // logo header and duplicated the feedback).
                 p.indicator.style.top = '-56px';
                 p.indicator.classList.remove('ptr-visible', 'ptr-ready');
                 p.label.textContent = 'Pull to refresh';
-                if (wasReady && !_loading) {
-                    _loading = true;
-                    // Background semantics: one refreshUI() at the end instead of a
-                    // per-feed render storm. Depth deliberately UNCAPPED (default 20)
-                    // so every device sees identical feed windows — the old mobile 15
-                    // left items 16-20 markable only on desktop. Routed through the
-                    // shared in-flight guard so a concurrent auto-refresh/first-
-                    // snapshot fetch can't stack on top.
-                    window.runFullRefresh({ isBackground: true }).then(() => {
-                        _loading = false;
-                    });
-                }
             };
             const cancel = () => {
                 if (!_pt) return;
@@ -9869,7 +9937,6 @@
                         sSource.classList.add('brief-story-source', 'list-source-label', 'font-bold', 'uppercase', 'truncate');
                         sSource.style.fontWeight = '700';
                         sSource.style.textTransform = 'uppercase';
-                        sSource.style.fontSize = isMobile() ? 'var(--mob-feed-name-size, 1.0em)' : 'var(--list-source-size, 1.0em)';
                     }
                     let sTime = sMeta.querySelector('.brief-story-time') || sMeta.querySelector('span:last-of-type');
                     if (sTime && sTime !== sSource) {
@@ -10029,8 +10096,7 @@
             if (bHeader) bHeader.style.paddingTop = '3px';
             const bHeaderTop = container.querySelector('.brief-header-top');
             if (bHeaderTop) {
-                bHeaderTop.style.marginBottom = '4px';
-                if (isMobile()) bHeaderTop.style.marginLeft = '-4px';
+                bHeaderTop.style.marginBottom = '4px';   // on the 14px margin, not pulled 4px left (326)
             }
 
             // Remove top mark all read button if present (user requested only at the bottom of the brief)
@@ -10106,7 +10172,7 @@
                 sec.appendChild(end);
             });
             // Stories already read leave before the brief is first seen.
-            window.syncBriefCards?.(container);
+            window.syncBriefCards?.(container, { now: true });
 
             // Update live unread states on buttons
             window.updateBriefMarkReadButtons?.();
@@ -10131,6 +10197,7 @@
             }
             if (!article) return;
 
+            const prevArticle = window.currentArticle;   // build 317: Today kept alive below
             window.currentArticle = article;
             // Manage "Back to Brief" state: clear if navigating to an unrelated article
             if (window._returnToBriefState) {
@@ -10199,7 +10266,7 @@
                 titleEl.style.display = '';
                 titleEl.textContent = article.title;
             }
-            titleEl.style.fontSize = window._savedArticleTitleSize || '1.3em';
+            titleEl.style.fontSize = window._savedArticleTitleSize || '1.2em';
             const authorEl = document.getElementById('article-author');
             const dateEl = document.getElementById('article-date');
             authorEl.textContent = article.isBrief ? (article.slot ? (article.slot.toUpperCase() + ' BRIEF') : 'BRIEF') : article.author;
@@ -10215,10 +10282,49 @@
                 authorEl.nextElementSibling.style.display = '';
             }
             const bodyEl = document.getElementById('article-body');
+            // TODAY STAYS ALIVE WHILE A STORY IS OPEN (build 317, on request: the Today tab
+            // "fails half the time" to return to your place). Returning used to REBUILD Today
+            // and set the scroll ~60ms later - but every rebuilt picture then finished loading
+            // at its own moment and changed the layout (a small top picture becomes a
+            // thumbnail, ~150px; broken / tiny ones are removed), so whether you landed in
+            // place was a race. Now leaving Today for a story detaches its page as it is, and
+            // returning puts that same page back at the same scroll: nothing reloads, nothing
+            // moves, and the story you read simply drops out, so the next one sits where it
+            // was. Only when Today was rebuilt meanwhile (a new brief object) is it rendered
+            // afresh.
+            let keptScroll = null;
+            if (prevArticle && prevArticle.id === window.TODAY_BRIEF_ID && !article.isBrief && bodyEl.classList.contains('is-brief-body')) {
+                // Read the scroll FIRST (build 320): with the page detached the reader is
+                // empty, its scroll is 0, and 317-319 kept that 0 - Today came back at the
+                // top for ~130ms (traced) until returnToBrief moved it into place.
+                const scrollTop = document.getElementById('reader-view')?.scrollTop || 0;
+                const frag = document.createDocumentFragment();
+                while (bodyEl.firstChild) frag.appendChild(bodyEl.firstChild);
+                window._todayKept = { brief: prevArticle, frag, scrollTop };
+            }
+            window._todayRestored = false;
             if (article.isBrief) {
                 bodyEl.classList.add('is-brief-body');
-                bodyEl.innerHTML = article.body;
-                normalizeBriefDOM(bodyEl);
+                const kept = window._todayKept;
+                window._todayKept = null;
+                if (kept && kept.brief === article) {
+                    bodyEl.textContent = '';
+                    bodyEl.appendChild(kept.frag);
+                    window._todayRestored = true;
+                    // Back at its own scroll FIRST, then brought up to date with what changed
+                    // while you read (read stories leave, Later / Save states, folder checks),
+                    // so what leaves above your place is made up for exactly (build 322).
+                    // None of it was on the screen, so it all changes at once.
+                    const rvKept = document.getElementById('reader-view');
+                    if (rvKept) rvKept.scrollTop = kept.scrollTop;
+                    window.syncBriefCards?.(bodyEl, { now: true });
+                    keptScroll = rvKept ? rvKept.scrollTop : kept.scrollTop;
+                    window.updateBriefStoryActionButtons?.(bodyEl);
+                    window.updateBriefMarkReadButtons?.();
+                } else {
+                    bodyEl.innerHTML = article.body;
+                    normalizeBriefDOM(bodyEl);
+                }
             } else {
                 bodyEl.classList.remove('is-brief-body');
                 bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type', 'preload'] });
@@ -10230,7 +10336,7 @@
                 ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
             }
             const readerElEarly = document.getElementById('reader-view');
-            if (readerElEarly) readerElEarly.scrollTop = 0;
+            if (readerElEarly) readerElEarly.scrollTop = keptScroll ?? 0;   // kept Today: where you were (317)
 
             if (!article.isBrief) attemptFullContentLoad(article);
 
@@ -10284,11 +10390,13 @@
 
             const readerEl = document.getElementById('reader-view');
             if (readerEl) {
-                readerEl.scrollTop = 0;
+                const top = keptScroll ?? 0;   // kept Today: back where you were (build 317)
+                readerEl.scrollTop = top;
                 // After the pane is laid out (especially on mobile, where viewer-pane
                 // toggles from display:none → flex), assert scrollTop again — iOS Safari
-                // discards scrollTop set on a hidden scroll container.
-                requestAnimationFrame(() => { readerEl.scrollTop = 0; });
+                // discards scrollTop set on a hidden scroll container. Not for the kept
+                // Today (322): its pane is showing, and returnToBrief lands it at once.
+                if (keptScroll === null) requestAnimationFrame(() => { readerEl.scrollTop = top; });
             }
 
             const listEl = document.getElementById('article-list');
@@ -11160,7 +11268,10 @@
                 // nothing read in between -> unread counts unchanged -> key unchanged ->
                 // CNBC stayed lit while the timeline correctly showed Slobodna-Bosna.
                 // (Normally a read/unread change moves a count and masks this.)
-                + '||' + window.currentSmartFeed + ':' + (window.currentCategoryFilter || '') + ':' + (window.currentSourceFilter || '');
+                + '||' + window.currentSmartFeed + ':' + (window.currentCategoryFilter || '') + ':' + (window.currentSourceFilter || '')
+                // Show empty folders too: without it the switch changed nothing until an
+                // unread count moved (build 328).
+                + '||' + (window._showEmptyCategories ? 'empty' : '');
             // Always repaint the Settings feed list — it's driven by accountStates.local,
             // which the renderKey guard below does not track.
             renderLocalFeedList();
@@ -11265,42 +11376,95 @@
         // that guard is keyed only off window.feeds — adding/removing a local feed
         // could otherwise short-circuit renderFeeds() before this list repaints,
         // leaving a newly added feed invisible in Settings until reopen/reload.
+        // THE FEED MANAGER (build 324, on request; Following > Edit opens it). Your feeds by
+        // folder, in the sidebar's order (alphabetical within a folder, as since build 200);
+        // per folder its In Today switch (was Settings > Today > Folders in Today) and Rename;
+        // per feed how it is doing (it was a separate "Feed health" list) with Edit (name, URL,
+        // folder), Remove and, when it is not loading, Retry. Tap a feed's name for its stories.
         function renderLocalFeedList() {
             const localList = document.getElementById('local-feed-list');
             if (!localList) return;
             const feeds = window.accountStates.local || [];
             if (feeds.length === 0) {
-                localList.innerHTML = `<div class="text-center py-8 text-gray-400 text-[14px]">No feeds yet. Tap <span class="font-semibold text-blue-500">Add Feed</span> to get started.</div>`;
+                localList.innerHTML = `<div class="text-center py-8 text-gray-400 text-[14px]">No feeds yet. Tap <span class="font-semibold text-blue-500">Add feed</span> to get started.</div>`;
                 return;
             }
-            // ALPHABETICAL BY NAME, DISPLAY ONLY (build 200, 2026-09-04). The list used
-            // to render in stored order, which is add-order - fine at ten feeds, a hunt
-            // at sixty-five. Sorting a COPY is deliberate: window.accountStates.local is
-            // the array that gets persisted and exported, and every row addresses its
-            // feed by f.id, so reordering the view changes nothing else. Same idiom as
-            // refreshDeskSearchScope() uses for its feed dropdown. localeCompare (not a
-            // raw < comparison) so "ars technica" sorts next to "Ars Technica" instead of
-            // after every capitalised name, and accented names land where a reader
-            // expects - Slobodna-Bosna and the like.
-            const sortedFeeds = feeds.slice().sort((a, b) => (a.name || '').trim().localeCompare((b.name || '').trim()));
-            localList.innerHTML = sortedFeeds.map((f) => {
+            const groups = new Map();
+            feeds.forEach(f => {
+                const c = f.category || 'Uncategorized';
+                if (!groups.has(c)) groups.set(c, []);
+                groups.get(c).push(f);
+            });
+            const order = getAppCategories().filter(c => groups.has(c));
+            [...groups.keys()].sort((a, b) => a.localeCompare(b)).forEach(c => { if (!order.includes(c)) order.push(c); });
+            // The newest story each feed has served (by its URL, or its name for old articles).
+            const newest = new Map();
+            (window.articles || []).forEach(a => {
+                const k = a.feedUrl || a.source;
+                if (k && (a._ts || 0) > (newest.get(k) || 0)) newest.set(k, a._ts);
+            });
+            const failing = [];
+            const row = f => {
+                const st = feedStatus(f, newest.get(f.url) || newest.get(f.name));
+                if (st.bad) failing.push(f.name);
                 const sfId = escJs(f.id);
                 return `
                 <div class="feed-row">
-                    <div class="min-w-0 flex-1">
+                    <button type="button" class="fm-feed-open min-w-0 flex-1" onclick="openFeedFromManager('${escJs(f.name)}')" title="Show its stories">
                         <div class="feed-row-name truncate">${esc(f.name)}</div>
-                        <div class="feed-row-cat truncate">${esc(f.category || 'Uncategorized')}</div>
-                    </div>
+                        <div class="feed-row-cat truncate${st.bad ? ' fm-bad' : ''}">${esc(st.text)}</div>
+                    </button>
                     <div class="feed-row-actions">
-                        <button onclick="openEditFeedModal('${sfId}')" class="feed-row-action edit" title="Edit">
+                        ${st.bad ? `<button onclick="retryFeed('${escJs(f.url)}', '${escJs(f.name)}', this)" class="feed-row-action edit" title="Retry now" aria-label="Retry ${esc(f.name)}">
+                            <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
+                        </button>` : ''}
+                        <button onclick="openEditFeedModal('${sfId}')" class="feed-row-action edit" title="Edit" aria-label="Edit ${esc(f.name)}">
                             <svg class="w-4 h-4"><use href="#icon-pencil"/></svg>
                         </button>
-                        <button onclick="removeLocalFeed('${sfId}')" class="feed-row-action remove" title="Remove">
+                        <button onclick="confirmRemoveFeed('${sfId}')" class="feed-row-action remove" title="Remove" aria-label="Remove ${esc(f.name)}">
                             <svg class="w-4 h-4"><use href="#icon-trash"/></svg>
                         </button>
                     </div>
-                </div>
-            `}).join('');
+                </div>`;
+            };
+            const html = order.map(c => {
+                const list = groups.get(c).slice().sort((a, b) => (a.name || '').trim().localeCompare((b.name || '').trim()));
+                const inToday = !window._todayExcluded.has(c);
+                const rows = list.map(row).join('');
+                return `
+                <div class="fm-folder">
+                    <div class="fm-folder-head">
+                        <div class="min-w-0 flex-1">
+                            <div class="fm-folder-name truncate">${esc(c)}</div>
+                            <div class="fm-folder-sub">${list.length} feed${list.length === 1 ? '' : 's'} · ${inToday ? 'in Today' : 'left out of Today'}</div>
+                        </div>
+                        ${c === 'Uncategorized' ? '' : `<button onclick="renameCategory('${escJs(c)}')" class="feed-row-action edit" title="Rename folder" aria-label="Rename ${esc(c)}">
+                            <svg class="w-4 h-4"><use href="#icon-pencil"/></svg>
+                        </button>`}
+                        <button type="button" class="toggle-switch" data-on="${inToday}" onclick="toggleTodayFolder('${escJs(c)}')"
+                            aria-label="${esc(c)} in Today" title="${inToday ? 'In Today - tap to leave it out' : 'Left out of Today - tap to include it'}"></button>
+                    </div>
+                    ${rows}
+                </div>`;
+            }).join('');
+            const summary = failing.length
+                ? `<div class="fm-summary">${failing.length === 1 ? '1 feed is' : failing.length + ' feeds are'} not loading: ${failing.map(esc).join(', ')}</div>`
+                : '';
+            localList.innerHTML = summary + html;
+        }
+
+        // How a feed is doing, for the manager (build 324), from its health record
+        // (lastSuccess is kept across launches) and the newest story it has served. "Not
+        // loading" = it did not load in the latest full refresh (or, before one this session,
+        // not for 48 hours).
+        function feedStatus(f, newestTs) {
+            const h = window._feedHealth[f.url] || {};
+            const last = window._lastRefreshAt;
+            const fresh = h.lastSuccess && (last ? h.lastSuccess >= last - 15 * 60000 : Date.now() - h.lastSuccess < 48 * 3600000);
+            if (fresh) return { bad: false, text: `Checked ${formatRelativeTime(h.lastSuccess)}` + (newestTs ? ` · newest story ${formatRelativeTime(newestTs)}` : '') };
+            if (h.lastSuccess) return { bad: true, text: `Not loading since ${new Date(h.lastSuccess).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` };
+            if (last || h.errorCount) return { bad: true, text: 'Not loading' };
+            return { bad: false, text: 'Not checked yet' };
         }
 
         window.setCategoryFilter = (cat) => {
@@ -11511,6 +11675,13 @@
             const badgeReadLater = document.getElementById('badge-read-later');
 
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
+            // Unread stories older than Today's 24 hours (build 323): Today never shows them.
+            const olderNote = document.getElementById('unread-older-note');
+            if (olderNote) {
+                const cutoff = Date.now() - window.TODAY_WINDOW_HOURS * 3600000;
+                const older = window.articles.filter(a => a.unread && !a.isBrief && (a._ts || 0) < cutoff && !window.isMuted(a)).length;
+                olderNote.textContent = older ? `${older} older than today` : '';
+            }
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
 
             // Dim empty Read Later / Saved smart feeds (always-visible, unlike category
@@ -11638,6 +11809,9 @@
             if (idx === -1) return;
             const f = window.accountStates.local.splice(idx, 1)[0];
             window.feeds = window.feeds.filter(feed => feed.url !== f.url);
+            // Its stories go with it (build 324) - they stayed in Today and the lists.
+            window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== f.url : a.source !== f.name);
+            renderTimeline();
             renderFeeds();
             saveLocalFeeds();
             updateEmptyState();
@@ -11773,20 +11947,23 @@
             // which spikes renderer memory and OOM-crashes the tab on mobile when the
             // feed list is large. Capping concurrency keeps the peak flat regardless
             // of feed count, at the cost of a slightly longer (but smoother) refresh.
-            // Self-healing order: feeds previously flagged 'slow' (primary proxy blocked,
-            // or all proxies failed/timed out — e.g. Cloudflare-protected feeds) go to the
-            // BACK of the queue. The healthy majority then fills the first wave and completes
-            // fast; a known-slow feed can only stall a worker after the good feeds are done,
-            // so it no longer creates the mid-refresh pause. Order within each group is
-            // preserved. First run (no health data yet) leaves order unchanged.
-            const all = (feeds || []).slice();
+            // SLOW FEEDS GET THEIR OWN LANE (build 319, on request: "can Updating be sped
+            // up"). Feeds flagged 'slow' (they needed the fallback proxy, or failed - e.g. a
+            // Cloudflare-protected host the Worker cannot reach) used to go to the BACK of the
+            // queue so they could not stall the healthy first wave. But a refresh is done only
+            // when its last feed is, so a slow feed at the back added its whole wait to EVERY
+            // refresh. Measured on the user's 65 feeds (2026-10-06): BleepingComputer's 0.6s
+            // Worker refusal + 7.6s fallback timeout was ~7s of a ~28s phone refresh. Now one
+            // extra worker starts on the slow feeds at once, beside the normal pool, so their
+            // waits overlap the healthy feeds; pool workers that run out of healthy feeds help
+            // with the slow ones left. The lane never takes a healthy feed, so the extra
+            // concurrency lasts only while slow feeds remain. First run (no health data): no
+            // slow feeds, no lane.
             const fast = [], slow = [];
-            for (const f of all) {
+            for (const f of (feeds || [])) {
                 (window._feedHealth[f.url] && window._feedHealth[f.url].slow ? slow : fast).push(f);
             }
-            const list = fast.concat(slow);
             const CONCURRENCY = isMobile() ? 3 : 6;
-            let next = 0;
 
             // PROGRESSIVE RENDERING + MID-REFRESH STABILITY.
             // The old batch-end-only render left the app looking dead for the whole
@@ -11820,22 +11997,23 @@
                 refreshUI();
             };
 
-            async function worker() {
-                while (next < list.length) {
-                    const i = next++;
-                    const f = list[i];
+            async function worker(take) {
+                for (let f = take(); f; f = take()) {
                     try {
                         await fetchRecentArticles(f.url, f.name, maxItems, isBackground);
                     } catch (e) { /* fetchRecentArticles already swallows its own errors */ }
                     progressiveRender();
                     // Small stagger between a worker's successive feeds smooths the
                     // proxy load without serializing the whole batch.
-                    if (next < list.length) await new Promise(r => setTimeout(r, delayMs));
+                    if (fast.length || slow.length) await new Promise(r => setTimeout(r, delayMs));
                 }
             }
 
             const workers = [];
-            for (let w = 0; w < Math.min(CONCURRENCY, list.length); w++) workers.push(worker());
+            for (let w = 0; w < Math.min(CONCURRENCY, fast.length + slow.length); w++) {
+                workers.push(worker(() => fast.shift() || slow.shift()));
+            }
+            if (slow.length) workers.push(worker(() => slow.shift()));
             await Promise.allSettled(workers);
 
             // Coalesced cache write — one heavy IDB serialize for the whole batch
@@ -11885,16 +12063,6 @@
         // the WIDEST scope (maxItems:null beats a capped 15) so nothing is truncated.
         window._refreshInFlight = false;
         window._refreshPending = null; // null = nothing queued; else the opts to run next
-        // Toggle the Home/sidebar "Tap or pull to refresh" hint into its spinning state.
-        // The element the user actually touched (the arrow circle) becomes the spinner -
-        // no separate top bar, no logo collision.
-        const _setHintRefreshing = (on) => {
-            const hint = document.getElementById('ptr-hint');
-            const label = document.getElementById('ptr-hint-label');
-            if (!hint) return;
-            hint.classList.toggle('is-refreshing', on);
-            if (label) label.textContent = on ? 'Refreshing...' : 'Tap or pull to refresh';
-        };
         window.runFullRefresh = async (opts = {}) => {
             if (window._refreshInFlight) {
                 // Coalesce: remember that another pass is wanted and run it when the
@@ -11922,7 +12090,6 @@
                 return false;
             }
             window._refreshInFlight = true;
-            _setHintRefreshing(true);
             window.updateTodayStatus?.();   // "Updating..." (build 306)
             // If the timeline is currently showing an empty state, immediately swap it
             // to the "Refreshing feeds" spinner so the user sees the refresh took hold
@@ -11940,7 +12107,6 @@
                 // Stamp last-updated for the header status line, then refresh it.
                 window._lastRefreshAt = Date.now();
                 window.updateHeaderStatus?.();
-                _setHintRefreshing(false);
                 // Keep Today's source rankings current in a long-running session (24h
                 // cache). The brief generator used to do this after every refresh.
                 fetchMemoRankings().catch(() => { });
@@ -12132,6 +12298,43 @@
             return out;
         }
 
+        // LISTEN SESSION (builds 312-316). The text is spoken as a queue of short pieces, and
+        // _ttsIndex follows the piece being spoken, so Pause stops and Resume starts again at
+        // that sentence (speechSynthesis.pause() is unreliable on iOS). _ttsActive = a session
+        // exists, playing or paused; _ttsPaused = paused. Each queue carries a run token, so
+        // the late events of a cancelled queue are ignored.
+        window._ttsPieces = null;
+        window._ttsIndex = 0;
+        window._ttsPaused = false;
+        let _ttsRun = 0;
+        function ttsSpeakFrom(i) {
+            const run = ++_ttsRun;
+            speechSynthesis.cancel();
+            // A beat after cancel(): some engines drop an utterance queued in the same tick.
+            setTimeout(() => {
+                if (run !== _ttsRun) return;
+                const pieces = window._ttsPieces || [];
+                for (let k = i; k < pieces.length; k++) {
+                    const u = new SpeechSynthesisUtterance(pieces[k]);
+                    u.onstart = () => { if (run === _ttsRun) window._ttsIndex = k; };
+                    if (k === pieces.length - 1) u.onend = () => { if (run === _ttsRun) endTTS(); };
+                    u.onerror = (e) => {
+                        if (run !== _ttsRun) return;
+                        if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
+                        endTTS();
+                    };
+                    speechSynthesis.speak(u);
+                }
+            }, 60);
+        }
+        function endTTS() {
+            _ttsRun++;
+            window._ttsActive = false;
+            window._ttsPaused = false;
+            window._ttsPieces = null;
+            updateTTSButton();
+        }
+
         // source: 'today' reads Today; otherwise the open story (or Today when it is open).
         window.toggleTTS = (source) => {
             if (window._ttsActive) { stopTTS(); return; }
@@ -12143,37 +12346,42 @@
                 text = document.getElementById('article-body')?.innerText || '';
             }
             if (!text.trim()) return;
-            const pieces = ttsChunks(text);
-            speechSynthesis.cancel();
-            pieces.forEach((p, i) => {
-                const u = new SpeechSynthesisUtterance(p);
-                if (i === pieces.length - 1) u.onend = () => { window._ttsActive = false; updateTTSButton(); };
-                u.onerror = (e) => {
-                    if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
-                    window._ttsActive = false;
-                    updateTTSButton();
-                };
-                speechSynthesis.speak(u);
-            });
+            window._ttsPieces = ttsChunks(text);
+            window._ttsIndex = 0;
+            window._ttsPaused = false;
             window._ttsActive = true;
             window._ttsSource = source === 'today' ? 'today' : 'story';
+            ttsSpeakFrom(0);
             updateTTSButton();
         };
-        function stopTTS() { speechSynthesis.cancel(); window._ttsActive = false; updateTTSButton(); }
+        function stopTTS() { speechSynthesis.cancel(); endTTS(); }
+        window.pauseTTS = function () {
+            if (!window._ttsActive || window._ttsPaused) return;
+            _ttsRun++;                     // the cancelled queue's events no longer count
+            speechSynthesis.cancel();
+            window._ttsPaused = true;
+            updateTTSButton();
+        };
+        window.resumeTTS = function () {
+            if (!window._ttsActive || !window._ttsPaused) return;
+            window._ttsPaused = false;
+            ttsSpeakFrom(window._ttsIndex);
+            updateTTSButton();
+        };
+        window.togglePauseTTS = () => (window._ttsPaused ? window.resumeTTS() : window.pauseTTS());
 
         // SCREEN STAYS AWAKE WHILE LISTENING (build 314, on request). iOS stops the app's
-        // speech when the screen auto-locks, so a screen wake lock is held only while Listen
-        // is speaking and released the moment it ends or is stopped. Pressing the side
-        // button still locks the phone, and speech then stops - nothing in a web app can
-        // keep speech going while it is suspended. No wake lock support: Listen as before.
-        // The browser drops the lock whenever the page is hidden; it is taken again on
-        // return if Listen is still going (desktop browsers keep speaking in the background).
+        // speech when the screen auto-locks, so a screen wake lock is held while Listen is
+        // PLAYING and released the moment it pauses, ends or stops. The browser drops the
+        // lock whenever the page is hidden; it is taken again on return if still playing.
+        // No wake lock support: Listen as before.
         let _ttsWakeLock = null;
+        const ttsPlaying = () => window._ttsActive && !window._ttsPaused;
         function ttsSetAwake(on) {
             if (on) {
                 if (_ttsWakeLock || !('wakeLock' in navigator) || document.hidden) return;
                 navigator.wakeLock.request('screen').then(lock => {
-                    if (!window._ttsActive) { lock.release().catch(() => { }); return; }
+                    if (!ttsPlaying()) { lock.release().catch(() => { }); return; }
                     _ttsWakeLock = lock;
                     lock.addEventListener('release', () => { if (_ttsWakeLock === lock) _ttsWakeLock = null; });
                 }).catch(() => { });
@@ -12184,9 +12392,14 @@
             }
         }
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && window._ttsActive) ttsSetAwake(true);
+            // Phone (builds 315-316): locking or leaving the app PAUSES Listen, and it stays
+            // paused on return - tap Resume to carry on from that sentence. (iOS only froze
+            // the speech, so unlocking used to start it again.) Desktop keeps reading.
+            if (document.hidden && ttsPlaying() && isMobile()) { window.pauseTTS(); return; }
+            if (!document.hidden && ttsPlaying()) ttsSetAwake(true);
         });
-        // Every Listen button: the top bar's (desktop), the story row's (phone), Today's heading.
+        // Every Listen button (top bar on desktop, story row on the phone, Today's heading) and
+        // the player. A Listen button reads "Stop" for the whole session, playing or paused.
         function updateTTSButton() {
             const active = window._ttsActive;
             const icon = active ? 'icon-stop' : 'icon-headphones';
@@ -12207,8 +12420,19 @@
                 if (l) l.textContent = todayOn ? 'Stop' : 'Listen';
                 btn.setAttribute('aria-label', todayOn ? 'Stop listening to Today' : 'Listen to Today');
             });
-            // Runs after every start, end, error and stop: the wake lock follows (build 314).
-            ttsSetAwake(window._ttsActive);
+            // The player (build 316): "Listening" / "Paused", and Pause or Resume.
+            const paused = active && window._ttsPaused;
+            const lbl = document.getElementById('tts-player-label');
+            if (lbl) lbl.textContent = paused ? 'Paused' : 'Listening';
+            const pb = document.getElementById('tts-pause-btn');
+            if (pb) {
+                pb.querySelector('use')?.setAttribute('href', paused ? '#icon-play' : '#icon-pause');
+                pb.title = paused ? 'Resume' : 'Pause';
+                pb.setAttribute('aria-label', pb.title);
+            }
+            document.body.classList.toggle('tts-on', !!active);
+            // The wake lock follows: held only while playing (build 314).
+            ttsSetAwake(ttsPlaying());
         }
 
         // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
@@ -12413,7 +12637,7 @@
             });
             const built = buildStoryClusters(pool, { limitPerCat: window._briefStoriesPerCat || 10 });
             let sections = built.categorySections;
-            const totalStories = built.totalStories;
+            let totalStories = built.totalStories;
 
             // Top Stories: strongest clusters across every folder (authority rank, then
             // multi-outlet consensus, then recency). Lifted out of their folder sections
@@ -12427,9 +12651,12 @@
                     ((y._ts || 0) - (x._ts || 0)));
                 const top = all.slice(0, window.TODAY_TOP_N);
                 const topIds = new Set(top.map(s => s.id));
-                sections = sections
-                    .map(cs => ({ ...cs, stories: cs.stories.filter(s => !topIds.has(s.id)) }))
-                    .filter(cs => cs.stories.length > 0);
+                // Each folder then fills back up to Stories per Category from the stories after
+                // them (build 329, on request): News set to 10 showed 5, and at 5 it lost all five
+                // to Top Stories and dropped out of Today. Top Stories is still chosen as before.
+                const refilled = built.reselect(topIds);
+                sections = refilled.categorySections;
+                totalStories = refilled.totalStories + top.length;
                 sections.unshift({ name: 'Top Stories', slug: 'top_stories', icon: 'icon-newspaper', noMarkRead: true, stories: top });
             }
 
@@ -12513,7 +12740,60 @@
         // so does normalizeBriefDOM() for a brief being shown. Read stories are hidden
         // (CSS), except the one open beside the Today column; section counts, pills,
         // the Mark-read row's count and an all-read note follow what is left.
-        window.syncBriefCards = function (only) {
+        // TODAY HOLDS STILL (build 320, on request: "a jump 3-5 seconds after coming back").
+        // iOS Safari has no CSS scroll anchoring and it is off for briefs everywhere (CSS), so
+        // anything above the reading position that changed height moved the whole page.
+        // Measured at the phone's width (339px CSS at 115% Page Zoom): the header's status
+        // line wraps to a second row when "Updating..." becomes "Updated just now" - the
+        // refresh ending a few seconds after you return - and pushed every story down 19px.
+        // The same happens when stories above you leave (read elsewhere, swept in at the end
+        // of a refresh), when "N new since" changes, or when a late picture changes size.
+        // Every such change runs through this: the first thing on screen - a section
+        // heading, a story card or a section's Mark-read row, whichever crosses the top edge
+        // or comes first below it - is kept exactly where it is. If that thing itself leaves
+        // (you marked it read, its section closed), nothing is held and the page closes up.
+        // Build 321: it used to look at story cards only, so when a heading or row at the
+        // top went, it held the NEXT section's first card and pulled older stories in above.
+        // Today's own header is never the anchor: its status line growing is exactly what
+        // must be absorbed. Not at the very top (scrollTop 0): there the header simply grows.
+        const TODAY_ANCHORS = '.brief-cat-header, .brief-story-card[data-sa-id], .brief-cat-end, .brief-all-read-note';
+        window.keepTodayInPlace = function (fn) {
+            const scrollers = [
+                window._todayInColumn ? document.getElementById('today-column') : null,
+                document.querySelector('#article-body.is-brief-body') ? document.getElementById('reader-view') : null,
+            ].filter(s => s && s.scrollTop > 0 && s.getClientRects().length);
+            const held = scrollers.map(s => {
+                const edge = s.getBoundingClientRect().top;
+                const card = Array.from(s.querySelectorAll(TODAY_ANCHORS))
+                    .find(c => c.getClientRects().length && c.getBoundingClientRect().bottom > edge);
+                return card ? { s, card, y: card.getBoundingClientRect().top } : null;
+            }).filter(Boolean);
+            fn();
+            held.forEach(({ s, card, y }) => {
+                if (!card.isConnected || !card.getClientRects().length) return;
+                const delta = card.getBoundingClientRect().top - y;
+                if (delta) s.scrollTop += delta;
+            });
+        };
+
+        // Is `el` on the screen right now - in Today's scroller (the column on desktop, the
+        // reader on the phone), which is itself showing? (build 322)
+        function onTodayScreen(el) {
+            const s = el && (el.closest('#today-column') || el.closest('#reader-view'));
+            if (!s || !s.getClientRects().length || !el.getClientRects().length) return false;
+            const a = s.getBoundingClientRect(), r = el.getBoundingClientRect();
+            return r.bottom > a.top && r.top < a.bottom;
+        }
+
+        // CALM TODAY (build 322, on request: "Surely there is something that can be done to
+        // enable calmer use of the app"). Today moves only when you touch it, and only then:
+        //   - opts.now (your tap, a fresh render, the return from a story): changes at once;
+        //   - anything else (a refresh, another device's read marks): what has to go while
+        //     you can see it waits where it is (brief-held; a read story dimmed) and goes
+        //     when a later pass - at the latest when scrolling stops - finds it off the screen,
+        //     where keepTodayInPlace makes up for it, so what is on the screen does not move.
+        window.syncBriefCards = function (only, opts) {
+            const now = !!(opts && opts.now);
             const roots = only ? [only]
                 : [document.getElementById('today-column'), document.querySelector('#article-body.is-brief-body')].filter(Boolean);
             if (!roots.length) return;
@@ -12522,7 +12802,20 @@
             const cur = window.currentArticle;
             const activeId = window._todayInColumn && cur && !cur.isBrief ? cur.id : null;
             const boundary = window._visitBoundary;
-            roots.forEach(root => {
+            // `cls` on el while `on`; a NEW one on something on the screen waits (brief-held),
+            // unless now. Returns whether el is still showing only because it waits.
+            const settle = (el, cls, on) => {
+                if (!on) { el.classList.remove(cls, 'brief-held'); return false; }
+                if (!el.classList.contains(cls)) {
+                    const wait = !now && onTodayScreen(el);
+                    el.classList.add(cls);
+                    el.classList.toggle('brief-held', wait);
+                    return wait;
+                }
+                if (el.classList.contains('brief-held') && (now || !onTodayScreen(el))) el.classList.remove('brief-held');
+                return el.classList.contains('brief-held');
+            };
+            window.keepTodayInPlace(() => roots.forEach(root => {
                 const inColumn = root.id === 'today-column';
                 let anySection = false, anyLeft = false;
                 let newShown = 0;
@@ -12537,37 +12830,38 @@
                         const read = art ? !art.unread : !!(link && readLinks && readLinks.has(link));
                         const active = inColumn && id === activeId;
                         card.classList.toggle('brief-card-active', active);
-                        card.classList.toggle('brief-card-read', read);
-                        // New since your last visit (build 313)
+                        settle(card, 'brief-card-read', read);
+                        // New since your last visit (build 313): counted for the header only;
+                        // the per-story dot was removed on request (build 318).
                         const first = Number(card.getAttribute('data-first') || 0);
-                        const isNew = !!(boundary && first > boundary && !read);
-                        card.classList.toggle('is-new', isNew);
-                        if (isNew) newShown++;
+                        if (boundary && first > boundary && !read) newShown++;
                         if (!read || active) shown++;
                         if (!read) unread++;
                     });
-                    const justMarked = sec.classList.contains('is-just-marked');
-                    sec.classList.toggle('brief-section-empty', shown === 0);
-                    if (shown > 0 || justMarked) anyLeft = true;
+                    if (settle(sec, 'brief-section-empty', shown === 0) || shown > 0) anyLeft = true;
                     const countEl = sec.querySelector('.brief-cat-count');
                     if (countEl) countEl.textContent = `${shown} ${shown === 1 ? 'story' : 'stories'}`;
                     const pill = sec.id ? root.querySelector(`.brief-jump-pill[href="#${CSS.escape(sec.id)}"]`) : null;
                     if (pill) {
                         if (!pill.dataset.name) pill.dataset.name = pill.textContent.replace(/\s*\(\d+\)\s*$/, '').trim();
                         pill.textContent = `${pill.dataset.name} (${shown})`;
-                        pill.classList.toggle('brief-gone', shown === 0);
+                        settle(pill, 'brief-gone', shown === 0);
                     }
                     const end = sec.querySelector('.brief-cat-end');
-                    if (end && !justMarked) {
-                        end.classList.toggle('is-empty', unread === 0);
+                    if (end) {
+                        settle(end, 'is-empty', unread === 0);
                         const label = end.querySelector('.brief-mark-section-label');
-                        if (label) label.textContent = `Mark ${unread} read`;
+                        if (label) label.textContent = unread ? `Mark ${unread} read` : 'All read';
                     }
                 });
-                root.querySelector('.brief-jump-bar')?.classList.toggle('brief-gone', anySection && !anyLeft);
+                const bar = root.querySelector('.brief-jump-bar');
+                if (bar) settle(bar, 'brief-gone', anySection && !anyLeft);
                 root.querySelectorAll('[data-today-new]').forEach(el => {
-                    el.textContent = newShown ? `\u2022 ${newShown} new since ${window.visitLabel(boundary)}` : '';
+                    const t = newShown ? `${newShown} new since ${window.visitLabel(boundary)}` : '';
+                    if (el.textContent !== t) el.textContent = t;
                 });
+                // Pictures that turned out wrong while on the screen change once they are not.
+                root.querySelectorAll('[data-pending]').forEach(box => { if (now || !onTodayScreen(box)) applyBriefImgChange(box); });
                 let note = root.querySelector('.brief-all-read-note');
                 if (anySection && !anyLeft) {
                     if (!note) {
@@ -12580,20 +12874,52 @@
                 } else if (note) {
                     note.remove();
                 }
-            });
+            }));
         };
 
-        // iOS Safari has no CSS scroll anchoring, so when stories above the reading
-        // position leave, the page would jump. Keep `anchor` where it is on screen
-        // across fn() - in every browser, as native anchoring is off for briefs (CSS).
-        window.briefKeepInPlace = function (anchor, fn) {
-            const scroller = anchor ? (anchor.closest('#today-column') || anchor.closest('#reader-view')) : null;
-            const before = scroller ? anchor.getBoundingClientRect().top : 0;
-            fn();
-            if (scroller && anchor.isConnected && anchor.getClientRects().length) {
-                const delta = anchor.getBoundingClientRect().top - before;
-                if (delta) scroller.scrollTop += delta;
+        // `el` and everything after it slide up into the space they just moved up by (build
+        // 321; 322: everything after it at every level, so a card's own section mates too):
+        // drawn `dy` px lower, then eased to where they now are. Transform only, so nothing is
+        // laid out again; skipped for Reduce Motion. Web Animations, not an inline transition:
+        // `.brief-story-card { transition: background 0.15s !important }` beat the inline one,
+        // so cards snapped into place instead of sliding (measured, 322).
+        window.briefSlideUp = function (el, dy) {
+            if (!el || !(dy > 1) || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+            const els = [el];
+            for (let n = el; n && n !== document.body && !n.matches('.brief-container'); n = n.parentElement) {
+                for (let s = n.nextElementSibling; s; s = s.nextElementSibling) els.push(s);
             }
+            els.forEach(e => e.animate?.([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }],
+                { duration: 240, easing: 'cubic-bezier(0.2, 0, 0, 1)' }));
+        };
+
+        // The first heading, card or Mark-read row shown after `el` in Today (build 322).
+        window.briefNextShown = function (el) {
+            const root = el && el.closest('.brief-container');
+            if (!root) return null;
+            return Array.from(root.querySelectorAll(TODAY_ANCHORS)).find(n => !el.contains(n)
+                && (el.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING) && n.getClientRects().length) || null;
+        };
+
+        // UNDO BAR (build 322): floats above the tab bar over the page, so it takes no room
+        // and nothing moves when it goes after 5 seconds. One at a time - a new one ends the
+        // last one's Undo.
+        let _briefUndoTimer = 0;
+        window.showBriefUndo = function (text, onUndo) {
+            let bar = document.getElementById('brief-undo-bar');
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.id = 'brief-undo-bar';
+                bar.setAttribute('role', 'status');
+                bar.innerHTML = '<span><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-undo-text"></span></span><button type="button">Undo</button>';
+                document.body.appendChild(bar);
+            }
+            bar.querySelector('.brief-undo-text').textContent = text;
+            const hide = () => { clearTimeout(_briefUndoTimer); bar.classList.remove('is-on'); };
+            bar.querySelector('button').onclick = () => { hide(); onUndo(); };
+            clearTimeout(_briefUndoTimer);
+            bar.classList.add('is-on');
+            _briefUndoTimer = setTimeout(hide, 5000);
         };
 
         // Where Back lands now that the story just read has left the brief: its own card
@@ -12609,13 +12935,19 @@
         };
 
         // The section's Mark-read row: the stories still showing above it, plus the
-        // other outlets' copies grouped under each (data-cov), go read in one tap. The
-        // row stays put while they leave and offers Undo for 5 seconds, which puts back
-        // exactly what this tap changed; then the emptied section goes too.
+        // other outlets' copies grouped under each (data-cov), go read in one tap.
+        // ALL AT THE TAP, NOTHING LATER (build 322, on request: "the worst effect is the jump
+        // about 3-5 seconds after I tap mark read - that is the Undo time ... if the jump
+        // happened right away to slide up that would be more tolerable"). 278-321 kept the
+        // heading and a "Marked N read - Undo" row in the page for 5 seconds and then removed
+        // them, so the page moved again after you had moved on (321 measured: 87px). Now the
+        // whole section leaves at the tap and the next one slides up into its place - to
+        // where the section began, or to Today's top line (the scroller's top padding, below
+        // the status bar) if it began above the screen. Undo is a bar floating over the page
+        // (showBriefUndo): nothing moves when it goes, and Undo puts the screen back as it was.
         window.markBriefSectionRead = function (btn) {
             const sec = btn && btn.closest('.brief-cat-section');
-            const end = btn && btn.closest('.brief-cat-end');
-            if (!sec || !end) return;
+            if (!sec) return;
             const live = new Map((window.articles || []).map(a => [a.id, a]));
             const marked = new Set();
             const take = id => {
@@ -12630,45 +12962,37 @@
             if (!marked.size) { window.syncBriefCards(); return; }
             const apply = () => {
                 saveReadState();
-                refreshUI();          // -> syncBriefCards
+                refreshUI();
                 updateBadges();
                 window.updateActionButton?.();
+                window.syncBriefCards(null, { now: true });   // your tap: at once
             };
-            window.briefKeepInPlace(end, () => {
-                // Not toggleUnread: the copies are already in `marked`, and Undo must put
-                // back exactly what this tap changed - no taking-along on either side.
-                marked.forEach(a => { a.unread = false; applyReadState(a); });
-                sec.classList.add('is-just-marked');
+            const scroller = sec.closest('#today-column') || sec.closest('#reader-view');
+            const next = window.briefNextShown(sec);
+            const secBefore = sec.getBoundingClientRect().top;
+            const nextBefore = next ? next.getBoundingClientRect().top : 0;
+            // Not toggleUnread: the copies are already in `marked`, and Undo must put
+            // back exactly what this tap changed - no taking-along on either side.
+            marked.forEach(a => { a.unread = false; applyReadState(a); });
+            apply();
+            if (scroller && next && next.getClientRects().length) {
+                const line = scroller.getBoundingClientRect().top + (parseFloat(getComputedStyle(scroller).paddingTop) || 0);
+                scroller.scrollTop += next.getBoundingClientRect().top - Math.max(secBefore, line);
+                window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
+            }
+            window.showBriefUndo(`Marked ${cards.length} read`, () => {
+                marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
                 apply();
+                // The screen as it was before the tap.
+                if (scroller && next && next.getClientRects().length) scroller.scrollTop += next.getBoundingClientRect().top - nextBefore;
             });
-            end.innerHTML = `<span class="brief-marked-note"><svg aria-hidden="true"><use href="#icon-check"/></svg>Marked ${cards.length} read</span><span aria-hidden="true">&middot;</span><button type="button" class="brief-undo-btn">Undo</button>`;
-            const timer = setTimeout(() => {
-                if (!sec.isConnected) return;
-                let next = sec.nextElementSibling;
-                while (next && !next.getClientRects().length) next = next.nextElementSibling;
-                window.briefKeepInPlace(next, () => {
-                    sec.classList.remove('is-just-marked');
-                    end.innerHTML = BRIEF_MARK_ROW_HTML;
-                    window.syncBriefCards();
-                });
-            }, 5000);
-            end.querySelector('.brief-undo-btn').onclick = () => {
-                clearTimeout(timer);
-                window.briefKeepInPlace(end, () => {
-                    marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
-                    sec.classList.remove('is-just-marked');
-                    end.innerHTML = BRIEF_MARK_ROW_HTML;
-                    apply();
-                });
-            };
         };
 
-        // prebuilt (build 306): a brief checkTodayForNewStories() already built.
-        window.renderTodayColumn = function (prebuilt) {
+        window.renderTodayColumn = function () {
             const col = document.getElementById('today-column');
             if (!col) return;
             const keepScroll = col.scrollTop;
-            window._todayBrief = prebuilt || window.buildTodayBrief();
+            window._todayBrief = window.buildTodayBrief();
             window._todayNewCount = 0;
             col.innerHTML = window._todayBrief.body;
             normalizeBriefDOM(col);
@@ -12684,7 +13008,7 @@
                 s.storyIndex = idx >= 0 ? idx : 0;
             }
             window.updateBriefMarkReadButtons?.();
-            window.syncBriefCards();
+            window.syncBriefCards(null, { now: true });
         };
 
         // Reader back to its "select an article" state.
@@ -12704,7 +13028,7 @@
             const id = cur && !cur.isBrief ? cur.id : null;
             window._returnToBriefState = null;
             window.clearReaderPane();
-            window.syncBriefCards();
+            window.syncBriefCards(null, { now: true });   // Back: your tap (322)
             if (!id) return;
             // The story just read has left the brief (build 278): land on the next unread.
             const card = window.briefLandingCard(Array.from(document.querySelectorAll('#today-column .brief-story-card[data-sa-id]'))
@@ -12766,7 +13090,7 @@
         window.updateTodayStatus = function () {
             const text = (window._refreshInFlight || window._refreshPending) ? 'Updating…'
                 : (window._lastRefreshAt ? `Updated ${formatRelativeTime(window._lastRefreshAt)}` : '');
-            document.querySelectorAll('[data-today-status]').forEach(el => { el.textContent = text ? `• ${text}` : ''; });
+            document.querySelectorAll('[data-today-status]').forEach(el => { if (el.textContent !== text) el.textContent = text; });
             const where = todayOnScreen();
             const n = window._todayNewCount;
             const pill = todayNewPill();
@@ -12779,20 +13103,20 @@
             pill.classList.toggle('is-on', show);
         };
 
-        // Rebuild Today where it is on screen. fresh: a brief already built; toTop: jump up.
-        function rebuildTodayInPlace(fresh, toTop) {
+        // Rebuild Today where it is on screen; toTop: jump up.
+        function rebuildTodayInPlace(toTop) {
             const where = todayOnScreen();
             if (where === 'column') {
-                window.renderTodayColumn(fresh);
+                window.renderTodayColumn();
                 if (toTop) document.getElementById('today-column').scrollTop = 0;
             } else if (where === 'reader') {
-                window._todayBrief = fresh || window.buildTodayBrief();
+                window._todayBrief = window.buildTodayBrief();
                 window._todayNewCount = 0;
                 selectArticle(window.TODAY_BRIEF_ID);   // renders it at the top
             }
             window.updateTodayStatus();
         }
-        window.showNewTodayStories = () => rebuildTodayInPlace(null, true);
+        window.showNewTodayStories = () => rebuildTodayInPlace(true);
 
         // After a refresh: are there stories Today is not showing? A story counts as new
         // when neither its lead article nor any outlet grouped under it is in Today now.
@@ -12812,12 +13136,8 @@
             const fresh = window.buildTodayBrief();
             const n = cardsIn(fresh.body).filter(c => !shown.has(c.id) && !c.cov.some(x => shown.has(x))).length;
             if (!n) return;
-            const where = todayOnScreen();
-            // Not "idle" while Today is being read aloud (build 312): the pill instead.
-            const idle = !(window._ttsActive && window._ttsSource === 'today') && (where === 'column'
-                ? (!window.currentArticle || window.currentArticle.isBrief) && document.getElementById('today-column').scrollTop < 40
-                : where === 'reader' && document.getElementById('reader-view').scrollTop < 40);
-            if (idle) { rebuildTodayInPlace(fresh); return; }
+            // Never rebuilt under you (build 322) - not even at its top, as it was since 306:
+            // the "N new stories" pill shows, and nothing moves until you tap it.
             window._todayNewCount = n;
             window.updateTodayStatus();
         };
@@ -12868,18 +13188,44 @@
         // Image guardrails, run from each image's own onload / onerror: a picture that
         // fails, or is too small to be a photo (icons, emoji, tracking pixels), leaves no
         // box behind; a hero too small to look sharp at full width becomes a thumbnail.
-        window.briefImgLoaded = function (img) {
-            const box = img.parentElement;
-            if (!box) return;
-            if (img.naturalWidth < 100 || img.naturalHeight < 60) { box.remove(); return; }
-            if (box.classList.contains('brief-hero') && img.naturalWidth < 600) {
+        // What each picture turned out to be (build 317): 'bad' (failed or too small),
+        // 'thumb' (too small for the hero) or 'ok'. A rebuilt Today draws each known picture
+        // in its final form at once, so it no longer changes the layout as it loads.
+        window._briefImgVerdict = new Map();
+        // A picture that turned out broken, tiny or too small for the top spot changes its
+        // card's height - so while it is on the screen it waits (data-pending, broken ones
+        // hidden in their box) and changes when syncBriefCards next finds it off the screen,
+        // at the latest when scrolling stops (build 322; calm Today).
+        function applyBriefImgChange(box) {
+            const kind = box.dataset.pending;
+            delete box.dataset.pending;
+            if (kind === 'remove') box.remove();
+            else if (kind === 'thumb') {
                 box.classList.replace('brief-hero', 'brief-thumb');
                 // A thumbnail's place is after the source / time line (build 291).
                 box.parentElement?.querySelector(':scope > .brief-story-meta')?.after(box);
             }
+        }
+        function briefImgChange(box, kind) {
+            box.dataset.pending = kind;
+            if (!onTodayScreen(box)) window.keepTodayInPlace(() => applyBriefImgChange(box));
+        }
+        window.briefImgLoaded = function (img) {
+            const box = img.parentElement;
+            const url = img.getAttribute('src');
+            if (img.naturalWidth < 100 || img.naturalHeight < 60) {
+                window._briefImgVerdict.set(url, 'bad');
+                img.style.visibility = 'hidden';
+                if (box) briefImgChange(box, 'remove');
+                return;
+            }
+            window._briefImgVerdict.set(url, img.naturalWidth < 600 ? 'thumb' : 'ok');
+            if (box && box.classList.contains('brief-hero') && img.naturalWidth < 600) briefImgChange(box, 'thumb');
         };
         window.briefImgFailed = function (img) {
-            img.parentElement?.remove();
+            window._briefImgVerdict.set(img.getAttribute('src'), 'bad');
+            img.style.visibility = 'hidden';   // no broken-image icon while it waits
+            if (img.parentElement) briefImgChange(img.parentElement, 'remove');
         };
 
         function renderBriefSectionsHtml(categorySections, opts = {}) {
@@ -12928,8 +13274,9 @@
                     const covAttr = covIds.length ? ` data-cov="${esc(JSON.stringify(covIds))}"` : '';
                     // Picture (build 290): lazy - loads only near the screen; the box is
                     // reserved by CSS; tapping it opens the story like the headline does.
-                    const imgUrl = briefStoryImage(st);
-                    const isHero = !!imgUrl && !heroDone && sectionIdx === 0;
+                    const verdict = window._briefImgVerdict?.get(briefStoryImage(st));
+                    const imgUrl = verdict === 'bad' ? '' : briefStoryImage(st);   // known bad: no box (317)
+                    const isHero = !!imgUrl && !heroDone && sectionIdx === 0 && verdict !== 'thumb';
                     if (isHero) heroDone = true;
                     const mediaHtml = imgUrl
                         ? `<div class="${isHero ? 'brief-hero' : 'brief-thumb'}" onclick="window.openArticleInReader('${saId}')"><img src="${esc(imgUrl)}" alt="" loading="lazy" decoding="async" onload="window.briefImgLoaded(this)" onerror="window.briefImgFailed(this)"></div>`
@@ -12973,7 +13320,6 @@
                         <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}${firstAttr}>
                             ${heroHtml}
                             <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
-                                <span class="brief-new-dot" title="New since your last visit" aria-hidden="true"></span>
                                 ${favHtml}
                                 <span class="brief-story-source list-source-label font-bold uppercase truncate">${esc(st.source)}</span>
                                 <span class="brief-story-dot flex-shrink-0">•</span>
@@ -13119,70 +13465,76 @@
                 if (!orderedCats.includes(c) && grouped[c]?.length > 0) orderedCats.push(c);
             });
 
-            const categorySections = [];
-            let totalStories = 0;
+            orderedCats.forEach(cat => grouped[cat].sort((a, b) => {
+                // Lowest rank number = highest authority
+                if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
+                // Multi-source consensus tiebreaker
+                if (b.sourceCount !== a.sourceCount) return b.sourceCount - a.sourceCount;
+                // Recency tiebreaker
+                return b.leadDate - a.leadDate;
+            }));
 
-            for (const cat of orderedCats) {
-                const catClusters = grouped[cat];
-                catClusters.sort((a, b) => {
-                    // Lowest rank number = highest authority
-                    if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
-                    // Multi-source consensus tiebreaker
-                    if (b.sourceCount !== a.sourceCount) return b.sourceCount - a.sourceCount;
-                    // Recency tiebreaker
-                    return b.leadDate - a.leadDate;
-                });
+            // skip: lead ids shown elsewhere already (Today's Top Stories), so a folder fills its
+            // slots from the stories after them; reselect() reruns this (build 329).
+            const reselect = (skip) => {
+                const categorySections = [];
+                let totalStories = 0;
 
-                // 4. Source Diversity selection
-                // Ensure a single high-frequency feed does not monopolize all slots in the section.
-                // Pass 1: pick up to perSourceCap stories per source
-                // Pass 2: if slots remain, fill with remaining top ranked stories
-                const perSourceCap = Math.max(2, Math.floor(limitPerCat / 3));
-                const sourceCounts = new Map();
-                const selectedClusters = [];
-                const remainingClusters = [];
+                for (const cat of orderedCats) {
+                    const catClusters = skip ? grouped[cat].filter(cl => !skip.has(cl.leadArticle.id)) : grouped[cat];
 
-                for (const cl of catClusters) {
-                    const src = cl.leadArticle.source || 'Unknown';
-                    const curCount = sourceCounts.get(src) || 0;
-                    if (selectedClusters.length < limitPerCat && curCount < perSourceCap) {
-                        sourceCounts.set(src, curCount + 1);
-                        selectedClusters.push(cl);
-                    } else {
-                        remainingClusters.push(cl);
+                    // 4. Source Diversity selection
+                    // Ensure a single high-frequency feed does not monopolize all slots in the section.
+                    // Pass 1: pick up to perSourceCap stories per source
+                    // Pass 2: if slots remain, fill with remaining top ranked stories
+                    const perSourceCap = Math.max(2, Math.floor(limitPerCat / 3));
+                    const sourceCounts = new Map();
+                    const selectedClusters = [];
+                    const remainingClusters = [];
+
+                    for (const cl of catClusters) {
+                        const src = cl.leadArticle.source || 'Unknown';
+                        const curCount = sourceCounts.get(src) || 0;
+                        if (selectedClusters.length < limitPerCat && curCount < perSourceCap) {
+                            sourceCounts.set(src, curCount + 1);
+                            selectedClusters.push(cl);
+                        } else {
+                            remainingClusters.push(cl);
+                        }
+                    }
+
+                    // Pass 2: fill any remaining slots up to limitPerCat
+                    while (selectedClusters.length < limitPerCat && remainingClusters.length > 0) {
+                        selectedClusters.push(remainingClusters.shift());
+                    }
+
+                    // Build final selected story objects with alsoReportedBy metadata
+                    const selectedStories = selectedClusters.map(cl => {
+                        const lead = cl.leadArticle;
+                        const otherSources = Array.from(cl.sources).filter(s => s && s !== lead.source);
+                        return {
+                            ...lead,
+                            alsoReportedBy: otherSources,
+                            sourceCount: cl.sourceCount,
+                            effectiveRank: cl.effectiveRank,
+                            coverage: cl.articles
+                        };
+                    });
+
+                    if (selectedStories.length > 0) {
+                        const slug = cat.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                        categorySections.push({
+                            name: cat,
+                            slug: slug,
+                            stories: selectedStories
+                        });
+                        totalStories += selectedStories.length;
                     }
                 }
 
-                // Pass 2: fill any remaining slots up to limitPerCat
-                while (selectedClusters.length < limitPerCat && remainingClusters.length > 0) {
-                    selectedClusters.push(remainingClusters.shift());
-                }
-
-                // Build final selected story objects with alsoReportedBy metadata
-                const selectedStories = selectedClusters.map(cl => {
-                    const lead = cl.leadArticle;
-                    const otherSources = Array.from(cl.sources).filter(s => s && s !== lead.source);
-                    return {
-                        ...lead,
-                        alsoReportedBy: otherSources,
-                        sourceCount: cl.sourceCount,
-                        effectiveRank: cl.effectiveRank,
-                        coverage: cl.articles
-                    };
-                });
-
-                if (selectedStories.length > 0) {
-                    const slug = cat.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-                    categorySections.push({
-                        name: cat,
-                        slug: slug,
-                        stories: selectedStories
-                    });
-                    totalStories += selectedStories.length;
-                }
-            }
-
-            return { categorySections, totalStories };
+                return { categorySections, totalStories };
+            };
+            return { ...reselect(null), reselect };
         }
 
         function composeSlotBrief(slotDef, categorySections, totalStories) {
@@ -13192,6 +13544,17 @@
                 timeZone: 'America/New_York',
                 weekday: 'long',
                 month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            // The heading's date is short, "Thu, Oct 8, 2026" (build 325, on request): the long
+            // one wrapped at the phone's width with only the year on the second line. It stays in
+            // one piece, so a large Title Size moves the whole date down, never the year alone.
+            // Listen still says the long one.
+            const headingDate = triggerDate.toLocaleDateString('en-US', {
+                timeZone: 'America/New_York',
+                weekday: 'short',
+                month: 'short',
                 day: 'numeric',
                 year: 'numeric'
             });
@@ -13211,10 +13574,9 @@
                                 <svg class="w-3.5 h-3.5 mr-1 flex-shrink-0"><use href="#icon-newspaper"/></svg>${esc(slotDef.badgeLabel)} Brief
                             </span>
                             <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0">• ${esc(slotDef.windowLabel)}</span>
-                            <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0" data-today-status></span>
-                            <span class="brief-header-window brief-header-new whitespace-nowrap flex-shrink-0" data-today-new></span>
                         </div>
-                        <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — ${esc(datePartFormatted)}</h2>
+                        <div class="brief-header-status"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
+                        <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — <span class="whitespace-nowrap">${esc(headingDate)}</span></h2>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
                             <span class="brief-meta-item whitespace-nowrap">${categorySections.length} sections</span>
                             <span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span>
@@ -13354,6 +13716,9 @@
                 }
                 return;
             }
+            const card = kind === 'read' && btn ? btn.closest('.brief-story-card') : null;
+            const next = card ? window.briefNextShown(card) : null;
+            const nextBefore = next ? next.getBoundingClientRect().top : 0;
             if (kind === 'read') {
                 toggleUnread(art);
                 saveReadState();
@@ -13363,6 +13728,10 @@
                 window.showToast?.(art.readLater ? 'Added to Read Later' : 'Removed from Read Later');
             }
             refreshUI();
+            if (kind === 'read') {
+                window.syncBriefCards(null, { now: true });   // your tap: at once (322)
+                if (next && next.getClientRects().length) window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
+            }
             updateActionButton();   // reader row if this is the open story, plus every card
         };
 
@@ -13476,10 +13845,14 @@
                     if (targetCard) {
                         if (readerView && typeof state.cardTop === 'number') {
                             // Build 301: the landing story at the same height on screen as the
-                            // one you tapped, so Today reopens where you were reading it.
+                            // one you tapped, so Today reopens where you were reading it. On a
+                            // kept page (build 317) this is exact, and usually 0px: the page is
+                            // back at its own scroll and only the stories you read have left.
+                            // It moves only when stories ABOVE the tapped one left too (you
+                            // swiped back to them).
                             readerView.scrollTop += targetCard.getBoundingClientRect().top
                                 - readerView.getBoundingClientRect().top - state.cardTop;
-                        } else {
+                        } else if (!window._todayRestored) {
                             targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                         targetCard.classList.add('brief-card-return-pulse');
@@ -13494,9 +13867,10 @@
                 }
             };
 
-            requestAnimationFrame(() => {
-                setTimeout(scrollToTarget, 60);
-            });
+            // The kept page is laid out already: land now, before it is drawn (build 322) -
+            // a late correction would be a jump. A rebuilt one waits for its layout.
+            if (window._todayRestored) scrollToTarget();
+            else requestAnimationFrame(() => { setTimeout(scrollToTarget, 60); });
         };
 
         window.openArticleInReader = function (articleId) {
@@ -13571,12 +13945,16 @@
         // fromCloud: applying another device's list - do not save it straight back.
         window.setMuteWords = function (list, fromCloud) {
             const seen = new Set();
-            window._muteWords = (list || []).map(w => String(w).trim()).filter(w => {
+            const words = (list || []).map(w => String(w).trim()).filter(w => {
                 const k = w.toLowerCase();
                 if (!w || seen.has(k)) return false;
                 seen.add(k);
                 return true;
             });
+            // The same list from the cloud (every launch) changes nothing - and must not
+            // rebuild Today at its top, as it did (build 322).
+            if (fromCloud && words.join('\n') === (window._muteWords || []).join('\n')) return;
+            window._muteWords = words;
             try { localStorage.setItem('newsreader_mute_words', JSON.stringify(window._muteWords)); } catch (e) { }
             if (!fromCloud && typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             window._muteVersion++;
@@ -13585,7 +13963,7 @@
             renderTimeline(true);
             renderFeeds();
             updateBadges();
-            if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(null, false);
+            if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
         };
         window.addMuteWord = function () {
             const input = document.getElementById('mute-input');
@@ -13600,20 +13978,10 @@
         window.toggleShowMuted = function () {
             window._showMuted = !window._showMuted;
             renderTimeline(true);
-            rebuildTodayInPlace(null, false);
+            rebuildTodayInPlace(false);
         };
 
-        // Settings > Today > Folders in Today (build 310).
-        window.renderTodayFolderChips = function () {
-            const box = document.getElementById('today-folders');
-            if (!box) return;
-            box.innerHTML = getAppCategories().map(c => {
-                const off = window._todayExcluded.has(c);
-                return `<button type="button" class="today-folder-chip${off ? ' is-off' : ''}" data-folder="${esc(c)}"
-                    onclick="window.toggleTodayFolder(this.dataset.folder)" aria-pressed="${off ? 'false' : 'true'}"
-                    title="${off ? 'Left out of Today - tap to include' : 'In Today - tap to leave out'}">${esc(c)}</button>`;
-            }).join('');
-        };
+        // Folders in Today (build 310; the switches are in the feed manager since 324).
         window.saveTodayExcluded = function () {
             try { localStorage.setItem('newsreader_today_excluded', JSON.stringify([...window._todayExcluded])); } catch (e) { }
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
@@ -13623,8 +13991,8 @@
             if (window._todayExcluded.has(name)) window._todayExcluded.delete(name);
             else window._todayExcluded.add(name);
             window.saveTodayExcluded();
-            window.renderTodayFolderChips();
-            rebuildTodayInPlace(null, false);   // Today on screen follows at once
+            renderLocalFeedList();
+            rebuildTodayInPlace(false);   // Today on screen follows at once
         };
 
         // The slider's last step (51) is All: every unread story in each folder (build 280).
@@ -13638,10 +14006,27 @@
             if (label) label.textContent = all ? 'All' : String(num);
         };
 
-        window.toggleSettings = () => {
+        // What the app keeps on this device (build 319, on request): IndexedDB and local
+        // storage as the browser counts them, beside the build in the Settings footer.
+        async function updateBuildStamp() {
+            const stamp = document.getElementById('build-stamp');
+            if (!stamp) return;
+            let used = '';
+            try {
+                const est = await navigator.storage?.estimate?.();
+                if (est && typeof est.usage === 'number') used = ` · ${(est.usage / 1048576).toFixed(1)} MB stored`;
+            } catch (e) { }
+            stamp.textContent = `RSS Reader · build ${window.APP_BUILD}${used}`;
+        }
+
+        // The gear: Settings. openFeedManager passes 'feeds' for Edit (build 325) - the card used
+        // to reopen on whichever tab was shown last, so the gear landed on Feeds too.
+        window.toggleSettings = (tab) => {
             const modal = document.getElementById('settings-modal');
             modal.classList.toggle('hidden');
             if (!modal.classList.contains('hidden')) {
+                window.switchSettingsTab(tab === 'feeds' ? 'feeds' : 'prefs');
+                updateBuildStamp();
                 const briefSlider = document.getElementById('brief-stories-slider');
                 if (briefSlider) {
                     const all = window._briefStoriesPerCat === Infinity;
@@ -13649,65 +14034,34 @@
                     const valEl = document.getElementById('brief-stories-val');
                     if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
                 }
-                window.renderTodayFolderChips?.();
                 window.renderMuteChips?.();
-                window.renderFeedProblems?.();
+                renderLocalFeedList();   // the feed manager, with health as of now
             }
         };
 
-        // "Feed health" list in Settings: feeds whose last successful fetch is
-        // >48h old (lastSuccess persists across sessions via _persistFeedHealth),
-        // or that failed 3+ times this session. Feeds with no recorded history
-        // are treated as unknown, not broken — the list earns accuracy over days.
-        window.renderFeedProblems = () => {
-            const box = document.getElementById('feed-problems-list');
-            if (!box) return;
-            const now = Date.now();
-            const probs = [];
-            for (const f of (window.feeds || [])) {
-                const h = window._feedHealth[f.url];
-                if (!h) continue;
-                const age = h.lastSuccess ? (now - h.lastSuccess) : null;
-                if (age !== null && age > 48 * 3600 * 1000) {
-                    const label = age > 2 * 86400000
-                        ? Math.round(age / 86400000) + 'd ago'
-                        : Math.round(age / 3600000) + 'h ago';
-                    probs.push({ name: f.name, url: f.url, detail: 'Last OK ' + label, age });
-                } else if ((h.errorCount || 0) >= 3) {
-                    probs.push({ name: f.name, url: f.url, detail: 'Failing this session', age: 0 });
-                }
-            }
-            probs.sort((a, b) => (b.age || 0) - (a.age || 0));
-            // Explicit CSS classes, NOT Tailwind utilities — several utilities used
-            // here originally (dark:text-gray-200, text-red-400) are missing from
-            // the app's compiled style set, which rendered the names invisible.
-            box.innerHTML = probs.length
-                ? probs.map(p => `<div class="feed-problem-row">
-                        <span class="feed-problem-name">${esc(p.name)}</span>
-                        <span class="feed-problem-detail">${esc(p.detail)}</span>
-                        <span class="feed-problem-actions">
-                            <button type="button" class="feed-problem-btn" title="Retry now" onclick="retryProblemFeed('${escJs(p.url)}', '${escJs(p.name)}', this)">&#x21bb;</button>
-                            <button type="button" class="feed-problem-btn remove" title="Remove feed" onclick="removeProblemFeed('${escJs(p.url)}')">&#x2715;</button>
-                        </span>
-                    </div>`).join('')
-                : '<div class="feed-problem-row"><span class="feed-problem-empty">All feeds healthy</span></div>';
+        // Following > Edit (build 324): Settings, on its Feeds tab - the feed manager.
+        window.openFeedManager = () => {
+            if (document.getElementById('settings-modal').classList.contains('hidden')) window.toggleSettings('feeds');
+            else window.switchSettingsTab('feeds');
         };
-
-        // Retry a problem feed right now; success updates lastSuccess and the row
-        // clears on re-render, failure bumps errorCount and it stays listed.
-        window.retryProblemFeed = async (url, name, btn) => {
-            if (btn) { btn.disabled = true; btn.textContent = '…'; }
+        // A feed's stories, from the manager: Settings closes and its list opens.
+        window.openFeedFromManager = (name) => {
+            window.toggleSettings();
+            if (isMobile()) setMobileTab('following');
+            window.setSourceFilter(name);
+        };
+        // Retry a feed that is not loading, right now; the manager shows the outcome.
+        window.retryFeed = async (url, name, btn) => {
+            if (btn) btn.disabled = true;
             try { await fetchRecentArticles(url, name); } catch (e) { }
             window._persistFeedHealth?.();
             renderFeeds();
-            window.renderFeedProblems();
+            renderLocalFeedList();
         };
-        window.removeProblemFeed = (url) => {
-            const f = (window.feeds || []).find(x => x.url === url);
-            if (!f) { window.renderFeedProblems(); return; }
-            if (!confirm(`Remove feed "${f.name}"?`)) return;
+        window.confirmRemoveFeed = (feedId) => {
+            const f = (window.accountStates.local || []).find(x => String(x.id) === String(feedId));
+            if (!f || !confirm(`Remove "${f.name}"? Its stories leave Today and your lists.`)) return;
             window.removeLocalFeed(f.id);
-            window.renderFeedProblems();
         };
         window.toggleFeedsOverflow = (e) => {
             e.stopPropagation();
@@ -13748,17 +14102,10 @@
             try { saved = localStorage.getItem('newsreader_theme'); } catch (e) { }
             applyTheme(saved === 'light' ? 'light' : 'dark');
         })();
+        // Which of the card's two screens shows (build 325): 'feeds' (Edit) or 'prefs' (the gear).
         window.switchSettingsTab = (tab) => {
-            ['feeds', 'prefs'].forEach(t => {
-                const panel = document.getElementById(`settings-panel-${t}`);
-                const btn = document.getElementById(`settings-tab-${t}`);
-                const active = t === tab;
-                panel.classList.toggle('hidden', !active);
-                btn.classList.toggle('text-blue-600', active);
-                btn.classList.toggle('border-blue-600', active);
-                btn.classList.toggle('text-gray-400', !active);
-                btn.classList.toggle('border-transparent', !active);
-            });
+            ['feeds', 'prefs'].forEach(t => document.getElementById(`settings-panel-${t}`).classList.toggle('hidden', t !== tab));
+            document.getElementById('settings-title').textContent = tab === 'feeds' ? 'Feeds' : 'Settings';
         };
         window.openAddFeedModal = () => {
             const cats = [...new Set(window.feeds.map(f => f.category || 'Uncategorized'))].sort();
@@ -13874,7 +14221,7 @@
             body: { perDevice: true, desktopProps: ['--view-font-size'], mobileProps: ['--mob-body-size'], label: 'shared-body-val', rerender: null },
             articleTitle: { perDevice: true, desktopProps: ['--article-title-size'], mobileProps: ['--mob-article-title-size'], label: 'shared-article-title-val', rerender: null },
             meta: { perDevice: true, desktopProps: ['--article-meta-size'], mobileProps: ['--mob-author-size'], label: 'shared-meta-val', rerender: null },
-            lineHeight: { perDevice: true, desktopProps: ['--line-height', '--feed-line-height'], mobileProps: ['--mob-line-height', '--mob-feed-line-height'], label: 'shared-line-height-val', rerender: null, noEm: true },
+            lineHeight: { perDevice: true, desktopProps: ['--line-height'], mobileProps: ['--mob-line-height'], label: 'shared-line-height-val', rerender: null, noEm: true },
             previewLineHeight: { perDevice: true, desktopProps: ['--list-preview-line-height'], mobileProps: ['--mob-list-preview-line-height'], label: 'shared-preview-line-height-val', rerender: 'timeline', noEm: true },
         };
 
@@ -14040,6 +14387,17 @@
                 }
             }, { passive: true });
         })();
+        // CALM TODAY (build 322): what waited on the screen goes once it is off it - looked at
+        // when scrolling stops, as setting the scroll during an iOS fling would stop the fling.
+        ['reader-view', 'today-column'].forEach(id => {
+            const s = document.getElementById(id);
+            if (!s) return;
+            let t = 0;
+            s.addEventListener('scroll', () => {
+                clearTimeout(t);
+                t = setTimeout(() => { if (s.querySelector('.brief-held, [data-pending]')) window.syncBriefCards(); }, 250);
+            }, { passive: true });
+        });
         window.openExternal = () => { if (window.currentArticle) window.open(window.currentArticle.link, '_blank', 'noopener,noreferrer'); };
 
         // ===== STANDALONE LAYOUT-HEIGHT LOCK =====
@@ -14445,10 +14803,9 @@
             const list = document.getElementById('article-list');
             let _lpTimer = null;
             let _lpScrollWatch = null;
-            let _touchStartX = 0, _touchStartY = 0, _touchStartTime = 0;
+            let _touchStartX = 0, _touchStartY = 0;
             let _touchStartScrollTop = 0;
             let _swiping = false;
-            let _swipeCard = null;
 
             const cancelLongPress = () => {
                 clearTimeout(_lpTimer);
@@ -14459,10 +14816,8 @@
 
             list.addEventListener('touchstart', (e) => {
                 const card = e.target.closest('[data-id]');
-                _swipeCard = card || null;
                 _touchStartX = e.touches[0].clientX;
                 _touchStartY = e.touches[0].clientY;
-                _touchStartTime = Date.now();
                 _touchStartScrollTop = list.scrollTop;
                 _swiping = false;
 
@@ -14493,34 +14848,11 @@
             list.addEventListener('touchcancel', () => {
                 cancelLongPress();
                 _swiping = false;
-                _swipeCard = null;
             }, { passive: true });
 
-            list.addEventListener('touchend', (e) => {
-                cancelLongPress();
-
-                if (!_swipeCard || !_swiping) return;
-                const dx = e.changedTouches[0].clientX - _touchStartX;
-                const dy = e.changedTouches[0].clientY - _touchStartY;
-                const absDx = Math.abs(dx), absDy = Math.abs(dy);
-
-                if (dy > 120 && absDy > absDx * 3 && list.scrollTop <= 4) {
-                    window._pinnedArticleIds.clear();
-                    // No refresh toast (user preference) — the in-timeline spinner is
-                    // the feedback when empty; otherwise new items appear in place.
-                    renderTimeline();
-                    renderFeeds();
-                    if (window.currentSourceFilter) {
-                        const feed = window.feeds.find(f => f.name === window.currentSourceFilter);
-                        if (feed) fetchRecentArticles(feed.url, feed.name, null, true);
-                    } else {
-                        // Timeline-pane pull-to-refresh — same guarded full-refresh path
-                        // as the sidebar PTR so the two can't stack a double storm.
-                        // Depth uncapped (default 20) to keep device windows identical.
-                        window.runFullRefresh({ isBackground: true });
-                    }
-                }
-            }, { passive: true });
+            // The lists' own pull-to-refresh went in build 323 (Today's pull is the one), so
+            // a lifted finger only ends the long-press wait.
+            list.addEventListener('touchend', cancelLongPress, { passive: true });
         })();
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#article-context-menu')) document.getElementById('article-context-menu').classList.add('hidden');
@@ -14568,6 +14900,11 @@
                 delete window.collapsedCategories[oldName];
                 window.saveCollapsedCategories?.();
             }
+            // Its place in the folder order and its In Today setting go with it (build 324).
+            const oi = (window._categoryOrder || []).indexOf(oldName);
+            if (oi !== -1) { window._categoryOrder[oi] = trimmed; saveCategoryOrder(); }
+            if (window._todayExcluded.has(oldName)) { window._todayExcluded.delete(oldName); window._todayExcluded.add(trimmed); }
+            window.saveTodayExcluded();   // saves the cloud prefs too (folder order included)
             saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds(window.accountStates.local);
             renderFeeds();
@@ -14747,6 +15084,9 @@
 
         window.markBriefCategoryRead = function (catName, btnEl) {
             if (!catName || !window.articles) return;
+            const sec = btnEl ? btnEl.closest('.brief-cat-section') : null;
+            const next = sec ? window.briefNextShown(sec) : null;
+            const nextBefore = next ? next.getBoundingClientRect().top : 0;
             const normCat = catName.trim().toLowerCase();
 
             const allFeeds = [...(window.feeds || [])];
@@ -14777,6 +15117,8 @@
             window._pinnedArticleIds?.clear?.();
             refreshUI();
             updateBadges();
+            window.syncBriefCards(null, { now: true });   // your tap: at once (322)
+            if (next && next.getClientRects().length) window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
 
             if (btnEl) {
                 btnEl.disabled = true;
@@ -14851,6 +15193,7 @@
             window._pinnedArticleIds?.clear?.();
             refreshUI();
             updateBadges();
+            window.syncBriefCards(null, { now: true });   // your tap: at once (322)
 
             window.updateBriefMarkReadButtons?.(true);
 
@@ -14930,8 +15273,9 @@
         // active viewport, so on save we preserve the inactive viewport's existing
         // value from the prefs blob.
         function saveTypographyPrefs() {
-            // Viewport re-seeding replays defaults through the same writers a real
-            // slider drag uses; that must not turn "unset" into a saved value.
+            // Viewport re-seeding and the launch restore replay values through the same
+            // writers a real slider drag uses; that must not turn "unset" into a saved
+            // value, nor save settings that are not restored yet.
             if (window._reseedingSliders) return;
             const get = id => document.getElementById(id)?.value;
             let prevPrefs = {};
@@ -14973,6 +15317,8 @@
                     ...previewLines,
                     ...previewLinesSoc,
                     dedupByTitle: window._dedupByTitle || false,
+                    // Written by updateRecentlyReadDays; left out, any save dropped it (328).
+                    recentlyReadDays: prevPrefs.recentlyReadDays,
                 }));
             } catch (e) { console.warn('Storage error:', e.message); }
         }
@@ -15014,11 +15360,17 @@
                 { key: prefs.sharedFolder, id: 'shared-folder-slider', label: 'shared-folder-val', fn: v => updateFolderSize(v) },
                 { key: prefs.feedSpacing, id: 'feed-spacing-slider', label: 'feed-spacing-val', fn: v => updateFeedSpacing(v) },
             ];
-            shared.forEach(({ key, id, fn }) => {
-                if (!key) return;
-                const el = document.getElementById(id);
-                if (el) { el.value = key; fn(key); }
-            });
+            // These writers save as they go. Here that stored the markup defaults of every
+            // setting not restored yet over the saved ones, and Auto-refresh read its default
+            // back a moment later, so it was 30 minutes after every launch (build 328).
+            window._reseedingSliders = true;
+            try {
+                shared.forEach(({ key, id, fn }) => {
+                    if (!key) return;
+                    const el = document.getElementById(id);
+                    if (el) { el.value = key; fn(key); }
+                });
+            } finally { window._reseedingSliders = false; }
 
             // Per-device sliders (Article Reader + Article List): write CSS vars
             // for BOTH viewports up front so each side has its own value at all
@@ -15107,10 +15459,11 @@
                 const el = document.getElementById('app-zoom-slider'); if (el) el.value = activeZoom;
                 const lb = document.getElementById('app-zoom-val'); if (lb) lb.textContent = `${activeZoom}%`;
             }
-            if (prefs.dedupByTitle) {
-                window._dedupByTitle = true;
+            // Saved either way, so false is a choice: the default (on) used to win (328).
+            if (typeof prefs.dedupByTitle === 'boolean') {
+                window._dedupByTitle = prefs.dedupByTitle;
                 const btn = document.getElementById('dedup-title-toggle');
-                if (btn) btn.setAttribute('data-on', 'true');
+                if (btn) btn.setAttribute('data-on', prefs.dedupByTitle ? 'true' : 'false');
             }
             fetchMemoRankings();
         }
@@ -15318,9 +15671,13 @@
             const cur = window.currentArticle;
             if (window._mobilePane === 'viewer' && cur && !cur.isBrief && s && s.briefId === window.TODAY_BRIEF_ID) {
                 setMobileTab('today');
+                window._todayReturnedAt = Date.now();
                 window.returnToBrief();
                 return;
             }
+            // A second tap within a second of that return is the same tap repeated, not
+            // "Today again, from the top" (build 317) - it used to throw your place away.
+            if (cur?.id === window.TODAY_BRIEF_ID && Date.now() - (window._todayReturnedAt || 0) < 1000) return;
             setMobileTab('today');
             await window.openToday();
         };
@@ -15782,7 +16139,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 314;
+        window.APP_BUILD = 329;
 
         (async function initApp() {
             try {
@@ -15863,8 +16220,8 @@
                     } catch (e) { console.warn('Saved read hashes skipped:', e?.message); }
                     console.log('App: Restoring article cache...');
                     await restoreArticleCache();
-                    // Automatic briefs are gone (build 281): drop what they stored.
-                    Promise.resolve(window.appDB?.clearRetiredBriefs?.()).catch(() => { });
+                    // Automatic briefs are gone (build 281): their switch too (the v6 upgrade
+                    // deletes their store).
                     try { localStorage.removeItem('newsreader_briefs_enabled'); } catch (e) { }
                     // Prune readArchive: drop entries older than the longest window we support
                     // (30 days, used by full-history search). Done in the background so it
@@ -15955,30 +16312,20 @@
 
                 // 7. Start Background Sync
                 //
-                // Startup has TWO possible fetch triggers, and exactly ONE should run:
-                //   (a) this 4s fallback timer, using the locally-restored feed list, and
-                //   (b) the Firestore first-snapshot (syncCloudFeeds), using the synced list.
-                // Whichever happens first claims the startup fetch via _startupFetchDone.
-                // The snapshot cancels this timer when it wins the race; if the snapshot is
-                // slow and this timer already ran, the snapshot re-fetches ONLY when it
-                // actually brought different feeds (see syncCloudFeeds). This is the design
-                // fix for the old two-full-batches behavior — one fetch in the common case.
-                window._startupFetchDone = false;
-                if (window.feeds.length > 0) {
+                // Startup has TWO possible fetch triggers, and exactly ONE should run in the
+                // common case: (a) right here, with the locally restored feed list, and (b) the
+                // Firestore first snapshot (syncCloudFeeds), with the synced list. Whichever
+                // comes first claims the startup fetch via _startupFetchDone; the snapshot
+                // fetches again ONLY when it brought different feeds. Build 319: (a) starts at
+                // once. It used to wait 1.5s for the snapshot to come first, which only delayed
+                // fresh stories - the local list IS the synced list, saved on the last visit.
+                if (window.feeds.length > 0 && !window._startupFetchDone) {
                     console.log('App: Starting background fetch...');
-                    window._localFetchTimer = setTimeout(() => {
-                        window._localFetchTimer = null;
-                        if (window._startupFetchDone) return;      // snapshot already fetched
-                        if (window.feeds.length > 0) {
-                            window._startupFetchDone = true;
-                            // Remember which feeds this pass covered, so a later snapshot can
-                            // tell whether it needs to fetch anything new.
-                            window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
-                            window.runFullRefresh({ isBackground: true });
-                        }
-                    }, 1500);  // was 4000 -- with progressive rendering the first items
-                    // can paint ~2s after fetch start, so a long grace period
-                    // for the Firestore snapshot just reads as dead air.
+                    window._startupFetchDone = true;
+                    // Which feeds this pass covers, so the snapshot can tell whether it needs
+                    // to fetch anything new.
+                    window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
+                    window.runFullRefresh({ isBackground: true });
                 }
 
                 // Listeners
@@ -16164,7 +16511,11 @@
                 const dbFeeds = [];
                 snap.forEach(d => dbFeeds.push({ ...d.data(), docId: d.id }));
                 if (dbFeeds.length > 0) {
-                    if (window._localFetchTimer) { clearTimeout(window._localFetchTimer); window._localFetchTimer = null; }
+                    // Only a real change to the feeds rebuilds Today (build 322). Every snapshot
+                    // used to - including the one a second or two after every launch, with the
+                    // list this device already had - and it threw you back to Today's top.
+                    const feedKey = list => list.map(f => [f.url, f.name, f.category, f.folder].join('|')).sort().join('\n');
+                    const feedsChanged = feedKey(window.feeds || []) !== feedKey(dbFeeds);
                     window.accountStates.local = dbFeeds;
                     window.feeds = dbFeeds;
                     if (typeof saveLocalFeeds === 'function') saveLocalFeeds();
@@ -16173,17 +16524,17 @@
                     restoreCategoryOrder();
                     window.renderFeeds();
                     updateEmptyState();
-                    // Re-render Today brief now that feed folders are loaded
-                    if (window._todayInColumn) {
+                    // Re-render Today when its feeds or folders really changed
+                    if (!feedsChanged) {
+                        // the list this device already had: nothing to redo
+                    } else if (window._todayInColumn) {
                         window.renderTodayColumn?.();   // desktop: re-cluster in place, keep the open story
                     } else if (window.currentArticle && window.currentArticle.id === window.TODAY_BRIEF_ID && typeof window.openToday === 'function') {
                         window.openToday();
                     }
                     if (_firstSnapshot) {
                         _firstSnapshot = false;
-                        // The local 4s fallback timer was already cancelled at the top of
-                        // this handler (runs on every snapshot). window.feeds === dbFeeds
-                        // here (assigned just above).
+                        // window.feeds === dbFeeds here (assigned just above).
                         // Fetch on startup ONLY when there's real work to do:
                         //   - no startup fetch has run yet (we won the race, or the timer's
                         //     feed list was empty), OR
@@ -16405,11 +16756,13 @@
                         window.renderFeeds();
                     }
                     if (Array.isArray(data.muteWords)) window.setMuteWords?.(data.muteWords, true);
-                    if (Array.isArray(data.todayExcluded)) {
+                    // Only a different list rebuilds Today (build 322): this ran on every launch
+                    // and rebuilt it at the top even when nothing had changed.
+                    if (Array.isArray(data.todayExcluded) && [...window._todayExcluded].sort().join('\n') !== [...new Set(data.todayExcluded)].sort().join('\n')) {
                         window._todayExcluded = new Set(data.todayExcluded);
                         try { localStorage.setItem('newsreader_today_excluded', JSON.stringify(data.todayExcluded)); } catch (e) { }
-                        window.renderTodayFolderChips?.();
-                        if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(null, false);
+                        window.renderFeeds?.();   // the feed manager's In Today switches
+                        if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
                     }
                     if (data.autoRefresh) {
                         const sel = document.getElementById('pref-auto-refresh');
@@ -16687,7 +17040,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v314';
+const CACHE_NAME = 'rss-reader-v329';
 const APP_SHELL = [
     '/',
     'index.html'
