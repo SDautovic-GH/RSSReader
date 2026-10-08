@@ -3112,10 +3112,6 @@
                 display: flex !important;
             }
 
-            #ptr-hint {
-                display: flex !important;
-            }
-
             #sidebar-pane.mobile-active {
                 flex-direction: column;
             }
@@ -3273,18 +3269,14 @@
             }
 
             /* ===== MOBILE TOP BAR SIZING ===== */
-            /* Sidebar header — taller, larger icons and title.
-               IMPORTANT: the actual header is the SECOND div child of
-               #sidebar-pane. The first div child is #ptr-indicator
-               (pull-to-refresh, position:absolute, off-screen). Using
-               :first-child here would silently target the PTR div and do
-               nothing visible. nth-of-type(2) targets the real header.
+            /* Sidebar header — taller, larger icons and title. Selected by its id (build
+               323): it was "the second div", from when Following's pull indicator came first.
                Top padding includes safe-area-inset-top so the header sits
                below the iOS status bar (clock/battery) when running
                fullscreen with viewport-fit=cover. The h-[74px] utility
                pins box height, so padding alone is eaten by box-sizing —
                also override height to auto on mobile. */
-            #sidebar-pane>div:nth-of-type(2) {
+            #sidebar-pane>#sidebar-header {
                 height: auto !important;
                 padding: env(safe-area-inset-top, 0px) 1.25rem 0.75rem !important;
             }
@@ -3373,20 +3365,20 @@
                 padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 90px) !important;
             }
 
-            #sidebar-pane>div:nth-of-type(2) svg {
+            #sidebar-pane>#sidebar-header svg {
                 width: 1.5rem !important;
                 height: 1.5rem !important;
             }
 
-            #sidebar-pane>div:nth-of-type(2) h1 {
+            #sidebar-pane>#sidebar-header h1 {
                 font-size: 1.1rem !important;
             }
 
-            #sidebar-pane>div:nth-of-type(2) button {
+            #sidebar-pane>#sidebar-header button {
                 padding: 0.5rem !important;
             }
 
-            #sidebar-pane>div:nth-of-type(2) button svg {
+            #sidebar-pane>#sidebar-header button svg {
                 width: 1.5rem !important;
                 height: 1.5rem !important;
             }
@@ -3406,6 +3398,13 @@
                 display: none !important;
             }
 
+            /* FOLLOWING HOLDS YOUR STORIES AND FEEDS (build 323, on request, like Apple News's
+               Following): Unread, Read Later, Saved, History, then your folders. Its Today row
+               only repeated the Today tab. */
+            #feed-btn-today {
+                display: none !important;
+            }
+
             #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
                 padding-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 8px) !important;
             }
@@ -3421,71 +3420,17 @@
             display: none;
         }
 
-        /* Pull-to-refresh hint is mobile-only — desktop sidebar has no PTR gesture */
-        #ptr-hint {
+        /* Unread's "12 older than today" (build 323): unread stories older than Today's 24
+           hours - kept for 4 days, shown only here, so none goes unseen. */
+        .unread-older-note {
+            font-size: 0.8em;
+            font-weight: 500;
+            color: #8b949e;
+            white-space: nowrap;
+        }
+
+        .unread-older-note:empty {
             display: none;
-        }
-
-        /* It's a <button> (tap = refresh) — strip native button chrome so it reads
-           as the same plain hint, and add a brief press feedback on the pill. */
-        #ptr-hint {
-            background: none;
-            border: none;
-            /* Generous vertical padding so the whole region (not just the circle) is a
-               comfortable tap target — keeps the effective hit area >= 44px tall. */
-            padding: 0.5rem 0;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            font: inherit;
-        }
-
-        #ptr-hint:active #ptr-hint-track {
-            background: rgba(59, 130, 246, 0.22);
-            transform: scale(0.94);
-        }
-
-        /* Rounded "track" housing the down-arrow — echoes the native PTR slot. */
-        #ptr-hint-track {
-            transition: background 0.12s ease, transform 0.12s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-            border-radius: 9999px;
-            background: rgba(59, 130, 246, 0.12);
-            border: 1px solid rgba(59, 130, 246, 0.22);
-            color: #4493f8;
-        }
-
-        #ptr-hint-track svg.ptr-hint-arrow {
-            width: 22px;
-            height: 22px;
-        }
-
-        /* Spinner ring shown in place of the arrow while a refresh is running. */
-        #ptr-hint-track .ptr-hint-spinner {
-            display: none;
-            width: 22px;
-            height: 22px;
-            border: 2.5px solid rgba(59, 130, 246, 0.3);
-            border-top-color: #4493f8;
-            border-radius: 50%;
-            animation: ptr-spin 0.7s linear infinite;
-        }
-
-        #ptr-hint.is-refreshing .ptr-hint-arrow {
-            display: none;
-        }
-
-        #ptr-hint.is-refreshing .ptr-hint-spinner {
-            display: block;
-        }
-
-        /* While refreshing, don't shrink on tap (it's busy, not pressable). */
-        #ptr-hint.is-refreshing:active #ptr-hint-track {
-            transform: none;
-            background: rgba(59, 130, 246, 0.12);
         }
 
         /* ===== DESKTOP ARTICLE NAVIGATION (Toolbar Prev / Next Segmented Group) ===== */
@@ -6320,8 +6265,7 @@
             }
         }
 
-        /* ===== PULL-TO-REFRESH ===== */
-        #ptr-indicator,
+        /* ===== PULL-TO-REFRESH (Today only since build 323) ===== */
         #today-ptr-indicator {
             position: absolute;
             top: -56px;
@@ -6341,17 +6285,14 @@
             gap: 8px;
         }
 
-        #ptr-indicator.ptr-visible,
         #today-ptr-indicator.ptr-visible {
             opacity: 1;
         }
 
-        #ptr-indicator.ptr-ready,
         #today-ptr-indicator.ptr-ready {
             color: #34d399;
         }
 
-        #ptr-spinner,
         #today-ptr-spinner {
             width: 20px;
             height: 20px;
@@ -6360,7 +6301,6 @@
             border-radius: 50%;
         }
 
-        #ptr-indicator.ptr-loading #ptr-spinner,
         #today-ptr-indicator.ptr-loading #today-ptr-spinner {
             animation: ptr-spin 0.7s linear infinite;
         }
@@ -6644,11 +6584,6 @@
         <aside id="sidebar-pane"
             class="w-[328px] flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col"
             style="position:relative;">
-            <!-- Pull-to-refresh indicator -->
-            <div id="ptr-indicator">
-                <div id="ptr-spinner"></div>
-                <span id="ptr-label">Pull to refresh</span>
-            </div>
             <div id="sidebar-header"
                 class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-2 min-w-0">
@@ -6712,7 +6647,7 @@
                                 viewBox="0 0 20 20">
                                 <circle cx="10" cy="10" r="6" />
                             </svg> Unread</span>
-                        <span id="badge-all" class="feed-badge mob-unread-count text-gray-400 hidden">0</span>
+                        <span class="flex items-center gap-2"><span id="unread-older-note" class="unread-older-note"></span><span id="badge-all" class="feed-badge mob-unread-count text-gray-400 hidden">0</span></span>
                     </button>
                     <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')"
                         oncontextmenu="showFolderContextMenu(event,'smart','read-later')"
@@ -6763,23 +6698,6 @@
                         class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
                     </div>
                 </div>
-                <!-- Pull-to-refresh hint (mobile only) — sits below the category folders.
-                     The Home/sidebar pane has the PTR gesture; this animated cue signals it.
-                     Down-arrow housed in a rounded track that pulses downward, echoing the
-                     native iOS/Android PTR slot. -->
-                <button id="ptr-hint" type="button" onclick="refreshAll()" aria-label="Refresh feeds"
-                    class="flex flex-col items-center justify-center gap-2 pt-5 pb-2 w-full select-none">
-                    <span id="ptr-hint-track" aria-hidden="true">
-                        <!-- Down-arrow (idle) and spinner ring (refreshing) - CSS swaps them via .is-refreshing -->
-                        <svg class="ptr-hint-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 5v14M19 12l-7 7-7-7" />
-                        </svg>
-                        <span class="ptr-hint-spinner"></span>
-                    </span>
-                    <span id="ptr-hint-label" class="text-[11px] font-medium text-gray-500">Tap or pull to
-                        refresh</span>
-                </button>
             </div>
 
         </aside>
@@ -9153,15 +9071,13 @@
             const isReadLater = window.currentSmartFeed === 'read-later';
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             const isSaved = window.currentSmartFeed === 'saved';
-            let headline, subtext, showRefresh = true;
+            let headline, subtext;
             if (!hasFeeds) {
                 headline = 'No feeds yet';
                 subtext = 'Add your first feed from Settings → Feeds to get started.';
-                showRefresh = false;
             } else if (isSaved) {
                 headline = 'Nothing saved yet';
                 subtext = 'Tap the star on any article to keep it here for future reference. Saved items sync across your devices.';
-                showRefresh = false;
             } else if (isRecentlyRead) {
                 headline = 'No history yet';
                 subtext = `Articles you've read in the last ${getRecentlyReadDays()} days will appear here.`;
@@ -9176,13 +9092,9 @@
                 subtext = `No unread articles from ${esc(window.currentSourceFilter)}.`;
             } else {
                 headline = 'All caught up';
-                subtext = "You've read everything. Pull down to refresh.";
+                subtext = "You've read everything.";
             }
-            const refreshBtn = showRefresh ? `
-                    <button onclick="refreshAll()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold" style="background: rgba(59,130,246,0.15); color: #4493f8; border: 1px solid rgba(59,130,246,0.25);">
-                        <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
-                        Refresh
-                    </button>` : '';
+            // No Refresh button in an empty list (build 323): Today's pull refreshes.
             return `
                 <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
@@ -9190,7 +9102,6 @@
                     </div>
                     <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">${esc(headline)}</h2>
                     <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">${esc(subtext)}</p>
-                    ${refreshBtn}
                 </div>
             `;
         }
@@ -9764,27 +9675,22 @@
             }, { passive: true });
         })();
 
-        // ===== PULL-TO-REFRESH (mobile): Following and Today =====
+        // ===== PULL-TO-REFRESH (mobile): Today =====
+        // ONE PLACE TO REFRESH (build 323, on request: "we should not need two separate
+        // refreshes"). Following had its own pull and a "Tap or pull to refresh" circle, and
+        // its lists one more; all ran the same refresh. Now Today's pull is the one you use,
+        // next to the automatic ones (on open, on return after 5 minutes, the timer).
         (function () {
             const THRESHOLD = 100;
             let _pt = null;
             let _loading = false;
 
-            // The surface a touch can pull, or null. Following: the sidebar list. Today
-            // (build 277, on request): the live brief in the reader - not a story.
+            // The surface a touch can pull, or null: the live brief in the reader (build 277,
+            // on request) - not a story.
             const surfaceAt = () => {
                 if (!isMobile()) return null;
-                if (window._mobilePane === 'sidebar') {
-                    return {
-                        today: false,
-                        scroller: document.querySelector('#sidebar-pane .overflow-y-auto'),
-                        indicator: document.getElementById('ptr-indicator'),
-                        label: document.getElementById('ptr-label'),
-                    };
-                }
                 if (window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) {
                     return {
-                        today: true,
                         scroller: document.getElementById('reader-view'),
                         indicator: document.getElementById('today-ptr-indicator'),
                         label: document.getElementById('today-ptr-label'),
@@ -9825,10 +9731,8 @@
                 _pt.label.textContent = dy >= THRESHOLD ? 'Release to refresh' : 'Pull to refresh';
             }, { passive: true });
 
-            // Today: hold the indicator open with its spinner until the refresh - and any
-            // pass queued behind one already running - has finished, then rebuild the
-            // brief so the new stories show (refreshUI deliberately leaves an open brief
-            // alone). Following doesn't need this: its Tap-or-pull circle spins instead.
+            // Hold the indicator open with its spinner until the refresh - and any pass
+            // queued behind one already running - has finished, then show what came in.
             const refreshToday = async (p) => {
                 _loading = true;
                 p.indicator.style.top = '0px';
@@ -9844,19 +9748,27 @@
                     }
                 } finally {
                     _loading = false;
-                    document.body.classList.remove('today-refreshing');
+                    // CALM (build 323): the refresh ends ~20 s after the pull. Still at the top,
+                    // waiting for it: the space the spinner took closes and Today shows what
+                    // came in. Scrolled down to read meanwhile: nothing moves - the space closes
+                    // where you cannot see it, made up for, and new stories wait behind the
+                    // "N new stories" pill. (Before, Today was rebuilt either way and the scroll
+                    // put back a frame later: a jump to the top and back.)
+                    const sc = p.scroller;
+                    const atTop = !sc || sc.scrollTop <= 4;
+                    if (atTop) document.body.classList.remove('today-refreshing');
+                    else {
+                        const ac = document.getElementById('article-content');
+                        if (ac) ac.style.transition = 'none';
+                        window.keepTodayInPlace(() => document.body.classList.remove('today-refreshing'));
+                        requestAnimationFrame(() => { if (ac) ac.style.transition = ''; });
+                    }
                     p.indicator.style.top = '-56px';
                     p.indicator.classList.remove('ptr-visible', 'ptr-loading');
                     p.label.textContent = 'Pull to refresh';
                     // Only if Today is still on screen - not if a story was opened meanwhile.
-                    if (window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) {
-                        const y = p.scroller ? p.scroller.scrollTop : 0;
+                    if (atTop && window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID) {
                         window.openToday();
-                        // selectArticle puts the reader at the top, now and on the next frame;
-                        // if the brief was scrolled while it refreshed, keep that place.
-                        if (p.scroller && y > 0) {
-                            requestAnimationFrame(() => requestAnimationFrame(() => { p.scroller.scrollTop = y; }));
-                        }
                     }
                 }
             };
@@ -9866,29 +9778,13 @@
                 const p = _pt;
                 const wasReady = !p.cancelled && p.indicator.classList.contains('ptr-ready');
                 _pt = null;
-                if (wasReady && !_loading && p.today) {
+                if (wasReady && !_loading) {
                     refreshToday(p);
                     return;
                 }
-                // Retract the top pull indicator immediately. The in-progress feedback
-                // is the #ptr-hint arrow circle (below the folders) spinning - driven by
-                // runFullRefresh - so we don't pin/spin this top bar (it overlapped the
-                // logo header and duplicated the feedback).
                 p.indicator.style.top = '-56px';
                 p.indicator.classList.remove('ptr-visible', 'ptr-ready');
                 p.label.textContent = 'Pull to refresh';
-                if (wasReady && !_loading) {
-                    _loading = true;
-                    // Background semantics: one refreshUI() at the end instead of a
-                    // per-feed render storm. Depth deliberately UNCAPPED (default 20)
-                    // so every device sees identical feed windows — the old mobile 15
-                    // left items 16-20 markable only on desktop. Routed through the
-                    // shared in-flight guard so a concurrent auto-refresh/first-
-                    // snapshot fetch can't stack on top.
-                    window.runFullRefresh({ isBackground: true }).then(() => {
-                        _loading = false;
-                    });
-                }
             };
             const cancel = () => {
                 if (!_pt) return;
@@ -11729,6 +11625,13 @@
             const badgeReadLater = document.getElementById('badge-read-later');
 
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
+            // Unread stories older than Today's 24 hours (build 323): Today never shows them.
+            const olderNote = document.getElementById('unread-older-note');
+            if (olderNote) {
+                const cutoff = Date.now() - window.TODAY_WINDOW_HOURS * 3600000;
+                const older = window.articles.filter(a => a.unread && !a.isBrief && (a._ts || 0) < cutoff && !window.isMuted(a)).length;
+                olderNote.textContent = older ? `${older} older than today` : '';
+            }
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
 
             // Dim empty Read Later / Saved smart feeds (always-visible, unlike category
@@ -12107,16 +12010,6 @@
         // the WIDEST scope (maxItems:null beats a capped 15) so nothing is truncated.
         window._refreshInFlight = false;
         window._refreshPending = null; // null = nothing queued; else the opts to run next
-        // Toggle the Home/sidebar "Tap or pull to refresh" hint into its spinning state.
-        // The element the user actually touched (the arrow circle) becomes the spinner -
-        // no separate top bar, no logo collision.
-        const _setHintRefreshing = (on) => {
-            const hint = document.getElementById('ptr-hint');
-            const label = document.getElementById('ptr-hint-label');
-            if (!hint) return;
-            hint.classList.toggle('is-refreshing', on);
-            if (label) label.textContent = on ? 'Refreshing...' : 'Tap or pull to refresh';
-        };
         window.runFullRefresh = async (opts = {}) => {
             if (window._refreshInFlight) {
                 // Coalesce: remember that another pass is wanted and run it when the
@@ -12144,7 +12037,6 @@
                 return false;
             }
             window._refreshInFlight = true;
-            _setHintRefreshing(true);
             window.updateTodayStatus?.();   // "Updating..." (build 306)
             // If the timeline is currently showing an empty state, immediately swap it
             // to the "Refreshing feeds" spinner so the user sees the refresh took hold
@@ -12162,7 +12054,6 @@
                 // Stamp last-updated for the header status line, then refresh it.
                 window._lastRefreshAt = Date.now();
                 window.updateHeaderStatus?.();
-                _setHintRefreshing(false);
                 // Keep Today's source rankings current in a long-running session (24h
                 // cache). The brief generator used to do this after every refresh.
                 fetchMemoRankings().catch(() => { });
@@ -14884,10 +14775,9 @@
             const list = document.getElementById('article-list');
             let _lpTimer = null;
             let _lpScrollWatch = null;
-            let _touchStartX = 0, _touchStartY = 0, _touchStartTime = 0;
+            let _touchStartX = 0, _touchStartY = 0;
             let _touchStartScrollTop = 0;
             let _swiping = false;
-            let _swipeCard = null;
 
             const cancelLongPress = () => {
                 clearTimeout(_lpTimer);
@@ -14898,10 +14788,8 @@
 
             list.addEventListener('touchstart', (e) => {
                 const card = e.target.closest('[data-id]');
-                _swipeCard = card || null;
                 _touchStartX = e.touches[0].clientX;
                 _touchStartY = e.touches[0].clientY;
-                _touchStartTime = Date.now();
                 _touchStartScrollTop = list.scrollTop;
                 _swiping = false;
 
@@ -14932,34 +14820,11 @@
             list.addEventListener('touchcancel', () => {
                 cancelLongPress();
                 _swiping = false;
-                _swipeCard = null;
             }, { passive: true });
 
-            list.addEventListener('touchend', (e) => {
-                cancelLongPress();
-
-                if (!_swipeCard || !_swiping) return;
-                const dx = e.changedTouches[0].clientX - _touchStartX;
-                const dy = e.changedTouches[0].clientY - _touchStartY;
-                const absDx = Math.abs(dx), absDy = Math.abs(dy);
-
-                if (dy > 120 && absDy > absDx * 3 && list.scrollTop <= 4) {
-                    window._pinnedArticleIds.clear();
-                    // No refresh toast (user preference) — the in-timeline spinner is
-                    // the feedback when empty; otherwise new items appear in place.
-                    renderTimeline();
-                    renderFeeds();
-                    if (window.currentSourceFilter) {
-                        const feed = window.feeds.find(f => f.name === window.currentSourceFilter);
-                        if (feed) fetchRecentArticles(feed.url, feed.name, null, true);
-                    } else {
-                        // Timeline-pane pull-to-refresh — same guarded full-refresh path
-                        // as the sidebar PTR so the two can't stack a double storm.
-                        // Depth uncapped (default 20) to keep device windows identical.
-                        window.runFullRefresh({ isBackground: true });
-                    }
-                }
-            }, { passive: true });
+            // The lists' own pull-to-refresh went in build 323 (Today's pull is the one), so
+            // a lifted finger only ends the long-press wait.
+            list.addEventListener('touchend', cancelLongPress, { passive: true });
         })();
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#article-context-menu')) document.getElementById('article-context-menu').classList.add('hidden');
@@ -16231,7 +16096,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 322;
+        window.APP_BUILD = 323;
 
         (async function initApp() {
             try {
@@ -17132,7 +16997,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v322';
+const CACHE_NAME = 'rss-reader-v323';
 const APP_SHELL = [
     '/',
     'index.html'
