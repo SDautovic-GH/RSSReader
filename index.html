@@ -4379,6 +4379,15 @@
         #today-column .brief-story-card.brief-card-active {
             background: rgba(68, 147, 248, 0.08) !important;
             box-shadow: inset 3px 0 0 #4493f8 !important;
+            /* The tint and line reach 10px into the column's margin and the padding grows by
+               the same, so the text stays put and starts 11px after the line, as in the phone's
+               lists (build 331, on request: it was 1px - the card's 4px padding held the line).
+               The width too: every card is width: 100%, so the margins alone only moved it. */
+            width: calc(100% + 20px) !important;
+            margin-left: -10px !important;
+            margin-right: -10px !important;
+            padding-left: 14px !important;
+            padding-right: 14px !important;
         }
 
         /* TAB BAR STEPS ASIDE WHILE READING (build 301, on request). On the phone, scrolling
@@ -4971,16 +4980,6 @@
             border-bottom-color: rgba(0, 0, 0, 0.08) !important;
         }
 
-        .brief-header-top {
-            display: flex !important;
-            align-items: center !important;
-            flex-wrap: wrap !important;
-            gap: 6px !important;
-            margin-top: 0 !important;
-            margin-bottom: 4px !important;
-            /* 50% reduction in space between top line and title */
-        }
-
         .brief-container h2,
         .brief-header-title {
             font-size: var(--article-title-size, 1.2em) !important;
@@ -5010,30 +5009,7 @@
             white-space: nowrap !important;
         }
 
-        .brief-header-badge {
-            font-size: 0.8em !important;
-            white-space: nowrap !important;
-            flex-shrink: 0;
-        }
-
-        .brief-header-window {
-            font-size: 0.8em !important;
-            color: #64748b;
-            white-space: nowrap !important;
-        }
-
         @media (max-width: 900px) {
-            .brief-header-top {
-                /* Pulled left by the badge's own 6px padding, so "LIVE BRIEF" starts on the
-                   heading's 14px edge and only its tint reaches into the margin (build 327, on
-                   request: it "looks pulled to the right" - 326 had put the tint's edge on 14px,
-                   leaving the text at 20px; before that a fixed 4px pull roughly did this). */
-                margin-left: -6px !important;
-                margin-bottom: 4px !important;
-                /* 50% space reduction */
-                gap: 5px !important;
-            }
-
             .brief-container h2,
             .brief-header-title {
                 /* Article Reader > Title Size, as on desktop (build 283, on request; was a
@@ -5047,18 +5023,6 @@
                 font-size: 0.78em !important;
             }
 
-            .brief-header-badge {
-                font-size: 0.76em !important;
-                padding-left: 6px !important;
-                padding-right: 6px !important;
-                white-space: nowrap !important;
-            }
-
-            .brief-header-window {
-                font-size: 0.75em !important;
-                letter-spacing: -0.01em !important;
-                white-space: nowrap !important;
-            }
         }
 
         /* Jump Bar */
@@ -5733,6 +5697,16 @@
                 line-height: 1.25 !important;
                 white-space: nowrap !important;
                 overflow: hidden !important;
+            }
+
+            /* The space under the source name, as in Following's lists (build 331, on request:
+               Today's was ~4px tighter). A list row is at least 24px tall - its date inherits a
+               24px line - with the name (1.25em) centred in it, then 4px of margin (mb-1). So:
+               4px, plus half of whatever the 24px row has over the name. Same at every Source
+               Name Size: 6px at 1em, 4px once the name fills the row. "div." matches the
+               specificity of ".brief-story-card>div:first-child" above, which this follows. */
+            .brief-story-card div.brief-story-meta {
+                margin-bottom: calc(4px + max(0px, (24px - 1.25em) / 2)) !important;
             }
 
             .brief-story-source,
@@ -9933,7 +9907,6 @@
                     sMeta.classList.add('brief-story-meta');
                     sMeta.classList.remove('mb-1', 'mb-2');
                     sMeta.classList.add('mb-0.5', 'flex-nowrap');
-                    sMeta.style.marginBottom = '2px';
                     sMeta.style.marginTop = '0px';
 
                     let sSource = sMeta.querySelector('.brief-story-source') || sMeta.querySelector('.list-source-label') || sMeta.querySelector('span:first-of-type');
@@ -10085,8 +10058,8 @@
                 }
             });
 
-            // Ensure header badges, window badges, and jump pills do not word-wrap internally
-            container.querySelectorAll('.brief-header-meta span, .brief-header-badge, .brief-header-window, .brief-jump-pill').forEach(el => {
+            // Ensure header meta items and jump pills do not word-wrap internally
+            container.querySelectorAll('.brief-header-meta span, .brief-jump-pill').forEach(el => {
                 el.classList.add('whitespace-nowrap');
             });
 
@@ -10097,10 +10070,8 @@
             // Ensure brief header has 3px top padding and 50% reduced gap between top line and title
             const bHeader = container.querySelector('.brief-header');
             if (bHeader) bHeader.style.paddingTop = '3px';
-            const bHeaderTop = container.querySelector('.brief-header-top');
-            if (bHeaderTop) {
-                bHeaderTop.style.marginBottom = '4px';   // on the 14px margin, not pulled 4px left (326)
-            }
+            // The "LIVE BRIEF" row is gone (331); a brief stored with it drops it here.
+            container.querySelectorAll('.brief-header-top').forEach(el => el.remove());
 
             // Remove top mark all read button if present (user requested only at the bottom of the brief)
             container.querySelectorAll('.brief-header .brief-mark-all-btn, .brief-header .brief-header-actions').forEach(el => el.remove());
@@ -12668,7 +12639,6 @@
                 id: window.TODAY_BRIEF_ID,
                 slot: 'today',
                 name: 'Today',
-                badgeLabel: 'Live',
                 windowLabel: `Unread · last ${window.TODAY_WINDOW_HOURS} hours`,
                 dateStr,
                 triggerTs: now,
@@ -13572,12 +13542,8 @@
             let html = `
                 <div class="brief-container">
                     <div class="brief-header mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
-                        <div class="brief-header-top flex items-center flex-wrap gap-2 mb-1">
-                            <span class="brief-header-badge inline-flex items-center px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 whitespace-nowrap flex-shrink-0">
-                                <svg class="w-3.5 h-3.5 mr-1 flex-shrink-0"><use href="#icon-newspaper"/></svg>${esc(slotDef.badgeLabel)} Brief
-                            </span>
-                            <span class="brief-header-window text-gray-400 whitespace-nowrap flex-shrink-0">• ${esc(slotDef.windowLabel)}</span>
-                        </div>
+                        <!-- No "LIVE BRIEF • Unread · last 24 hours" row above the status line any
+                             more (build 331, on request: "I don't need it at all"). -->
                         <div class="brief-header-status"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
                         <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — <span class="whitespace-nowrap">${esc(headingDate)}</span></h2>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
@@ -16142,7 +16108,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 330;
+        window.APP_BUILD = 331;
 
         (async function initApp() {
             try {
@@ -17043,7 +17009,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v330';
+const CACHE_NAME = 'rss-reader-v331';
 const APP_SHELL = [
     '/',
     'index.html'
