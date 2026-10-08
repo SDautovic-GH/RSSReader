@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 325** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 326** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-08 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–325)
+### Follow-ups (Builds 275–326)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,12 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **14px side margins across the phone's views (326, on request: "For consistency, maybe we start with 14px across the board"):**
+  - **Why 14px:** at the iPhone's 115% Page Zoom it is ~16pt, the iOS layout margin (Material uses 16dp).
+  - **Measured before at 339px:** Today 6px (only the reader's padding; well under the guideline and closer to the left edge than the right); a story 12px (6px in the reader + 6px in the story); the Following lists 17px (a 3px border + 14px); the Following cards 12px (`p-3`) and its header 20px (1.25rem).
+  - **Now:** text sits 14px from each edge in Today, a story and the lists. `#reader-view` has 14px and the story's own 6px is gone; list cards have the 3px border + 11px. Following's cards start 14px from each side and its header has 14px.
+  - **Today's badge row** ("TODAY BRIEF • Last 24 hours") was pulled 4px left on the phone, both in CSS and inline by `normalizeBriefDOM`; it now sits on the margin.
+  - **Checked at 339px:** text at 14px in every view; the cards at 14px / 14px; the heading still on one line; nothing scrolls sideways.
 - **Today's heading: "Today — Thu, Oct 8, 2026" (325, on request):** "Today — Thursday, October 8, 2026" wrapped at the phone's width with only "2026" on the second line. The heading now uses a short date (`headingDate`: weekday, month short), kept in one piece (`whitespace-nowrap`), so a large Title Size moves the whole date down, never the year alone. Listen still says the long date. Measured at 339px: one line up to Article Reader > Title Size 1.6em (the setting here is 1.2em, 19.2px); at 1.8em and above the whole date sits on line 2.
 - **Edit opens Feeds, the gear opens Settings (325, on request: in Following, "tapping pencil/edit button or gear button land on the same"):**
   - **Why they matched:** the card reopened on whichever tab it last showed, so after Edit the gear landed on Feeds too.
