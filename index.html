@@ -5519,7 +5519,7 @@
             color: #cbd5e1;
         }
 
-        /* The name already sits in the meta row, which carries Sidebar > Feed Name Size, so it
+        /* The name already sits in the meta row, which carries Article List > Source Name Size, so it
            takes 1em of it. Sizing both multiplied the setting: +4 steps made Today's source
            names 31px against 22px in the lists (build 328). Four classes outrank every
            source-name rule above, the phone ones included. */
@@ -7255,14 +7255,6 @@
                     <div class="settings-list">
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Feed Name Size</span>
-                                <span class="settings-value" id="shared-feed-name-val">1em</span>
-                            </div>
-                            <input type="range" min="4" max="19" value="10" id="shared-feed-name-slider"
-                                class="settings-range" oninput="updateSharedSize('feedName', this.value)">
-                        </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="flex justify-between items-center">
                                 <span class="settings-item-label">Folder Size</span>
                                 <span class="settings-value" id="shared-folder-val">1.05em</span>
                             </div>
@@ -7312,6 +7304,20 @@
                             </div>
                             <input type="range" min="8" max="24" value="14" id="shared-preview-line-height-slider"
                                 class="settings-range" oninput="updateSharedSize('previewLineHeight', this.value)">
+                        </div>
+                        <!-- Was Sidebar > Feed Name Size (moved build 329, on request): it never sized
+                             the sidebar's feed names, which follow Folder Size. Same slider and saved
+                             value; it sits where Author & Date Size sits in Article Reader. -->
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <div class="min-w-0">
+                                    <span class="settings-item-label">Source Name Size</span>
+                                    <p class="text-[12px] text-gray-400 mt-1">Lists, Today, and the source line above a story</p>
+                                </div>
+                                <span class="settings-value" id="shared-feed-name-val">1em</span>
+                            </div>
+                            <input type="range" min="4" max="19" value="10" id="shared-feed-name-slider"
+                                class="settings-range" oninput="updateSharedSize('feedName', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -12631,7 +12637,7 @@
             });
             const built = buildStoryClusters(pool, { limitPerCat: window._briefStoriesPerCat || 10 });
             let sections = built.categorySections;
-            const totalStories = built.totalStories;
+            let totalStories = built.totalStories;
 
             // Top Stories: strongest clusters across every folder (authority rank, then
             // multi-outlet consensus, then recency). Lifted out of their folder sections
@@ -12645,9 +12651,12 @@
                     ((y._ts || 0) - (x._ts || 0)));
                 const top = all.slice(0, window.TODAY_TOP_N);
                 const topIds = new Set(top.map(s => s.id));
-                sections = sections
-                    .map(cs => ({ ...cs, stories: cs.stories.filter(s => !topIds.has(s.id)) }))
-                    .filter(cs => cs.stories.length > 0);
+                // Each folder then fills back up to Stories per Category from the stories after
+                // them (build 329, on request): News set to 10 showed 5, and at 5 it lost all five
+                // to Top Stories and dropped out of Today. Top Stories is still chosen as before.
+                const refilled = built.reselect(topIds);
+                sections = refilled.categorySections;
+                totalStories = refilled.totalStories + top.length;
                 sections.unshift({ name: 'Top Stories', slug: 'top_stories', icon: 'icon-newspaper', noMarkRead: true, stories: top });
             }
 
@@ -13456,70 +13465,76 @@
                 if (!orderedCats.includes(c) && grouped[c]?.length > 0) orderedCats.push(c);
             });
 
-            const categorySections = [];
-            let totalStories = 0;
+            orderedCats.forEach(cat => grouped[cat].sort((a, b) => {
+                // Lowest rank number = highest authority
+                if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
+                // Multi-source consensus tiebreaker
+                if (b.sourceCount !== a.sourceCount) return b.sourceCount - a.sourceCount;
+                // Recency tiebreaker
+                return b.leadDate - a.leadDate;
+            }));
 
-            for (const cat of orderedCats) {
-                const catClusters = grouped[cat];
-                catClusters.sort((a, b) => {
-                    // Lowest rank number = highest authority
-                    if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
-                    // Multi-source consensus tiebreaker
-                    if (b.sourceCount !== a.sourceCount) return b.sourceCount - a.sourceCount;
-                    // Recency tiebreaker
-                    return b.leadDate - a.leadDate;
-                });
+            // skip: lead ids shown elsewhere already (Today's Top Stories), so a folder fills its
+            // slots from the stories after them; reselect() reruns this (build 329).
+            const reselect = (skip) => {
+                const categorySections = [];
+                let totalStories = 0;
 
-                // 4. Source Diversity selection
-                // Ensure a single high-frequency feed does not monopolize all slots in the section.
-                // Pass 1: pick up to perSourceCap stories per source
-                // Pass 2: if slots remain, fill with remaining top ranked stories
-                const perSourceCap = Math.max(2, Math.floor(limitPerCat / 3));
-                const sourceCounts = new Map();
-                const selectedClusters = [];
-                const remainingClusters = [];
+                for (const cat of orderedCats) {
+                    const catClusters = skip ? grouped[cat].filter(cl => !skip.has(cl.leadArticle.id)) : grouped[cat];
 
-                for (const cl of catClusters) {
-                    const src = cl.leadArticle.source || 'Unknown';
-                    const curCount = sourceCounts.get(src) || 0;
-                    if (selectedClusters.length < limitPerCat && curCount < perSourceCap) {
-                        sourceCounts.set(src, curCount + 1);
-                        selectedClusters.push(cl);
-                    } else {
-                        remainingClusters.push(cl);
+                    // 4. Source Diversity selection
+                    // Ensure a single high-frequency feed does not monopolize all slots in the section.
+                    // Pass 1: pick up to perSourceCap stories per source
+                    // Pass 2: if slots remain, fill with remaining top ranked stories
+                    const perSourceCap = Math.max(2, Math.floor(limitPerCat / 3));
+                    const sourceCounts = new Map();
+                    const selectedClusters = [];
+                    const remainingClusters = [];
+
+                    for (const cl of catClusters) {
+                        const src = cl.leadArticle.source || 'Unknown';
+                        const curCount = sourceCounts.get(src) || 0;
+                        if (selectedClusters.length < limitPerCat && curCount < perSourceCap) {
+                            sourceCounts.set(src, curCount + 1);
+                            selectedClusters.push(cl);
+                        } else {
+                            remainingClusters.push(cl);
+                        }
+                    }
+
+                    // Pass 2: fill any remaining slots up to limitPerCat
+                    while (selectedClusters.length < limitPerCat && remainingClusters.length > 0) {
+                        selectedClusters.push(remainingClusters.shift());
+                    }
+
+                    // Build final selected story objects with alsoReportedBy metadata
+                    const selectedStories = selectedClusters.map(cl => {
+                        const lead = cl.leadArticle;
+                        const otherSources = Array.from(cl.sources).filter(s => s && s !== lead.source);
+                        return {
+                            ...lead,
+                            alsoReportedBy: otherSources,
+                            sourceCount: cl.sourceCount,
+                            effectiveRank: cl.effectiveRank,
+                            coverage: cl.articles
+                        };
+                    });
+
+                    if (selectedStories.length > 0) {
+                        const slug = cat.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                        categorySections.push({
+                            name: cat,
+                            slug: slug,
+                            stories: selectedStories
+                        });
+                        totalStories += selectedStories.length;
                     }
                 }
 
-                // Pass 2: fill any remaining slots up to limitPerCat
-                while (selectedClusters.length < limitPerCat && remainingClusters.length > 0) {
-                    selectedClusters.push(remainingClusters.shift());
-                }
-
-                // Build final selected story objects with alsoReportedBy metadata
-                const selectedStories = selectedClusters.map(cl => {
-                    const lead = cl.leadArticle;
-                    const otherSources = Array.from(cl.sources).filter(s => s && s !== lead.source);
-                    return {
-                        ...lead,
-                        alsoReportedBy: otherSources,
-                        sourceCount: cl.sourceCount,
-                        effectiveRank: cl.effectiveRank,
-                        coverage: cl.articles
-                    };
-                });
-
-                if (selectedStories.length > 0) {
-                    const slug = cat.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-                    categorySections.push({
-                        name: cat,
-                        slug: slug,
-                        stories: selectedStories
-                    });
-                    totalStories += selectedStories.length;
-                }
-            }
-
-            return { categorySections, totalStories };
+                return { categorySections, totalStories };
+            };
+            return { ...reselect(null), reselect };
         }
 
         function composeSlotBrief(slotDef, categorySections, totalStories) {
@@ -16124,7 +16139,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 328;
+        window.APP_BUILD = 329;
 
         (async function initApp() {
             try {
@@ -17025,7 +17040,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v328';
+const CACHE_NAME = 'rss-reader-v329';
 const APP_SHELL = [
     '/',
     'index.html'
