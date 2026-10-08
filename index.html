@@ -4489,23 +4489,12 @@
             clear: both;
         }
 
-        /* Settings > Today > Folders in Today (build 310): on = in Today, off = left out. */
+        /* A wrapping row of chips (Settings > Muted words). */
         .today-folder-chips {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
             margin-top: 8px;
-        }
-
-        .today-folder-chip {
-            padding: 5px 12px;
-            border-radius: 9999px;
-            font-size: 13px;
-            line-height: 1.2;
-            border: 1px solid rgba(68, 147, 248, 0.5);
-            background: rgba(68, 147, 248, 0.12);
-            color: #4493f8;
-            cursor: pointer;
         }
 
         /* Muted words (build 311) */
@@ -4759,13 +4748,6 @@
             background: rgba(139, 148, 158, 0.18);
             color: #8b949e;
             white-space: nowrap;
-        }
-
-        .today-folder-chip.is-off {
-            background: transparent;
-            border-color: rgba(139, 148, 158, 0.45);
-            color: #8b949e;
-            text-decoration: line-through;
         }
 
         /* "Also from Reuters, AP" (build 308): its own line, wraps, never cut off. */
@@ -5532,9 +5514,12 @@
         .brief-story-card a.brief-story-title,
         .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link),
         .brief-story-title {
-            font-size: var(--list-title-em-size, 1.1em) !important;
+            /* Bold again and a step smaller (build 324, on request: "too large, I would like
+               it smaller and bold"; 282 had made them regular). Still Article List > Title
+               Size - 0.95 of it: a full step (0.9) put it below the 16px summary under it. */
+            font-size: calc(var(--list-title-em-size, 1.1em) * 0.95) !important;
             line-height: var(--list-preview-line-height, 1.35) !important;
-            font-weight: 400 !important;   /* regular, not semibold (build 282, on request) */
+            font-weight: 600 !important;
             margin-top: 0 !important;
             /* override .article-content h4 margin-top */
             padding-top: 0 !important;
@@ -5734,7 +5719,7 @@
             .brief-story-card a.brief-story-title,
             .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link),
             .brief-story-title {
-                font-size: var(--mob-list-title-size, 1.1em) !important;
+                font-size: calc(var(--mob-list-title-size, 1.1em) * 0.95) !important;
                 line-height: var(--mob-list-preview-line-height, 1.35) !important;
                 margin-top: 0 !important;
                 padding-top: 0 !important;
@@ -5868,83 +5853,67 @@
             color: #f0f6fc;
         }
 
-        /* Feed health rows — same dark-first pattern as the rest of the modal. */
-        .feed-problem-row {
+        /* FEED MANAGER (build 324): Settings > Feeds, opened by Following's Edit - your feeds
+           by folder; each folder with its In Today switch and Rename, each feed with how it
+           is doing, Edit, Remove and (when it is not loading) Retry. */
+        .fm-summary {
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .fm-folder {
+            margin-bottom: 14px;
+        }
+
+        .fm-folder-head {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 10px 16px;
+            gap: 8px;
+            padding: 10px 4px 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
         }
 
-        .feed-problem-name {
-            font-size: 14px;
-            font-weight: 500;
-            color: #f0f6fc;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            min-width: 0;
-            flex: 1;
+        .fm-folder-name {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #4493f8;
         }
 
-        .feed-problem-detail {
+        .fm-folder-sub {
+            margin-top: 2px;
             font-size: 12px;
-            color: #f87171;
-            flex-shrink: 0;
-        }
-
-        .feed-problem-empty {
-            font-size: 14px;
             color: #94a3b8;
         }
 
-        .feed-problem-actions {
-            display: flex;
-            gap: 6px;
-            flex-shrink: 0;
-        }
-
-        .feed-problem-btn {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
+        .fm-feed-open {
+            display: block;
+            padding: 0;
             border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: #94a3b8;
-            background: rgba(148, 163, 184, 0.12);
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
         }
 
-        .feed-problem-btn:active {
-            background: rgba(148, 163, 184, 0.28);
-        }
-
-        .feed-problem-btn.remove {
+        .feed-row-cat.fm-bad {
             color: #f87171;
-            background: rgba(248, 113, 113, 0.12);
         }
 
-        .feed-problem-btn.remove:active {
-            background: rgba(248, 113, 113, 0.28);
-        }
-
-        html:not(.dark) .feed-problem-name {
-            color: #1f2937;
-        }
-
-        html:not(.dark) .feed-problem-detail {
+        html:not(.dark) .fm-summary,
+        html:not(.dark) .feed-row-cat.fm-bad {
             color: #dc2626;
         }
 
-        html:not(.dark) .feed-problem-btn {
-            color: #64748b;
-        }
-
-        html:not(.dark) .feed-problem-btn.remove {
-            color: #dc2626;
+        html:not(.dark) .fm-folder-name {
+            color: #3d6bb0;
         }
 
         html:not(.dark) .settings-item-label,
@@ -6610,6 +6579,13 @@
                             <use href="#icon-refresh" />
                         </svg>
                     </button>
+                    <button id="header-edit-feeds-btn" onclick="openFeedManager()"
+                        class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Edit feeds"
+                        aria-label="Edit feeds">
+                        <svg class="h-[22px] w-[22px]">
+                            <use href="#icon-pencil" />
+                        </svg>
+                    </button>
                     <button id="header-add-feed-btn" onclick="openAddFeedModal()"
                         class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500" title="Add Feed"
                         aria-label="Add Feed">
@@ -7079,16 +7055,6 @@
                     </div>
                 </div>
                 <div id="local-feed-list" class="pb-2"></div>
-                <!-- Feed health: feeds with no successful fetch in 48h+ (or failing
-                     repeatedly this session), with per-feed Retry / Remove actions.
-                     Lives in the Feeds tab (it's feed management, not a preference).
-                     Populated by renderFeedProblems() when Settings opens. -->
-                <div class="pt-2">
-                    <h3 class="settings-section-label">Feed health</h3>
-                    <div class="settings-list" id="feed-problems-list">
-                        <div class="feed-problem-row"><span class="feed-problem-empty">Checking&hellip;</span></div>
-                    </div>
-                </div>
             </div>
             <div id="feeds-overflow-menu"
                 class="hidden fixed w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[60] py-1">
@@ -7237,14 +7203,6 @@
                             <input type="range" min="5" max="51" value="10" id="brief-stories-slider"
                                 class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
                         </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="min-w-0">
-                                <span class="settings-item-label">Folders in Today</span>
-                                <p class="text-[12px] text-gray-400 mt-1">Tap a folder to leave it out of Today. It stays
-                                    under Following.</p>
-                            </div>
-                            <div id="today-folders" class="today-folder-chips"></div>
-                        </div>
                     </div>
                 </div>
 
@@ -7301,10 +7259,15 @@
                 <!-- ARTICLE LIST -->
                 <div>
                     <h3 class="settings-section-label">Article List</h3>
+                    <!-- ONE ORDER FOR LIST AND READER (build 324, on request): Title, its text,
+                         Line Height, then what is particular to the section. -->
                     <div class="settings-list">
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Article Title Size</span>
+                                <div class="min-w-0">
+                                    <span class="settings-item-label">Title Size</span>
+                                    <p class="text-[12px] text-gray-400 mt-1">Lists, and Today's stories a little smaller</p>
+                                </div>
                                 <span class="settings-value" id="shared-list-title-val">1.1em</span>
                             </div>
                             <input type="range" min="4" max="19" value="11" id="shared-list-title-slider"
@@ -7317,6 +7280,14 @@
                             </div>
                             <input type="range" min="4" max="19" value="10" id="shared-preview-slider"
                                 class="settings-range" oninput="updateSharedSize('preview', this.value)">
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <span class="settings-item-label">Line Height</span>
+                                <span class="settings-value" id="shared-preview-line-height-val">1.4</span>
+                            </div>
+                            <input type="range" min="8" max="24" value="14" id="shared-preview-line-height-slider"
+                                class="settings-range" oninput="updateSharedSize('previewLineHeight', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -7334,14 +7305,6 @@
                             <input type="range" min="2" max="20" value="10" id="lines-social-slider"
                                 class="settings-range" oninput="updateLinesSocial(this.value)">
                         </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Line Height</span>
-                                <span class="settings-value" id="shared-preview-line-height-val">1.4</span>
-                            </div>
-                            <input type="range" min="8" max="24" value="14" id="shared-preview-line-height-slider"
-                                class="settings-range" oninput="updateSharedSize('previewLineHeight', this.value)">
-                        </div>
                     </div>
                 </div>
 
@@ -7351,7 +7314,18 @@
                     <div class="settings-list">
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Body Size</span>
+                                <div class="min-w-0">
+                                    <span class="settings-item-label">Title Size</span>
+                                    <p class="text-[12px] text-gray-400 mt-1">Stories, and Today's heading</p>
+                                </div>
+                                <span class="settings-value" id="shared-article-title-val">1.2em</span>
+                            </div>
+                            <input type="range" min="4" max="22" value="12" id="shared-article-title-slider"
+                                class="settings-range" oninput="updateSharedSize('articleTitle', this.value)">
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <span class="settings-item-label">Body Text Size</span>
                                 <span class="settings-value" id="shared-body-val">1em</span>
                             </div>
                             <input type="range" min="4" max="22" value="10" id="shared-body-slider"
@@ -7364,14 +7338,6 @@
                             </div>
                             <input type="range" min="8" max="24" value="15" id="shared-line-height-slider"
                                 class="settings-range" oninput="updateSharedSize('lineHeight', this.value)">
-                        </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Title Size</span>
-                                <span class="settings-value" id="shared-article-title-val">1.2em</span>
-                            </div>
-                            <input type="range" min="4" max="22" value="12" id="shared-article-title-slider"
-                                class="settings-range" oninput="updateSharedSize('articleTitle', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -11379,42 +11345,95 @@
         // that guard is keyed only off window.feeds — adding/removing a local feed
         // could otherwise short-circuit renderFeeds() before this list repaints,
         // leaving a newly added feed invisible in Settings until reopen/reload.
+        // THE FEED MANAGER (build 324, on request; Following > Edit opens it). Your feeds by
+        // folder, in the sidebar's order (alphabetical within a folder, as since build 200);
+        // per folder its In Today switch (was Settings > Today > Folders in Today) and Rename;
+        // per feed how it is doing (it was a separate "Feed health" list) with Edit (name, URL,
+        // folder), Remove and, when it is not loading, Retry. Tap a feed's name for its stories.
         function renderLocalFeedList() {
             const localList = document.getElementById('local-feed-list');
             if (!localList) return;
             const feeds = window.accountStates.local || [];
             if (feeds.length === 0) {
-                localList.innerHTML = `<div class="text-center py-8 text-gray-400 text-[14px]">No feeds yet. Tap <span class="font-semibold text-blue-500">Add Feed</span> to get started.</div>`;
+                localList.innerHTML = `<div class="text-center py-8 text-gray-400 text-[14px]">No feeds yet. Tap <span class="font-semibold text-blue-500">Add feed</span> to get started.</div>`;
                 return;
             }
-            // ALPHABETICAL BY NAME, DISPLAY ONLY (build 200, 2026-09-04). The list used
-            // to render in stored order, which is add-order - fine at ten feeds, a hunt
-            // at sixty-five. Sorting a COPY is deliberate: window.accountStates.local is
-            // the array that gets persisted and exported, and every row addresses its
-            // feed by f.id, so reordering the view changes nothing else. Same idiom as
-            // refreshDeskSearchScope() uses for its feed dropdown. localeCompare (not a
-            // raw < comparison) so "ars technica" sorts next to "Ars Technica" instead of
-            // after every capitalised name, and accented names land where a reader
-            // expects - Slobodna-Bosna and the like.
-            const sortedFeeds = feeds.slice().sort((a, b) => (a.name || '').trim().localeCompare((b.name || '').trim()));
-            localList.innerHTML = sortedFeeds.map((f) => {
+            const groups = new Map();
+            feeds.forEach(f => {
+                const c = f.category || 'Uncategorized';
+                if (!groups.has(c)) groups.set(c, []);
+                groups.get(c).push(f);
+            });
+            const order = getAppCategories().filter(c => groups.has(c));
+            [...groups.keys()].sort((a, b) => a.localeCompare(b)).forEach(c => { if (!order.includes(c)) order.push(c); });
+            // The newest story each feed has served (by its URL, or its name for old articles).
+            const newest = new Map();
+            (window.articles || []).forEach(a => {
+                const k = a.feedUrl || a.source;
+                if (k && (a._ts || 0) > (newest.get(k) || 0)) newest.set(k, a._ts);
+            });
+            const failing = [];
+            const row = f => {
+                const st = feedStatus(f, newest.get(f.url) || newest.get(f.name));
+                if (st.bad) failing.push(f.name);
                 const sfId = escJs(f.id);
                 return `
                 <div class="feed-row">
-                    <div class="min-w-0 flex-1">
+                    <button type="button" class="fm-feed-open min-w-0 flex-1" onclick="openFeedFromManager('${escJs(f.name)}')" title="Show its stories">
                         <div class="feed-row-name truncate">${esc(f.name)}</div>
-                        <div class="feed-row-cat truncate">${esc(f.category || 'Uncategorized')}</div>
-                    </div>
+                        <div class="feed-row-cat truncate${st.bad ? ' fm-bad' : ''}">${esc(st.text)}</div>
+                    </button>
                     <div class="feed-row-actions">
-                        <button onclick="openEditFeedModal('${sfId}')" class="feed-row-action edit" title="Edit">
+                        ${st.bad ? `<button onclick="retryFeed('${escJs(f.url)}', '${escJs(f.name)}', this)" class="feed-row-action edit" title="Retry now" aria-label="Retry ${esc(f.name)}">
+                            <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
+                        </button>` : ''}
+                        <button onclick="openEditFeedModal('${sfId}')" class="feed-row-action edit" title="Edit" aria-label="Edit ${esc(f.name)}">
                             <svg class="w-4 h-4"><use href="#icon-pencil"/></svg>
                         </button>
-                        <button onclick="removeLocalFeed('${sfId}')" class="feed-row-action remove" title="Remove">
+                        <button onclick="confirmRemoveFeed('${sfId}')" class="feed-row-action remove" title="Remove" aria-label="Remove ${esc(f.name)}">
                             <svg class="w-4 h-4"><use href="#icon-trash"/></svg>
                         </button>
                     </div>
-                </div>
-            `}).join('');
+                </div>`;
+            };
+            const html = order.map(c => {
+                const list = groups.get(c).slice().sort((a, b) => (a.name || '').trim().localeCompare((b.name || '').trim()));
+                const inToday = !window._todayExcluded.has(c);
+                const rows = list.map(row).join('');
+                return `
+                <div class="fm-folder">
+                    <div class="fm-folder-head">
+                        <div class="min-w-0 flex-1">
+                            <div class="fm-folder-name truncate">${esc(c)}</div>
+                            <div class="fm-folder-sub">${list.length} feed${list.length === 1 ? '' : 's'} · ${inToday ? 'in Today' : 'left out of Today'}</div>
+                        </div>
+                        ${c === 'Uncategorized' ? '' : `<button onclick="renameCategory('${escJs(c)}')" class="feed-row-action edit" title="Rename folder" aria-label="Rename ${esc(c)}">
+                            <svg class="w-4 h-4"><use href="#icon-pencil"/></svg>
+                        </button>`}
+                        <button type="button" class="toggle-switch" data-on="${inToday}" onclick="toggleTodayFolder('${escJs(c)}')"
+                            aria-label="${esc(c)} in Today" title="${inToday ? 'In Today - tap to leave it out' : 'Left out of Today - tap to include it'}"></button>
+                    </div>
+                    ${rows}
+                </div>`;
+            }).join('');
+            const summary = failing.length
+                ? `<div class="fm-summary">${failing.length === 1 ? '1 feed is' : failing.length + ' feeds are'} not loading: ${failing.map(esc).join(', ')}</div>`
+                : '';
+            localList.innerHTML = summary + html;
+        }
+
+        // How a feed is doing, for the manager (build 324), from its health record
+        // (lastSuccess is kept across launches) and the newest story it has served. "Not
+        // loading" = it did not load in the latest full refresh (or, before one this session,
+        // not for 48 hours).
+        function feedStatus(f, newestTs) {
+            const h = window._feedHealth[f.url] || {};
+            const last = window._lastRefreshAt;
+            const fresh = h.lastSuccess && (last ? h.lastSuccess >= last - 15 * 60000 : Date.now() - h.lastSuccess < 48 * 3600000);
+            if (fresh) return { bad: false, text: `Checked ${formatRelativeTime(h.lastSuccess)}` + (newestTs ? ` · newest story ${formatRelativeTime(newestTs)}` : '') };
+            if (h.lastSuccess) return { bad: true, text: `Not loading since ${new Date(h.lastSuccess).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` };
+            if (last || h.errorCount) return { bad: true, text: 'Not loading' };
+            return { bad: false, text: 'Not checked yet' };
         }
 
         window.setCategoryFilter = (cat) => {
@@ -11759,6 +11778,9 @@
             if (idx === -1) return;
             const f = window.accountStates.local.splice(idx, 1)[0];
             window.feeds = window.feeds.filter(feed => feed.url !== f.url);
+            // Its stories go with it (build 324) - they stayed in Today and the lists.
+            window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== f.url : a.source !== f.name);
+            renderTimeline();
             renderFeeds();
             saveLocalFeeds();
             updateEmptyState();
@@ -13908,17 +13930,7 @@
             rebuildTodayInPlace(false);
         };
 
-        // Settings > Today > Folders in Today (build 310).
-        window.renderTodayFolderChips = function () {
-            const box = document.getElementById('today-folders');
-            if (!box) return;
-            box.innerHTML = getAppCategories().map(c => {
-                const off = window._todayExcluded.has(c);
-                return `<button type="button" class="today-folder-chip${off ? ' is-off' : ''}" data-folder="${esc(c)}"
-                    onclick="window.toggleTodayFolder(this.dataset.folder)" aria-pressed="${off ? 'false' : 'true'}"
-                    title="${off ? 'Left out of Today - tap to include' : 'In Today - tap to leave out'}">${esc(c)}</button>`;
-            }).join('');
-        };
+        // Folders in Today (build 310; the switches are in the feed manager since 324).
         window.saveTodayExcluded = function () {
             try { localStorage.setItem('newsreader_today_excluded', JSON.stringify([...window._todayExcluded])); } catch (e) { }
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
@@ -13928,7 +13940,7 @@
             if (window._todayExcluded.has(name)) window._todayExcluded.delete(name);
             else window._todayExcluded.add(name);
             window.saveTodayExcluded();
-            window.renderTodayFolderChips();
+            renderLocalFeedList();
             rebuildTodayInPlace(false);   // Today on screen follows at once
         };
 
@@ -13968,65 +13980,34 @@
                     const valEl = document.getElementById('brief-stories-val');
                     if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
                 }
-                window.renderTodayFolderChips?.();
                 window.renderMuteChips?.();
-                window.renderFeedProblems?.();
+                renderLocalFeedList();   // the feed manager, with health as of now
             }
         };
 
-        // "Feed health" list in Settings: feeds whose last successful fetch is
-        // >48h old (lastSuccess persists across sessions via _persistFeedHealth),
-        // or that failed 3+ times this session. Feeds with no recorded history
-        // are treated as unknown, not broken — the list earns accuracy over days.
-        window.renderFeedProblems = () => {
-            const box = document.getElementById('feed-problems-list');
-            if (!box) return;
-            const now = Date.now();
-            const probs = [];
-            for (const f of (window.feeds || [])) {
-                const h = window._feedHealth[f.url];
-                if (!h) continue;
-                const age = h.lastSuccess ? (now - h.lastSuccess) : null;
-                if (age !== null && age > 48 * 3600 * 1000) {
-                    const label = age > 2 * 86400000
-                        ? Math.round(age / 86400000) + 'd ago'
-                        : Math.round(age / 3600000) + 'h ago';
-                    probs.push({ name: f.name, url: f.url, detail: 'Last OK ' + label, age });
-                } else if ((h.errorCount || 0) >= 3) {
-                    probs.push({ name: f.name, url: f.url, detail: 'Failing this session', age: 0 });
-                }
-            }
-            probs.sort((a, b) => (b.age || 0) - (a.age || 0));
-            // Explicit CSS classes, NOT Tailwind utilities — several utilities used
-            // here originally (dark:text-gray-200, text-red-400) are missing from
-            // the app's compiled style set, which rendered the names invisible.
-            box.innerHTML = probs.length
-                ? probs.map(p => `<div class="feed-problem-row">
-                        <span class="feed-problem-name">${esc(p.name)}</span>
-                        <span class="feed-problem-detail">${esc(p.detail)}</span>
-                        <span class="feed-problem-actions">
-                            <button type="button" class="feed-problem-btn" title="Retry now" onclick="retryProblemFeed('${escJs(p.url)}', '${escJs(p.name)}', this)">&#x21bb;</button>
-                            <button type="button" class="feed-problem-btn remove" title="Remove feed" onclick="removeProblemFeed('${escJs(p.url)}')">&#x2715;</button>
-                        </span>
-                    </div>`).join('')
-                : '<div class="feed-problem-row"><span class="feed-problem-empty">All feeds healthy</span></div>';
+        // Following > Edit (build 324): Settings, on its Feeds tab - the feed manager.
+        window.openFeedManager = () => {
+            if (document.getElementById('settings-modal').classList.contains('hidden')) window.toggleSettings();
+            window.switchSettingsTab('feeds');
         };
-
-        // Retry a problem feed right now; success updates lastSuccess and the row
-        // clears on re-render, failure bumps errorCount and it stays listed.
-        window.retryProblemFeed = async (url, name, btn) => {
-            if (btn) { btn.disabled = true; btn.textContent = '…'; }
+        // A feed's stories, from the manager: Settings closes and its list opens.
+        window.openFeedFromManager = (name) => {
+            window.toggleSettings();
+            if (isMobile()) setMobileTab('following');
+            window.setSourceFilter(name);
+        };
+        // Retry a feed that is not loading, right now; the manager shows the outcome.
+        window.retryFeed = async (url, name, btn) => {
+            if (btn) btn.disabled = true;
             try { await fetchRecentArticles(url, name); } catch (e) { }
             window._persistFeedHealth?.();
             renderFeeds();
-            window.renderFeedProblems();
+            renderLocalFeedList();
         };
-        window.removeProblemFeed = (url) => {
-            const f = (window.feeds || []).find(x => x.url === url);
-            if (!f) { window.renderFeedProblems(); return; }
-            if (!confirm(`Remove feed "${f.name}"?`)) return;
+        window.confirmRemoveFeed = (feedId) => {
+            const f = (window.accountStates.local || []).find(x => String(x.id) === String(feedId));
+            if (!f || !confirm(`Remove "${f.name}"? Its stories leave Today and your lists.`)) return;
             window.removeLocalFeed(f.id);
-            window.renderFeedProblems();
         };
         window.toggleFeedsOverflow = (e) => {
             e.stopPropagation();
@@ -14872,6 +14853,11 @@
                 delete window.collapsedCategories[oldName];
                 window.saveCollapsedCategories?.();
             }
+            // Its place in the folder order and its In Today setting go with it (build 324).
+            const oi = (window._categoryOrder || []).indexOf(oldName);
+            if (oi !== -1) { window._categoryOrder[oi] = trimmed; saveCategoryOrder(); }
+            if (window._todayExcluded.has(oldName)) { window._todayExcluded.delete(oldName); window._todayExcluded.add(trimmed); }
+            window.saveTodayExcluded();   // saves the cloud prefs too (folder order included)
             saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds(window.accountStates.local);
             renderFeeds();
@@ -16096,7 +16082,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 323;
+        window.APP_BUILD = 324;
 
         (async function initApp() {
             try {
@@ -16718,7 +16704,7 @@
                     if (Array.isArray(data.todayExcluded) && [...window._todayExcluded].sort().join('\n') !== [...new Set(data.todayExcluded)].sort().join('\n')) {
                         window._todayExcluded = new Set(data.todayExcluded);
                         try { localStorage.setItem('newsreader_today_excluded', JSON.stringify(data.todayExcluded)); } catch (e) { }
-                        window.renderTodayFolderChips?.();
+                        window.renderFeeds?.();   // the feed manager's In Today switches
                         if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
                     }
                     if (data.autoRefresh) {
@@ -16997,7 +16983,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v323';
+const CACHE_NAME = 'rss-reader-v324';
 const APP_SHELL = [
     '/',
     'index.html'

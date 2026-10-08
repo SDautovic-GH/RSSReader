@@ -1,11 +1,11 @@
-# Brief-First Redesign Plan (RSS Reader v2)
+# Modern Tabs Redesign (RSS Reader v2)
 
 | Key | Value |
 | :--- | :--- |
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 323** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 324** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-08 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–323)
+### Follow-ups (Builds 275–324)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -79,13 +79,29 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Regular-weight titles (282, on request):** Today's story titles are weight 400 (were 600), like the category pills; they still stand out from the excerpt by size and colour.
 - **Next pill + heading size (283, on request):** reading a story opened from Today on mobile, a "Next" pill sits bottom right just above the tab bar (tab-bar glass, 44px target) and opens the brief's next story in one tap; after the last story it reads "Back to Today". It replaced the floating Save star and "Back to Brief" pill, which the headline row and the top bar's Back already cover. The mobile Today heading now follows Article Reader > Title Size (`--mob-article-title-size`) like desktop; it was a fixed 1.15em.
 - **Next fixed, on desktop too; full screen (284, on request):** the 283 pill never appeared: its wrapper carried Tailwind's `hidden`, which is a layered `!important` that no unlayered rule can override (the old "Back to Brief" FAB had never shown either). Next (`#brief-next`) is now driven by `#viewer-pane.has-brief-next` and shows on desktop too (bottom right of the article column, Today column included). Full screen: a top-bar button (or double-click the bar) shows the open story alone in a centred column, with no sidebar, list, top bar or tab bar, plus browser full screen on desktop. Exit is the bottom-left button or Esc. Next stays available, and full screen ends when the story closes or Today returns.
+- **The feed manager behind Following's Edit (324, on request; step 2 of 2):**
+  - **Edit** (pencil) in Following's header opens Settings on its Feeds tab (`openFeedManager`). That tab is now the manager, rather than a second one being built (it already had Add feed, Import/Export OPML, and Edit/Remove per feed).
+  - **By folder,** in the sidebar's order, feeds alphabetical within a folder. Each folder has its feed count, whether it is in Today, an **In Today** switch (was Settings > Today > Folders in Today, now removed) and **Rename**. Rename now also carries the folder's place in the folder order and its In Today setting; it lost both before.
+  - **Each feed shows how it is doing** (`feedStatus`): "Checked 5m ago · newest story 2h ago", or in red "Not loading since Oct 4" / "Not loading" when it did not load in the latest full refresh (before one this session: not for 48 hours). A summary at the top names the feeds not loading. This replaces the separate "Feed health" list and its functions and styles.
+  - **Actions:** Edit (name, URL, folder; the existing form), Remove (asks first; the feed's stories now leave Today and the lists with it, where they used to stay), and Retry when it is not loading. Tapping a feed's name closes Settings and opens its stories under Following.
+  - **Checked at 339px:**
+    - Edit opens the manager: 6 folders and 69 feeds, each with switch, rename, status and buttons; the failing feed is red with Retry and named in the summary; nothing scrolls sideways.
+    - Switching a folder off leaves it out of a freshly built Today, and switching it back restores it.
+    - Rename keeps the order slot and the In Today setting.
+    - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
+    - Tapping a feed opens its list.
+    - Muted words in Settings still work.
+- **Today's story titles bold and smaller; one order for the List and Reader settings (324, on request):**
+  - **Titles:** semibold (600) again, after build 282 had made them regular, at 0.95 of Article List > Title Size (`.brief-story-title`, desktop and phone). Measured at 339px with default sizes: 17.6px regular became 16.7px semibold. A full step smaller (0.9 = 15.8px) put the headline below the 16px summary under it, so 0.95 was kept. The slider still moves them.
+  - **Settings, Article List and Article Reader in one order:** Title Size, then its text (Preview Text Size / Body Text Size), Line Height, then what is particular to the section (Preview Lines and Social Preview Lines / Author & Date Size).
+    - **Before:** List was Title, Preview, Lines, Social Lines, Line Height; Reader was Body, Line Height, Title, Author & Date.
+    - **Labels:** "Article Title Size" became "Title Size" and "Body Size" became "Body Text Size", so the two sections read alike. Each Title Size says what else it sizes ("Lists, and Today's stories a little smaller" / "Stories, and Today's heading").
 - **Following holds your stories and feeds; Today is the one place to refresh (323, on request; step 1 of 2):**
   - **The decision (2026-10-08):** you read only in Today, so Following becomes the place for your saved stories and your feeds, like Apple News's Following tab (Saved Stories and History sit there, with the channels you follow and an Edit button). Keep the name Following and the tab bar Today | Following | Search; a "Library" tab was considered and dropped (neither Apple News nor Google News has one). Keep Unread rather than a new "Missed" list.
   - **Following on the phone:** Unread, Read Later, Saved, History, then your folders. The Today row (it repeated the tab) is hidden on the phone and stays on desktop. Unread shows "N older than today": unread stories older than Today's 24 hours, which are kept for 4 days and appear only here (`#unread-older-note`, counted in `updateBadges`, muted ones left out).
   - **One refresh place:** Today's pull, alongside the automatic ones (on open, on return after 5 minutes, the timer). Removed: Following's pull (`#ptr-indicator`), its "Tap or pull to refresh" circle (`#ptr-hint`, `_setHintRefreshing`), the lists' own pull, and the empty list's Refresh button. The phone header's styles now select `#sidebar-header` by id; they used `div:nth-of-type(2)` from when the pull indicator was the first div. The desktop header's refresh button stays, as desktop has no pull.
   - **Today's pull is calm:** when the refresh ends (~20 s later), Today is rebuilt with what came in only if you are still at the top. If you scrolled down to read, nothing moves: the spinner's space closes off screen, made up for by `keepTodayInPlace`, and new stories wait behind the pill. Before, Today was rebuilt either way and the scroll was put back a frame later.
   - **Checked at 339px:** Following shows the four rows and no refresh controls, the header keeps its styles, and a pull on Following starts nothing. Today's pull at the top refreshes and then rebuilds; pulling and then scrolling down gives no rebuild, and the story on screen stays at 141px.
-  - **Next (step 2):** the feed manager behind an Edit button in Following's header: health per feed, the "in Today" switch per folder, and add, rename, move and remove. On the phone, editing a feed is unreachable today (the long-press menu was retired).
 - **A calm Today: it moves only when you touch it, and never later (322, on request: "the worst effect is the jump about 3-5 seconds after I tap mark read - that is the Undo time ... if the jump happened right away to slide up that would be more tolerable ... Surely there is something that can be done to enable calmer use of the app"):**
   - **Your taps act at once:** `syncBriefCards(root, { now: true })`. That covers Mark N read, the Read dot, the folder check, Mark all read, desktop Back, fresh renders, and the return from a story.
     - **Mark N read:** the whole section leaves at the tap, and the next section slides up into its place. It lands where the section began, or at Today's top line (the scroller's top padding) if the section began above the screen.
