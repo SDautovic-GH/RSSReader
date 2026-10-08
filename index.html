@@ -4643,11 +4643,14 @@
             }
         }
 
+        /* The headphones alone, no "Listen" (build 332, on request); the stop icon shows while
+           Today plays. The padding, taken back by the margin, keeps a finger-sized target
+           without moving anything on the line. */
         .brief-listen-btn {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 0;
+            padding: 6px;
+            margin: -6px;
             border: none;
             background: transparent;
             color: #4493f8;
@@ -5421,6 +5424,18 @@
             box-sizing: border-box !important;
         }
 
+        /* 20% LESS SPACE BETWEEN STORIES (build 332, on request: "10% above the line divider and
+           10% below it"). The padding each side of a divider between two stories is cut by a
+           fifth (1.15rem -> 0.92rem; the phone's 1rem -> 0.8rem below). The first story under a
+           heading and the last above "Mark N read" keep theirs. */
+        .brief-story-card + .brief-story-card {
+            padding-top: 0.92rem !important;
+        }
+
+        .brief-story-card:has(+ .brief-story-card) {
+            padding-bottom: 0.92rem !important;
+        }
+
         .brief-story-card:last-child {
             border-bottom: none !important;
         }
@@ -5464,6 +5479,14 @@
             color: #94a3b8;
             white-space: nowrap;
             overflow: hidden;
+        }
+
+        /* The space under the source name, as in the lists (build 332, on request; the phone's
+           is in the media block below). A desktop list row is the name (1.25em) or its 11px
+           date's 16.5px line, whichever is taller, then 4px of margin (mb-1). Today had 2px.
+           "div." matches the specificity of ".brief-story-card>div:first-child" above. */
+        .brief-story-card div.brief-story-meta {
+            margin-bottom: calc(4px + max(0px, (16.5px - 1.25em) / 2)) !important;
         }
 
         .brief-story-source,
@@ -5662,6 +5685,15 @@
                 box-shadow: none !important;
             }
 
+            /* Between two stories, a fifth less each side of the divider (build 332). */
+            .brief-story-card + .brief-story-card {
+                padding-top: 0.8rem !important;
+            }
+
+            .brief-story-card:has(+ .brief-story-card) {
+                padding-bottom: 0.8rem !important;
+            }
+
             .brief-story-card:last-child {
                 border-bottom: none !important;
             }
@@ -5700,13 +5732,14 @@
             }
 
             /* The space under the source name, as in Following's lists (build 331, on request:
-               Today's was ~4px tighter). A list row is at least 24px tall - its date inherits a
-               24px line - with the name (1.25em) centred in it, then 4px of margin (mb-1). So:
-               4px, plus half of whatever the 24px row has over the name. Same at every Source
-               Name Size: 6px at 1em, 4px once the name fills the row. "div." matches the
+               Today's was ~4px tighter). A list row is at least as tall as its date's line -
+               1.5 x the list's 16px-times-App-Zoom text, 24px at 100% - with the name (1.25em)
+               centred in it, then 4px of margin (mb-1). So: 4px, plus half of whatever that row
+               has over the name. 6px at 1em, 4px once the name fills the row; App Zoom too
+               (332: a fixed 24px left Today 2.6px short at 130%). "div." matches the
                specificity of ".brief-story-card>div:first-child" above, which this follows. */
             .brief-story-card div.brief-story-meta {
-                margin-bottom: calc(4px + max(0px, (24px - 1.25em) / 2)) !important;
+                margin-bottom: calc(4px + max(0px, (24px * var(--app-zoom-mobile, 1) - 1.25em) / 2)) !important;
             }
 
             .brief-story-source,
@@ -12390,8 +12423,7 @@
             const todayOn = active && window._ttsSource === 'today';
             document.querySelectorAll('.brief-listen-btn').forEach(btn => {
                 btn.querySelector('use')?.setAttribute('href', todayOn ? '#icon-stop' : '#icon-headphones');
-                const l = btn.querySelector('.brief-listen-label');
-                if (l) l.textContent = todayOn ? 'Stop' : 'Listen';
+                btn.title = todayOn ? 'Stop listening' : 'Listen to Today';
                 btn.setAttribute('aria-label', todayOn ? 'Stop listening to Today' : 'Listen to Today');
             });
             // The player (build 316): "Listening" / "Paused", and Pause or Resume.
@@ -12645,7 +12677,7 @@
                 windowStart,
                 windowEnd: now,
                 // Listen to Today (build 312), then "3 muted - Show" / "Hide 3 muted" (build 311)
-                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-listen-btn" onclick="window.toggleTTS('today')" aria-label="Listen to Today"><svg aria-hidden="true"><use href="#${window._ttsActive && window._ttsSource === 'today' ? 'icon-stop' : 'icon-headphones'}"/></svg><span class="brief-listen-label">${window._ttsActive && window._ttsSource === 'today' ? 'Stop' : 'Listen'}</span></button>` + (mutedCount
+                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-listen-btn" onclick="window.toggleTTS('today')" ${window._ttsActive && window._ttsSource === 'today' ? 'title="Stop listening" aria-label="Stop listening to Today"' : 'title="Listen to Today" aria-label="Listen to Today"'}><svg aria-hidden="true"><use href="#${window._ttsActive && window._ttsSource === 'today' ? 'icon-stop' : 'icon-headphones'}"/></svg></button>` + (mutedCount
                     ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-muted-btn" onclick="window.toggleShowMuted()">${window._showMuted ? `Hide ${mutedCount} muted` : `${mutedCount} muted · Show`}</button>`
                     : '')
             }, sections, totalStories);
@@ -16108,7 +16140,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 331;
+        window.APP_BUILD = 332;
 
         (async function initApp() {
             try {
@@ -17009,7 +17041,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v331';
+const CACHE_NAME = 'rss-reader-v332';
 const APP_SHELL = [
     '/',
     'index.html'
