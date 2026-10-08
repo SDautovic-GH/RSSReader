@@ -5012,6 +5012,12 @@
             white-space: nowrap !important;
         }
 
+        /* The app logo in Today's heading is the phone's (build 334); the desktop's sidebar
+           already shows it, so the desktop heading keeps "Today -". */
+        .brief-header-logo {
+            display: none;
+        }
+
         @media (max-width: 900px) {
             .brief-container h2,
             .brief-header-title {
@@ -5026,6 +5032,61 @@
                 font-size: 0.78em !important;
             }
 
+            /* THE LOGO ROW (build 334, on request, like Apple News): "[logo] Thu, Oct 8", and
+               the status at the same row's right end, so the status needs no row of its own.
+               The row is the heading's height and the status one line that cannot wrap, so
+               "Updating..." becoming "Updated just now - 3 new" still moves nothing (the rule
+               of 322). "Today -" (the tab bar says it), the year, "7 sections" (the pills show
+               them), "~" and " read" are the desktop's. Less space under it too: 0.85rem +
+               1rem -> 0.5rem + 0.5rem, and 0.85rem -> 0.5rem under the pills. */
+            .brief-header {
+                display: grid !important;
+                grid-template-columns: auto minmax(0, 1fr);
+                column-gap: 10px;
+                align-items: baseline;
+                padding-bottom: 0.5rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+
+            .brief-header > .brief-header-title {
+                grid-row: 1;
+                grid-column: 1;
+                margin-bottom: 4px !important;
+            }
+
+            .brief-header > .brief-header-status {
+                grid-row: 1;
+                grid-column: 2;
+                margin: 0;
+                text-align: right;
+            }
+
+            .brief-header > .brief-header-meta {
+                grid-row: 2;
+                grid-column: 1 / -1;
+            }
+
+            /* Following's logo (a blue rounded square with the RSS mark), inside the heading's
+               line: at 1.3em it stood 1px over the 1.25 line and made the row 4px taller. */
+            .brief-header-logo {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 1.15em;
+                height: 1.15em;
+                border-radius: 0.28em;
+                margin-right: 0.4em;
+                vertical-align: -0.2em;
+            }
+
+            .brief-header-logo svg {
+                width: 0.85em;
+                height: 0.85em;
+            }
+
+            .brief-desk-only {
+                display: none !important;
+            }
         }
 
         /* Jump Bar */
@@ -5224,7 +5285,7 @@
                 position: static !important;
                 background: transparent !important;
                 padding: 2px 0 8px 0 !important;
-                margin-bottom: 0.85rem !important;
+                margin-bottom: 0.5rem !important;   /* was 0.85rem (334) */
                 gap: 6px !important;
             }
 
@@ -12848,8 +12909,15 @@
                 const bar = root.querySelector('.brief-jump-bar');
                 if (bar) settle(bar, 'brief-gone', anySection && !anyLeft);
                 root.querySelectorAll('[data-today-new]').forEach(el => {
-                    const t = newShown ? `${newShown} new since ${window.visitLabel(boundary)}` : '';
-                    if (el.textContent !== t) el.textContent = t;
+                    const since = newShown ? ` since ${window.visitLabel(boundary)}` : '';
+                    if (el.textContent === (newShown ? `${newShown} new${since}` : '')) return;
+                    el.textContent = newShown ? `${newShown} new` : '';
+                    if (newShown) {
+                        const s = document.createElement('span');
+                        s.className = 'brief-desk-only';   // the phone's row has room for "3 new" (334)
+                        s.textContent = since;
+                        el.appendChild(s);
+                    }
                 });
                 // Pictures that turned out wrong while on the screen change once they are not.
                 root.querySelectorAll('[data-pending]').forEach(box => { if (now || !onTodayScreen(box)) applyBriefImgChange(box); });
@@ -13541,14 +13609,14 @@
             // The heading's date is short, "Thu, Oct 8, 2026" (build 325, on request): the long
             // one wrapped at the phone's width with only the year on the second line. It stays in
             // one piece, so a large Title Size moves the whole date down, never the year alone.
-            // Listen still says the long one.
-            const headingDate = triggerDate.toLocaleDateString('en-US', {
+            // Listen still says the long one. The phone leaves out the year (334), so it is apart.
+            const headingDay = triggerDate.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
                 weekday: 'short',
                 month: 'short',
-                day: 'numeric',
-                year: 'numeric'
+                day: 'numeric'
             });
+            const headingYear = triggerDate.toLocaleDateString('en-US', { timeZone: 'America/New_York', year: 'numeric' });
             const shortDateFormatted = triggerDate.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
                 month: 'short',
@@ -13562,14 +13630,16 @@
                     <div class="brief-header mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
                         <!-- No "LIVE BRIEF • Unread · last 24 hours" row above the status line any
                              more (build 331, on request: "I don't need it at all"). -->
+                        <!-- The phone shows "[logo] Thu, Oct 8" with the status at the row's right end,
+                             and "65 stories - 23 min"; brief-desk-only parts are the desktop's (334). -->
                         <div class="brief-header-status"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
-                        <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">${esc(slotDef.name)} — <span class="whitespace-nowrap">${esc(headingDate)}</span></h2>
+                        <h2 class="brief-header-title font-bold text-gray-900 dark:text-white mb-2 leading-tight"><span class="brief-header-logo bg-blue-600 text-white" aria-hidden="true"><svg><use href="#icon-rss"/></svg></span><span class="brief-desk-only">${esc(slotDef.name)} — </span><span class="whitespace-nowrap">${esc(headingDay)}<span class="brief-desk-only">, ${esc(headingYear)}</span></span></h2>
                         <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
-                            <span class="brief-meta-item whitespace-nowrap">${categorySections.length} sections</span>
-                            <span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span>
+                            <span class="brief-meta-item whitespace-nowrap brief-desk-only">${categorySections.length} sections</span>
+                            <span class="brief-meta-dot text-gray-500 flex-shrink-0 brief-desk-only">•</span>
                             <span class="brief-meta-item whitespace-nowrap">${totalStories} stories</span>
                             <span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span>
-                            <span class="brief-meta-item whitespace-nowrap">~${readTimeEst} min read</span>
+                            <span class="brief-meta-item whitespace-nowrap"><span class="brief-desk-only">~</span>${readTimeEst} min<span class="brief-desk-only"> read</span></span>
                             ${slotDef.metaExtra || ''}
                         </div>
                     </div>
@@ -16122,7 +16192,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 333;
+        window.APP_BUILD = 334;
 
         (async function initApp() {
             try {
@@ -17023,7 +17093,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v333';
+const CACHE_NAME = 'rss-reader-v334';
 const APP_SHELL = [
     '/',
     'index.html'
