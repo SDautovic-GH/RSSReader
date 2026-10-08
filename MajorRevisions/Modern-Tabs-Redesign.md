@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 326** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 327** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-08 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–326)
+### Follow-ups (Builds 275–327)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **Today's badge lines up with the heading (327, on request: "LIVE BRIEF at the very top looks pulled to the right"):** 326 put the badge's tint edge on the 14px margin, which left its icon and text at 20px. The badge row is now pulled left by the badge's own 6px padding (phone), so the icon sits on the same 14px edge as the status line, heading, meta line and story titles, and only the tint reaches into the margin (from 8px). Measured at 339px: icon 14px, heading 14px, status 14px, meta 14px, first story title 14px.
 - **14px side margins across the phone's views (326, on request: "For consistency, maybe we start with 14px across the board"):**
   - **Why 14px:** at the iPhone's 115% Page Zoom it is ~16pt, the iOS layout margin (Material uses 16dp).
   - **Measured before at 339px:** Today 6px (only the reader's padding; well under the guideline and closer to the left edge than the right); a story 12px (6px in the reader + 6px in the story); the Following lists 17px (a 3px border + 14px); the Following cards 12px (`p-3`) and its header 20px (1.25rem).
