@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 337** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 338** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-08 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–337)
+### Follow-ups (Builds 275–338)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,8 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **Today: another 20% less space between stories (338, on request: "the space between stories seems too big still, I would like it smaller by 20%, 10% on both sides of the devides"):** the between-stories padding is cut by a fifth again: phone 0.8rem → 0.64rem, desktop 0.92rem → 0.736rem, each side of the divider. As in 332, the first story under a heading and the last above "Mark N read" keep theirs. Measured: phone 13.8 + 12.8 = 26.6px → 11.2 + 10.2 = 21.5px; desktop 15.7 + 14.7 = 30.4px → 12.8 + 11.8 = 24.5px (both about 19% less).
+- **Today's story titles at medium weight (338, on request: "what thickness is the font for stories title? Seems to strong"):** they were semibold, 600, from build 324 ("smaller and bold"). The list titles and the reader's headline were already medium, 500. `.brief-story-title` is now 500, the same as those. The summaries under them stay regular, 400. Measured at 339px and 1280px: Today titles, list titles and the reader headline all 500.
 - **The reader's source icon stays on the first line (337, on request: a source name "too long ... brakes to second line, I see the logo in the middle of the two lines. I would much rather the logo stay aligned with top line", e.g. Melrose Lady Raiders Volleyball):** `#article-meta` was a flex row with `items-center`, so a two-line name centred the favicon between the lines. It is now `align-items: flex-start`, and `#article-favicon` gets `margin-top: calc((1lh - 1em) / 2)` (and `flex-shrink: 0`), which centres the 1em icon on the first line at any Source Name Size. A one-line name looks as before. Measured with names that wrap at 339, 700 and 1280px, at Source Name Size 1em and 1.4em: the icon's centre is within 0.5px of the first line's centre (16px icon on a 17px line; 22px icon on a 25px line).
 - **One action row on the desktop; the reader's byline; "all caught up" on the phone (336):**
   - **One action row** (on request: "rationalize action buttons below stories on desktop - it seems to be messy as is"; the proposal, "yes, build it"; "I prefer buttons over text labels").
