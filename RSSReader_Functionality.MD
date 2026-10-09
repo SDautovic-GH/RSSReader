@@ -1,254 +1,202 @@
 # RSS Reader — Functionality Summary
 
-A single-file Progressive Web App RSS reader. Works on desktop and mobile. No installation required beyond opening `index.html` in a browser. Optional cloud sync via Firebase.
+**As of October 2026 (build 338).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
 ## Getting Started
 
-1. Open `index.html` in a browser (or add to home screen on mobile)
-2. Go to **Settings → Feeds** and add RSS feed URLs, or import an OPML file
-3. Click any feed in the sidebar to read articles from it
-4. Click **All Unread** at the top of the sidebar to see everything
+1. Open the app (sdautovic-gh.github.io/RSSReader), or add it to your phone's home screen.
+2. Sign in with your email and password. The app needs an account: the sign-in window stays until you sign in, and from then on feeds and read marks follow you between devices.
+3. Add feeds: **Following** › the **pencil** (Edit feeds) › Add feed, or import an OPML file there.
+4. Read in **Today**.
 
 ---
 
-## Reading
+## Finding Your Way
 
-### Navigating Articles
-- Click an article in the list to open it in the reader pane
-- Use **↑ / ↓** arrow buttons (or **j / k** on keyboard) to move between articles
-- Keyboard shortcut **o** opens the current article in a new browser tab
+### On the phone
+The bottom bar has **Today** and **Following**, plus a separate **Search** button. The Today tab shows how many stories are unread.
 
-### Read State
-- Opening an article marks it as read automatically
-- The **MARK UNREAD** button in the reader header lets you undo this
-- Blue dot in the article list = unread; empty = read
-- **r** on the keyboard toggles read/unread on the current article
+Both screens have the same header: the app logo, a title with a small status line under it, and buttons on the right.
+- **Today:** "Thu, Oct 8" and "Updated just now • 3 new", with the **headphones** button to listen.
+- **Following:** "Following" and its status, with **Edit feeds** (pencil), **Add feed** (+) and **Settings** (gear).
 
-### Read Later
-- Click **READ LATER** in the reader header (or **b** on keyboard) to bookmark an article
-- Bookmarked articles appear in the **Read Later** smart feed in the sidebar
-- The button shows **SAVED TO READ LATER** when active; click again to remove
+Opening a story covers the screen. Tap **Today** in the tab bar to go back to the same place. Swipe to move between stories. While you scroll down a story, the tab bar slides away; scroll up a little and it comes back.
 
-### Mark All Read
-- Click the **"N UNREAD"** text in the article list header to mark everything in the current view as read
-- Right-click a category or feed for the same option scoped to that folder
+### On the desktop
+- **Left:** the sidebar, with Today, Unread, Read Later, Saved, History and your folders.
+- **Middle:** Today, or a list. Drag its edge to resize it; the width is saved.
+- **Right:** the story you are reading. Today stays open beside it.
+
+Double-click the story's top bar for full screen (just the story). Use the arrow keys to move between stories, and Esc to leave.
 
 ---
 
-## Smart Feeds
+## Today
 
-The top of the sidebar has three built-in views:
+Today shows the unread stories from the last 24 hours in the folders you include:
 
-| Feed | Shows |
-|---|---|
-| **All Unread** | Every unread article across all feeds |
-| **Today** | Unread articles published in the last 24 hours |
-| **Read Later** | All bookmarked articles |
+- **Top Stories:** the five strongest stories across your folders, the ones from the most authoritative outlets or covered by several.
+- **Your folders:** one section per folder, in your Following order. Each shows up to your **Stories per Category** (Settings › Today).
+- **One card per story:** when several outlets cover the same story, you get one card, from the most authoritative outlet, with "Also from …".
+- **Pictures:** a small picture beside a story, and a large one on the first Top Story. Turn them off in Settings › Today › Show images.
+- **Folder pills (phone):** the row of pills under the header jumps to a folder.
 
-Unread counts appear next to each smart feed. The badge disappears when the count reaches zero.
+### Reading and marking
+- Tap a story's headline or summary to read it. Read stories leave Today.
+- **Mark N read** at the end of a section marks the stories still showing there. The next section slides up, and **Undo** appears at the bottom for 5 seconds.
+- **Mark All Read in Folders** is at the very end.
+- When everything is read, Today says **"You're all caught up."** On the phone it adds **"Pull down to refresh."**
 
----
-
-## Feeds & Organization
-
-### Adding Feeds
-1. Click the **Settings (⚙)** button
-2. Go to the **Feeds** tab
-3. Paste an RSS/Atom URL and optionally assign a category
-4. For Bluesky: enter `@handle.bsky.social` as the URL
-
-### Categories
-- Feeds are grouped into collapsible categories in the sidebar
-- Drag feeds to reorder within a category; drag categories to reorder them
-- Right-click a category to rename, delete, or mark all its articles as read
-
-### OPML
-- **Import**: Settings → Feeds → Import OPML — paste or upload a `.opml` file to bulk-add feeds
-- **Export**: Settings → Feeds → Export OPML — downloads your current subscription list
+### New stories
+Today stays still while you read: new stories never appear under your finger, and nothing jumps by itself. When there are new ones, the status line counts them ("3 new"), and a **"N new stories"** pill appears. Tap it to see them at the top.
 
 ### Refresh
-- Feeds refresh automatically on a configurable interval (Settings → Preferences)
-- Click **↻** in the sidebar header to refresh all feeds immediately
-- Right-click a feed → **Refresh Feed** to refresh just that one
+- **Phone:** pull down on Today.
+- **Desktop:** the refresh button in the sidebar header.
+- Feeds also refresh by themselves every 30 minutes (Settings › Refresh & Sync).
+
+### Choosing what's in Today
+Following › pencil: each folder has an **In Today** switch.
+
+### Listen
+The headphones button reads the stories showing in Today aloud. The player above the tab bar has Pause/Resume and Stop.
 
 ---
 
-## Article View
+## Following
 
-### Full Article Loading
-Short RSS excerpts automatically trigger a full-content fetch in the background. The **FULL ARTICLE** button forces this on demand.
+- **Unread:** every unread story. It also shows how many are older than today.
+- **Read Later:** stories you put aside to read soon.
+- **Saved:** stories you want to keep. They stay even if you remove the feed.
+- **History:** stories you have read, from the last 30 days (Settings › General › History window).
+- **Folders:** tap a folder or a feed to see its stories. Folders with nothing unread are hidden unless you turn on Settings › General › Show empty category folders.
 
-### Reading Time
-"~N min read" is shown in the article header, calculated from word count.
+### The feed manager (the pencil)
+- Feeds are grouped by folder. Each folder has **In Today** and **Rename**.
+- Each feed shows when it was last checked and how new its newest story is, or that it isn't loading.
+- **Edit** changes a feed's name, address or folder. **Remove** deletes it (you confirm first). **Retry** tries a feed that isn't loading.
+- **Add feed:** paste an RSS/Atom address, a Bluesky profile, a Mastodon RSS address or a YouTube playlist feed.
+- **OPML:** import or export your whole list.
 
-### Text-to-Speech
-Click **LISTEN** to have the article read aloud. Click **STOP** to end. Uses the browser's built-in speech synthesis.
-
-### Images
-- Click any image to open it in a full-screen lightbox
-- Broken or tiny images are automatically hidden
-
-### Share
-**SHARE** uses the native share sheet on mobile, or copies the link to clipboard on desktop. A toast confirms the result.
+### Right-click (desktop)
+- **A feed:** Refresh Feed, Mark All Read.
+- **A folder:** Mark All Read, Collapse Folder, Collapse All Folders, Rename.
 
 ---
 
-## Desktop Layout
+## Lists
 
-### Three Panes
-- **Sidebar** (left, 328px): Feed list, smart feeds, settings access
-- **Article List** (middle, resizable): Current feed's articles
-- **Article Reader** (right): Full article content
+Unread, folders, feeds, Read Later, Saved and History all show stories as a list:
+- Each card shows the source, how long ago it was published, the headline, a preview and buttons.
+- **Phone:** swipe left to mark read or unread, and swipe right for Read Later. Long-press for more.
+- **Right-click or long-press** a story: Mark Above Read, Read Later, Save, Mark Read/Unread, Mark Below Read.
+- **Order:** oldest first by default; change it in Settings › General › Sort Order.
+- **De-duplicate** (on by default) keeps one copy of a story published by several sources.
+- **Density (desktop):** the top bar switches between Standard Stream and Compact Wire.
 
-All three pane headers are the same height and match their pane's background color.
+---
 
-Drag the divider between the article list and reader to resize. The width is saved automatically.
+## Reading a Story
 
-### Fullscreen Mode
-Double-click any pane header, or use the **EXIT FULL SCREEN** button, to toggle the reader to full width (hiding the sidebar and article list). Double-click again or click the button to exit.
+- **At the top:** the source (tap it to see that feed's stories), the headline, then the author and date. On the desktop the author is left out when it would only repeat the source.
+- **Full articles:** when a feed sends only a short excerpt, the app fetches the full article.
+- **Pictures:** tap one to enlarge it; pinch or double-tap to zoom.
+- **Podcasts:** podcast episodes get an audio player.
+- **Moving on:** j/k or ↑/↓ on the desktop, swipes on the phone. You move through the brief or list the story came from.
 
-### View Mode
-The **LIST** button in the reader header toggles between compact list and card layout in the article list.
+### Story buttons
+- **Desktop:** list cards, Today cards and the reader all have the same row: **Read · Read Later · Save · Open original · Share**. Hover for each button's name. A button turns blue when it's on: unread, in Read Later, or saved.
+- **Phone, Today cards:** Read, Read Later, Save, Open in Reader, Open original, Share.
+- **Phone, reader:** Read, Read Later, Save, Open original, Listen, Share.
+- **Phone, list cards:** Open in Reader, Save, Open original. Swipes handle read and Read Later.
 
-### Dark Mode
-Click the **🌙** moon icon in the sidebar header to switch between dark and light themes.
+---
 
-### Keyboard Shortcuts
+## Search
+
+Tap **Search** (or press `/` on the desktop) and type. Results appear as you type. Buttons jump to Unread, Read Later or Saved. On the desktop you can also limit the search to one folder, and to unread or read stories.
+
+---
+
+## Settings Reference (the gear)
+
+| Section | Setting | What it does |
+|---|---|---|
+| Account | | Shows that you are signed in (tap for the email); Sign Out |
+| Appearance | Theme | Light or dark |
+| | App Zoom | Makes everything bigger or smaller (each device keeps its own) |
+| Refresh & Sync | Auto-Refresh Interval | Off, every 15 minutes, every 30 minutes, every hour. Timed refreshes are skipped while the app is in the background or on Data Saver |
+| General | Sort Order | Oldest or newest published first, in lists |
+| | History window | How far back History goes: 7, 30, 60 or 90 days |
+| | Show empty category folders | Shows folders with nothing unread |
+| | Deduplicate articles by title | One copy per story, favouring well-known sources |
+| | Font | The font used throughout |
+| Today | Show images | Pictures in Today |
+| | Stories per Category | How many stories each folder shows: 5 to 50, or All |
+| Muted words | | Stories with these words in the headline or summary are hidden and not counted. Today offers "N muted · Show" |
+| Sidebar | Folder Size | Size of the folder and feed names in Following |
+| | Row Spacing | Space between those rows |
+| Article List | Title Size | Headlines in lists, and in Today a little smaller |
+| | Preview Text Size | Preview text in lists and summaries in Today |
+| | Line Height | Line spacing of those headlines and previews |
+| | Source Name Size | Source names in lists, Today and above a story's headline |
+| | Preview Lines | How many lines of preview to show |
+| | Social Preview Lines | The same for Bluesky and Mastodon posts |
+| Article Reader | Title Size | A story's headline, and Today's heading on a computer |
+| | Body Text Size | A story's text |
+| | Line Height | A story's line spacing |
+| | Author & Date Size | The line under a story's headline |
+| | Reset text sizes | Puts every size and spacing back to its default (keeps theme, font, sort order, auto-refresh, de-duplicate, history window and zoom) |
+
+Text sizes are kept separately for the phone and the desktop, except Folder Size, Row Spacing and Source Name Size.
+
+---
+
+## Keyboard Shortcuts (desktop)
 
 | Key | Action |
 |---|---|
-| `j` / `↓` | Next article |
-| `k` / `↑` | Previous article |
-| `r` | Toggle read/unread |
-| `b` | Toggle read later (bookmark) |
-| `o` | Open in browser |
-| `?` | Show all shortcuts |
-
----
-
-## Mobile Experience
-
-### Navigation
-The bottom tab bar has four tabs:
-1. **Feeds** — sidebar with all feeds and categories
-2. **Articles** — article list for the selected feed
-3. **Reader** — full article view
-4. **⛶** — toggle fullscreen mode
-
-### Mobile Reader Bar
-Below the article on mobile, an action bar provides:
-**Prev | Read | All Read | Later | Share | Next**
-
-All buttons are 16px for easy tap targets.
-
-### Fullscreen Mode
-Tap the fullscreen tab or the **⛶** button to enter fullscreen. In this mode:
-- All navigation chrome is hidden
-- A floating **topbar** appears at the top:
-  - In the article list: shows unread count and mark-all-read
-  - In the reader: shows reading progress and open-in-browser
-- Fixed buttons in the corners let you exit or return to feeds
-- A back **Articles** pill at the bottom returns to the article list
-- Tap the **✕** button to exit fullscreen
-
-### Pull to Refresh
-Swipe down from the top of the article list to refresh the current feed.
-
-### Start in Fullscreen
-Settings → Preferences → **Mobile Fullscreen Default** — automatically enters fullscreen when the app opens on mobile.
-
-### Add to Home Screen
-The app is a fully installable PWA. Use your browser's "Add to Home Screen" option to install it as a standalone app with its own icon.
-
----
-
-## Deduplication
-
-When enabled (Settings → Preferences → **Deduplication**), articles with the same title from multiple sources are grouped. The most authoritative source (ranked using Memeorandum source scores) is shown first; duplicates are collapsed under it.
-
-The **DEDUPED** badge appears in the article list header when deduplication is active.
+| `j` / `↓` | Next story |
+| `k` / `↑` | Previous story |
+| `r` | Mark read / unread |
+| `b` | Back to Today (from a Today story), otherwise Read Later |
+| `o` | Open the original |
+| `t` | Today |
+| `/` | Search |
+| `?` | All shortcuts |
+| `Esc` | Leave full screen, close a dialog |
+| `→` / `←`, `↓` / `↑` | In full screen: next / previous story, scroll |
 
 ---
 
 ## Cloud Sync
 
-### Signing In
-Settings → sign-in area → enter your email and password (or register a new account).
+**What follows you between devices:**
+- your feeds and folders;
+- what you have read;
+- Read Later and Saved;
+- your folder order and the desktop's middle-column width;
+- auto-refresh, which folders are in Today, and muted words.
 
-### What Syncs
-- Feed list and category order
-- Read / unread state (up to 5000 recent links)
-- Read Later bookmarks
-- All typography and preference settings
-- Desktop pane width
+**What each device keeps for itself:** text sizes, theme, font, sort order, show images, Stories per Category, show empty folders, de-duplicate and the history window.
 
-### Sync Behavior
-- Changes sync to the cloud automatically after each action
-- On sign-in, cloud state merges with local state (read links are combined; preferences from cloud take precedence)
-- Everything works offline; the cloud is an optional enhancement
-
-### Sign Out
-Settings → **Sign Out**. Local data is preserved.
+Read marks from all your devices are combined. **Sign Out** (Settings › Account) asks you to confirm, then shows the sign-in window again; what is stored in the browser stays.
 
 ---
 
-## Settings Reference
+## Notifications
 
-Settings are in two tabs:
-
-### Feeds Tab
-- Add, edit, delete individual feeds
-- Set feed name, URL, and category
-- OPML import and export
-
-### Preferences Tab
-
-| Setting | What it does |
-|---|---|
-| Font Family | Font used throughout the app |
-| Feed Name Size | Size of feed names in the sidebar |
-| List Title Size | Size of article titles in the list |
-| List Preview Size | Size of article preview text |
-| Folder/Category Size | Size of category labels |
-| Article Body Size | Size of article body text |
-| Article Title Size | Size of the article title in the reader |
-| Article Metadata Size | Size of author/date metadata |
-| Line Height | Spacing between lines in the article body, article title, and feed names |
-| List Title & Preview Line Height | Spacing between lines in the article list titles and preview text (default 1.4, independent from body line height) |
-| Preview Lines | How many lines of preview text to show (2–15) |
-| Sort Order | Newest first or oldest first |
-| Auto-Refresh Interval | How often feeds automatically refresh |
-| Deduplication | Group articles with identical titles by source rank |
-| Show Empty Categories | Show/hide categories with no unread articles |
-| Mobile Zoom | Overall zoom level on mobile (80–130%) |
-| Mobile Fullscreen Default | Start in fullscreen mode on mobile |
-
----
-
-## Notifications (Toasts)
-
-Brief status messages appear at the top of the screen after most actions:
-- ✓ Marked Read / Marked Unread
-- 🔖 Saved for Later / Removed from Later
-- Refreshing feeds... / Updated
-- Link copied to clipboard
-- Import/export results
-- Error messages (red background)
-
-Toasts queue up if multiple actions fire quickly, and always appear above all other UI including fullscreen overlays.
+- **Short messages at the top** confirm actions ("Saved", "Added to Read Later", "Link copied to clipboard") and report problems, shown in red.
+- **"Marked N read · Undo"** floats at the bottom for 5 seconds. It takes no room, so nothing moves when it goes.
 
 ---
 
 ## Technical Notes
 
-- **Single file**: Everything — HTML, CSS, JS, icons — is in `index.html`. No server, no build step, no dependencies to install.
-- **Privacy**: No analytics, no tracking. Data stays in your browser unless you enable cloud sync.
-- **Storage (IndexedDB v2)**: Uses high-performance IndexedDB for all article data and read states.
-  - **Articles**: History capacity for 2,000 items with automatic 2-day cutoff.
-  - **Read Links**: Tracking for up to 10,000 links (persistent read state).
-  - **Favicons**: Efficient binary cache for site icons to reclaim `localStorage` space.
-  - **Legacy Migration**: Automatically moves old `localStorage` data to IndexedDB on first load.
-- **CORS Proxies**: Feed fetching uses `corsproxy.io` and `allorigins.win` as fallbacks for cross-origin requests. Both need to be reachable for feed refresh to work.
-- **Offline**: Once loaded, the app's Service Worker (via Blob URL) caches all assets. You can read cached articles without an internet connection; feed refresh requires connectivity.
+- **One file:** everything is in `index.html`, published to GitHub Pages by `/sync-rssreader`.
+- **Privacy:** no analytics or tracking. Your data stays in your browser, and in your own Firebase account once you sign in.
+- **Storage:** stories, feeds, read marks, History, Read Later and Saved are kept in the browser's IndexedDB. Your unread stories stay until you read them or they are 4 days old.
+- **Feeds:** fetched through the app's own Cloudflare Worker, with allorigins.win as a fallback. Bluesky profiles come from Bluesky's public API.
+- **Offline:** stories already loaded can be read without a connection once the app is open. The app itself needs a connection to load, since it has no offline cache of its own code.

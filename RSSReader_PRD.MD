@@ -1,284 +1,293 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** April 2026  
-**Status:** Feature-Complete (maintenance & refinement mode)
+**Version:** October 2026 (build 338)  
+**Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
+**Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
 ---
 
 ## 1. Product Overview
 
 ### Vision
-A fast, private, single-file RSS reader that works as a Progressive Web App on both desktop and mobile, with optional cloud sync. No server dependency, no build step, no third-party tracking.
+A fast, private, single-file RSS reader that works as a Progressive Web App on phone and desktop, with cloud sync between devices. Reading starts in **Today**: a live brief of the last 24 hours' unread stories, grouped by the reader's own folders. No server of its own, no build step, no tracking.
 
 ### Guiding Principles
-- **Single-file delivery**: All HTML, CSS, and JS inline — install by dropping one file anywhere
-- **Offline-first**: All data persists locally; cloud sync is an enhancement, not a requirement
-- **Mobile-first UX, desktop-grade power**: Full-featured on both form factors without compromise
-- **Zero ads, zero telemetry**: User data never leaves the device unless the user opts into cloud sync
+- **Single-file delivery:** all HTML, CSS and JavaScript are inline in `index.html`.
+- **Today first:** the app opens on Today, on both phone and desktop. Lists (Unread, folders, feeds) are one tap away under Following.
+- **Calm reading:** nothing on Today moves except in direct response to the reader's tap. Background refreshes never reshuffle, shrink or jump the page.
+- **The reader's folders are the ground truth:** Today's sections are the Following folders, never topics the app makes up.
+- **Mobile-first, desktop-grade:** full-featured on both, with one navigator per platform (tab bar on the phone, sidebar on the desktop).
+- **No ads, no telemetry.**
 
 ---
 
 ## 2. User Personas
 
-### Primary: The Power Reader
-- Follows 20–100+ RSS feeds across categories (news, blogs, social)
-- Reads daily on both desktop and mobile
-- Values speed, keyboard navigation, and read-state persistence across devices
-- Uses Read Later to triage content for later deep-reading
+### Primary: the daily Today reader
+- Follows 50–100 feeds across news, technology, sport and social (Bluesky, Mastodon).
+- Reads mostly on an iPhone (Safari at 115% page zoom), and on a Windows desktop.
+- Reads in Today, top to bottom, marking sections read as they go. Uses Read Later and Saved to keep stories.
+- Wants the page still while reading, and as much content on screen as possible.
 
-### Secondary: The Casual Follower
-- Follows 5–20 feeds
-- Reads mostly on mobile, occasionally desktop
-- Wants a clean, distraction-free reading experience
-- Values fullscreen mobile mode and TTS for passive consumption
+### Secondary: the occasional list reader
+- Opens a folder or feed under Following, reads a few stories, marks the rest read.
 
 ---
 
 ## 3. Feature Requirements
 
-### 3.1 Feed Management
+### 3.1 Navigation and layout
 
 | Requirement | Detail |
 |---|---|
-| Add feeds | Manual URL entry with optional category assignment |
-| Edit feeds | Rename, change URL, change category |
-| Delete feeds | With confirmation dialog |
-| Organize into categories | Hierarchical sidebar: category → feeds |
-| Drag-and-drop reorder | Reorder feeds within categories; reorder categories |
-| OPML import | Parse XML subscription list and create feeds |
-| OPML export | Download current subscription list as valid OPML XML |
-| Bluesky support | `@actor.bsky.social` handles resolved via public Bluesky API |
-| Favicon display | Auto-fetched and cached per feed; falls back to Google Favicons API |
-| CORS proxy chain | Cloudflare Worker → `corsproxy.io` → `allorigins.win` fallback for cross-origin fetches |
-| Dark-favicon inversion | Configurable host list (e.g. nytimes.com) whose dark-on-transparent favicons are inverted in dark mode |
-| Auto-refresh | Configurable interval: Off, 5, 10, 15, 30, 60 minutes |
-| Manual refresh | Per-feed, per-category, or global refresh button |
+| Phone tab bar | A glass pill with **Today** and **Following**, plus a separate **Search** button. The Today tab carries the unread badge (99+ cap). The selected tab shows a filled glyph. |
+| Phone header | Today and Following share one header: the app logo, a title (Today: the date, e.g. "Thu, Oct 8"; Following: "Following") with an 11px status line under it ("Updated just now • 3 new"), and 40px icon buttons at the right (Today: Listen; Following: edit feeds, add feed, settings). Logos sit 12px under the iPhone's clock strip on both. |
+| Phone reader | Opens over Today or a list. No top bar; the Today tab returns to Today at the story's place. Swipes move between stories. The tab bar slides away while a story scrolls down and returns on scroll up. |
+| Desktop layout | Three panes: sidebar (Following), a middle column (Today or a list, resizable, width synced) and the reader. Today stays in the middle column while a story is open beside it. |
+| Desktop full screen | Double-click the reader's top bar: the story alone. Arrow keys move between stories, Up/Down scroll, Esc leaves. |
+| Side margins (phone) | 14px everywhere (≈16pt at 115% zoom, the iOS layout margin). |
 
-### 3.2 Article List
+### 3.2 Today
 
 | Requirement | Detail |
 |---|---|
-| Smart feeds | **All Unread**, **Today** (last 24h), **Read Later** |
-| Feed/category filter | Click feed or category → filter timeline |
-| Unread counts | Per-feed and per-category badges; hidden when zero |
-| Unread indicator | Blue dot per article; removed on open |
-| Sort order | Newest-first or oldest-first (configurable) |
-| Deduplication | Optional: group articles with identical titles, show highest-ranked source via Memeorandum scores |
-| Article pinning | Top N articles always shown even after being read; cleared on filter change |
-| List / Card view | Toggle between compact list and card layout |
-| Preview text | Configurable preview line count (2–15 lines, default 5) |
-| Thumbnail images | Inline article thumbnail when available |
-| Relative timestamps | "2 min ago", "3 hours ago", "Yesterday" |
-| Mark all read | Click "N UNREAD" header button or via context menu |
-| Pull-to-refresh | Swipe down ≥100px on mobile to trigger refresh; unified sticky-toast indicator persists until all feeds settle |
-| Long-press context menu | Hold article card on mobile for contextual actions |
+| Content | Unread stories from the last 24 hours, from folders included in Today (each folder's In Today switch in the feed manager). Muted stories are left out. |
+| Top Stories | The five strongest stories across folders (authority rank, then multi-outlet consensus, then recency), lifted out of their folders. Each folder then fills back up to Stories per Category. |
+| Sections | One per folder, in the Following order. Stories per Category: 5–50 or All (Settings, per device). |
+| Story clustering | Articles about the same story from several outlets become one card, led by the most authoritative outlet, with "Also from …". |
+| Story card | Source name (as the feed writes it, full width), time, headline (medium weight, 0.95 × Article List title size), summary (Article List preview size, line height and lines), a 72px thumbnail beside the text, and an action row. The first Top Story with a large enough picture gets a 16:9 hero. |
+| Folder pills (phone) | A row of folder pills under the header jumps to a section. The desktop has none: the sidebar's folders navigate. |
+| Mark read | A story leaves Today once read. "Mark N read" at the end of each section marks the stories still showing there (and their grouped copies) at the tap. The next section slides up and a floating Undo bar appears. "Mark All Read in Folders" sits at the very end. |
+| New stories | After a refresh, new stories never appear under the reader. The status line counts them ("3 new"), and a "N new stories" pill rebuilds Today at its top when tapped. |
+| Refresh | Pull down on Today (phone); the header refresh button (desktop); auto-refresh in the background. |
+| All caught up | "You're all caught up." On the phone it adds "Pull down to refresh."; the desktop, which has no pull, says "No unread stories from the last 24 hours." |
+| Return to place | Back from a story lands on the next unread story at the same screen height. The page is kept, not rebuilt. |
+| Calm rules | Taps act at once. Automatic changes to something on screen (a story read on another device, a picture that fails) wait until scrolling stops with it off screen. Height changes keep the first card on screen still. |
+| Listen to Today | Reads the stories showing aloud, through the Listen player. |
 
-### 3.3 Article Viewer
-
-| Requirement | Detail |
-|---|---|
-| Full-content loading | Proxy-based extraction for short RSS excerpts |
-| Reading time estimate | Word count ÷ 200 wpm, displayed as "~N min read" |
-| Reading progress | Scroll-based progress bar at top of article |
-| Article navigation | Prev/Next buttons and keyboard shortcuts (j/k, ↑/↓) |
-| DOMPurify sanitization | All HTML content sanitized with allowlist before render |
-| Image lightbox | Click image to expand to full-screen overlay |
-| Broken image suppression | Images <60px or 1×1 hidden; empty ancestor containers collapsed |
-| Responsive embeds | Videos, audio, iframes rendered full-width |
-| Podcast audio player | Items with `<enclosure type="audio/*">` and near-empty body get an inline `<audio controls>` player |
-| Linkify | Bare URLs in plain-text content converted to clickable links |
-| MARK READ / MARK UNREAD | Button in viewer header; state persists and syncs |
-| READ LATER | Toggle bookmark; article appears in Read Later smart feed |
-| SHARE | Native Web Share API with clipboard fallback |
-| TTS | Web Speech API playback of article body text |
-| FULL ARTICLE | Button to attempt full-body proxy extraction on demand |
-| WEB | Open article in external browser tab |
-| Double-click header | Toggle desktop fullscreen (article fills entire viewport) |
-
-### 3.4 Typography & Preferences
-
-| Setting | Detail |
-|---|---|
-| Font family | Selector for system/web fonts |
-| Feed name size | Sidebar feed label size |
-| List title size | Article list title size (desktop + mobile) |
-| List preview size | Preview text size |
-| Category/folder size | Sidebar category label size |
-| Article body size | Viewer body text size |
-| Article title size | Viewer article title size |
-| Article metadata size | Author, date metadata size |
-| Line height | Viewer body line spacing |
-| Preview lines | Number of lines shown in article list preview (2–15) |
-| Sort order | Newest-first / Oldest-first |
-| Auto-refresh interval | Off / 5 / 10 / 15 / 30 / 60 minutes |
-| Deduplication | Toggle Memeorandum-ranked dedup ON/OFF |
-| Show empty categories | Show/hide categories with no unread articles |
-| Mobile zoom | 80–130% viewport scaling (default 105%) |
-| Mobile fullscreen default | Auto-enter fullscreen on mobile app launch |
-
-### 3.5 Cloud Sync
+### 3.3 Following
 
 | Requirement | Detail |
 |---|---|
-| Authentication | Firebase email/password (register, sign in, forgot password, sign out) |
-| Feeds sync | Stored in Firestore; replaces local on load |
-| Read state sync | Up to 5000 most-recent read links synced bidirectionally |
-| Read Later sync | Bookmarked article links synced |
-| Preferences sync | All typography/preference settings synced |
-| Pane width sync | Desktop timeline pane width synced |
-| Category order sync | Drag-drop ordering synced |
-| Merge strategy | Read links: union of cloud + local. Preferences: cloud overrides local |
-| Local fallback | All features work offline; sync is additive |
-| Sync status | Header shows "Local Only" or "☁ user@email.com" |
+| Smart lists | **Unread** (with "N older than today"), **Read Later**, **Saved**, **History** (read stories within the History window). The desktop sidebar also has **Today**. |
+| Folders | Collapsible folders of feeds with unread counts. Folders with nothing unread are hidden unless "Show empty category folders" is on. |
+| Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. |
+| Right-click (desktop) | Feed: Refresh Feed, Mark All Read. Folder: Mark All Read, Collapse Folder, Collapse All Folders, Rename. |
 
-### 3.6 Mobile Experience
+### 3.4 Article list (Unread, folders, feeds, Read Later, Saved, History)
 
 | Requirement | Detail |
 |---|---|
-| Responsive layout | Single-pane on ≤900px; three-pane on desktop |
-| Bottom tab bar | Home / Articles / Reader tabs plus Search button; icons bump stroke-width on scroll (compact mode) |
-| Mobile reader action bar | Prev, Read, All Read, Later, Share, Next — all 16px labels |
-| Fullscreen mode | Hides all chrome; floating topbar pills for navigation |
-| Article List topbar (fullscreen) | Unread count, dupes count, Mark All Read — 16px |
-| Article View topbar (fullscreen) | Reading progress text, Open in Browser button — 16px |
-| Articles button (fullscreen) | Back to article list pill button — 16px |
-| Exit / Feeds buttons | Fixed corner buttons to exit or return to feeds |
-| Pull-to-refresh | Swipe-down gesture on article list |
-| Haptic feedback | Vibration on long-press context menu trigger |
-| Touch gestures | Tap, long-press, swipe detection with 6px movement threshold |
-| PWA install | Manifest + Service Worker for add-to-home-screen |
-| Offline support | Service Worker cache-first strategy for app assets |
-| Apple PWA metadata | apple-mobile-web-app-capable, status bar, touch icon |
+| Card | Source name (as the feed writes it), relative date, headline, preview text, and an action row. Bluesky/Mastodon posts show the post text instead of a headline. |
+| Sort order | Oldest published first (default) or newest first. |
+| Deduplication | Optional (on by default): keeps one copy per story, favouring sources ranked by Memeorandum. |
+| Pinning | A story opened from Unread stays in the list, dimmed, until the view changes. |
+| Density | Standard Stream or Compact Wire (desktop top bar). |
+| Phone gestures | Swipe left: toggle read. Swipe right: toggle Read Later. Long-press: context menu. |
+| Right-click / long-press menu | Mark Above Read, Read Later, Save, Mark Read/Unread, Mark Below Read. |
 
-### 3.7 Desktop Layout
+### 3.5 Reader
 
 | Requirement | Detail |
 |---|---|
-| Three-pane layout | Sidebar (328px) + Timeline (336px, resizable) + Viewer (flex) |
-| Aligned header heights | All three pane headers are identical height (h-14 / 56px) |
-| Consistent header color | Each header matches its pane background color |
-| Resizable timeline | Drag divider to resize; width persisted to localStorage |
-| Desktop fullscreen | Hides sidebar + timeline; double-click header or button to toggle |
-| Dark mode | Deep dark theme with custom color palette (#13131a / #15151c / #18181f) |
-| Light/Dark toggle | Moon icon in sidebar header |
-| Keyboard shortcuts | j/k navigation, r=read, b=bookmark, o=open, ?=help |
-| Shortcuts modal | Full shortcut reference triggered by `?` key |
+| Header | Source (logo + name; the logo stays level with the first line when the name wraps), headline, then author and date. The desktop leaves out the author when it only repeats the source. |
+| Full content | Short feed excerpts trigger a full-article fetch through the proxy chain. |
+| Sanitising | All article HTML is sanitised with DOMPurify before it is shown. |
+| Media | Image lightbox (pinch or double-tap to zoom); tiny and broken images hidden; responsive embeds; an inline audio player for podcast items. |
+| Navigation | j/k or ↑/↓ (and the reader's Next) move through the brief the story came from, or through the list it came from. |
 
-### 3.8 Context Menus
+### 3.6 Story actions
 
-| Context | Actions |
+| Surface | Buttons |
 |---|---|
-| Article (right-click / long-press) | Mark Read/Unread, Save/Remove Later, Mark Above Read, Mark Below Read |
-| Feed (right-click) | Refresh Feed, Edit Feed, Delete Feed |
-| Category (right-click / long-press) | Mark Folder Read, Edit Category, Delete Category |
-| Smart Feed (right-click) | Mark All Read (triggers background fetch for All/Today) |
+| Desktop: list cards, Today cards, reader | One row everywhere: **Read · Read Later · Save · Open original · Share**. Icon buttons with tooltips, 32px with 18px icons, 4px apart, the first icon on the text edge, grey off and blue on. |
+| Phone: Today cards | Read · Read Later · Save · Open in Reader · Open original · Share |
+| Phone: reader | Read · Read Later · Save · Open original · Listen · Share |
+| Phone: list cards | Open in Reader · Save · Open original (swipes handle read and Read Later) |
 
-### 3.9 Notifications
+### 3.7 Search
 
 | Requirement | Detail |
 |---|---|
-| Toast notifications | Brief overlay messages for all actions (mark read, save later, refresh, errors) |
-| Toast queue | Sequential display; never overlap |
-| Toast z-index | Always above all UI elements including fullscreen topbars (z-index 300) |
-| Toast position | top: 16px in all modes; renders above fullscreen topbars |
-| Error toasts | Red background for failures (import error, share failure, etc.) |
+| Search sheet | Opened from the Search button or `/`. Searches stories as you type. Shortcuts to Unread, Read Later and Saved. |
+| Filters (desktop) | Scope (All folders or one folder) and read state (All, Unread, Read). |
+
+### 3.8 Listen (text to speech)
+
+| Requirement | Detail |
+|---|---|
+| Listen | Reads a story, or Today, aloud with the browser's speech synthesis. |
+| Player | Floats above the tab bar while listening: "Listening" / "Paused", Pause or Resume, Stop. Keeps the screen awake while playing. |
+| Buttons | Today: the header's headphones button (phone), the details line (desktop). Story: the reader row (phone), the top bar (desktop). The icon becomes Stop while playing. |
+
+### 3.9 Settings
+
+Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil).
+
+| Section | Settings |
+|---|---|
+| Account | The signed-in account (tap for its email) and Sign Out |
+| Appearance | Theme (Light / Dark), App Zoom (per device) |
+| Refresh & Sync | Auto-Refresh Interval: Off, every 15 minutes, every 30 minutes (default), every hour. A timed refresh is skipped while the app is in the background or on Data Saver; coming back to the app refreshes. |
+| General | Sort Order; History window (7, 30, 60 or 90 days); Show empty category folders; Deduplicate articles by title; Font |
+| Today | Show images (per device); Stories per Category (5–50, All) |
+| Muted words | Words or phrases. Stories with them in the headline or summary are hidden and not counted; Today offers "N muted · Show". |
+| Sidebar | Folder Size (also the sidebar's feed names), Row Spacing |
+| Article List | Title Size (lists, and Today's stories a little smaller), Preview Text Size, Line Height, Source Name Size (lists, Today, the reader's source line), Preview Lines, Social Preview Lines (Bluesky/Mastodon) |
+| Article Reader | Title Size (stories, and Today's heading on a computer), Body Text Size, Line Height, Author & Date Size |
+| Reset text sizes | Puts every size and spacing back to its default. Theme, font, sort order, auto-refresh, de-duplicate, history window and app zoom are kept. |
+
+Text sizes are saved per device (phone and desktop separately), except Folder Size, Row Spacing and Source Name Size, which are shared.
+
+### 3.10 Feeds and fetching
+
+| Requirement | Detail |
+|---|---|
+| Feed types | RSS and Atom; Bluesky profiles (public Bluesky API, `public.api.bsky.app`); Mastodon RSS; YouTube playlist feeds. |
+| Fetching | Through a Cloudflare Worker proxy, with allorigins.win as the fallback. corsproxy.io was removed (build 199; it now needs an API key). Slow feeds get their own lane, so they don't hold up the rest. |
+| Favicons | Per feed, cached; Google's favicon service as a fallback. Dark-on-transparent icons are inverted in dark mode. |
+| Feed health | Each feed's last successful load and error count, shown in the feed manager. |
+| Article retention | A refresh replaces each feed's articles with what it serves now. Unread articles are kept until read or 4 days old. |
+
+### 3.11 Cloud sync
+
+| Requirement | Detail |
+|---|---|
+| Sign-in | Firebase email and password (register, sign in, forgot password, sign out with confirmation). Required: without a signed-in user the sign-in window stays up. On `localhost` a local test user stands in, and nothing syncs. |
+| What syncs | Feeds and folders; read state (as link hashes, up to 30,000, merged with arrayUnion); Read Later and Saved (full article snapshots, so they outlive feed removal); folder order, the desktop middle column's width, auto-refresh, folders in Today and muted words. |
+| What stays on the device | Text sizes, theme, font, sort order, show images, Stories per Category, show empty folders, de-duplicate, history window. |
+| Merge | Read marks are a union of all devices. A changed list (muted words, folders in Today) from another device applies only when it differs, so Today is not rebuilt for nothing. |
+
+### 3.12 Keyboard (desktop)
+
+| Key | Action |
+|---|---|
+| `j` / `↓` | Next story |
+| `k` / `↑` | Previous story |
+| `→` / `←`, `↓` / `↑` | In full screen: next / previous story, scroll |
+| `r` | Toggle read |
+| `b` | Back to Today from one of its stories; otherwise Read Later |
+| `o` | Open the original |
+| `t` | Open Today |
+| `/` | Search |
+| `?` | Shortcuts |
+| `Esc` | Leave full screen, close dialogs |
+
+### 3.13 Notifications
+
+| Requirement | Detail |
+|---|---|
+| Toasts | Short messages for actions and errors (red for failures), queued, above everything. |
+| Undo bar | "Marked N read · Undo" floats over the page above the tab bar for 5 seconds. It takes no room, so nothing moves when it goes. |
 
 ---
 
 ## 4. Non-Functional Requirements
 
+### Stability (calm)
+- Background refreshes never rebuild Today under the reader, and never move what is on screen.
+- `keepTodayInPlace()` keeps the first card on screen still through every height change, because iOS Safari has no scroll anchoring.
+- Status text changes ("Updating…" → "Updated just now • 3 new") sit on fixed-height lines that cannot wrap.
+
 ### Performance
-- Article list renders via string-concatenation innerHTML for speed (no virtual DOM)
-- Timeline re-render skipped if render key unchanged (`_lastTimelineKey` guard)
-- Article body cached in `_bodyCache` to avoid re-extraction
-- Favicons lazy-loaded and cached in localStorage
-- Read state debounced 2000ms before writing to localStorage
+- The article list is built as HTML strings, and its re-render is skipped when nothing changed (`_lastTimelineKey`).
+- Refresh: slow feeds run in their own lane, with one article-store save per batch.
+- Today's clustering runs once per build. Refilling folders after Top Stories reruns only the per-folder selection.
 
 ### Security
-- All article HTML sanitized via DOMPurify with explicit tag/attribute allowlist
-- No eval, no inline script injection
-- Firebase Auth tokens managed by Firebase SDK
-- No user credentials stored locally
+- All article HTML goes through DOMPurify with an explicit allowlist.
+- Firebase manages the sign-in tokens; no credentials are stored by the app.
 
 ### Storage
-- Articles: 500 most-recent cached in `newsreader_articles`
-- Read links: 5000 most-recent in `newsreader_read`
-- Unread state: Correctly persists mark-unread actions (loaded articles' links removed from stored set before merge)
+- IndexedDB `RSSReaderDB` version 6. The `articles` store has no indexes: their stale entries had grown the database to 121 MB. The live data is small (articles about 2 MB, History about 5 MB).
+- Read marks: up to 50,000 kept locally, 30,000 in the cloud.
 
 ### Compatibility
-- Modern evergreen browsers (Chrome, Safari, Firefox, Edge)
-- iOS Safari (PWA): apple-mobile-web-app-capable
-- No IE support required
+- Evergreen browsers (Safari on iOS, Edge, Chrome, Firefox). The main device is an iPhone at 115% Safari page zoom, a 339px-wide CSS viewport.
 
 ---
 
 ## 5. Technical Architecture
 
 ### Stack
+
 | Layer | Technology |
 |---|---|
-| Markup | HTML5 (single file) |
-| Styling | Tailwind CSS v3 CDN (JIT) |
-| Scripting | Vanilla ES2020+ JavaScript (no framework) |
-| Sanitization | DOMPurify CDN |
-| Auth + DB | Firebase v9 SDK (ES module import) |
-| Offline | Inline Service Worker (Blob URL registration) |
-| PWA | Inline data URI manifest |
+| Markup | HTML5, one file (`index.html`) |
+| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS |
+| Scripting | Vanilla JavaScript, no framework |
+| Sanitising | DOMPurify 3.1.6 (cdnjs) |
+| Auth and cloud | Firebase 11.6.1 (Auth, Firestore), ES module imports |
+| Offline | Articles, feeds and read state are in IndexedDB, so the app reads offline. An inline service worker is defined, but browsers reject its `blob:` URL, so it never registers and there is no asset cache. |
+| Deploy | `SyncGit-RSSReader.ps1` (`/sync-rssreader`) commits, bumps the cache version and build number, and pushes to GitHub Pages. |
 
-### Data Flow
+### Data flow
 ```
-RSS Feed URL
-    → CORS Proxy (corsproxy.io / allorigins.win)
-    → XML Parse (DOMParser)
-    → Article Objects → window.articles
-    → renderTimeline() → innerHTML
-    → selectArticle() → viewer pane
-    → saveReadState() [debounced 2s] → localStorage + Firestore
+Feed URL
+  → Cloudflare Worker proxy (allorigins.win fallback) / public Bluesky API
+  → parse (DOMParser) → article objects → window.articles → IndexedDB 'articles'
+  → Today: buildTodayBrief() → buildStoryClusters() → composeSlotBrief() → normalizeBriefDOM()
+  → Lists: renderTimeline() · Reader: selectArticle()
+  → read marks → IndexedDB + Firestore state/readState (hashes)
 ```
 
-### State Management
-All state is global on `window`:
-- `window.articles` — full article array
-- `window.feeds` — feed configuration
-- `window.currentArticle` — open article
-- `window.currentTimeline` — filtered article list
-- `window._readLinks` — Set of read article URLs
-- `window._readLaterLinks` — Set of bookmarked URLs
-- `window._pinnedArticleIds` — Set of pinned article IDs
-- `window.currentSmartFeed` / `currentCategoryFilter` / `currentSourceFilter`
+### IndexedDB stores
 
-### localStorage Keys
+| Store | Contents |
+|---|---|
+| `articles` | The article cache (key: id) |
+| `feeds` | Followed feeds (key: url) |
+| `metadata` | Read state, Read Later links and other small values |
+| `favicons` | Cached site icons |
+| `readArchive` | History: read stories (key: link, index readAt) |
+| `readLaterItems`, `savedItems` | Local mirrors of the Read Later and Saved buckets |
+
+### Firestore (per user: `artifacts/{APP_ID}/users/{uid}/…`)
+
+| Path | Contents |
+|---|---|
+| `feeds` (collection) | Feeds and folders |
+| `readLater`, `saved` (collections) | Article snapshots |
+| `state/readState` | `readHashes`, `readLaterLinks` |
+| `state/uiPrefs` | `paneWidth`, `categoryOrder`, `autoRefresh`, `todayExcluded`, `muteWords` (merge writes) |
+
+### localStorage keys
+
 | Key | Contents |
 |---|---|
-| `newsreader_feeds` | Feed array (JSON) |
-| `newsreader_articles` | Article cache (JSON, 500 items) |
-| `newsreader_read` | Read link URLs (JSON array, 5000 items) |
-| `newsreader_readlater` | Read Later link URLs (JSON array) |
-| `newsreader_prefs` | Typography + preferences (JSON) |
-| `newsreader_catorder` | Category order (JSON array) |
-| `newsreader_viewmode` | 'list' or 'card' |
-| `newsreader_showemptycats` | Boolean |
-| `newsreader_defaultfullscreen` | Boolean |
-| `newsreader_pane_width` | Desktop timeline pane width (px) |
-| `favicon_[feedUrl]` | Cached favicon URL per feed |
-| `newsreader_memo_ranks` | Memeorandum source rankings cache |
+| `newsreader_prefs` | Text sizes (per device), font, sort order, auto-refresh, de-duplicate, history window |
+| `newsreader_theme` | Light or dark |
+| `newsreader_today_images` | Show images in Today |
+| `newsreader_today_excluded` | Folders left out of Today |
+| `newsreader_brief_stories_per_cat` | Stories per Category |
+| `newsreader_mute_words` | Muted words |
+| `newsreader_showemptycats` | Show empty category folders |
+| `newsreader_catorder` | Folder order |
+| `newsreader_collapsed_categories`, `newsreader_folders_section_collapsed` | Collapsed folders |
+| `newsreader_pane_width` | Desktop middle column width |
+| `newsreader_viewmode` | Standard Stream or Compact Wire |
+| `newsreader_feed_health` | Per-feed load history |
+| `newsreader_last_seen_at` | The last visit, for "N new since …" |
+| `newsreader_read`, `newsreader_readlater` | Legacy read and Read Later lists |
+| `favicon_…` | Legacy cached favicon URLs |
 
 ---
 
 ## 6. Out of Scope
 
-- Native mobile apps (iOS App Store / Google Play)
-- Server-side rendering or API backend
-- Multi-user / shared feed lists
-- Dedicated video feed support (video embeds render inline but no custom playlist/queue UI)
-- Feed discovery or recommendation engine
-- Comment threading or social features
+- Native apps (App Store / Google Play)
+- A server or API of its own
+- Shared or multi-user feed lists
+- Feed discovery or recommendations
+- Topics the app infers on its own (Today uses the reader's folders only)
+- Scheduled briefs (removed in build 281; Today is the only brief)
 
 ---
 
 ## 7. Known Constraints
 
-- CORS proxy dependency: Feed fetching requires third-party CORS proxies (corsproxy.io, allorigins.win). If both are unavailable, feed refresh fails.
-- Firebase dependency: Cloud sync requires Firebase project; local-only mode is always available as fallback.
-- localStorage quota: ~5–10MB per browser; large article caches may hit limits on some browsers.
-- Single-file maintenance: All code in one file; no module bundling or tree-shaking.
+- **Proxy dependency:** feeds load through the Cloudflare Worker. If it and allorigins.win are both unavailable, refresh fails.
+- **Firebase dependency:** the app needs a signed-in Firebase account; without one it shows only the sign-in window. On `localhost` it runs as a local test user and does not sync.
+- **No offline asset cache:** the app needs a connection to load. Its data is local, but its code isn't cached.
+- **Single-file maintenance:** all code is in one file of about 17,400 lines.
+- **Compiled Tailwind:** a utility class not already in the compiled block has no effect. New styling needs hand-written CSS.
