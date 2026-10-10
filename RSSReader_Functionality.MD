@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 346).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 347).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -123,7 +123,8 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 
 ### Story buttons
 - **Desktop:** list cards, Today cards and the reader all have the same row: **Read · Read Later · Save · Open original · Share**. Hover for each button's name. A button turns blue when it's on: unread, in Read Later, or saved.
-- **Phone, Today cards:** Read, Read Later, Save, Open in Reader, Open original, Share, spread across the width of the story.
+- **Phone, Today cards:** tap **…** at the end of the source line, or press and hold the story, for **Mark as Read, Read Later, Save, Share and Open Original**.
+- **Desktop, Today:** the row of buttons appears when you point at a story.
 - **Phone, reader:** Read, Read Later, Save, Open original, Listen, Share.
 - **Phone, list cards:** Open in Reader, Save, Open original. Swipes handle read and Read Later.
 
@@ -162,10 +163,10 @@ Tap **Search** (or press `/` on the desktop) and type. Results appear as you typ
 | | App Zoom | Makes everything bigger or smaller (each device keeps its own) |
 | Following | Folder Size | Size of the folder and feed names in Following |
 | | Row Spacing | Space between those rows |
-| Article List | Title Size | Headlines in lists, and in Today a little smaller |
-| | Preview Text Size | Preview text in lists and summaries in Today |
+| Article List | Title Size | Headlines in lists, in Today a little smaller, and Today's section headings |
+| | Preview Text Size | Preview text in lists and summaries in Today (0.9 unless you change it) |
 | | Line Height | Line spacing of those headlines and previews |
-| | Source Name Size | Source names in lists, Today and above a story's headline |
+| | Source Name Size | Source names and times in lists, Today and above a story's headline (0.8 unless you change it) |
 | | Preview Lines | How many lines of preview to show |
 | | Social Preview Lines | The same for Bluesky and Mastodon posts |
 | Article Reader | Title Size | A story's headline, and Today's heading on a computer |
