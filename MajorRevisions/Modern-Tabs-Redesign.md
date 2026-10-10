@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 341** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 342** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-09 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–341)
+### Follow-ups (Builds 275–342)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,17 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **Cleanup: comments and the Tailwind block, nothing else (342, on request: "app is now over 17000 lines of code", "any changes always lead to code length increase", then "yes, cleanup please"):** `index.html` 17,779 → 14,574 lines, 883 → 780 KB. What the app does is unchanged, and that is proven, not assumed.
+  - **Tailwind (−2,273 lines):** the compiled block is back to the one line Tailwind wrote. A Mac sync on 2026-10-03 had spread it over 2,274 lines; its rules were identical apart from whitespace.
+  - **Comments (about −930 lines):** 355 comment blocks condensed to their reason (one removed outright). Build numbers, dates, request quotes, measurements beyond the one that makes the point and "it used to…" history went, since this file has them. Kept: platform pitfalls (115% Page Zoom anchoring, iOS scroll anchoring and scrollTop, WebKit's lazy-image report), guardrails ("never re-add", "do not reintroduce"), security contracts (linkify, the entity decoder, sanitizing article.body) and invariants other code relies on. Orphaned comments whose rules were long gone went (the Settings modal `zoom`, the selected-card stripe, the old frost designs). Comments that had gone stale were corrected: unread is kept 4 days, not 48 hours, and 339's Story order and General section no longer exist. Comments at the end of a code line were left alone. The two HTML comments the desktop build matches (`<!-- FIREBASE MODULE -->`, `<!-- PWA Service Worker…-->`) are untouched.
+  - **Proof:**
+    - Every inline script, parsed with TypeScript (VS Code's copy) and printed without comments, is identical before and after. A one-character change to code made the same check fail.
+    - The markup token stream, comments aside, is identical (1,341 tokens).
+    - The hand-written styles parse to the same 588 rules in Edge.
+    - In Tailwind, 25 rules differ only by the space the reformat had put after the comma in `var(--x, fallback)`. All 25 gave identical computed styles on test elements, custom properties included.
+    - A smoke test ran both versions against the same stored stories, with the network off except DOMPurify. Results matched: Today 3 sections and 25 cards; a story opens and Today returns with 24; Following; Settings 1304px with its six sections; desktop Today column. No script errors on warm runs.
+    - The deploy's `rss-reader-v` and `window.APP_BUILD` lines and the desktop build's checks still find their strings.
+  - **Not done here, as a code change:** `.top-frost` (two elements, mobile) now paints nothing (`background: none` in both themes) and could go.
 - **Settings reorganised, with a Text Size & Zoom page (341, on request: "Could there be a more logical order for app settings?", "the settings explanations are long, they stretch the screen a lot", then "two thirds of what is today, not exactly huge gain" and "these should be at the top still. Refresh … Account"):**
   - **Main page, in this order:** Account; Refresh (Auto-Refresh); Today (Show images, Stories per Category, Rank stories, Learn from what I open, Forget what I've opened); Stories (Sort Order, Deduplicate by title, Muted words); Following (Show empty folders, History); Appearance (Theme, Font, Text size & zoom ›). General, Refresh & Sync, Sidebar and the separate Muted words section are gone; every control kept its id (all 30 asserted once each).
   - **Text Size & Zoom page** (`#settings-panel-text`, `switchSettingsTab('text')`): App Zoom, Following (Folder Size, Row Spacing), Article List, Article Reader, Reset. The header shows ‹ (`#settings-back`) and the page's name; Feeds and the gear still open their own panels.

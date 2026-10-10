@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 341)  
+**Version:** October 2026 (build 342)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -301,5 +301,7 @@ Feed URL
 - **Proxy dependency:** feeds load through the Cloudflare Worker. If it and allorigins.win are both unavailable, refresh fails.
 - **Firebase dependency:** the app needs a signed-in Firebase account; without one it shows only the sign-in window. On `localhost` it runs as a local test user and does not sync.
 - **No offline asset cache:** the app needs a connection to load. Its data is local, but its code isn't cached.
-- **Single-file maintenance:** all code is in one file of about 17,400 lines.
+- **Single-file maintenance:** all code is in one file of about 14,600 lines (build 342).
+- **Comments say why, not when:** a comment in the code gives the reason or the constraint behind it, briefly. Build numbers, dates, requests and what the code used to do belong in `MajorRevisions/Modern-Tabs-Redesign.md`, not in the code.
+- **Tailwind stays minified:** the compiled Tailwind block is the single line Tailwind wrote. Don't run a formatter over `index.html`: a reformat on 2026-10-03 spread that line over 2,270 lines.
 - **Compiled Tailwind:** a utility class not already in the compiled block has no effect. New styling needs hand-written CSS.
