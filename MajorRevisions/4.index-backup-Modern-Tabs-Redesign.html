@@ -4295,6 +4295,18 @@
             color: #4493f8 !important;
         }
 
+        /* A source name too long for one line wraps; its icon stays on the first line (build
+           337, on request: it sat between the two lines, centred on both). 1lh is the line's
+           height, so the 1em icon is centred on the first line at any Source Name Size. */
+        #article-meta {
+            align-items: flex-start !important;
+        }
+
+        #article-favicon {
+            flex-shrink: 0;
+            margin-top: calc((1lh - 1em) / 2);
+        }
+
         /* Dividers between category folders — desktop */
         #feed-list [data-category] {
             border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
@@ -4870,6 +4882,25 @@
             text-align: center;
             font-weight: 600;
             color: #8b949e;
+        }
+
+        /* A text button inside a setting's description (build 339: "Forget what I've opened"). */
+        .settings-inline-link {
+            display: inline;
+            padding: 0;
+            border: none;
+            background: none;
+            font: inherit;
+            color: #4493f8;
+            cursor: pointer;
+        }
+
+        /* "Pull down to refresh." under "You're all caught up." on the phone (build 336). */
+        .brief-pull-hint {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.85em;
+            font-weight: 400;
         }
 
         /* MARK-READ ROW at the end of each section (build 278, on request): marks the
@@ -5571,16 +5602,17 @@
             box-sizing: border-box !important;
         }
 
-        /* 20% LESS SPACE BETWEEN STORIES (build 332, on request: "10% above the line divider and
-           10% below it"). The padding each side of a divider between two stories is cut by a
-           fifth (1.15rem -> 0.92rem; the phone's 1rem -> 0.8rem below). The first story under a
-           heading and the last above "Mark N read" keep theirs. */
+        /* LESS SPACE BETWEEN STORIES (on request, twice: "10% above the line divider and 10%
+           below it"). The padding each side of a divider between two stories is cut by a fifth,
+           twice: 1.15rem -> 0.92rem (build 332) -> 0.736rem (338); the phone's 1rem -> 0.8rem
+           -> 0.64rem below. The first story under a heading and the last above "Mark N read"
+           keep theirs. */
         .brief-story-card + .brief-story-card {
-            padding-top: 0.92rem !important;
+            padding-top: 0.736rem !important;
         }
 
         .brief-story-card:has(+ .brief-story-card) {
-            padding-bottom: 0.92rem !important;
+            padding-bottom: 0.736rem !important;
         }
 
         .brief-story-card:last-child {
@@ -5685,12 +5717,14 @@
         .brief-story-card a.brief-story-title,
         .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link),
         .brief-story-title {
-            /* Bold again and a step smaller (build 324, on request: "too large, I would like
-               it smaller and bold"; 282 had made them regular). Still Article List > Title
-               Size - 0.95 of it: a full step (0.9) put it below the 16px summary under it. */
+            /* A step smaller (build 324, on request: "too large, I would like it smaller and
+               bold"; 282 had made them regular). Still Article List > Title Size - 0.95 of it:
+               a full step (0.9) put it below the 16px summary under it. Medium, 500, as the
+               lists' and the reader's titles (build 338, on request: 324's 600 "seems too
+               strong"). */
             font-size: calc(var(--list-title-em-size, 1.1em) * 0.95) !important;
             line-height: var(--list-preview-line-height, 1.35) !important;
-            font-weight: 600 !important;
+            font-weight: 500 !important;
             margin-top: 0 !important;
             /* override .article-content h4 margin-top */
             padding-top: 0 !important;
@@ -5818,6 +5852,60 @@
             flex-shrink: 0 !important;
         }
 
+        /* ONE ACTION ROW ON THE DESKTOP (build 336, on request: "rationalize action buttons
+           below stories on desktop - it seems to be messy as is"). List cards, Today cards and
+           the reader had 3, 6 and 5 buttons in three sizes (15, 18 and 19px icons), gaps of 6,
+           6 and 2px, and first icons 6, 7 and 0px in from the text. Now all three have Read,
+           Read Later, Save, Open original, Share: icon buttons (names only as tooltips, on
+           request: "I prefer buttons over text labels"), 32px with 18px icons, 4px apart, the
+           first icon on the text edge (the buttons' 7px inset taken back), grey off and the
+           accent on - Save too, which was amber in the lists. "Open in Reader" went: a click
+           on the card or the headline opens it. The phone keeps its rows. */
+        @media (min-width: 901px) {
+            .story-actions {
+                display: flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+                margin-left: -7px !important;
+            }
+
+            .story-actions .icon-act {
+                width: 32px !important;
+                height: 32px !important;
+                flex-shrink: 0;
+            }
+
+            .story-actions .icon-act svg {
+                width: 18px !important;
+                height: 18px !important;
+            }
+
+            html.dark .story-actions .icon-act {
+                color: #8b949e !important;
+            }
+
+            html:not(.dark) .story-actions .icon-act {
+                color: #57606a !important;
+            }
+
+            html.dark .story-actions .icon-act.is-on,
+            html:not(.dark) .story-actions .icon-act.is-on {
+                color: #4493f8 !important;
+            }
+
+            .story-actions .brief-open-reader {
+                display: none !important;
+            }
+
+            /* The reader's byline without the source when it only repeats the line above the
+               headline (build 336): about half the stories (707 of 1,445) had "ESPN Soccer"
+               there and again in front of the date, or no author at all. */
+            #article-byline.byline-dup #article-author,
+            #article-byline.byline-dup #article-author + span {
+                display: none !important;
+            }
+        }
+
         /* Mobile Editorial Memo Flow */
         @media (max-width: 900px) {
             .brief-story-card {
@@ -5832,13 +5920,13 @@
                 box-shadow: none !important;
             }
 
-            /* Between two stories, a fifth less each side of the divider (build 332). */
+            /* Between two stories, a fifth less each side of the divider, twice (builds 332, 338). */
             .brief-story-card + .brief-story-card {
-                padding-top: 0.8rem !important;
+                padding-top: 0.64rem !important;
             }
 
             .brief-story-card:has(+ .brief-story-card) {
-                padding-bottom: 0.8rem !important;
+                padding-bottom: 0.64rem !important;
             }
 
             .brief-story-card:last-child {
@@ -7039,7 +7127,7 @@
                                          row, under the headline, for every story however it was opened.
                                          They used to sit in the top bar. Ids unchanged, so every handler,
                                          shortcut and state sync that targets them still works. -->
-                                    <div id="article-actions" class="article-actions">
+                                    <div id="article-actions" class="article-actions story-actions">
                                         <button id="unread-action-btn" type="button" onclick="toggleUnreadManual()" title="Mark Read"
                                             aria-label="Mark Read" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-dot-filled" /></svg></button>
                                         <button id="read-later-action-btn" type="button" onclick="handleReadLaterAction()" title="Read Later"
@@ -7385,6 +7473,29 @@
                             </div>
                             <input type="range" min="5" max="51" value="10" id="brief-stories-slider"
                                 class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
+                        </div>
+                        <!-- Story order and learning from what you open (build 339, on request) -->
+                        <div class="settings-row settings-row-stacked">
+                            <label class="settings-item-label" for="today-order-select">Story order</label>
+                            <select id="today-order-select" onchange="setTodayOrder(this.value)" class="settings-input">
+                                <option value="ranked">Most important first</option>
+                                <option value="chrono">Oldest first, no ranking</option>
+                                <option value="newest">Newest first, no ranking</option>
+                            </select>
+                            <p class="text-[12px] text-gray-400 mt-1">Most important first: Top Stories, then each folder's
+                                5 most important stories and the rest oldest first. Oldest first: every folder in time
+                                order, its oldest stories first, so nothing is skipped. Newest first: every folder's latest
+                                stories first. Neither has Top Stories.</p>
+                        </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Learn from what I open</label>
+                                <p class="text-[12px] text-gray-400 mt-1">Sources whose stories you open often move up, ones
+                                    you pass over move down; Memeorandum's ranking still counts. For Most important first.
+                                    <button type="button" class="settings-inline-link" onclick="resetReadingLog()">Forget what I've opened</button></p>
+                            </div>
+                            <button id="learn-opens-toggle" onclick="toggleLearnOpens()" class="toggle-switch"
+                                data-on="true" aria-label="Learn from what I open"></button>
                         </div>
                     </div>
                 </div>
@@ -7773,6 +7884,12 @@
         window._todayImages = localStorage.getItem('newsreader_today_images') !== '0';
         document.body.classList.toggle('today-no-images', !window._todayImages);
         document.getElementById('today-images-toggle')?.setAttribute('data-on', window._todayImages ? 'true' : 'false');
+        // Story order in Today (build 339, on request): 'ranked' = each folder's 5 most important
+        // first, then the rest oldest first, with Top Stories; 'chrono' = oldest first throughout,
+        // no ranking, no Top Stories. Learn from what I open: on unless switched off. Per device.
+        window._todayOrder = ['chrono', 'newest'].includes(localStorage.getItem('newsreader_today_order'))
+            ? localStorage.getItem('newsreader_today_order') : 'ranked';   // + 'newest': newest first, no ranking
+        window._learnOpens = localStorage.getItem('newsreader_learn_opens') !== '0';
         // "NEW SINCE YOUR LAST VISIT" (build 313, on request). The boundary is when you last
         // left the app (saved on every hide); a story is new when every outlet's copy of it
         // first arrived on this device after that. Moves on when you come back after more
@@ -9620,6 +9737,7 @@
         }
 
         function buildArticleCard(a) {
+            if (a.link) window._shownCardLinks.add(a.link);   // shown as a card (339)
             const selected = window.currentArticle?.id === a.id;
             const selCls = selected ? 'is-active-card' : '';
             const isBsky = a.feedUrl ? isBlueskyFeed(a.feedUrl) : false;
@@ -9654,7 +9772,7 @@
             const starIcon = isSaved ? '#icon-star-filled' : '#icon-star';
             const starColor = isSaved ? 'text-amber-500 dark:text-amber-400 is-saved' : 'text-gray-500 dark:text-gray-400';
             const actionsRowHtml = `
-                <div class="card-actions flex items-center gap-1.5 pt-1.5 mt-1" onclick="event.stopPropagation()">
+                <div class="card-actions phone-only flex items-center gap-1.5 pt-1.5 mt-1" onclick="event.stopPropagation()">
                     <button type="button" onclick="selectArticle('${saId}')" class="brief-action-btn text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors" title="Open in Reader" aria-label="Open in Reader">
                         <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
                     </button>
@@ -9666,6 +9784,18 @@
                         <svg class="brief-action-icon"><use href="#icon-external-link"/></svg>
                     </a>` : ''}
                 </div>`;
+            // The desktop's row (build 336): a Today card's and the reader's buttons. Read and
+            // Read Later are the right-click menu's own actions, which redraw the list.
+            const deskBtn = (on, onclick, label, icon, extra = '') =>
+                `<button type="button" class="icon-act${on ? ' is-on' : ''}${extra}" onclick="${onclick}" title="${label}" aria-label="${label}"><svg aria-hidden="true"><use href="#${icon}"/></svg></button>`;
+            const deskActionsHtml = `
+                <div class="story-actions desk-only mt-1" onclick="event.stopPropagation()">${
+                    deskBtn(a.unread, `window.toggleArticleUnread('${saId}')`, a.unread ? 'Mark Read' : 'Mark Unread', a.unread ? 'icon-dot-filled' : 'icon-dot-hollow')
+                    + deskBtn(a.readLater, `window.toggleArticleReadLater('${saId}')`, a.readLater ? 'Remove from Read Later' : 'Read Later', a.readLater ? 'icon-bookmark-filled' : 'icon-bookmark')
+                    + `<button type="button" class="icon-act brief-save-btn${isSaved ? ' is-on' : ''}" data-save-id="${saId}" data-save-link="${esc(a.link || '')}" onclick="window.toggleBriefStorySaved('${saId}', this)" title="${isSaved ? 'Unsave' : 'Save'}" aria-label="${isSaved ? 'Unsave' : 'Save'}"><svg aria-hidden="true"><use href="#${isSaved ? 'icon-star-filled' : 'icon-star'}"/></svg></button>`
+                    + (a.link && a.link !== '#' ? `<a class="icon-act" href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '')
+                    + deskBtn(false, `window.briefStoryAct('share', '${saId}', this)`, 'Share', 'icon-share')
+                }</div>`;
 
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
@@ -9682,6 +9812,7 @@
                     ${repostLine}
                     <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
                     ${actionsRowHtml}
+                    ${deskActionsHtml}
                 </div>
             </div>`;
         }
@@ -9972,7 +10103,93 @@
             };
             window.appDB.put('readArchive', record).catch(e =>
                 console.warn('archiveReadArticle:', e?.message));
+            window.logReading?.(article, false);   // passed over, unless it was opened (339)
         }
+
+        // LEARNING FROM WHAT YOU OPEN (build 339, on request: "Could my reading history - opening
+        // story in Reader view as indicator - be included in ranking decisions?"). Each story you
+        // deal with on this device is logged once, for 30 days: opened in the reader, or passed
+        // over (marked read without opening it). Only a story shown to you as a card counts, so a
+        // grouped copy marked along with its lead is not "passed over"; read marks arriving from
+        // another device never come through here. Per source, the share you open against your
+        // share overall moves its rank in Today (readingLiftMap -> buildStoryClusters' lift).
+        // Phone and desktop add up through the cloud: state/uiPrefs readingTally, one entry per
+        // device. Settings > Today > Learn from what I open switches it off; Forget clears it.
+        const READING_WINDOW_MS = 30 * 86400000;
+        window._readingLog = new Map();       // hashLink(link) -> [source, when, opened 0/1]
+        window._shownCardLinks = new Set();   // links shown as a card in this session
+        window._learnResetAt = 0;             // a Forget, from this or another device
+        window._cloudReadingTally = {};       // the devices' tallies, as the cloud had them
+        window._deviceId = (() => {
+            try {
+                let d = localStorage.getItem('newsreader_device_id');
+                if (!d) { d = Math.random().toString(36).slice(2, 10); localStorage.setItem('newsreader_device_id', d); }
+                return d;
+            } catch (e) { return 'device'; }
+        })();
+        let _readingSaveTimer = null;
+        function pruneReadingLog() {
+            const cut = Math.max(Date.now() - READING_WINDOW_MS, window._learnResetAt || 0);
+            for (const [k, v] of window._readingLog) if (v[1] < cut) window._readingLog.delete(k);
+        }
+        // Per source: [stories dealt with, of them opened], from this device's log.
+        function readingTally() {
+            const t = {};
+            for (const [, v] of window._readingLog) {
+                if (!v[0]) continue;
+                const e = t[v[0]] || (t[v[0]] = [0, 0]);
+                e[0]++; e[1] += v[2];
+            }
+            return t;
+        }
+        window.saveReadingLogSoon = function () {
+            clearTimeout(_readingSaveTimer);
+            _readingSaveTimer = setTimeout(() => {
+                pruneReadingLog();
+                window.appDB?.put('metadata', [...window._readingLog], 'readingLog').catch(() => { });
+                window.saveReadingTallyCloud?.(readingTally());
+            }, 5000);
+        };
+        window.loadReadingLog = async function () {
+            try {
+                const rows = await window.appDB.get('metadata', 'readingLog');
+                if (Array.isArray(rows)) rows.forEach(([k, v]) => { if (!window._readingLog.has(k)) window._readingLog.set(k, v); });
+                pruneReadingLog();
+            } catch (e) { console.warn('Reading log skipped:', e?.message); }
+        };
+        window.logReading = function (article, opened) {
+            if (!window._learnOpens || !article || !article.link || article.isBrief) return;
+            const k = window.hashLink(article.link);
+            const had = window._readingLog.get(k);
+            if (opened) {
+                if (had && had[2]) return;
+                window._readingLog.set(k, [article.source || '', Date.now(), 1]);
+            } else {
+                if (had || !window._shownCardLinks.has(article.link)) return;
+                window._readingLog.set(k, [article.source || '', Date.now(), 0]);
+            }
+            window.saveReadingLogSoon();
+        };
+        // Source -> how often you open its stories against how often you open stories at all,
+        // from all your devices: 0.5x to 2x, for sources with 10 or more stories dealt with.
+        window.readingLiftMap = function () {
+            if (!window._learnOpens) return null;
+            const sum = {};
+            const add = t => { for (const s in t) { const e = sum[s] || (sum[s] = [0, 0]); e[0] += t[s][0]; e[1] += t[s][1]; } };
+            add(readingTally());
+            const cut = Math.max(Date.now() - READING_WINDOW_MS, window._learnResetAt || 0);
+            const cloud = window._cloudReadingTally || {};
+            for (const dev in cloud) if (dev !== window._deviceId && cloud[dev] && cloud[dev].at >= cut) add(cloud[dev].t || {});
+            let n = 0, o = 0;
+            for (const s in sum) { n += sum[s][0]; o += sum[s][1]; }
+            if (!n || !o) return null;
+            const p0 = o / n, lift = new Map();
+            for (const s in sum) {
+                const [sn, so] = sum[s];
+                if (sn >= 10) lift.set(s, Math.min(2, Math.max(0.5, (so + 1) / (sn * p0 + 1))));
+            }
+            return lift.size ? lift : null;
+        };
 
         function getCategoryForArticle(a) {
             if (!a) return 'Uncategorized';
@@ -10371,6 +10588,7 @@
                 window.articles.forEach(a => { if (a.id === id) a.unread = false; });
                 window._readLinks.add(article.link);
                 archiveReadArticle(article);
+                window.logReading?.(article, true);   // opened in the reader (339)
                 syncStoryCopies(id, false);   // its grouped copies are read too (build 279)
                 saveReadState();
             }
@@ -10423,6 +10641,11 @@
             const authorEl = document.getElementById('article-author');
             const dateEl = document.getElementById('article-date');
             authorEl.textContent = article.isBrief ? (article.slot ? (article.slot.toUpperCase() + ' BRIEF') : 'BRIEF') : article.author;
+            // When the author only repeats the source above the headline, or there is none, the
+            // desktop's byline is just the date (build 336).
+            const _author = (article.author || '').trim().toLowerCase();
+            document.getElementById('article-byline')?.classList.toggle('byline-dup',
+                !article.isBrief && (!_author || _author === (article.source || '').trim().toLowerCase()));
             const _d = new Date(article.timestamp);
             const _datePart = _d.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric', year: 'numeric' });
             const _timePart = _d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -12787,14 +13010,20 @@
                 if (window.isMuted(a)) { mutedCount++; return window._showMuted; }
                 return true;
             });
-            const built = buildStoryClusters(pool, { limitPerCat: window._briefStoriesPerCat || 10 });
+            // Story order (Settings > Today, build 339): by importance - each folder's 5 most
+            // important first, then the rest oldest first, with Top Stories and what you open
+            // counted in - or oldest first throughout, with no ranking and no Top Stories.
+            const chrono = window._todayOrder === 'chrono' || window._todayOrder === 'newest';
+            const built = buildStoryClusters(pool, chrono
+                ? { limitPerCat: window._briefStoriesPerCat || 10, chronological: true, newestFirst: window._todayOrder === 'newest' }
+                : { limitPerCat: window._briefStoriesPerCat || 10, leadByImportance: 5, lift: window.readingLiftMap?.() || null });
             let sections = built.categorySections;
             let totalStories = built.totalStories;
 
             // Top Stories: strongest clusters across every folder (authority rank, then
             // multi-outlet consensus, then recency). Lifted out of their folder sections
             // so no story appears twice. Only worth it when there is enough to choose from.
-            if (sections.length > 1 && totalStories > window.TODAY_TOP_N * 2) {
+            if (!chrono && sections.length > 1 && totalStories > window.TODAY_TOP_N * 2) {
                 const all = [];
                 sections.forEach(cs => cs.stories.forEach(st => all.push(st)));
                 all.sort((x, y) =>
@@ -12837,7 +13066,8 @@
             if (totalStories === 0) {
                 body = body
                     .replace('No new articles were captured in this delivery window.', "You're all caught up.")
-                    .replace(/Feeds may not have updated between [^<]*\./, `No unread stories from the last ${window.TODAY_WINDOW_HOURS} hours.`);
+                    // The phone: no "last 24 hours" - a hint to pull for more instead (build 336, on request).
+                    .replace(/Feeds may not have updated between [^<]*\./, `<span class="desk-only">No unread stories from the last ${window.TODAY_WINDOW_HOURS} hours.</span><span class="phone-only">Pull down to refresh.</span>`);
             }
 
             return {
@@ -13031,6 +13261,10 @@
                         note = document.createElement('p');
                         note.className = 'brief-all-read-note';
                         note.textContent = "You're all caught up.";
+                        const hint = document.createElement('span');   // the phone's (build 336, on request)
+                        hint.className = 'brief-pull-hint phone-only';
+                        hint.textContent = 'Pull down to refresh.';
+                        note.appendChild(hint);
                         const first = root.querySelector('.brief-cat-section');
                         first.parentNode.insertBefore(note, first);
                     }
@@ -13516,7 +13750,10 @@
 
         // ===== BRIEF ENGINE =====
         // Groups any article pool into ranked, de-duplicated story clusters.
-        // opts.limitPerCat: max stories per section; opts.groupBy(a): section key (default: category folder).
+        // opts.limitPerCat: max stories per section; opts.groupBy(a): section key (default: category folder);
+        // opts.leadByImportance: show that many most important first, then the rest oldest first;
+        // opts.lift: Map source -> 0.5..2 from what you open; opts.chronological: no ranking at all,
+        // oldest first, or newest first with opts.newestFirst.
         // Each story carries alsoReportedBy (other outlet names) and coverage (all clustered articles).
         // ACROSS FOLDERS (build 308, on request): the whole pool is clustered at once - it was
         // per folder, so one event reported in Headlines and Business showed twice and never
@@ -13599,6 +13836,9 @@
                     if (r < leadRank || (r === leadRank && dates[k] > dates[lead])) { lead = k; leadRank = r; }
                     if (dates[k] > leadDate) leadDate = dates[k];
                 }
+                // With no ranking (Story order: oldest first, build 339) the lead is the outlet
+                // that published first, and its time is the card's.
+                if (opts.chronological) { lead = idx.reduce((m, k) => (dates[k] < dates[m] ? k : m), idx[0]); leadRank = 9999; }
                 clusters.push({
                     leadArticle: items[lead],
                     leadRank,
@@ -13615,7 +13855,14 @@
             const grouped = {};
             clusters.forEach(cl => {
                 const extraOutlets = Math.max(0, cl.sources.size - 1);
-                cl.effectiveRank = Math.max(1, cl.leadRank - (extraOutlets * 3));
+                // What you open (build 339): the lift for the lead's source (0.5x-2x your overall
+                // open share) divides its rank, so a source you open twice as often counts as
+                // ranked twice as high. One Memeorandum does not rank starts from 150 (below most
+                // it does) once there is enough of your reading to judge it.
+                const lift = opts.lift ? opts.lift.get(cl.leadArticle.source) : undefined;
+                cl.ranked = cl.leadRank < 9999 || !!lift;
+                const base = cl.leadRank < 9999 ? cl.leadRank : (lift ? 150 : 9999);
+                cl.effectiveRank = Math.max(1, (lift ? base / lift : base) - (extraOutlets * 3));
                 cl.sourceCount = cl.sources.size;
                 const cat = catOf(cl.leadArticle);
                 if (!grouped[cat]) grouped[cat] = [];
@@ -13628,14 +13875,20 @@
                 if (!orderedCats.includes(c) && grouped[c]?.length > 0) orderedCats.push(c);
             });
 
-            orderedCats.forEach(cat => grouped[cat].sort((a, b) => {
-                // Lowest rank number = highest authority
-                if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
-                // Multi-source consensus tiebreaker
-                if (b.sourceCount !== a.sourceCount) return b.sourceCount - a.sourceCount;
-                // Recency tiebreaker
-                return b.leadDate - a.leadDate;
-            }));
+            // The time each card shows: its lead's.
+            const shownAt = cl => cl.leadArticle._ts || Date.parse(cl.leadArticle.timestamp) || 0;
+            orderedCats.forEach(cat => grouped[cat].sort(opts.chronological
+                ? (opts.newestFirst
+                    ? (a, b) => shownAt(b) - shownAt(a)    // newest first, no ranking (339)
+                    : (a, b) => shownAt(a) - shownAt(b))   // oldest first, no ranking (339)
+                : (a, b) => {
+                    // Lowest rank number = highest authority
+                    if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
+                    // Multi-source consensus tiebreaker
+                    if (b.sourceCount !== a.sourceCount) return b.sourceCount - a.sourceCount;
+                    // Recency tiebreaker
+                    return b.leadDate - a.leadDate;
+                }));
 
             // skip: lead ids shown elsewhere already (Today's Top Stories), so a folder fills its
             // slots from the stories after them; reselect() reruns this (build 329).
@@ -13655,20 +13908,43 @@
                     const selectedClusters = [];
                     const remainingClusters = [];
 
-                    for (const cl of catClusters) {
-                        const src = cl.leadArticle.source || 'Unknown';
-                        const curCount = sourceCounts.get(src) || 0;
-                        if (selectedClusters.length < limitPerCat && curCount < perSourceCap) {
-                            sourceCounts.set(src, curCount + 1);
-                            selectedClusters.push(cl);
-                        } else {
-                            remainingClusters.push(cl);
+                    if (opts.chronological) {
+                        // No ranking (339): the folder's first stories in that order, as many as it
+                        // shows. Oldest first reads like a queue, the next coming in as these are
+                        // read; newest first shows the latest, and older ones it has no room for wait.
+                        selectedClusters.push(...catClusters.slice(0, limitPerCat));
+                    } else {
+                        for (const cl of catClusters) {
+                            const src = cl.leadArticle.source || 'Unknown';
+                            const curCount = sourceCounts.get(src) || 0;
+                            if (selectedClusters.length < limitPerCat && curCount < perSourceCap) {
+                                sourceCounts.set(src, curCount + 1);
+                                selectedClusters.push(cl);
+                            } else {
+                                remainingClusters.push(cl);
+                            }
+                        }
+
+                        // Pass 2: fill any remaining slots up to limitPerCat
+                        while (selectedClusters.length < limitPerCat && remainingClusters.length > 0) {
+                            selectedClusters.push(remainingClusters.shift());
                         }
                     }
 
-                    // Pass 2: fill any remaining slots up to limitPerCat
-                    while (selectedClusters.length < limitPerCat && remainingClusters.length > 0) {
-                        selectedClusters.push(remainingClusters.shift());
+                    // ORDER IN A FOLDER (build 339, on request): which stories are chosen does not
+                    // change (the most important, as above). They are shown with the folder's N
+                    // most important first, whatever feed they are from, and then all the rest
+                    // oldest first, by the time each card shows (its lead's).
+                    if (opts.leadByImportance) {
+                        const byImportance = (a, b) => (a.effectiveRank - b.effectiveRank)
+                            || (b.sourceCount - a.sourceCount) || (b.leadDate - a.leadDate);
+                        const ranked = selectedClusters.slice().sort(byImportance);
+                        // A folder made only of feeds with no importance ranking (Memeorandum's,
+                        // or yet from your reading) has no "most important": all of it oldest
+                        // first (on request; the tie had given its five newest the lead).
+                        const n = catClusters.every(cl => !cl.ranked) ? 0 : opts.leadByImportance;
+                        selectedClusters.splice(0, selectedClusters.length,
+                            ...ranked.slice(0, n), ...ranked.slice(n).sort((a, b) => shownAt(a) - shownAt(b)));
                     }
 
                     // Build final selected story objects with alsoReportedBy metadata
@@ -13839,10 +14115,11 @@
             const link = row.querySelector('.brief-source-link, a[href]')?.getAttribute('href')
                 || row.querySelector('[data-save-link]')?.getAttribute('data-save-link')
                 || window.briefStoryArticle(saId)?.link || '';
+            if (link) window._shownCardLinks.add(link);   // shown as a card (339)
             const j = escJs(saId);
             const b = (cls, label, icon, onclick) =>
                 `<button type="button" class="icon-act ${cls}" onclick="${onclick}" title="${label}" aria-label="${label}"><svg aria-hidden="true"><use href="#${icon}"/></svg></button>`;
-            row.className = 'brief-story-actions';
+            row.className = 'brief-story-actions story-actions';   // story-actions: the desktop's one row (336)
             row.innerHTML =
                 b('brief-act-read', 'Mark Read', 'icon-dot-filled', `window.briefStoryAct('read', '${j}', this)`) +
                 b('brief-act-later', 'Read Later', 'icon-bookmark', `window.briefStoryAct('later', '${j}', this)`) +
@@ -14091,6 +14368,29 @@
             }
         };
 
+        // Story order and learning from what you open (build 339); Today on screen follows at once.
+        window.setTodayOrder = (v) => {
+            window._todayOrder = (v === 'chrono' || v === 'newest') ? v : 'ranked';
+            try { localStorage.setItem('newsreader_today_order', window._todayOrder); } catch (e) { }
+            rebuildTodayInPlace(false);
+        };
+        window.toggleLearnOpens = () => {
+            window._learnOpens = !window._learnOpens;
+            try { localStorage.setItem('newsreader_learn_opens', window._learnOpens ? '1' : '0'); } catch (e) { }
+            document.getElementById('learn-opens-toggle')?.setAttribute('data-on', window._learnOpens ? 'true' : 'false');
+            rebuildTodayInPlace(false);
+        };
+        window.resetReadingLog = () => {
+            if (!confirm("Forget which stories you have opened? Today goes back to Memeorandum's ranking alone, on all your devices.")) return;
+            window._readingLog.clear();
+            window._learnResetAt = Date.now();
+            window._cloudReadingTally = {};
+            window.appDB?.put('metadata', [], 'readingLog').catch(() => { });
+            window.resetReadingCloud?.(window._learnResetAt);
+            window.showToast?.('Forgotten');
+            rebuildTodayInPlace(false);
+        };
+
         window.toggleTodayImages = () => {
             window._todayImages = !window._todayImages;
             try { localStorage.setItem('newsreader_today_images', window._todayImages ? '1' : '0'); } catch (e) { }
@@ -14198,6 +14498,9 @@
                     const valEl = document.getElementById('brief-stories-val');
                     if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
                 }
+                const orderSel = document.getElementById('today-order-select');
+                if (orderSel) orderSel.value = window._todayOrder;
+                document.getElementById('learn-opens-toggle')?.setAttribute('data-on', window._learnOpens ? 'true' : 'false');
                 window.renderMuteChips?.();
                 renderLocalFeedList();   // the feed manager, with health as of now
             }
@@ -16303,7 +16606,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 335;
+        window.APP_BUILD = 339;
 
         (async function initApp() {
             try {
@@ -16359,7 +16662,8 @@
                     await Promise.allSettled([
                         restoreLocalFeeds(),
                         restoreReadLaterState(),
-                        restoreCategoryOrder()
+                        restoreCategoryOrder(),
+                        window.loadReadingLog()   // what you have opened (339)
                     ]);
 
                     window._readLinks = new Set(await getStoredReadLinks());
@@ -16907,6 +17211,14 @@
             getDoc(uiRef).then(snap => {
                 if (snap.exists()) {
                     const data = snap.data();
+                    // The devices' reading tallies, and a Forget from any of them (build 339).
+                    window._cloudReadingTally = data.readingTally || {};
+                    if (data.learnResetAt && data.learnResetAt > (window._learnResetAt || 0)) {
+                        window._learnResetAt = data.learnResetAt;
+                        const before = window._readingLog.size;
+                        for (const [k, v] of window._readingLog) if (v[1] < data.learnResetAt) window._readingLog.delete(k);
+                        if (window._readingLog.size !== before) window.saveReadingLogSoon?.();
+                    }
                     if (data.paneWidth) {
                         const tp = document.getElementById('timeline-pane');
                         if (tp) {
@@ -17020,6 +17332,23 @@
                         updatedAt: new Date().toISOString()
                     }, { merge: true });
                 } catch (e) { console.warn('Cloud UI prefs save failed:', e); }
+            };
+
+            // This device's reading tally (build 339): per source [dealt with, opened], last 30 days.
+            window.saveReadingTallyCloud = async (tally) => {
+                if (!userId) return;
+                try {
+                    const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
+                    await setDoc(uiRef, { readingTally: { [window._deviceId]: { at: Date.now(), t: tally } } }, { merge: true });
+                } catch (e) { console.warn('Cloud reading tally save failed:', e); }
+            };
+            // Forget: every device drops what it logged before this moment when it next loads.
+            window.resetReadingCloud = async (at) => {
+                if (!userId) return;
+                try {
+                    const uiRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'state', 'uiPrefs');
+                    await setDoc(uiRef, { learnResetAt: at, readingTally: deleteField() }, { merge: true });
+                } catch (e) { console.warn('Cloud reading reset failed:', e); }
             };
         }
 
@@ -17204,7 +17533,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v335';
+const CACHE_NAME = 'rss-reader-v339';
 const APP_SHELL = [
     '/',
     'index.html'
