@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 347)  
+**Version:** October 2026 (build 348)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -43,7 +43,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Phone tab bar | A glass pill with **Today** and **Following**, plus a separate **Search** button. The Today tab carries the unread badge (99+ cap). The selected tab shows a filled glyph. |
 | Phone header | Today and Following share one header: the app logo, a title (Today: the date, e.g. "Thu, Oct 8"; Following: "Following") with an 11px status line under it ("Updated just now • 3 new"), and 40px icon buttons at the right (Today: Listen; Following: edit feeds, add feed, settings). Logos sit 12px under the iPhone's clock strip on both. |
 | Phone reader | Opens over Today or a list. No top bar; the Today tab returns to Today at the story's place. Swipes move between stories. The tab bar slides away while a story scrolls down and returns on scroll up. |
-| Desktop layout | Three panes: sidebar (Following), a middle column (Today or a list, resizable, width synced) and the reader. Today stays in the middle column while a story is open beside it. |
+| Desktop layout | Three panes: sidebar (Following), a middle column (Today or a list, 440px by default, resizable, width synced) and the reader. Today stays in the middle column while a story is open beside it. |
 | Desktop full screen | Double-click the reader's top bar: the story alone. Arrow keys move between stories, Up/Down scroll, Esc leaves. |
 | Side margins (phone) | 14px everywhere (≈16pt at 115% zoom, the iOS layout margin). |
 
@@ -59,7 +59,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Learning from what you open | Opening a story in the reader counts as opened. Marking a story read without opening it counts as passed over, if it was shown to you as a card. Grouped copies taken along don't count, nor do read marks from another device. Stored per device for 30 days, with tallies shared through the cloud. Settings › Today › Learn from what I open (on by default), with Forget what I've opened (all devices). Changes show the next time Today is built. |
 | Story clustering | Articles about the same story from several outlets become one card, led by the most authoritative outlet (with no ranking, the first to publish), with "Also from …". |
 | Story card | Source name (as the feed writes it, full width), time, headline (medium weight, 0.95 × Article List title size), summary (Article List preview size, line height and lines), a 72px thumbnail beside the text, and a "…" at the end of the source line (phone; desktop: an action row shown on hover). Section headings are Title Size × 1.25 (22px by default), in the headline colour, with the folder icon in the accent. The first Top Story with a large enough picture gets a 16:9 hero. |
-| Folder pills (phone) | A row of folder pills under the header jumps to a section. The desktop has none: the sidebar's folders navigate. |
+| Folder pills (phone) | A row of folder pills under the header jumps to a section. They show the folder's name only; the section heading has the count. The desktop has none: the sidebar's folders navigate. |
 | Mark read | A story leaves Today once read. "Mark N read" (an outlined grey pill, on the right) at the end of each section marks the stories still showing there (and their grouped copies) at the tap. The next section slides up and a floating Undo bar appears. "Mark All Read in Folders" sits at the very end, centred: the same pill shape, size and spacing, filled in the logo's blue (grey "All Folders Read" once everything is read). |
 | New stories | After a refresh, new stories never appear under the reader. The status line counts them ("3 new"), and a "N new stories" pill (the logo's blue) rebuilds Today at its top when tapped. When Today has no unread story showing (all caught up), it shows them at once instead: after a refresh, and on coming back from a story (`showNewTodayIfBlank`). |
 | Refresh | Pull down on Today (phone); the header refresh button (desktop); auto-refresh in the background. |
@@ -93,7 +93,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 
 | Requirement | Detail |
 |---|---|
-| Header | Source (logo + name; the logo stays level with the first line when the name wraps), headline, then author and date. The desktop leaves out the author when it only repeats the source. |
+| Header | One source line: logo, name and time ("The Verge · Oct 10, 8:00 AM"; the logo stays level with the first line when the name wraps). Then the headline (Article Reader > Title Size, 1.5 by default; weight 500; line spacing 0.84 × Line Height), then the author only when it isn't the source. |
 | Full content | Short feed excerpts trigger a full-article fetch through the proxy chain. |
 | Sanitising | All article HTML is sanitised with DOMPurify before it is shown. |
 | Media | Image lightbox (pinch or double-tap to zoom); tiny and broken images hidden; responsive embeds; an inline audio player for podcast items. |
@@ -106,7 +106,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Desktop: list cards, Today cards, reader | One row everywhere: **Read · Read Later · Save · Open original · Share**. Icon buttons with tooltips, 32px with 18px icons, 4px apart, the first icon on the text edge, grey off and blue on. |
 | Phone: Today cards | No row. The "…" on the source line, or a long-press on the card, opens a menu: **Mark as Read · Read Later · Save · Share… · Open Original** (labels follow the story's state). It is the lists' context menu; its items press the card's hidden buttons. Tapping the card opens the story. |
 | Desktop: Today column | The row above, shown on hover, keyboard focus or the open story; its space stays reserved, so nothing moves. |
-| Phone: reader | Read · Read Later · Save · Open original · Listen · Share |
+| Phone: reader | **Save · Listen · Share** and a "…" for **Mark as Read / Unread · Read Later · Open Original** (the same menu as Today's, pressing the row's hidden buttons) |
 | Phone: list cards | Open in Reader · Save · Open original (swipes handle read and Read Later) |
 
 ### 3.7 Search
@@ -144,7 +144,7 @@ Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil). The
 | (top) | App Zoom (per device) |
 | Following | Folder Size (also the sidebar's feed names), Row Spacing |
 | Article List | Title Size (lists, Today's stories a little smaller, and Today's section headings at 1.25×), Preview Text Size (default 0.9), Line Height, Source Name Size (lists, Today, the reader's source line; default 0.8), Preview Lines, Social Preview Lines (Bluesky/Mastodon) |
-| Article Reader | Title Size (stories, and Today's heading on a computer), Body Text Size, Line Height, Author & Date Size |
+| Article Reader | Title Size (stories, and Today's heading on a computer; default 1.5), Body Text Size, Line Height, Author & Date Size |
 | Reset text sizes to defaults | Puts every size and spacing back to its default. Theme, font, sort order, auto-refresh, de-duplicate, history window and app zoom are kept. |
 
 Text sizes are saved per device (phone and desktop separately), except Folder Size, Row Spacing and Source Name Size, which are shared.

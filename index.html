@@ -228,10 +228,14 @@
             font-weight: 500 !important;
         }
 
-        /* Global line height for article content and list */
-        #article-body,
-        #article-title {
+        /* Global line height for article content and list. The headline follows it, tightened for a
+           headline's size (1.5 becomes 1.26). */
+        #article-body {
             line-height: var(--line-height) !important;
+        }
+
+        #article-title {
+            line-height: calc(var(--line-height) * 0.84) !important;
         }
 
         /* Byline spacing in px, so App Zoom's rem scaling can't squeeze it. The title's 12px
@@ -321,9 +325,28 @@
             color: #e3e9f0;
         }
 
-        #article-author,
-        #article-date {
+        #article-author {
             font-size: var(--article-meta-size) !important;
+        }
+
+        /* The time on the story's source line: the source's size, regular weight, secondary colour. */
+        .article-meta-time {
+            font-weight: 400;
+            color: #8b949e;
+            white-space: nowrap;
+        }
+
+        html:not(.dark) .article-meta-time {
+            color: #57606a;
+        }
+
+        .article-meta-time:not(:empty)::before {
+            content: '·';
+            margin-right: 6px;
+        }
+
+        #article-byline.byline-dup #article-author {
+            display: none !important;
         }
 
         .line-clamp-custom {
@@ -436,8 +459,8 @@
             --list-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --view-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --mob-feed-name-size: 0.8em;
-            --mob-article-title-size: 1.2em;
-            --article-title-size: 1.2em;
+            --mob-article-title-size: 1.5em;
+            --article-title-size: 1.5em;
             --mob-body-size: 1.0em;
             --mob-author-size: 1.1em;
             --list-title-em-size: 1.1em;
@@ -875,9 +898,16 @@
                 font-size: var(--mob-article-title-size) !important;
             }
 
-            #article-author,
-            #article-date {
+            #article-author {
                 font-size: var(--mob-author-size) !important;
+            }
+
+            /* The story's buttons on the phone: Save, Listen, Share and a "..." for Mark as Read, Read
+               Later and Open Original (showStoryMenu), which presses these hidden buttons. */
+            #article-actions #unread-action-btn,
+            #article-actions #read-later-action-btn,
+            #article-actions #open-original-btn {
+                display: none !important;
             }
 
             #article-body {
@@ -893,9 +923,12 @@
                 font-size: var(--mob-list-preview-size) !important;
             }
 
-            #article-body,
-            #article-title {
+            #article-body {
                 line-height: var(--mob-line-height) !important;
+            }
+
+            #article-title {
+                line-height: calc(var(--mob-line-height) * 0.84) !important;
             }
 
             /* On the phone the Line Height slider writes --mob-line-height, read here. .article-content
@@ -3442,12 +3475,6 @@
                 display: none !important;
             }
 
-            /* The reader's byline drops the source when it only repeats the line above the headline (about
-               half the stories). */
-            #article-byline.byline-dup #article-author,
-            #article-byline.byline-dup #article-author + span {
-                display: none !important;
-            }
         }
 
         /* Mobile Editorial Memo Flow */
@@ -3609,6 +3636,10 @@
         .brief-more-btn svg {
             width: 20px;
             height: 20px;
+            transform: rotate(90deg);
+        }
+
+        #story-more-btn svg {
             transform: rotate(90deg);
         }
 
@@ -4629,7 +4660,7 @@
         <!-- PANE 2: Timeline -->
         <section id="timeline-pane"
             class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition relative"
-            style="width: 336px;">
+            style="width: 440px;">
             <div id="timeline-header"
                 class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
@@ -4783,14 +4814,14 @@
                                     <img id="article-favicon" src="" class="rounded-sm hidden"
                                         style="width:1em;height:1em;object-fit:contain;vertical-align:middle">
                                     <span id="article-source-label"></span>
+                                    <span id="article-meta-time" class="article-meta-time"></span>
                                 </p>
                                 <h1 id="article-title" onclick="openExternal()"
                                     class="font-extrabold leading-tight mb-6 dark:text-white cursor-pointer hover:opacity-80 transition-opacity"
-                                    style="font-size: 1.7em;"></h1>
+                                    style="font-size: 1.5em;"></h1>
                                 <div id="article-byline"
                                     class="flex items-center text-xs text-gray-500 mb-12 border-b border-gray-100 dark:border-gray-800">
-                                    <span id="article-author" class="font-semibold"></span><span
-                                        class="mx-2">•</span><span id="article-date"></span>
+                                    <span id="article-author" class="font-semibold"></span>
                                     <!-- The reader's action row, under the headline, for every story however it was opened. -->
                                     <div id="article-actions" class="article-actions story-actions">
                                         <button id="unread-action-btn" type="button" onclick="toggleUnreadManual()" title="Mark Read"
@@ -4805,6 +4836,8 @@
                                             aria-label="Listen" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-headphones" /></svg></button>
                                         <button id="share-btn" type="button" onclick="shareArticle()" title="Share"
                                             aria-label="Share" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-share" /></svg></button>
+                                        <button id="story-more-btn" type="button" onclick="event.stopPropagation(); window.showStoryMenu(this)" title="More"
+                                            aria-label="More actions" class="icon-act phone-only"><svg aria-hidden="true"><use href="#icon-more" /></svg></button>
                                     </div>
                                 </div>
                             </div>
@@ -5291,9 +5324,9 @@
                                     <span class="settings-item-label-sm">Title Size</span>
                                     <p class="settings-hint">Stories, and Today on a computer</p>
                                 </div>
-                                <span class="settings-value" id="shared-article-title-val">1.2em</span>
+                                <span class="settings-value" id="shared-article-title-val">1.5em</span>
                             </div>
-                            <input type="range" min="4" max="22" value="12" id="shared-article-title-slider"
+                            <input type="range" min="4" max="22" value="15" id="shared-article-title-slider"
                                 class="settings-range" oninput="updateSharedSize('articleTitle', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
@@ -5579,6 +5612,17 @@
                     localStorage.setItem('newsreader_prefs', JSON.stringify(p));
                 }
                 localStorage.setItem('newsreader_type_ramp', '1');
+            }
+        } catch (e) { }
+        // The same for Article Reader > Title Size: 1.5 by default (was 1.2).
+        try {
+            if (!localStorage.getItem('newsreader_story_title')) {
+                const p = JSON.parse(localStorage.getItem('newsreader_prefs') || 'null');
+                if (p) {
+                    ['sharedArticleTitleDesktop', 'sharedArticleTitleMobile'].forEach(k => { if (String(p[k]) === '12') p[k] = '15'; });
+                    localStorage.setItem('newsreader_prefs', JSON.stringify(p));
+                }
+                localStorage.setItem('newsreader_story_title', '1');
             }
         } catch (e) { }
         window._todayRank = localStorage.getItem('newsreader_today_rank') !== '0';
@@ -6045,10 +6089,11 @@
             }
         });
 
-        // Restore timeline pane width
+        // Restore timeline pane width. A stored 336px is the old default (every cloud save stores a
+        // width), not a choice, so it becomes the 440px default.
+        window.paneWidthOrDefault = w => (!w || w === '336px') ? '440px' : w;
         try {
-            const w = localStorage.getItem('newsreader_pane_width');
-            if (w) timelinePane.style.width = w;
+            timelinePane.style.width = window.paneWidthOrDefault(localStorage.getItem('newsreader_pane_width'));
         } catch (e) { console.warn('Storage error:', e.message); }
 
         // --- FETCH & ARTICLE LOGIC ---
@@ -8016,9 +8061,7 @@
                             const pill = container.querySelector(`.brief-jump-pill[href="#brief-cat-${oldSlug}"]`);
                             if (pill) {
                                 pill.href = `#brief-cat-${newSlug}`;
-                                const countMatch = pill.textContent.match(/\((\d+)\)/);
-                                const countStr = countMatch ? ` (${countMatch[1]})` : '';
-                                pill.textContent = `${realCat}${countStr}`;
+                                pill.textContent = realCat;
                                 pill.onclick = (e) => {
                                     e.preventDefault();
                                     document.getElementById(`brief-cat-${newSlug}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -8209,26 +8252,23 @@
                 titleEl.style.display = '';
                 titleEl.textContent = article.title;
             }
-            titleEl.style.fontSize = window._savedArticleTitleSize || '1.2em';
+            titleEl.style.fontSize = window._savedArticleTitleSize || '1.5em';
             const authorEl = document.getElementById('article-author');
-            const dateEl = document.getElementById('article-date');
             authorEl.textContent = article.isBrief ? (article.slot ? (article.slot.toUpperCase() + ' BRIEF') : 'BRIEF') : article.author;
-            // When the author only repeats the source above the headline, or there is none, the desktop's
-            // byline is just the date.
+            // The source line above the headline carries the source and the time ("NPR News · Oct 10,
+            // 5:00 AM"); the byline shows only an author who isn't the source.
             const _author = (article.author || '').trim().toLowerCase();
             document.getElementById('article-byline')?.classList.toggle('byline-dup',
                 !article.isBrief && (!_author || _author === (article.source || '').trim().toLowerCase()));
             const _d = new Date(article.timestamp);
-            const _datePart = _d.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric', year: 'numeric' });
-            const _timePart = _d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true });
-            dateEl.textContent = article.isBrief ? `${_datePart} · ${_timePart} ET` : `${_datePart} · ${_timePart}`;
-            if (isBskyArticle) {
-                authorEl.style.display = 'none';
-                authorEl.nextElementSibling.style.display = 'none';
-            } else {
-                authorEl.style.display = '';
-                authorEl.nextElementSibling.style.display = '';
+            const metaTimeEl = document.getElementById('article-meta-time');
+            if (metaTimeEl) {
+                const sameYear = _d.getFullYear() === new Date().getFullYear();
+                const day = _d.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+                const time = _d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true });
+                metaTimeEl.textContent = isNaN(_d.getTime()) ? '' : `${day}, ${time}`;
             }
+            authorEl.style.display = isBskyArticle ? 'none' : '';
             const bodyEl = document.getElementById('article-body');
             // Today stays alive while a story is open: leaving detaches its page as it is and returning
             // puts it back at the same scroll, so nothing reloads or moves; the story read just drops out.
@@ -10512,11 +10552,7 @@
                     const countEl = sec.querySelector('.brief-cat-count');
                     if (countEl) countEl.textContent = `${shown} ${shown === 1 ? 'story' : 'stories'}`;
                     const pill = sec.id ? root.querySelector(`.brief-jump-pill[href="#${CSS.escape(sec.id)}"]`) : null;
-                    if (pill) {
-                        if (!pill.dataset.name) pill.dataset.name = pill.textContent.replace(/\s*\(\d+\)\s*$/, '').trim();
-                        pill.textContent = `${pill.dataset.name} (${shown})`;
-                        settle(pill, 'brief-gone', shown === 0);
-                    }
+                    if (pill) settle(pill, 'brief-gone', shown === 0);
                     const end = sec.querySelector('.brief-cat-end');
                     if (end) {
                         settle(end, 'is-empty', unread === 0);
@@ -11244,15 +11280,21 @@
                 day: 'numeric',
                 year: 'numeric'
             });
-            // The heading's date is short ("Thu, Oct 8, 2026") and in one piece, so a large Title Size moves
-            // the whole date down, never the year alone. The phone leaves out the year; Listen says the long one.
+            // The heading is the date in one piece, so a large Title Size moves it down whole: short on the
+            // phone ("Sat, Oct 10"), long on the desktop ("Saturday, October 10"), where the column header
+            // already says Today. Listen says the date its own way.
             const headingDay = triggerDate.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric'
             });
-            const headingYear = triggerDate.toLocaleDateString('en-US', { timeZone: 'America/New_York', year: 'numeric' });
+            const headingLong = triggerDate.toLocaleDateString('en-US', {
+                timeZone: 'America/New_York',
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric'
+            });
             const shortDateFormatted = triggerDate.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
                 month: 'short',
@@ -11267,13 +11309,13 @@
                         <!-- No "LIVE BRIEF • Unread · last 24 hours" row above the status line any
                              more (build 331, on request: "I don't need it at all"). -->
                         <!-- On the phone, Following's header: logo, "Thu, Oct 8" over the status, Listen at
-                             the right (build 335). The desktop shows the status, "Today - Thu, Oct 8, 2026"
-                             and the details line, as before; the logo and the button are the phone's. -->
+                             the right (build 335). The desktop shows the status, "Saturday, October 10" and
+                             the details line; the logo and the button are the phone's. -->
                         <div class="app-header-row">
                             <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#icon-rss"/></svg></span>
                             <div class="app-header-text">
                                 <div class="brief-header-status app-subtitle"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
-                                <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white mb-2 leading-tight"><span class="desk-only">${esc(slotDef.name)} — </span><span class="whitespace-nowrap">${esc(headingDay)}<span class="desk-only">, ${esc(headingYear)}</span></span></h2>
+                                <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white mb-2 leading-tight"><span class="whitespace-nowrap"><span class="phone-only">${esc(headingDay)}</span><span class="desk-only">${esc(headingLong)}</span></span></h2>
                             </div>
                             ${slotDef.headerAction || ''}
                         </div>
@@ -11292,7 +11334,7 @@
             if (categorySections.length > 0) {
                 html += `<div class="brief-jump-bar">`;
                 categorySections.forEach(cs => {
-                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill" onclick="event.preventDefault(); window.briefJumpTo(this);">${esc(cs.name)} (${cs.stories.length})</a>`;
+                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill" onclick="event.preventDefault(); window.briefJumpTo(this);">${esc(cs.name)}</a>`;
                 });
                 html += `</div>`;
             }
@@ -11387,23 +11429,20 @@
                 b('brief-act-share', 'Share', 'icon-share', `window.briefStoryAct('share', '${j}', this)`);   // last (build 308)
         };
 
-        // A Today story's menu (the "..." or a long-press at x, y): the lists' context menu, whose items
-        // press the card's own hidden buttons, so state, toasts and calm Today work as with the row.
-        window.showBriefStoryMenu = function (from, x, y) {
-            const card = from.closest('.brief-story-card');
+        // An action menu (the lists' context menu) whose items press buttons on the page, so each action
+        // keeps its own handler, state and toasts. entries: [label, element] or '-'; at x, y for a
+        // long-press, else under `from`.
+        window.showActionMenu = function (from, entries, x, y) {
             const menu = document.getElementById('article-context-menu');
-            if (!card || !menu) return;
-            const btn = sel => card.querySelector('.brief-story-actions ' + sel);
-            const on = b => !!b && (b.classList.contains('is-on') || b.classList.contains('is-saved'));
+            if (!menu) return;
             const cls = 'w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700';
-            const item = (sel, label) => btn(sel) ? `<button type="button" class="${cls}" onclick="window.briefMenuAct('${sel}')">${label}</button>` : '';
-            window._briefMenuCard = card;
-            menu.innerHTML = item('.brief-act-read', on(btn('.brief-act-read')) ? 'Mark as Read' : 'Mark as Unread')
-                + item('.brief-act-later', on(btn('.brief-act-later')) ? 'Remove from Read Later' : 'Read Later')
-                + item('.brief-save-btn', on(btn('.brief-save-btn')) ? 'Unsave' : 'Save')
-                + '<div class="my-1 border-t border-gray-200 dark:border-gray-700"></div>'
-                + item('.brief-act-share', 'Share…')
-                + item('.brief-source-link', 'Open Original');
+            const els = window._actionMenuEls = [];
+            menu.innerHTML = entries.map(e => {
+                if (e === '-') return '<div class="my-1 border-t border-gray-200 dark:border-gray-700"></div>';
+                if (!e || !e[1]) return '';
+                els.push(e[1]);
+                return `<button type="button" class="${cls}" onclick="window.actionMenuAct(${els.length - 1})">${e[0]}</button>`;
+            }).join('');
             menu.classList.remove('hidden');
             const w = menu.offsetWidth, h = menu.offsetHeight;
             const r = from.getBoundingClientRect();
@@ -11415,11 +11454,40 @@
             menu.style.top = `${Math.max(8, top)}px`;
         };
 
-        window.briefMenuAct = function (sel) {
-            const card = window._briefMenuCard;
-            window._briefMenuCard = null;
+        window.actionMenuAct = function (i) {
+            const el = window._actionMenuEls?.[i];
+            window._actionMenuEls = null;
             hideContextMenu();
-            card?.querySelector('.brief-story-actions ' + sel)?.click();
+            el?.click();
+        };
+
+        const _isOn = b => !!b && (b.classList.contains('is-on') || b.classList.contains('is-saved'));
+
+        // A Today story's menu (its "..." or a long-press): the card's own buttons, hidden on the phone.
+        window.showBriefStoryMenu = function (from, x, y) {
+            const card = from.closest('.brief-story-card');
+            if (!card) return;
+            const btn = sel => card.querySelector('.brief-story-actions ' + sel);
+            const read = btn('.brief-act-read'), later = btn('.brief-act-later'), save = btn('.brief-save-btn');
+            window.showActionMenu(from, [
+                read && [_isOn(read) ? 'Mark as Read' : 'Mark as Unread', read],
+                later && [_isOn(later) ? 'Remove from Read Later' : 'Read Later', later],
+                save && [_isOn(save) ? 'Unsave' : 'Save', save],
+                '-',
+                ['Share…', btn('.brief-act-share')],
+                ['Open Original', btn('.brief-source-link')],
+            ], x, y);
+        };
+
+        // The story screen's "..." (phone): the row's buttons it hides there, when they apply.
+        window.showStoryMenu = function (from) {
+            const b = id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') ? e : null; };
+            const read = b('unread-action-btn'), later = b('read-later-action-btn');
+            window.showActionMenu(from, [
+                read && [_isOn(read) ? 'Mark as Read' : 'Mark as Unread', read],
+                later && [_isOn(later) ? 'Remove from Read Later' : 'Read Later', later],
+                ['Open Original', b('open-original-btn')],
+            ]);
         };
 
         window.updateBriefStoryActionButtons = function (root) {
@@ -13854,7 +13922,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 347;
+        window.APP_BUILD = 348;
 
         (async function initApp() {
             try {
@@ -14422,8 +14490,8 @@
                     if (data.paneWidth) {
                         const tp = document.getElementById('timeline-pane');
                         if (tp) {
-                            tp.style.width = data.paneWidth;
-                            try { localStorage.setItem('newsreader_pane_width', data.paneWidth); } catch (e) { }
+                            tp.style.width = window.paneWidthOrDefault(data.paneWidth);
+                            try { localStorage.setItem('newsreader_pane_width', tp.style.width); } catch (e) { }
                         }
                     }
                     if (data.categoryOrder && Array.isArray(data.categoryOrder)) {
@@ -14515,7 +14583,7 @@
                     // merge: settings added later are kept by a save that doesn't list them, and a field one save
                     // omits is never wiped.
                     await setDoc(uiRef, {
-                        paneWidth: paneWidth || '336px',
+                        paneWidth: paneWidth || '440px',
                         categoryOrder: window._categoryOrder,
                         autoRefresh,
                         todayExcluded: [...(window._todayExcluded || [])],
@@ -14715,7 +14783,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v347';
+const CACHE_NAME = 'rss-reader-v348';
 const APP_SHELL = [
     '/',
     'index.html'

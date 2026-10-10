@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 347).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 348).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -115,7 +115,7 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 
 ## Reading a Story
 
-- **At the top:** the source (tap it to see that feed's stories), the headline, then the author and date. On the desktop the author is left out when it would only repeat the source.
+- **At the top:** one line with the source and the time (tap it to see that feed's stories), then the headline, then the author when it isn't just the source.
 - **Full articles:** when a feed sends only a short excerpt, the app fetches the full article.
 - **Pictures:** tap one to enlarge it; pinch or double-tap to zoom.
 - **Podcasts:** podcast episodes get an audio player.
@@ -125,7 +125,7 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 - **Desktop:** list cards, Today cards and the reader all have the same row: **Read · Read Later · Save · Open original · Share**. Hover for each button's name. A button turns blue when it's on: unread, in Read Later, or saved.
 - **Phone, Today cards:** tap **…** at the end of the source line, or press and hold the story, for **Mark as Read, Read Later, Save, Share and Open Original**.
 - **Desktop, Today:** the row of buttons appears when you point at a story.
-- **Phone, reader:** Read, Read Later, Save, Open original, Listen, Share.
+- **Phone, reader:** Save, Listen and Share, and **…** for Mark as Read or Unread, Read Later and Open Original.
 - **Phone, list cards:** Open in Reader, Save, Open original. Swipes handle read and Read Later.
 
 ---
@@ -169,7 +169,7 @@ Tap **Search** (or press `/` on the desktop) and type. Results appear as you typ
 | | Source Name Size | Source names and times in lists, Today and above a story's headline (0.8 unless you change it) |
 | | Preview Lines | How many lines of preview to show |
 | | Social Preview Lines | The same for Bluesky and Mastodon posts |
-| Article Reader | Title Size | A story's headline, and Today's heading on a computer |
+| Article Reader | Title Size | A story's headline, and Today's heading on a computer (1.5 unless you change it) |
 | | Body Text Size | A story's text |
 | | Line Height | A story's line spacing |
 | | Author & Date Size | The line under a story's headline |
