@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 349).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 350).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -104,7 +104,7 @@ The headphones button reads the stories showing in Today aloud. The player above
 ## Lists
 
 Unread, folders, feeds, Read Later, Saved and History all show stories as a list:
-- Each card shows the source, how long ago it was published, the headline, a preview and buttons.
+- Each card looks like a Today story: the source and how long ago, a picture beside the headline when there is one, the headline and a preview.
 - **Phone:** swipe left to mark read or unread, and swipe right for Read Later. Long-press for more.
 - **Right-click or long-press** a story: Mark Above Read, Read Later, Save, Mark Read/Unread, Mark Below Read.
 - **Order:** oldest first by default; change it in Settings › Stories › Sort Order.
@@ -126,13 +126,14 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 - **Phone, Today cards:** tap **…** at the end of the source line, or press and hold the story, for **Mark as Read, Read Later, Save, Share and Open Original**. Tap anywhere outside the menu to close it; that tap does nothing else.
 - **Desktop, Today:** the row of buttons appears when you point at a story.
 - **Phone, reader:** Save, Listen and Share, and **…** for Mark as Read or Unread, Read Later and Open Original.
-- **Phone, list cards:** Open in Reader, Save, Open original. Swipes handle read and Read Later.
+- **Phone, list cards:** tap **…** on the source line, or press and hold, for Read Later, Save, Mark Read, Share, Open Original and more. Swipes handle read and Read Later.
+- **Desktop, lists:** the row of buttons appears when you point at a story.
 
 ---
 
 ## Search
 
-Tap **Search** (or press `/` on the desktop) and type. Results appear as you type. Buttons jump to Unread, Read Later or Saved. On the desktop you can also limit the search to one folder, and to unread or read stories.
+Tap **Search** (or press `/` on the desktop) and type. Results appear as you type, each with its source and date above the headline. Buttons jump to Unread, Read Later or Saved. On the desktop you can also limit the search to one folder, and to unread or read stories.
 
 ---
 

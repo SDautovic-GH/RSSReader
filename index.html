@@ -267,31 +267,33 @@
             line-height: var(--list-preview-line-height) !important;
         }
 
-        /* Title — off-white in dark, near-black in light. Clean hierarchy like Reeder/Apple News. */
-        .dynamic-list-title {
-            color: #0f1923 !important;
+        /* Colour tokens, light then dark: text-1 headlines and headings, text-2 summaries and
+           previews, text-3 sources, times, counts and labels; the sheet surface and its dividers. */
+        :root {
+            --text-1: #0f1923;
+            --text-2: #374151;
+            --text-3: #57606a;
+            --surface-sheet: #ffffff;
+            --divider: #e5e7eb;
         }
 
-        .dark .dynamic-list-title {
-            color: #f0f6fc !important;
+        .dark {
+            --text-1: #f0f6fc;
+            --text-2: #ccd2d8;
+            --text-3: #8b949e;
+            --surface-sheet: #1c1c20;
+            --divider: rgba(255, 255, 255, 0.09);
         }
 
+        .dynamic-list-title,
         #article-title {
-            color: #0f1923 !important;
-        }
-
-        .dark #article-title {
-            color: #f0f6fc !important;
+            color: var(--text-1) !important;
         }
 
         /* Previews sit one step dimmer than titles, so the title owns the row. Social posts are
            exempt below: their preview is the content. */
         .dynamic-list-preview {
-            color: #374151 !important;
-        }
-
-        .dark .dynamic-list-preview {
-            color: #ccd2d8 !important;
+            color: var(--text-2) !important;
         }
 
         .line-clamp-social.dynamic-list-preview {
@@ -332,12 +334,7 @@
         /* The time on the story's source line: the source's size, regular weight, secondary colour. */
         .article-meta-time {
             font-weight: 400;
-            color: #8b949e;
             white-space: nowrap;
-        }
-
-        html:not(.dark) .article-meta-time {
-            color: #57606a;
         }
 
         .article-meta-time:not(:empty)::before {
@@ -475,7 +472,6 @@
             --mob-list-preview-line-height: 1.4;
             --mob-folder-size: 1.05em;
             --mob-list-source-size: 1.0em;
-            --mob-list-date-size: 1.0em;
             --list-source-size: 0.8em;
             --desk-feed-name-size: 0.8em;
             --article-meta-size: 1.1em;
@@ -619,16 +615,41 @@
             box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 10px -4px rgba(0, 0, 0, 0.6);
         }
 
-        /* Unread dot — flex sibling at the start of the source row, sits outside the truncate span.
-           margin-right offsets the row's gap-2 (8px) so the visible dot↔source distance is 5px,
-           without affecting source↔date spacing. */
+        /* Unread dot: first on the source line, outside the truncating name; margin-right takes the
+           row's 6px gap to 5px. */
         #article-list [data-id] .unread-dot {
             flex-shrink: 0;
             width: 8px;
             height: 8px;
             border-radius: 9999px;
             background: #3b82f6;
-            margin-right: -3px;
+            margin-right: -1px;
+        }
+
+        /* A list card is Today's card: one source line (source · time, "..." on the phone), a
+           thumbnail beside the headline and summary; the body holds the float. */
+        .list-card-body {
+            display: flow-root;
+        }
+
+        #article-list .list-source-label,
+        #article-list .list-date-label,
+        #article-list .list-meta-dot {
+            color: var(--text-3);
+        }
+
+        #article-list .list-date-label {
+            font-size: var(--list-source-size, 0.8em) !important;
+            font-weight: 400;
+        }
+
+        #article-list .list-meta-dot {
+            flex-shrink: 0;
+            font-size: 0.8em;
+        }
+
+        #article-list.compact-wire .list-thumb {
+            display: none;
         }
 
         /* Respect OS-level reduced-motion preference. transition: none, not a 0.01ms duration: that
@@ -886,7 +907,7 @@
             }
 
             #article-list .list-date-label {
-                font-size: var(--mob-list-date-size) !important;
+                font-size: var(--mob-feed-name-size, 0.8em) !important;
             }
 
             /* Mobile article view font scaling */
@@ -1477,8 +1498,8 @@
         }
 
         #mobile-search-sheet .search-item .search-item-title {
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 500;
             overflow: hidden;
             display: -webkit-box;
             -webkit-line-clamp: 2;
@@ -1488,9 +1509,13 @@
         }
 
         #mobile-search-sheet .search-item .search-item-meta {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.5);
-            margin-top: 2px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.55);
+            margin-bottom: 3px;
+        }
+
+        #mobile-search-sheet .search-item .search-item-source {
+            font-weight: 700;
         }
 
         #mobile-search-sheet .search-empty {
@@ -1938,9 +1963,10 @@
             margin-bottom: 1.25em;
         }
 
+        /* The story's source line: the same source colour as the cards. */
         #article-meta {
             font-size: var(--desk-feed-name-size) !important;
-            color: #4493f8 !important;
+            color: var(--text-3) !important;
         }
 
         /* A source name too long for one line wraps, and its icon stays on the first line: 1lh is the
@@ -2518,10 +2544,9 @@
             margin: 6px 0 -0.5rem 0;
             font-size: 1em;
             font-weight: 600;
-            color: #8b949e;
+            color: var(--text-3);
         }
 
-        html:not(.dark) .brief-cat-end,
         html:not(.dark) .brief-all-read-note {
             color: #57606a;
         }
@@ -3022,18 +3047,13 @@
             font-size: calc(var(--list-title-em-size, 1.1em) * 1.25) !important;
             font-weight: 700 !important;
             letter-spacing: -0.015em;
-            color: #0f1923 !important;
+            color: var(--text-1) !important;
             margin: 0 !important;
             padding: 0 !important;
-            line-height: 1.25 !important;
+            line-height: 1 !important;   /* one line: its text truncates */
             display: inline-flex !important;
             align-items: center !important;
             gap: 0.5rem !important;
-        }
-
-        .dark .brief-container h3,
-        .dark .brief-cat-heading {
-            color: #f0f6fc !important;
         }
 
         .brief-cat-heading svg {
@@ -3044,12 +3064,6 @@
             color: #60a5fa;
         }
 
-        /* The heading's text is a span: the count's rule below must not shrink and grey it. */
-        .brief-cat-section .brief-cat-heading span {
-            font-size: inherit !important;
-            color: inherit !important;
-        }
-
         .brief-cat-controls {
             display: inline-flex !important;
             align-items: center !important;
@@ -3058,10 +3072,9 @@
             flex-shrink: 0 !important;
         }
 
-        .brief-cat-section span,
         .brief-cat-count {
             font-size: 0.8em !important;
-            color: #64748b !important;
+            color: var(--text-3) !important;
             line-height: 1 !important;
             display: inline-flex !important;
             align-items: center !important;
@@ -3074,7 +3087,6 @@
                 font-size: calc(var(--mob-list-title-size, 1.1em) * 1.25) !important;
             }
 
-            .brief-cat-section span,
             .brief-cat-count {
                 font-size: 0.8em !important;
             }
@@ -3091,7 +3103,7 @@
             border-radius: 9999px;
             flex-shrink: 0;
             padding: 0 !important;
-            color: #94a3b8;
+            color: var(--text-3);
             background: transparent;
             border: 1px solid transparent;
         }
@@ -3244,7 +3256,7 @@
             display: flex;
             align-items: center;
             gap: 0.35rem;
-            color: #94a3b8;
+            color: var(--text-3);
             white-space: nowrap;
             overflow: hidden;
         }
@@ -3261,7 +3273,7 @@
             font-size: var(--list-source-size, 1.0em) !important;
             font-weight: 700 !important;
             text-transform: none !important;
-            color: #94a3b8;
+            color: var(--text-3);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -3270,11 +3282,6 @@
             flex-shrink: 1;
         }
 
-        .dark .brief-story-source,
-        .dark .brief-story-card .brief-story-source,
-        .dark .brief-story-card .list-source-label {
-            color: #cbd5e1;
-        }
 
         /* The meta row already carries Source Name Size, so the name takes 1em of it; sizing both
            multiplied the setting. Four classes outrank every source-name rule above. */
@@ -3282,19 +3289,19 @@
             font-size: 1em !important;
         }
 
-        /* The time is the source's size, set apart by weight; the specific selector beats the
-           section's span rule (0.8em). */
-        .brief-story-meta .brief-story-time {
+        /* The time is the source's size, set apart by weight. */
+        .brief-story-time {
             font-size: 1em !important;
             font-weight: 400 !important;
             text-transform: none !important;
-            color: #64748b;
+            color: var(--text-3);
             white-space: nowrap;
             flex-shrink: 0;
         }
 
         .brief-story-dot {
-            color: #64748b;
+            font-size: 0.8em;
+            color: var(--text-3);
             flex-shrink: 0;
         }
 
@@ -3553,7 +3560,7 @@
                 white-space: nowrap !important;
             }
 
-            .brief-story-meta .brief-story-time {
+            .brief-story-time {
                 font-size: 1em !important;
                 font-weight: 400 !important;
                 text-transform: none !important;
@@ -3647,8 +3654,8 @@
             color: #57606a;
         }
 
-        /* Desktop Today: the action row shows on hover, keyboard focus or the open story. Its space
-           stays reserved, so nothing moves. The phone's "..." is not needed there. */
+        /* Desktop Today and the lists: the action row shows on hover, keyboard focus or the open story.
+           Its space stays reserved, so nothing moves. The phone's "..." is not needed there. */
         @media (min-width: 901px) {
             .brief-more-btn {
                 display: none;
@@ -3662,6 +3669,18 @@
             #today-column .brief-story-card:hover .brief-story-actions,
             #today-column .brief-story-card:focus-within .brief-story-actions,
             #today-column .brief-story-card.brief-card-active .brief-story-actions {
+                opacity: 1;
+            }
+
+            /* The same in the lists. */
+            #article-list [data-id] .story-actions {
+                opacity: 0;
+                transition: opacity 0.15s ease;
+            }
+
+            #article-list [data-id]:hover .story-actions,
+            #article-list [data-id]:focus-within .story-actions,
+            #article-list [data-id].is-active-card .story-actions {
                 opacity: 1;
             }
         }
@@ -3733,7 +3752,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.06em;
-            color: #94a3b8;
+            color: var(--text-3);
             margin-bottom: 10px;
             padding: 0 4px;
         }
@@ -3768,18 +3787,19 @@
             border-bottom: 1px solid rgba(148, 163, 184, 0.2);
         }
 
+        /* A folder in the feed manager: Settings' group label (no blue), its line under it. */
         .fm-folder-name {
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: #4493f8;
+            color: var(--text-3);
         }
 
         .fm-folder-sub {
             margin-top: 2px;
             font-size: 12px;
-            color: #94a3b8;
+            color: var(--text-3);
         }
 
         .fm-feed-open {
@@ -3800,10 +3820,6 @@
         html:not(.dark) .fm-summary,
         html:not(.dark) .feed-row-cat.fm-bad {
             color: #dc2626;
-        }
-
-        html:not(.dark) .fm-folder-name {
-            color: #3d6bb0;
         }
 
         html:not(.dark) .settings-item-label,
@@ -3873,7 +3889,7 @@
 
         .feed-row-cat {
             font-size: 13px;
-            color: #94a3b8;
+            color: var(--text-3);
             margin-top: 2px;
         }
 
@@ -3890,7 +3906,7 @@
             align-items: center;
             justify-content: center;
             border-radius: 8px;
-            color: #94a3b8;
+            color: var(--text-3);
             transition: background-color .15s, color .15s;
         }
 
@@ -4031,11 +4047,15 @@
             margin-top: 2px;
             font-size: 12.5px;
             line-height: 1.35;
-            color: #94a3b8;
+            color: var(--text-3);
         }
 
-        html:not(.dark) #settings-modal .settings-hint {
-            color: #64748b;
+        /* The Settings panel and its header on the sheet surface (Tailwind's gray-800 / 900 are
+           blue-tinted), with the app's dividers. */
+        .dark #settings-modal > div,
+        .dark #settings-modal > div > div:first-child {
+            background: var(--surface-sheet) !important;
+            border-color: var(--divider) !important;
         }
 
         /* A menu on its setting's own line, sized to its choice. */
@@ -7397,21 +7417,10 @@
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
 
             const isSaved = window.savedBucket ? window.savedBucket.has(a.link) : false;
-            const starIcon = isSaved ? '#icon-star-filled' : '#icon-star';
-            const starColor = isSaved ? 'text-amber-500 dark:text-amber-400 is-saved' : 'text-gray-500 dark:text-gray-400';
-            const actionsRowHtml = `
-                <div class="card-actions phone-only flex items-center gap-1.5 pt-1.5 mt-1" onclick="event.stopPropagation()">
-                    <button type="button" onclick="selectArticle('${saId}')" class="brief-action-btn text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors" title="Open in Reader" aria-label="Open in Reader">
-                        <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
-                    </button>
-                    <button type="button" data-save-id="${saId}" data-save-link="${esc(a.link || '')}" onclick="window.toggleBriefStorySaved('${saId}', this)" class="brief-action-btn brief-save-btn ${starColor} hover:text-amber-500 transition-colors" title="${isSaved ? 'Unsave' : 'Save Article'}" aria-label="${isSaved ? 'Unsave' : 'Save Article'}">
-                        <svg class="brief-action-icon"><use href="${starIcon}"/></svg>
-                    </button>
-                    ${a.link && a.link !== '#' ? `
-                    <a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" class="brief-action-link text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors" title="Open original source" aria-label="Open original source">
-                        <svg class="brief-action-icon"><use href="#icon-external-link"/></svg>
-                    </a>` : ''}
-                </div>`;
+            // A picture beside the headline and summary, as on Today's cards: never an avatar, and a failed
+            // or tiny one leaves no box. Show images off and Compact Wire hide it.
+            const img = a.image && !/avatar/i.test(a.image) ? a.image : '';
+            const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove()" onerror="this.parentNode.remove()"></div>` : '';
             // The desktop's row: a Today card's and the reader's buttons. Read and Read Later are the
             // right-click menu's own actions, which redraw the list.
             const deskBtn = (on, onclick, label, icon, extra = '') =>
@@ -7428,18 +7437,18 @@
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Read Later &#x2605;</div>
-                <div class="min-w-0">
-                    <div class="flex items-center justify-between mb-1 gap-2">
-                        <div class="flex items-center gap-1.5 min-w-0 flex-1">
-                            ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
-                            <span class="list-source-label font-bold text-gray-500 dark:text-gray-400 truncate mr-2">${favicon}${esc(sourceLabel)}</span>
-                        </div>
-                        <span class="list-date-label text-[11px] text-gray-500 dark:text-gray-500 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                <div class="min-w-0 list-card-body">
+                    <div class="list-card-meta flex items-center gap-1.5 mb-1 min-w-0">
+                        ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
+                        <span class="list-source-label font-bold truncate min-w-0">${favicon}${esc(sourceLabel)}</span>
+                        <span class="list-meta-dot" aria-hidden="true">•</span>
+                        <span class="list-date-label flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                        <button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showListCardMenu(this, '${saId}')" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>
                     </div>
+                    ${thumbHtml}
                     ${titleHtml}
                     ${repostLine}
                     <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
-                    ${actionsRowHtml}
                     ${deskActionsHtml}
                 </div>
             </div>`;
@@ -12568,6 +12577,9 @@
             items += divider;
             items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
+            items += divider;
+            items += `<button onclick="hideContextMenu(); window.briefStoryAct('share', '${sid}')" class="${btnClass}">Share…</button>`;
+            if (article?.link) items += `<button onclick="hideContextMenu(); window.openArticleLink('${sid}')" class="${btnClass}">Open Original</button>`;
             const menu = document.getElementById('article-context-menu');
             menu.innerHTML = items;
             menu.classList.remove('hidden');
@@ -12575,6 +12587,17 @@
             const y = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 8);
             menu.style.top = `${y}px`;
             menu.style.left = `${x}px`;
+        };
+
+        // A list card's "..." (phone): the list's own menu, under the button.
+        window.showListCardMenu = function (btn, id) {
+            const r = btn.getBoundingClientRect();
+            showArticleContextMenu({ preventDefault() { }, clientX: r.right, clientY: r.bottom + 6 }, id);
+        };
+
+        window.openArticleLink = (id) => {
+            const a = findArticleAnywhere(id);
+            if (a?.link) window.open(a.link, '_blank', 'noopener,noreferrer');
         };
 
         // Look across all article sources (window.articles + bucket-backed views).
@@ -12625,6 +12648,7 @@
             let _touchStartX = 0, _touchStartY = 0;
             let _touchStartScrollTop = 0;
             let _swiping = false;
+            let _lpFiredAt = 0;
 
             const cancelLongPress = () => {
                 clearTimeout(_lpTimer);
@@ -12649,10 +12673,11 @@
                 _lpTimer = setTimeout(() => {
                     cancelLongPress();
                     if (_swiping) return;
+                    _lpFiredAt = Date.now();
                     window.getSelection()?.removeAllRanges();
                     if (navigator.vibrate) navigator.vibrate(30);
                     showArticleContextMenu({ preventDefault: () => { }, clientX: _touchStartX, clientY: _touchStartY }, id);
-                }, 1000);
+                }, 500);   // as on Today's cards
             }, { passive: true });
 
             list.addEventListener('touchmove', (e) => {
@@ -12671,6 +12696,10 @@
 
             // Today's pull is the one refresh, so a lifted finger only ends the long-press wait here.
             list.addEventListener('touchend', cancelLongPress, { passive: true });
+            // The click that ends a long-press doesn't open the story under the menu.
+            list.addEventListener('click', (e) => {
+                if (Date.now() - _lpFiredAt < 800 && !e.target.closest('#article-context-menu')) { e.preventDefault(); e.stopPropagation(); }
+            }, true);
         })();
         // A touch or click outside an open context menu only closes it, as on iOS: the tap that follows
         // must not open the story under it. A touch that turns into a scroll closes it too; its
@@ -13747,31 +13776,37 @@
                 return;
             }
             const frag = document.createDocumentFragment();
-            results.forEach(a => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'search-item';
-                btn.setAttribute('data-id', a.id);
-                const title = document.createElement('div');
-                title.className = 'search-item-title';
-                title.textContent = a.title || '(untitled)';
-                const meta = document.createElement('div');
-                meta.className = 'search-item-meta';
-                const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-                meta.textContent = [a.source, when].filter(Boolean).join(' · ');
-                btn.appendChild(title);
-                btn.appendChild(meta);
-                btn.addEventListener('click', () => {
-                    // Desktop keeps the results up (the reader is its own pane), so several hits open in turn; on the
-                    // phone the sheet covers the article, so it closes.
-                    if (isMobile()) closeSearchSheet();
-                    selectArticle(a.id);
-                });
-                frag.appendChild(btn);
-            });
+            results.forEach(a => frag.appendChild(searchItemEl(a)));
             container.innerHTML = '';
             container.appendChild(frag);
         };
+        // A search result: the card's source line (source · date) above the headline, compact. Desktop
+        // keeps the results up (the reader is its own pane), so several hits open in turn; on the phone
+        // the sheet covers the article, so it closes.
+        function searchItemEl(a) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-item';
+            btn.setAttribute('data-id', a.id);
+            const meta = document.createElement('div');
+            meta.className = 'search-item-meta';
+            const source = document.createElement('span');
+            source.className = 'search-item-source';
+            source.textContent = a.source || '';
+            meta.appendChild(source);
+            const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            if (when) meta.appendChild(document.createTextNode((a.source ? ' · ' : '') + when));
+            const title = document.createElement('div');
+            title.className = 'search-item-title';
+            title.textContent = a.title || '(untitled)';
+            btn.append(meta, title);
+            btn.addEventListener('click', () => {
+                if (isMobile()) closeSearchSheet();
+                selectArticle(a.id);
+            });
+            return btn;
+        }
+
         window.searchSmart = (which) => {
             const input = document.getElementById('mobile-search-input');
             if (input) input.value = '';
@@ -13798,27 +13833,7 @@
                 return;
             }
             const frag = document.createDocumentFragment();
-            filtered.forEach(a => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'search-item';
-                const title = document.createElement('div');
-                title.className = 'search-item-title';
-                title.textContent = a.title || '(untitled)';
-                const meta = document.createElement('div');
-                meta.className = 'search-item-meta';
-                const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-                meta.textContent = [a.source, when].filter(Boolean).join(' · ');
-                btn.appendChild(title);
-                btn.appendChild(meta);
-                btn.addEventListener('click', () => {
-                    // Desktop keeps the results up (the reader is its own pane), so several hits open in turn; on the
-                    // phone the sheet covers the article, so it closes.
-                    if (isMobile()) closeSearchSheet();
-                    selectArticle(a.id);
-                });
-                frag.appendChild(btn);
-            });
+            filtered.forEach(a => frag.appendChild(searchItemEl(a)));
             container.innerHTML = '';
             container.appendChild(frag);
         };
@@ -13942,7 +13957,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 349;
+        window.APP_BUILD = 350;
 
         (async function initApp() {
             try {
@@ -14803,7 +14818,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v349';
+const CACHE_NAME = 'rss-reader-v350';
 const APP_SHELL = [
     '/',
     'index.html'

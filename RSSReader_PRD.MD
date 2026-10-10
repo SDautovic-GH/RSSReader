@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 349)  
+**Version:** October 2026 (build 350)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -81,7 +81,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 
 | Requirement | Detail |
 |---|---|
-| Card | Source name (as the feed writes it), relative date, headline, preview text, and an action row. Bluesky/Mastodon posts show the post text instead of a headline. |
+| Card | Today's card: one source line (unread dot where it applies, source · time, and a "…" on the phone), a 72px thumbnail beside the headline and preview when the story has a picture (hidden by Show images off and in Compact Wire), then headline and preview. Bluesky/Mastodon posts show the post text instead of a headline. Desktop: the action row shows on hover, focus or the open story. |
 | Sort order | Oldest published first (default) or newest first. |
 | Deduplication | Optional (on by default): keeps one copy per story, favouring sources ranked by Memeorandum. |
 | Pinning | A story opened from Unread stays in the list, dimmed, until the view changes. |
@@ -107,7 +107,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Phone: Today cards | No row. The "…" on the source line, or a long-press on the card, opens a menu: **Mark as Read · Read Later · Save · Share… · Open Original** (labels follow the story's state). It is the lists' context menu; its items press the card's hidden buttons. Tapping the card opens the story. A touch or click outside any context menu only closes it (as on iOS); the tap does nothing else. |
 | Desktop: Today column | The row above, shown on hover, keyboard focus or the open story; its space stays reserved, so nothing moves. |
 | Phone: reader | **Save · Listen · Share** and a "…" for **Mark as Read / Unread · Read Later · Open Original** (the same menu as Today's, pressing the row's hidden buttons) |
-| Phone: list cards | Open in Reader · Save · Open original (swipes handle read and Read Later) |
+| Phone: list cards | No row. The "…" or a long-press (500ms) opens the list's menu: Mark Above Read, Read Later, Save, Mark Read / Unread, Mark Below Read, Share…, Open Original. Swipes handle read and Read Later; a tap opens the story. |
 
 ### 3.7 Search
 
@@ -115,6 +115,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 |---|---|
 | Search sheet | Opened from the Search button or `/`. Searches stories as you type. Shortcuts to Unread, Read Later and Saved. |
 | Filters (desktop) | Scope (All folders or one folder) and read state (All, Unread, Read). |
+| Results | A compact card: the source line (bold source · date) above a medium-weight headline. |
 
 ### 3.8 Listen (text to speech)
 
@@ -226,7 +227,7 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 | Layer | Technology |
 |---|---|
 | Markup | HTML5, one file (`index.html`) |
-| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS |
+| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet`, `--divider`. |
 | Scripting | Vanilla JavaScript, no framework |
 | Sanitising | DOMPurify 3.1.6 (cdnjs) |
 | Auth and cloud | Firebase 11.6.1 (Auth, Firestore), ES module imports |
