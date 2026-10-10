@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 348)  
+**Version:** October 2026 (build 349)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -104,7 +104,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Surface | Buttons |
 |---|---|
 | Desktop: list cards, Today cards, reader | One row everywhere: **Read · Read Later · Save · Open original · Share**. Icon buttons with tooltips, 32px with 18px icons, 4px apart, the first icon on the text edge, grey off and blue on. |
-| Phone: Today cards | No row. The "…" on the source line, or a long-press on the card, opens a menu: **Mark as Read · Read Later · Save · Share… · Open Original** (labels follow the story's state). It is the lists' context menu; its items press the card's hidden buttons. Tapping the card opens the story. |
+| Phone: Today cards | No row. The "…" on the source line, or a long-press on the card, opens a menu: **Mark as Read · Read Later · Save · Share… · Open Original** (labels follow the story's state). It is the lists' context menu; its items press the card's hidden buttons. Tapping the card opens the story. A touch or click outside any context menu only closes it (as on iOS); the tap does nothing else. |
 | Desktop: Today column | The row above, shown on hover, keyboard focus or the open story; its space stays reserved, so nothing moves. |
 | Phone: reader | **Save · Listen · Share** and a "…" for **Mark as Read / Unread · Read Later · Open Original** (the same menu as Today's, pressing the row's hidden buttons) |
 | Phone: list cards | Open in Reader · Save · Open original (swipes handle read and Read Later) |

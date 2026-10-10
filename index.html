@@ -12672,6 +12672,26 @@
             // Today's pull is the one refresh, so a lifted finger only ends the long-press wait here.
             list.addEventListener('touchend', cancelLongPress, { passive: true });
         })();
+        // A touch or click outside an open context menu only closes it, as on iOS: the tap that follows
+        // must not open the story under it. A touch that turns into a scroll closes it too; its
+        // pointercancel means no click follows, so the next tap works.
+        (function () {
+            const MENUS = ['article-context-menu', 'folder-context-menu', 'feed-context-menu'];
+            let swallowUntil = 0;
+            document.addEventListener('pointerdown', e => {
+                const open = MENUS.map(id => document.getElementById(id)).filter(m => m && !m.classList.contains('hidden'));
+                if (!open.length || open.some(m => m.contains(e.target))) return;
+                open.forEach(m => m.classList.add('hidden'));
+                swallowUntil = Date.now() + 1000;
+            }, true);
+            document.addEventListener('pointercancel', () => { swallowUntil = 0; }, true);
+            document.addEventListener('click', e => {
+                if (Date.now() > swallowUntil) return;
+                swallowUntil = 0;
+                e.preventDefault();
+                e.stopPropagation();
+            }, true);
+        })();
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#article-context-menu')) document.getElementById('article-context-menu').classList.add('hidden');
             if (!e.target.closest('#folder-context-menu')) document.getElementById('folder-context-menu').classList.add('hidden');
@@ -13922,7 +13942,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 348;
+        window.APP_BUILD = 349;
 
         (async function initApp() {
             try {
@@ -14783,7 +14803,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v348';
+const CACHE_NAME = 'rss-reader-v349';
 const APP_SHELL = [
     '/',
     'index.html'

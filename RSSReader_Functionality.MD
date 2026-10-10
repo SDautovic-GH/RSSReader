@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 348).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 349).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -123,7 +123,7 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 
 ### Story buttons
 - **Desktop:** list cards, Today cards and the reader all have the same row: **Read · Read Later · Save · Open original · Share**. Hover for each button's name. A button turns blue when it's on: unread, in Read Later, or saved.
-- **Phone, Today cards:** tap **…** at the end of the source line, or press and hold the story, for **Mark as Read, Read Later, Save, Share and Open Original**.
+- **Phone, Today cards:** tap **…** at the end of the source line, or press and hold the story, for **Mark as Read, Read Later, Save, Share and Open Original**. Tap anywhere outside the menu to close it; that tap does nothing else.
 - **Desktop, Today:** the row of buttons appears when you point at a story.
 - **Phone, reader:** Save, Listen and Share, and **…** for Mark as Read or Unread, Read Later and Open Original.
 - **Phone, list cards:** Open in Reader, Save, Open original. Swipes handle read and Read Later.

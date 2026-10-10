@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 348** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 349** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-10 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–348)
+### Follow-ups (Builds 275–349)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **A tap outside a menu only closes it (349, on request: "after long press menu comes up, it is not possible to get out of it without tapping one of the options, tapping next to it opens the story, do we need exit button?"):** no exit button; the iOS rule instead. The menus closed on a document `click`, after the tapped card had already opened its story. A capture-phase `pointerdown` outside any open context menu (the article, folder and feed menus) now closes it and drops the click that follows; a touch that becomes a scroll fires `pointercancel`, which clears that, so the next tap works. The old `click` listener stays for clicks without a pointer (keyboard). Checked at 339px with touch: a tap beside the menu, after the "…" and after a long-press, only closes it and the next tap opens the story; a scroll closes it and an immediate tap works; the "…" twice closes it; items still work; on the story screen a tap on the text closes it and stays; desktop right-click, then a click elsewhere, likewise. No script errors.
 - **The story header, duplicate labels, the desktop column's default (348; review items 6, 8 and 7, on request: "Go for the story header, plus duplicate labels and the column default"):**
   - **Headline:** Article Reader > Title Size defaults to 1.5 (24px; was 1.2, 19.2px), through the existing slider, `:root`, the JS fallback and the h1's markup. A device still at the saved old default 12 moves to 15 once (`newsreader_story_title`); any other value stays (checked: 12 → 15, a custom 18 stayed). Weight 500 as before. The headline's line spacing is `calc(Line Height × 0.84)` (1.5 → 1.26), so it still follows the setting.
   - **One source line:** the time joined the source above the headline (`#article-meta-time`: "Oct 10, 8:00 AM", the year only when it isn't this year; regular weight, secondary colour). The byline's date and its "•" are gone; the byline shows the author only when it isn't the source (`byline-dup`, now on the phone too).
