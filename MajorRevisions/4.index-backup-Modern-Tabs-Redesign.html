@@ -6383,6 +6383,71 @@
             background-size: 12px 12px;
         }
 
+        /* A setting's one-line description (build 341). The descriptions used text-[12px], which
+           the compiled Tailwind does not have, so they had always been drawn at 16px. */
+        #settings-modal .settings-hint {
+            margin-top: 2px;
+            font-size: 12.5px;
+            line-height: 1.35;
+            color: #94a3b8;
+        }
+
+        html:not(.dark) #settings-modal .settings-hint {
+            color: #64748b;
+        }
+
+        /* A menu on its setting's own line (build 341), sized to its choice. */
+        #settings-modal select.settings-input.is-inline {
+            width: auto;
+            min-width: 0;
+            max-width: 65%;
+            flex-shrink: 1;
+            padding: 7px 30px 7px 10px;
+            background-position: right 10px center;
+        }
+
+        /* A row that is a button: a link to a page (with a chevron) or an action (build 341). */
+        #settings-modal .settings-link-row {
+            width: 100%;
+            text-align: left;
+            border: none;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            background: none;
+            color: inherit;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        #settings-modal .settings-link-row:last-child {
+            border-bottom: none;
+        }
+
+        #settings-modal .settings-link-row:hover {
+            background: rgba(148, 163, 184, 0.08);
+        }
+
+        #settings-modal .settings-action {
+            font-size: 14px;
+            font-weight: 500;
+            color: #4493f8;
+        }
+
+        .settings-chevron {
+            font-size: 22px;
+            line-height: 1;
+            color: #94a3b8;
+        }
+
+        .settings-back-btn {
+            font-size: 28px;
+            line-height: 1;
+            padding: 0 8px 4px 0;
+            background: none;
+            border: none;
+            color: #4493f8;
+            cursor: pointer;
+        }
+
         html:not(.dark) #settings-modal select.settings-input {
             background-color: #f9fafb;
             border-color: #e5e7eb;
@@ -7295,7 +7360,11 @@
             <!-- Header -->
             <div
                 class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
-                <h2 id="settings-title" class="font-bold text-lg">Settings</h2>
+                <div class="flex items-center gap-1 min-w-0">
+                    <button id="settings-back" type="button" onclick="switchSettingsTab('prefs')" aria-label="Back to Settings"
+                        class="hidden settings-back-btn">&lsaquo;</button>
+                    <h2 id="settings-title" class="font-bold text-lg">Settings</h2>
+                </div>
                 <button onclick="toggleSettings()" aria-label="Close" style="font-size:1.6rem;line-height:1"
                     class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 -mr-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">✕</button>
             </div>
@@ -7337,7 +7406,10 @@
                     OPML</button>
             </div>
 
-            <!-- Tab: Preferences -->
+            <!-- SETTINGS, REORGANISED (build 341, on request): what you change on this page, in
+                 the order you'd look for it, each with at most one short line of explanation and
+                 menus on their own line; every text size, App Zoom and Reset are on the Text size &
+                 zoom page below. Every control keeps its id, so no handler or saved setting changed. -->
             <div id="settings-panel-prefs" class="hidden px-5 pt-8 pb-7 overflow-y-auto flex-1 space-y-7 no-scrollbar">
 
                 <!-- ACCOUNT -->
@@ -7355,12 +7427,131 @@
                     </div>
                 </div>
 
+                <!-- REFRESH -->
+                <div>
+                    <h3 class="settings-section-label">Refresh</h3>
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <label class="settings-item-label-sm" for="pref-auto-refresh">Auto-Refresh</label>
+                            <select id="pref-auto-refresh" onchange="updateAutoRefresh(this.value)"
+                                class="settings-input is-inline">
+                                <option value="0">Off</option>
+                                <option value="15">15 minutes</option>
+                                <option value="30" selected>30 minutes</option>
+                                <option value="60">1 hour</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TODAY (automatic briefs and their switch were removed in build 281) -->
+                <div>
+                    <h3 class="settings-section-label">Today</h3>
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <label class="settings-item-label-sm">Show images</label>
+                            <button id="today-images-toggle" onclick="toggleTodayImages()" class="toggle-switch"
+                                data-on="true" aria-label="Show images"></button>
+                        </div>
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <span class="settings-item-label-sm">Stories per Category</span>
+                                <span class="settings-value" id="brief-stories-val">10</span>
+                            </div>
+                            <input type="range" min="5" max="51" value="10" id="brief-stories-slider"
+                                class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
+                        </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Rank stories</label>
+                                <p class="settings-hint">Top Stories and each folder's top 5 first</p>
+                            </div>
+                            <button id="rank-stories-toggle" onclick="toggleRankStories()" class="toggle-switch"
+                                data-on="true" aria-label="Rank stories"></button>
+                        </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Learn from what I open</label>
+                                <p class="settings-hint">Sources you open often move up</p>
+                            </div>
+                            <button id="learn-opens-toggle" onclick="toggleLearnOpens()" class="toggle-switch"
+                                data-on="true" aria-label="Learn from what I open"></button>
+                        </div>
+                        <button type="button" class="settings-row settings-link-row settings-action" onclick="resetReadingLog()">
+                            Forget what I've opened
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STORIES: which you see, and in what order, everywhere -->
+                <div>
+                    <h3 class="settings-section-label">Stories</h3>
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm" for="pref-sort-order">Sort Order</label>
+                                <p class="settings-hint">Lists and Today</p>
+                            </div>
+                            <!-- One direction for lists and Today (build 340, on request: Today's own
+                                 Story order of 339 duplicated it). -->
+                            <select id="pref-sort-order" onchange="renderTimeline(); rebuildTodayInPlace(false)" class="settings-input is-inline">
+                                <option value="asc" selected>Oldest first</option>
+                                <option value="desc">Newest first</option>
+                            </select>
+                        </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Deduplicate by title</label>
+                                <p class="settings-hint">One copy of each story</p>
+                            </div>
+                            <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch"
+                                data-on="true" aria-label="Deduplicate by title"></button>
+                        </div>
+                        <!-- MUTED WORDS (build 311, on request) -->
+                        <div class="settings-row settings-row-stacked">
+                            <div>
+                                <label class="settings-item-label-sm" for="mute-input">Muted words</label>
+                                <p class="settings-hint">Hidden from Today and lists; Search, Saved and History still show them</p>
+                            </div>
+                            <div class="mute-add-row">
+                                <input id="mute-input" type="text" class="settings-input" placeholder="Add a word or phrase"
+                                    autocomplete="off"
+                                    onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.addMuteWord(); }">
+                                <button type="button" class="mute-add-btn" onclick="window.addMuteWord()">Add</button>
+                            </div>
+                            <div id="mute-words" class="today-folder-chips"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FOLLOWING -->
+                <div>
+                    <h3 class="settings-section-label">Following</h3>
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <label class="settings-item-label-sm">Show empty folders</label>
+                            <button id="show-empty-cats-toggle" onclick="toggleShowEmptyCategories()"
+                                class="toggle-switch" data-on="false" aria-label="Show empty categories"></button>
+                        </div>
+                        <div class="settings-row">
+                            <label class="settings-item-label-sm" for="pref-recently-read-days">History</label>
+                            <select id="pref-recently-read-days" onchange="updateRecentlyReadDays(this.value)"
+                                class="settings-input is-inline">
+                                <option value="7">Last 7 days</option>
+                                <option value="30" selected>Last 30 days</option>
+                                <option value="60">Last 60 days</option>
+                                <option value="90">Last 90 days</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- APPEARANCE -->
                 <div>
                     <h3 class="settings-section-label">Appearance</h3>
                     <div class="settings-list">
                         <div class="settings-row">
-                            <label class="settings-item-label">Theme</label>
+                            <label class="settings-item-label-sm">Theme</label>
                             <div id="theme-segmented" class="segmented" role="group" aria-label="Theme">
                                 <button data-theme="light" onclick="setTheme('light')" data-active="false">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke-width="2">
@@ -7374,77 +7565,10 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="flex justify-between items-center">
-                                <span class="settings-item-label">App Zoom</span>
-                                <span class="settings-value" id="app-zoom-val">100%</span>
-                            </div>
-                            <input type="range" min="100" max="150" value="100" id="app-zoom-slider"
-                                class="settings-range" oninput="updateAppZoom(this.value)">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- REFRESH & SYNC -->
-                <div>
-                    <h3 class="settings-section-label">Refresh & Sync</h3>
-                    <div class="settings-list">
-                        <div class="settings-row settings-row-stacked">
-                            <label class="settings-item-label">Auto-Refresh Interval</label>
-                            <select id="pref-auto-refresh" onchange="updateAutoRefresh(this.value)"
-                                class="settings-input">
-                                <option value="0">Off</option>
-                                <option value="15">Every 15 minutes</option>
-                                <option value="30" selected>Every 30 minutes</option>
-                                <option value="60">Every hour</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- GENERAL -->
-                <div>
-                    <h3 class="settings-section-label">General</h3>
-                    <div class="settings-list">
-                        <div class="settings-row settings-row-stacked">
-                            <label class="settings-item-label">Sort Order</label>
-                            <!-- One direction for lists and Today (build 340, on request: Today's own
-                                 Story order of 339 duplicated it). -->
-                            <select id="pref-sort-order" onchange="renderTimeline(); rebuildTodayInPlace(false)" class="settings-input">
-                                <option value="asc" selected>Oldest first</option>
-                                <option value="desc">Newest first</option>
-                            </select>
-                            <p class="text-[12px] text-gray-400 mt-1">Your lists, and Today's stories (after each folder's 5
-                                most important, when Rank stories is on)</p>
-                        </div>
-                        <div class="settings-row settings-row-stacked">
-                            <label class="settings-item-label">History window</label>
-                            <select id="pref-recently-read-days" onchange="updateRecentlyReadDays(this.value)"
-                                class="settings-input">
-                                <option value="7">Last 7 days</option>
-                                <option value="30" selected>Last 30 days</option>
-                                <option value="60">Last 60 days</option>
-                                <option value="90">Last 90 days</option>
-                            </select>
-                        </div>
                         <div class="settings-row">
-                            <label class="settings-item-label-sm">Show empty category folders</label>
-                            <button id="show-empty-cats-toggle" onclick="toggleShowEmptyCategories()"
-                                class="toggle-switch" data-on="false" aria-label="Show empty categories"></button>
-                        </div>
-                        <div class="settings-row">
-                            <div class="min-w-0 flex-1">
-                                <label class="settings-item-label-sm">Deduplicate articles by title</label>
-                                <p class="text-[12px] text-gray-400 mt-1">Keeps one copy per story, favouring sources
-                                    ranked by Memeorandum</p>
-                            </div>
-                            <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch"
-                                data-on="true" aria-label="Deduplicate by title"></button>
-                        </div>
-                        <div class="settings-row settings-row-stacked">
-                            <label class="settings-item-label">Font</label>
+                            <label class="settings-item-label-sm" for="font-family-select">Font</label>
                             <select id="font-family-select" onchange="updateFontFamily('both', this.value)"
-                                class="settings-input">
+                                class="settings-input is-inline">
                                 <option value="-apple-system, BlinkMacSystemFont, sans-serif" selected>San Francisco
                                 </option>
                                 <option value="'Inter', sans-serif">Inter</option>
@@ -7454,79 +7578,39 @@
                                 <option value="Georgia, serif">Georgia</option>
                             </select>
                         </div>
+                        <button type="button" class="settings-row settings-link-row" onclick="switchSettingsTab('text')">
+                            <span class="settings-item-label-sm">Text size &amp; zoom</span>
+                            <span class="settings-chevron" aria-hidden="true">&rsaquo;</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- TODAY (automatic briefs and their switch were removed in build 281) -->
-                <div>
-                    <h3 class="settings-section-label">Today</h3>
-                    <div class="settings-list">
-                        <div class="settings-row">
-                            <div class="min-w-0 flex-1">
-                                <label class="settings-item-label-sm">Show images</label>
-                                <p class="text-[12px] text-gray-400 mt-1">A thumbnail beside each story, and a large
-                                    picture for the top story</p>
-                            </div>
-                            <button id="today-images-toggle" onclick="toggleTodayImages()" class="toggle-switch"
-                                data-on="true" aria-label="Show images"></button>
-                        </div>
-                        <div class="settings-row settings-row-stacked">
-                            <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Stories per Category</span>
-                                <span class="settings-value" id="brief-stories-val">10</span>
-                            </div>
-                            <input type="range" min="5" max="51" value="10" id="brief-stories-slider"
-                                class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
-                        </div>
-                        <!-- Rank stories and learning from what you open (builds 339-340, on request) -->
-                        <div class="settings-row">
-                            <div class="min-w-0 flex-1">
-                                <label class="settings-item-label-sm">Rank stories</label>
-                                <p class="text-[12px] text-gray-400 mt-1">Top Stories, and each folder's 5 most important
-                                    stories first; the rest follow Sort Order. Off: Sort Order alone, without Top Stories.</p>
-                            </div>
-                            <button id="rank-stories-toggle" onclick="toggleRankStories()" class="toggle-switch"
-                                data-on="true" aria-label="Rank stories"></button>
-                        </div>
-                        <div class="settings-row">
-                            <div class="min-w-0 flex-1">
-                                <label class="settings-item-label-sm">Learn from what I open</label>
-                                <p class="text-[12px] text-gray-400 mt-1">Sources whose stories you open often move up, ones
-                                    you pass over move down; Memeorandum's ranking still counts. While Rank stories is on.
-                                    <button type="button" class="settings-inline-link" onclick="resetReadingLog()">Forget what I've opened</button></p>
-                            </div>
-                            <button id="learn-opens-toggle" onclick="toggleLearnOpens()" class="toggle-switch"
-                                data-on="true" aria-label="Learn from what I open"></button>
-                        </div>
-                    </div>
-                </div>
+            </div>
 
-                <!-- MUTED WORDS (build 311, on request) -->
-                <div>
-                    <h3 class="settings-section-label">Muted words</h3>
-                    <div class="settings-list">
-                        <div class="settings-row settings-row-stacked">
-                            <p class="text-[12px] text-gray-400">Stories with these words in the headline or summary are
-                                hidden from Today and your lists, and left out of the counts. Saved, Read Later, History
-                                and Search still show them, and Today shows how many are hidden.</p>
-                            <div class="mute-add-row">
-                                <input id="mute-input" type="text" class="settings-input" placeholder="Add a word or phrase"
-                                    autocomplete="off"
-                                    onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.addMuteWord(); }">
-                                <button type="button" class="mute-add-btn" onclick="window.addMuteWord()">Add</button>
-                            </div>
-                            <div id="mute-words" class="today-folder-chips"></div>
-                        </div>
-                    </div>
-                </div>
+            <!-- TEXT SIZE & ZOOM (build 341): set once, so a page of its own, opened from Appearance
+                 (the header's back arrow returns). Sizes are per device, as before. -->
+            <div id="settings-panel-text" class="hidden px-5 pt-8 pb-7 overflow-y-auto flex-1 space-y-7 no-scrollbar">
 
-                <!-- SIDEBAR -->
                 <div>
-                    <h3 class="settings-section-label">Sidebar</h3>
                     <div class="settings-list">
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Folder Size</span>
+                                <span class="settings-item-label-sm">App Zoom</span>
+                                <span class="settings-value" id="app-zoom-val">100%</span>
+                            </div>
+                            <input type="range" min="100" max="150" value="100" id="app-zoom-slider"
+                                class="settings-range" oninput="updateAppZoom(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FOLLOWING (was Sidebar) -->
+                <div>
+                    <h3 class="settings-section-label">Following</h3>
+                    <div class="settings-list">
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <span class="settings-item-label-sm">Folder Size</span>
                                 <span class="settings-value" id="shared-folder-val">1.05em</span>
                             </div>
                             <input type="range" min="12" max="28" value="21" id="shared-folder-slider"
@@ -7534,7 +7618,7 @@
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Row Spacing</span>
+                                <span class="settings-item-label-sm">Row Spacing</span>
                                 <span class="settings-value" id="feed-spacing-val">0.25rem</span>
                             </div>
                             <input type="range" min="2" max="10" value="5" id="feed-spacing-slider"
@@ -7552,8 +7636,8 @@
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <div class="min-w-0">
-                                    <span class="settings-item-label">Title Size</span>
-                                    <p class="text-[12px] text-gray-400 mt-1">Lists, and Today's stories a little smaller</p>
+                                    <span class="settings-item-label-sm">Title Size</span>
+                                    <p class="settings-hint">Lists and Today</p>
                                 </div>
                                 <span class="settings-value" id="shared-list-title-val">1.1em</span>
                             </div>
@@ -7562,7 +7646,7 @@
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Preview Text Size</span>
+                                <span class="settings-item-label-sm">Preview Text Size</span>
                                 <span class="settings-value" id="shared-preview-val">1em</span>
                             </div>
                             <input type="range" min="4" max="19" value="10" id="shared-preview-slider"
@@ -7570,20 +7654,19 @@
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Line Height</span>
+                                <span class="settings-item-label-sm">Line Height</span>
                                 <span class="settings-value" id="shared-preview-line-height-val">1.4</span>
                             </div>
                             <input type="range" min="8" max="24" value="14" id="shared-preview-line-height-slider"
                                 class="settings-range" oninput="updateSharedSize('previewLineHeight', this.value)">
                         </div>
                         <!-- Was Sidebar > Feed Name Size (moved build 329, on request): it never sized
-                             the sidebar's feed names, which follow Folder Size. Same slider and saved
-                             value; it sits where Author & Date Size sits in Article Reader. -->
+                             the sidebar's feed names, which follow Folder Size. -->
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <div class="min-w-0">
-                                    <span class="settings-item-label">Source Name Size</span>
-                                    <p class="text-[12px] text-gray-400 mt-1">Lists, Today, and the source line above a story</p>
+                                    <span class="settings-item-label-sm">Source Name Size</span>
+                                    <p class="settings-hint">Lists, Today and stories</p>
                                 </div>
                                 <span class="settings-value" id="shared-feed-name-val">1em</span>
                             </div>
@@ -7592,7 +7675,7 @@
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Preview Lines</span>
+                                <span class="settings-item-label-sm">Preview Lines</span>
                                 <span class="settings-value" id="lines-val">4 Lines</span>
                             </div>
                             <input type="range" min="2" max="15" value="4" id="lines-slider" class="settings-range"
@@ -7600,7 +7683,7 @@
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Social Preview Lines (Bluesky/Mastodon)</span>
+                                <span class="settings-item-label-sm">Social Preview Lines</span>
                                 <span class="settings-value" id="lines-social-val">10 Lines</span>
                             </div>
                             <input type="range" min="2" max="20" value="10" id="lines-social-slider"
@@ -7616,8 +7699,8 @@
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <div class="min-w-0">
-                                    <span class="settings-item-label">Title Size</span>
-                                    <p class="text-[12px] text-gray-400 mt-1">Stories, and Today's heading on a computer</p>
+                                    <span class="settings-item-label-sm">Title Size</span>
+                                    <p class="settings-hint">Stories, and Today on a computer</p>
                                 </div>
                                 <span class="settings-value" id="shared-article-title-val">1.2em</span>
                             </div>
@@ -7626,7 +7709,7 @@
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Body Text Size</span>
+                                <span class="settings-item-label-sm">Body Text Size</span>
                                 <span class="settings-value" id="shared-body-val">1em</span>
                             </div>
                             <input type="range" min="4" max="22" value="10" id="shared-body-slider"
@@ -7634,7 +7717,7 @@
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Line Height</span>
+                                <span class="settings-item-label-sm">Line Height</span>
                                 <span class="settings-value" id="shared-line-height-val">1.5</span>
                             </div>
                             <input type="range" min="8" max="24" value="15" id="shared-line-height-slider"
@@ -7642,7 +7725,7 @@
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
-                                <span class="settings-item-label">Author & Date Size</span>
+                                <span class="settings-item-label-sm">Author &amp; Date Size</span>
                                 <span class="settings-value" id="shared-meta-val">1.1em</span>
                             </div>
                             <input type="range" min="6" max="19" value="11" id="shared-meta-slider"
@@ -7655,8 +7738,7 @@
                      theme, sort, refresh, and dedup choices). Confirm + reload. -->
                 <div>
                     <div class="settings-list">
-                        <button type="button" onclick="resetTextSettings()"
-                            class="w-full text-left px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <button type="button" class="settings-row settings-link-row settings-action" onclick="resetTextSettings()">
                             Reset text sizes to defaults
                         </button>
                     </div>
@@ -14587,8 +14669,12 @@
         })();
         // Which of the card's two screens shows (build 325): 'feeds' (Edit) or 'prefs' (the gear).
         window.switchSettingsTab = (tab) => {
-            ['feeds', 'prefs'].forEach(t => document.getElementById(`settings-panel-${t}`).classList.toggle('hidden', t !== tab));
-            document.getElementById('settings-title').textContent = tab === 'feeds' ? 'Feeds' : 'Settings';
+            // 'text' (build 341): the Text size & zoom page, opened from Settings > Appearance.
+            ['feeds', 'prefs', 'text'].forEach(t => document.getElementById(`settings-panel-${t}`).classList.toggle('hidden', t !== tab));
+            document.getElementById('settings-title').textContent = tab === 'feeds' ? 'Feeds' : tab === 'text' ? 'Text Size & Zoom' : 'Settings';
+            document.getElementById('settings-back')?.classList.toggle('hidden', tab !== 'text');
+            const panel = document.getElementById(`settings-panel-${tab}`);
+            if (panel) panel.scrollTop = 0;
         };
         window.openAddFeedModal = () => {
             const cats = [...new Set(window.feeds.map(f => f.category || 'Uncategorized'))].sort();
@@ -16622,7 +16708,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 339;
+        window.APP_BUILD = 340;
 
         (async function initApp() {
             try {
@@ -17549,7 +17635,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v339';
+const CACHE_NAME = 'rss-reader-v340';
 const APP_SHELL = [
     '/',
     'index.html'

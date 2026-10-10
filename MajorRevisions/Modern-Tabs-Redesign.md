@@ -5,8 +5,8 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 340** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
-| Last Updated | 2026-10-08 |
+| Current State | **Active — Build 341** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Last Updated | 2026-10-09 |
 
 ---
 
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–340)
+### Follow-ups (Builds 275–341)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,12 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **Settings reorganised, with a Text Size & Zoom page (341, on request: "Could there be a more logical order for app settings?", "the settings explanations are long, they stretch the screen a lot", then "two thirds of what is today, not exactly huge gain" and "these should be at the top still. Refresh … Account"):**
+  - **Main page, in this order:** Account; Refresh (Auto-Refresh); Today (Show images, Stories per Category, Rank stories, Learn from what I open, Forget what I've opened); Stories (Sort Order, Deduplicate by title, Muted words); Following (Show empty folders, History); Appearance (Theme, Font, Text size & zoom ›). General, Refresh & Sync, Sidebar and the separate Muted words section are gone; every control kept its id (all 30 asserted once each).
+  - **Text Size & Zoom page** (`#settings-panel-text`, `switchSettingsTab('text')`): App Zoom, Following (Folder Size, Row Spacing), Article List, Article Reader, Reset. The header shows ‹ (`#settings-back`) and the page's name; Feeds and the gear still open their own panels.
+  - **Shorter descriptions:** a few words each. Before, 9 descriptions of up to 9 lines took 960px, 30% of the screen; now the main page's 5 take 136px (2 lines at most) and the Text page's 3 take 51px. They used `text-[12px]`, which the compiled Tailwind does not have, so they had always been drawn at 16px; `.settings-hint` is 12.5px. Menus (Auto-Refresh, Sort Order, History, Font) sit on their setting's own line (`select.settings-input.is-inline`); Auto-Refresh reads "15 minutes" / "30 minutes" / "1 hour" so the choice fits. Forget what I've opened is its own row (`.settings-link-row.settings-action`); its inline link's rule (`.settings-inline-link`) went with it.
+  - **Spacing that exists:** the panels' `space-y-7`, `pt-8` and `pb-7` were never compiled either, so a section's heading sat 4px under the card above it. Sections are now 18px apart (`#settings-panel-prefs > div + div`) and the dead classes are gone. The Text page shares the main page's 70vh cap and top padding. The Muted words box got its own style (it had none and was all but invisible in light); an empty chip row no longer leaves 22px under it.
+  - **Measured at 339px:** main page 3174px (4.3 screens) → 1318px (1.8); Text page 1032px (1.4). The row opens the Text page with ‹ and its title, a slider there still updates its value, ‹ returns, the Sort Order menu is 116px wide on a 68px row, Show images toggles, Feeds and the gear show the right title. Light and dark checked. No script errors.
 - **One Sort Order for lists and Today, and Rank stories (340, on request: "we already had Sort Order in App Settings, now we have duplicate!", the proposal, "yes"):** 339's Story order (Settings › Today) set Today's direction a second time; General › Sort Order already set the lists'. It is replaced by:
   - **Sort Order** (General, `pref-sort-order`, "Oldest first" / "Newest first", hint "Your lists, and Today's stories …"). It is the one direction for lists and Today, and changing it rebuilds Today too.
   - **Rank stories** (Settings › Today, per device, `newsreader_today_rank`, on by default). On: Top Stories and each folder's 5 most important first, then the rest in Sort Order. Off: Sort Order alone, with no ranking and no Top Stories. `buildTodayBrief` passes `newestFirst` from Sort Order in both cases; the ranked folders' "rest" and an all-unranked folder follow it too. Learn from what I open applies while Rank stories is on.

@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 340).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 341).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -55,11 +55,11 @@ Today stays still while you read: new stories never appear under your finger, an
 ### Refresh
 - **Phone:** pull down on Today.
 - **Desktop:** the refresh button in the sidebar header.
-- Feeds also refresh by themselves every 30 minutes (Settings › Refresh & Sync).
+- Feeds also refresh by themselves every 30 minutes (Settings › Refresh).
 
 ### Order
 Two settings decide it:
-- **Sort Order** (Settings › General): **oldest first** or **newest first**, for your lists and for Today alike.
+- **Sort Order** (Settings › Stories): **oldest first** or **newest first**, for your lists and for Today alike.
 - **Rank stories** (Settings › Today, on by default): Top Stories, then in each folder its 5 most important stories, followed by the rest in Sort Order. Turn it off for no ranking at all: no Top Stories, every folder simply in Sort Order.
 
 With Rank stories off and oldest first, each folder lists its oldest unread stories first, and newer ones come in as you read, so nothing is skipped. With newest first, you see each folder's latest stories, a quick look at what has just happened; older ones it has no room for drop out after 24 hours.
@@ -85,8 +85,8 @@ The headphones button reads the stories showing in Today aloud. The player above
 - **Unread:** every unread story. It also shows how many are older than today.
 - **Read Later:** stories you put aside to read soon.
 - **Saved:** stories you want to keep. They stay even if you remove the feed.
-- **History:** stories you have read, from the last 30 days (Settings › General › History window).
-- **Folders:** tap a folder or a feed to see its stories. Folders with nothing unread are hidden unless you turn on Settings › General › Show empty category folders.
+- **History:** stories you have read, from the last 30 days (Settings › Following › History).
+- **Folders:** tap a folder or a feed to see its stories. Folders with nothing unread are hidden unless you turn on Settings › Following › Show empty folders.
 
 ### The feed manager (the pencil)
 - Feeds are grouped by folder. Each folder has **In Today** and **Rename**.
@@ -107,7 +107,7 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 - Each card shows the source, how long ago it was published, the headline, a preview and buttons.
 - **Phone:** swipe left to mark read or unread, and swipe right for Read Later. Long-press for more.
 - **Right-click or long-press** a story: Mark Above Read, Read Later, Save, Mark Read/Unread, Mark Below Read.
-- **Order:** oldest first by default; change it in Settings › General › Sort Order.
+- **Order:** oldest first by default; change it in Settings › Stories › Sort Order.
 - **De-duplicate** (on by default) keeps one copy of a story published by several sources.
 - **Density (desktop):** the top bar switches between Standard Stream and Compact Wire.
 
@@ -140,20 +140,27 @@ Tap **Search** (or press `/` on the desktop) and type. Results appear as you typ
 | Section | Setting | What it does |
 |---|---|---|
 | Account | | Shows that you are signed in (tap for the email); Sign Out |
-| Appearance | Theme | Light or dark |
-| | App Zoom | Makes everything bigger or smaller (each device keeps its own) |
-| Refresh & Sync | Auto-Refresh Interval | Off, every 15 minutes, every 30 minutes, every hour. Timed refreshes are skipped while the app is in the background or on Data Saver |
-| General | Sort Order | Oldest or newest first, in your lists and in Today |
-| | History window | How far back History goes: 7, 30, 60 or 90 days |
-| | Show empty category folders | Shows folders with nothing unread |
-| | Deduplicate articles by title | One copy per story, favouring well-known sources |
-| | Font | The font used throughout |
+| Refresh | Auto-Refresh | Off, 15 minutes, 30 minutes, 1 hour. Timed refreshes are skipped while the app is in the background or on Data Saver |
 | Today | Show images | Pictures in Today |
 | | Stories per Category | How many stories each folder shows: 5 to 50, or All |
 | | Rank stories | Top Stories and each folder's 5 most important first; off for Sort Order alone |
-| | Learn from what I open | Lets what you open move sources up or down (while Rank stories is on); Forget what I've opened starts again |
-| Muted words | | Stories with these words in the headline or summary are hidden and not counted. Today offers "N muted · Show" |
-| Sidebar | Folder Size | Size of the folder and feed names in Following |
+| | Learn from what I open | Lets what you open move sources up or down (while Rank stories is on) |
+| | Forget what I've opened | Starts the learning again |
+| Stories | Sort Order | Oldest or newest first, in your lists and in Today |
+| | Deduplicate by title | One copy per story, favouring well-known sources |
+| | Muted words | Stories with these words in the headline or summary are hidden and not counted. Today offers "N muted · Show" |
+| Following | Show empty folders | Shows folders with nothing unread |
+| | History | How far back History goes: 7, 30, 60 or 90 days |
+| Appearance | Theme | Light or dark |
+| | Font | The font used throughout |
+| | Text size & zoom › | Opens the page below; ‹ in the header comes back |
+
+**Text Size & Zoom** (from Appearance):
+
+| Section | Setting | What it does |
+|---|---|---|
+| | App Zoom | Makes everything bigger or smaller (each device keeps its own) |
+| Following | Folder Size | Size of the folder and feed names in Following |
 | | Row Spacing | Space between those rows |
 | Article List | Title Size | Headlines in lists, and in Today a little smaller |
 | | Preview Text Size | Preview text in lists and summaries in Today |
@@ -165,7 +172,7 @@ Tap **Search** (or press `/` on the desktop) and type. Results appear as you typ
 | | Body Text Size | A story's text |
 | | Line Height | A story's line spacing |
 | | Author & Date Size | The line under a story's headline |
-| | Reset text sizes | Puts every size and spacing back to its default (keeps theme, font, sort order, auto-refresh, de-duplicate, history window and zoom) |
+| | Reset text sizes to defaults | Puts every size and spacing back to its default (keeps theme, font, sort order, auto-refresh, de-duplicate, history window and zoom) |
 
 Text sizes are kept separately for the phone and the desktop, except Folder Size, Row Spacing and Source Name Size.
 

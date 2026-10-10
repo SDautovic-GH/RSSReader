@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 340)  
+**Version:** October 2026 (build 341)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -55,7 +55,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Top Stories | The five strongest stories across folders (authority rank, then multi-outlet consensus, then recency), lifted out of their folders. Each folder then fills back up to Stories per Category. Shown only while Rank stories is on. |
 | Sections | One per folder, in the Following order. Stories per Category: 5–50 or All (Settings, per device). With Rank stories on, the most important stories are chosen; in the section, the 5 most important come first (whatever feed), then all the rest in Sort Order (oldest or newest first), whatever feed. A folder made only of feeds with no importance ranking is in Sort Order throughout. Top Stories stays in order of importance. |
 | Importance | Memeorandum's live source leaderboard (fetched at most daily through the proxy, over a built-in list of 220 sources), with a bonus for each extra outlet covering the story. With Learn from what I open on, your reading adjusts it: per source, the share of its stories you open against your share overall (0.5×–2×, once 10 of its stories have been dealt with), from all your devices, over 30 days. A source Memeorandum does not rank gets a rank from your reading alone. |
-| Order | **Sort Order** (Settings › General: oldest or newest first) is the one direction for the lists and Today. **Rank stories** (Settings › Today, on by default): Top Stories, then each folder's 5 most important stories, and the rest in Sort Order. Off: no ranking and no Top Stories; each folder takes its first stories in Sort Order. Oldest first reads like a queue, its oldest stories first; newest first shows its latest. |
+| Order | **Sort Order** (Settings › Stories: oldest or newest first) is the one direction for the lists and Today. **Rank stories** (Settings › Today, on by default): Top Stories, then each folder's 5 most important stories, and the rest in Sort Order. Off: no ranking and no Top Stories; each folder takes its first stories in Sort Order. Oldest first reads like a queue, its oldest stories first; newest first shows its latest. |
 | Learning from what you open | Opening a story in the reader counts as opened. Marking a story read without opening it counts as passed over, if it was shown to you as a card. Grouped copies taken along don't count, nor do read marks from another device. Stored per device for 30 days, with tallies shared through the cloud. Settings › Today › Learn from what I open (on by default), with Forget what I've opened (all devices). Changes show the next time Today is built. |
 | Story clustering | Articles about the same story from several outlets become one card, led by the most authoritative outlet (with no ranking, the first to publish), with "Also from …". |
 | Story card | Source name (as the feed writes it, full width), time, headline (medium weight, 0.95 × Article List title size), summary (Article List preview size, line height and lines), a 72px thumbnail beside the text, and an action row. The first Top Story with a large enough picture gets a 16:9 hero. |
@@ -73,7 +73,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Requirement | Detail |
 |---|---|
 | Smart lists | **Unread** (with "N older than today"), **Read Later**, **Saved**, **History** (read stories within the History window). The desktop sidebar also has **Today**. |
-| Folders | Collapsible folders of feeds with unread counts. Folders with nothing unread are hidden unless "Show empty category folders" is on. |
+| Folders | Collapsible folders of feeds with unread counts. Folders with nothing unread are hidden unless "Show empty folders" is on. |
 | Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. |
 | Right-click (desktop) | Feed: Refresh Feed, Mark All Read. Folder: Mark All Read, Collapse Folder, Collapse All Folders, Rename. |
 
@@ -125,20 +125,26 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 
 ### 3.9 Settings
 
-Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil).
+Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil). The gear's panel has a second page, **Text Size & Zoom**, opened from its last row and left with ‹ in the header. Each setting's description is one short line under its name (12.5px); menus sit on their setting's own line.
 
 | Section | Settings |
 |---|---|
 | Account | The signed-in account (tap for its email) and Sign Out |
-| Appearance | Theme (Light / Dark), App Zoom (per device) |
-| Refresh & Sync | Auto-Refresh Interval: Off, every 15 minutes, every 30 minutes (default), every hour. A timed refresh is skipped while the app is in the background or on Data Saver; coming back to the app refreshes. |
-| General | Sort Order (oldest or newest first, for the lists and Today); History window (7, 30, 60 or 90 days); Show empty category folders; Deduplicate articles by title; Font |
-| Today | Show images (per device); Stories per Category (5–50, All); Rank stories; Learn from what I open, with Forget what I've opened |
-| Muted words | Words or phrases. Stories with them in the headline or summary are hidden and not counted; Today offers "N muted · Show". |
-| Sidebar | Folder Size (also the sidebar's feed names), Row Spacing |
+| Refresh | Auto-Refresh: Off, 15 minutes, 30 minutes (default), 1 hour. A timed refresh is skipped while the app is in the background or on Data Saver; coming back to the app refreshes. |
+| Today | Show images (per device); Stories per Category (5–50, All); Rank stories; Learn from what I open; Forget what I've opened |
+| Stories | Sort Order (oldest or newest first, for the lists and Today); Deduplicate by title; Muted words (words or phrases; stories with them in the headline or summary are hidden and not counted, and Today offers "N muted · Show") |
+| Following | Show empty folders; History (7, 30, 60 or 90 days) |
+| Appearance | Theme (Light / Dark); Font; Text size & zoom › |
+
+**Text Size & Zoom** page:
+
+| Section | Settings |
+|---|---|
+| (top) | App Zoom (per device) |
+| Following | Folder Size (also the sidebar's feed names), Row Spacing |
 | Article List | Title Size (lists, and Today's stories a little smaller), Preview Text Size, Line Height, Source Name Size (lists, Today, the reader's source line), Preview Lines, Social Preview Lines (Bluesky/Mastodon) |
 | Article Reader | Title Size (stories, and Today's heading on a computer), Body Text Size, Line Height, Author & Date Size |
-| Reset text sizes | Puts every size and spacing back to its default. Theme, font, sort order, auto-refresh, de-duplicate, history window and app zoom are kept. |
+| Reset text sizes to defaults | Puts every size and spacing back to its default. Theme, font, sort order, auto-refresh, de-duplicate, history window and app zoom are kept. |
 
 Text sizes are saved per device (phone and desktop separately), except Folder Size, Row Spacing and Source Name Size, which are shared.
 
