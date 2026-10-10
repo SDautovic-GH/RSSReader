@@ -5,7 +5,7 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 345** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Current State | **Active — Build 346** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
 | Last Updated | 2026-10-10 |
 
 ---
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–345)
+### Follow-ups (Builds 275–346)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,9 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **One blue, and Mark All Read sized as Mark N read (346, on request: "the blue should match the blue color in the logo", and "the Mark All Read in Folders button has more space on sides then Mark N read button - change to match"):**
+  - **One blue:** the logo is `var(--color-blue-600)`, and Mark All Read already used it (`bg-blue-600`). The "N new stories" pill was #4493f8 (white text 3.1:1); it is now the same `var(--color-blue-600)` (5.3:1). Measured: logo, Mark All Read and the pill are all `oklch(0.546 0.245 262.881)`.
+  - **Mark All Read:** padding 8px 15px (Mark N read's 7px 14px plus its 1px outline), a 7px gap, and `line-height: 1` (Tailwind's `text-xs` line height made it 4px taller). Measured against Mark N read: both 33px tall, 15px from edge to icon, 15px from text to edge, 7px gap, 16px weight 600. No script errors.
 - **Mark All Read in Folders as a filled pill (345, on request: "Should Mark All Read in Folders have the same shape as Mark 1 read? I think it needs to be different color but the corner shapes can be the same", then "yes" to the render):** `.brief-mark-all-btn` takes Mark N read's shape and size: radius 999px, 16px weight 600 (was 12px), 17px icon, 9px 20px padding, no shadow. It stays centred, since it ends the whole page and not a section. Its fill stays Tailwind's blue-600: white text there is 5.3:1, against 3.1:1 on the app's lighter #4493f8, which was rendered and rejected. Measured: 251x39 active; the grey "All Folders Read" pill 191x39 once everything is read. Dark and light checked; no script errors.
 - **The phone action row 5px further in (345, on request: "I would like wider left/right margin for the action buttons bar, perhaps add 5px to both sides"):** the row's margins are -1px, not -6px. The first icon now sits 6px inside the text edge (20 vs 14) and the last 6px inside the picture's edge (319 vs 325), still evenly spaced. No script errors.
 - **Today's phone action row spread, Mark N read as a pill (344, on request: "consider if having them centered would be more appealing ... review Mark N read - would that look better in the center? Or on the right but a bit bigger", then after comparing renders, "Build option 3 and Mark N read: keep it on the right, as an outlined pill, a bit bigger"):**

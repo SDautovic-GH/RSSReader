@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 345)  
+**Version:** October 2026 (build 346)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -60,8 +60,8 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Story clustering | Articles about the same story from several outlets become one card, led by the most authoritative outlet (with no ranking, the first to publish), with "Also from …". |
 | Story card | Source name (as the feed writes it, full width), time, headline (medium weight, 0.95 × Article List title size), summary (Article List preview size, line height and lines), a 72px thumbnail beside the text, and an action row. The first Top Story with a large enough picture gets a 16:9 hero. |
 | Folder pills (phone) | A row of folder pills under the header jumps to a section. The desktop has none: the sidebar's folders navigate. |
-| Mark read | A story leaves Today once read. "Mark N read" (an outlined grey pill, on the right) at the end of each section marks the stories still showing there (and their grouped copies) at the tap. The next section slides up and a floating Undo bar appears. "Mark All Read in Folders" sits at the very end, centred: the same pill shape and 16px text, filled blue (grey "All Folders Read" once everything is read). |
-| New stories | After a refresh, new stories never appear under the reader. The status line counts them ("3 new"), and a "N new stories" pill rebuilds Today at its top when tapped. When Today has no unread story showing (all caught up), it shows them at once instead: after a refresh, and on coming back from a story (`showNewTodayIfBlank`). |
+| Mark read | A story leaves Today once read. "Mark N read" (an outlined grey pill, on the right) at the end of each section marks the stories still showing there (and their grouped copies) at the tap. The next section slides up and a floating Undo bar appears. "Mark All Read in Folders" sits at the very end, centred: the same pill shape, size and spacing, filled in the logo's blue (grey "All Folders Read" once everything is read). |
+| New stories | After a refresh, new stories never appear under the reader. The status line counts them ("3 new"), and a "N new stories" pill (the logo's blue) rebuilds Today at its top when tapped. When Today has no unread story showing (all caught up), it shows them at once instead: after a refresh, and on coming back from a story (`showNewTodayIfBlank`). |
 | Refresh | Pull down on Today (phone); the header refresh button (desktop); auto-refresh in the background. |
 | All caught up | "You're all caught up." On the phone it adds "Pull down to refresh."; the desktop, which has no pull, says "No unread stories from the last 24 hours." |
 | Return to place | Back from a story lands on the next unread story at the same screen height. The page is kept, not rebuilt. |
