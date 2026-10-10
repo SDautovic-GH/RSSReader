@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 344).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 345).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -46,7 +46,7 @@ Today shows the unread stories from the last 24 hours in the folders you include
 ### Reading and marking
 - Tap a story's headline or summary to read it. Read stories leave Today.
 - **Mark N read**, the outlined button at the end of a section, marks the stories still showing there. The next section slides up, and **Undo** appears at the bottom for 5 seconds.
-- **Mark All Read in Folders** is at the very end.
+- **Mark All Read in Folders**, the blue button at the very end, marks every folder in Today read.
 - When everything is read, Today says **"You're all caught up."** On the phone it adds **"Pull down to refresh."**
 
 ### New stories
