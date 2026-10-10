@@ -7408,10 +7408,14 @@
                     <div class="settings-list">
                         <div class="settings-row settings-row-stacked">
                             <label class="settings-item-label">Sort Order</label>
-                            <select id="pref-sort-order" onchange="renderTimeline()" class="settings-input">
-                                <option value="asc" selected>Oldest Published First</option>
-                                <option value="desc">Newest Published First</option>
+                            <!-- One direction for lists and Today (build 340, on request: Today's own
+                                 Story order of 339 duplicated it). -->
+                            <select id="pref-sort-order" onchange="renderTimeline(); rebuildTodayInPlace(false)" class="settings-input">
+                                <option value="asc" selected>Oldest first</option>
+                                <option value="desc">Newest first</option>
                             </select>
+                            <p class="text-[12px] text-gray-400 mt-1">Your lists, and Today's stories (after each folder's 5
+                                most important, when Rank stories is on)</p>
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <label class="settings-item-label">History window</label>
@@ -7474,24 +7478,21 @@
                             <input type="range" min="5" max="51" value="10" id="brief-stories-slider"
                                 class="settings-range" oninput="updateBriefStoriesPerCat(this.value)">
                         </div>
-                        <!-- Story order and learning from what you open (build 339, on request) -->
-                        <div class="settings-row settings-row-stacked">
-                            <label class="settings-item-label" for="today-order-select">Story order</label>
-                            <select id="today-order-select" onchange="setTodayOrder(this.value)" class="settings-input">
-                                <option value="ranked">Most important first</option>
-                                <option value="chrono">Oldest first, no ranking</option>
-                                <option value="newest">Newest first, no ranking</option>
-                            </select>
-                            <p class="text-[12px] text-gray-400 mt-1">Most important first: Top Stories, then each folder's
-                                5 most important stories and the rest oldest first. Oldest first: every folder in time
-                                order, its oldest stories first, so nothing is skipped. Newest first: every folder's latest
-                                stories first. Neither has Top Stories.</p>
+                        <!-- Rank stories and learning from what you open (builds 339-340, on request) -->
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Rank stories</label>
+                                <p class="text-[12px] text-gray-400 mt-1">Top Stories, and each folder's 5 most important
+                                    stories first; the rest follow Sort Order. Off: Sort Order alone, without Top Stories.</p>
+                            </div>
+                            <button id="rank-stories-toggle" onclick="toggleRankStories()" class="toggle-switch"
+                                data-on="true" aria-label="Rank stories"></button>
                         </div>
                         <div class="settings-row">
                             <div class="min-w-0 flex-1">
                                 <label class="settings-item-label-sm">Learn from what I open</label>
                                 <p class="text-[12px] text-gray-400 mt-1">Sources whose stories you open often move up, ones
-                                    you pass over move down; Memeorandum's ranking still counts. For Most important first.
+                                    you pass over move down; Memeorandum's ranking still counts. While Rank stories is on.
                                     <button type="button" class="settings-inline-link" onclick="resetReadingLog()">Forget what I've opened</button></p>
                             </div>
                             <button id="learn-opens-toggle" onclick="toggleLearnOpens()" class="toggle-switch"
@@ -7884,11 +7885,23 @@
         window._todayImages = localStorage.getItem('newsreader_today_images') !== '0';
         document.body.classList.toggle('today-no-images', !window._todayImages);
         document.getElementById('today-images-toggle')?.setAttribute('data-on', window._todayImages ? 'true' : 'false');
-        // Story order in Today (build 339, on request): 'ranked' = each folder's 5 most important
-        // first, then the rest oldest first, with Top Stories; 'chrono' = oldest first throughout,
-        // no ranking, no Top Stories. Learn from what I open: on unless switched off. Per device.
-        window._todayOrder = ['chrono', 'newest'].includes(localStorage.getItem('newsreader_today_order'))
-            ? localStorage.getItem('newsreader_today_order') : 'ranked';   // + 'newest': newest first, no ranking
+        // Rank stories (build 340, on request; it replaces 339's Story order, which duplicated Sort
+        // Order): on = Top Stories and each folder's 5 most important first, then the rest in Sort
+        // Order; off = Sort Order alone, no ranking, no Top Stories. Sort Order (General) is the one
+        // direction for lists and Today. 339's choice carries over once: "oldest/newest first, no
+        // ranking" becomes Rank stories off with Sort Order oldest/newest first. Learn from what I
+        // open: on unless switched off. Per device.
+        try {
+            const was = localStorage.getItem('newsreader_today_order');
+            if (was === 'chrono' || was === 'newest') {
+                const p = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
+                p.sortOrder = was === 'newest' ? 'desc' : 'asc';
+                localStorage.setItem('newsreader_prefs', JSON.stringify(p));
+                localStorage.setItem('newsreader_today_rank', '0');
+            }
+            if (was) localStorage.removeItem('newsreader_today_order');
+        } catch (e) { }
+        window._todayRank = localStorage.getItem('newsreader_today_rank') !== '0';
         window._learnOpens = localStorage.getItem('newsreader_learn_opens') !== '0';
         // "NEW SINCE YOUR LAST VISIT" (build 313, on request). The boundary is when you last
         // left the app (saved on every hide); a story is new when every outlet's copy of it
@@ -13010,13 +13023,15 @@
                 if (window.isMuted(a)) { mutedCount++; return window._showMuted; }
                 return true;
             });
-            // Story order (Settings > Today, build 339): by importance - each folder's 5 most
-            // important first, then the rest oldest first, with Top Stories and what you open
-            // counted in - or oldest first throughout, with no ranking and no Top Stories.
-            const chrono = window._todayOrder === 'chrono' || window._todayOrder === 'newest';
+            // Rank stories on (Settings > Today, build 340): each folder's 5 most important first,
+            // then the rest in Sort Order, with Top Stories and what you open counted in. Off: Sort
+            // Order throughout, with no ranking and no Top Stories. Sort Order is General's, the
+            // lists' own (oldest first unless set to newest).
+            const chrono = !window._todayRank;
+            const newestFirst = document.getElementById('pref-sort-order')?.value === 'desc';
             const built = buildStoryClusters(pool, chrono
-                ? { limitPerCat: window._briefStoriesPerCat || 10, chronological: true, newestFirst: window._todayOrder === 'newest' }
-                : { limitPerCat: window._briefStoriesPerCat || 10, leadByImportance: 5, lift: window.readingLiftMap?.() || null });
+                ? { limitPerCat: window._briefStoriesPerCat || 10, chronological: true, newestFirst }
+                : { limitPerCat: window._briefStoriesPerCat || 10, leadByImportance: 5, newestFirst, lift: window.readingLiftMap?.() || null });
             let sections = built.categorySections;
             let totalStories = built.totalStories;
 
@@ -13752,8 +13767,8 @@
         // Groups any article pool into ranked, de-duplicated story clusters.
         // opts.limitPerCat: max stories per section; opts.groupBy(a): section key (default: category folder);
         // opts.leadByImportance: show that many most important first, then the rest oldest first;
-        // opts.lift: Map source -> 0.5..2 from what you open; opts.chronological: no ranking at all,
-        // oldest first, or newest first with opts.newestFirst.
+        // opts.lift: Map source -> 0.5..2 from what you open; opts.chronological: no ranking at all;
+        // opts.newestFirst: newest first where the order is by time (Sort Order newest, 340).
         // Each story carries alsoReportedBy (other outlet names) and coverage (all clustered articles).
         // ACROSS FOLDERS (build 308, on request): the whole pool is clustered at once - it was
         // per folder, so one event reported in Headlines and Business showed twice and never
@@ -13934,7 +13949,8 @@
                     // ORDER IN A FOLDER (build 339, on request): which stories are chosen does not
                     // change (the most important, as above). They are shown with the folder's N
                     // most important first, whatever feed they are from, and then all the rest
-                    // oldest first, by the time each card shows (its lead's).
+                    // oldest first - or newest first, with Sort Order newest (340) - by the time
+                    // each card shows (its lead's).
                     if (opts.leadByImportance) {
                         const byImportance = (a, b) => (a.effectiveRank - b.effectiveRank)
                             || (b.sourceCount - a.sourceCount) || (b.leadDate - a.leadDate);
@@ -13944,7 +13960,7 @@
                         // first (on request; the tie had given its five newest the lead).
                         const n = catClusters.every(cl => !cl.ranked) ? 0 : opts.leadByImportance;
                         selectedClusters.splice(0, selectedClusters.length,
-                            ...ranked.slice(0, n), ...ranked.slice(n).sort((a, b) => shownAt(a) - shownAt(b)));
+                            ...ranked.slice(0, n), ...ranked.slice(n).sort((a, b) => opts.newestFirst ? shownAt(b) - shownAt(a) : shownAt(a) - shownAt(b)));
                     }
 
                     // Build final selected story objects with alsoReportedBy metadata
@@ -14368,10 +14384,11 @@
             }
         };
 
-        // Story order and learning from what you open (build 339); Today on screen follows at once.
-        window.setTodayOrder = (v) => {
-            window._todayOrder = (v === 'chrono' || v === 'newest') ? v : 'ranked';
-            try { localStorage.setItem('newsreader_today_order', window._todayOrder); } catch (e) { }
+        // Rank stories and learning from what you open (builds 339-340); Today on screen follows.
+        window.toggleRankStories = () => {
+            window._todayRank = !window._todayRank;
+            try { localStorage.setItem('newsreader_today_rank', window._todayRank ? '1' : '0'); } catch (e) { }
+            document.getElementById('rank-stories-toggle')?.setAttribute('data-on', window._todayRank ? 'true' : 'false');
             rebuildTodayInPlace(false);
         };
         window.toggleLearnOpens = () => {
@@ -14498,8 +14515,7 @@
                     const valEl = document.getElementById('brief-stories-val');
                     if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
                 }
-                const orderSel = document.getElementById('today-order-select');
-                if (orderSel) orderSel.value = window._todayOrder;
+                document.getElementById('rank-stories-toggle')?.setAttribute('data-on', window._todayRank ? 'true' : 'false');
                 document.getElementById('learn-opens-toggle')?.setAttribute('data-on', window._learnOpens ? 'true' : 'false');
                 window.renderMuteChips?.();
                 renderLocalFeedList();   // the feed manager, with health as of now
@@ -16606,7 +16622,7 @@
         // service worker below. It's a build counter (cache-buster), not a semantic
         // version, so the footer labels it "build N". Lets you tell at a glance whether
         // the page you're looking at is the new code or a stale SW-cached copy.
-        window.APP_BUILD = 339;
+        window.APP_BUILD = 340;
 
         (async function initApp() {
             try {
@@ -17533,7 +17549,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v339';
+const CACHE_NAME = 'rss-reader-v340';
 const APP_SHELL = [
     '/',
     'index.html'

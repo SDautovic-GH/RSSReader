@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 339)  
+**Version:** October 2026 (build 340)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -52,10 +52,10 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Requirement | Detail |
 |---|---|
 | Content | Unread stories from the last 24 hours, from folders included in Today (each folder's In Today switch in the feed manager). Muted stories are left out. |
-| Top Stories | The five strongest stories across folders (authority rank, then multi-outlet consensus, then recency), lifted out of their folders. Each folder then fills back up to Stories per Category. Not shown when Story order is Oldest first. |
-| Sections | One per folder, in the Following order. Stories per Category: 5–50 or All (Settings, per device). The most important stories are chosen; in the section, the 5 most important come first (whatever feed), then all the rest oldest first, whatever feed. A folder made only of feeds with no importance ranking is oldest first throughout. Top Stories stays in order of importance. |
+| Top Stories | The five strongest stories across folders (authority rank, then multi-outlet consensus, then recency), lifted out of their folders. Each folder then fills back up to Stories per Category. Shown only while Rank stories is on. |
+| Sections | One per folder, in the Following order. Stories per Category: 5–50 or All (Settings, per device). With Rank stories on, the most important stories are chosen; in the section, the 5 most important come first (whatever feed), then all the rest in Sort Order (oldest or newest first), whatever feed. A folder made only of feeds with no importance ranking is in Sort Order throughout. Top Stories stays in order of importance. |
 | Importance | Memeorandum's live source leaderboard (fetched at most daily through the proxy, over a built-in list of 220 sources), with a bonus for each extra outlet covering the story. With Learn from what I open on, your reading adjusts it: per source, the share of its stories you open against your share overall (0.5×–2×, once 10 of its stories have been dealt with), from all your devices, over 30 days. A source Memeorandum does not rank gets a rank from your reading alone. |
-| Story order | Settings › Today. **Most important first** (default): Top Stories, then each folder's 5 most important stories and the rest oldest first. **Oldest first, no ranking:** no Top Stories; each folder's oldest stories, shown oldest first, with no ranking at all, so it reads like a queue. **Newest first, no ranking:** no Top Stories; each folder's newest stories, shown newest first. |
+| Order | **Sort Order** (Settings › General: oldest or newest first) is the one direction for the lists and Today. **Rank stories** (Settings › Today, on by default): Top Stories, then each folder's 5 most important stories, and the rest in Sort Order. Off: no ranking and no Top Stories; each folder takes its first stories in Sort Order. Oldest first reads like a queue, its oldest stories first; newest first shows its latest. |
 | Learning from what you open | Opening a story in the reader counts as opened. Marking a story read without opening it counts as passed over, if it was shown to you as a card. Grouped copies taken along don't count, nor do read marks from another device. Stored per device for 30 days, with tallies shared through the cloud. Settings › Today › Learn from what I open (on by default), with Forget what I've opened (all devices). Changes show the next time Today is built. |
 | Story clustering | Articles about the same story from several outlets become one card, led by the most authoritative outlet (with no ranking, the first to publish), with "Also from …". |
 | Story card | Source name (as the feed writes it, full width), time, headline (medium weight, 0.95 × Article List title size), summary (Article List preview size, line height and lines), a 72px thumbnail beside the text, and an action row. The first Top Story with a large enough picture gets a 16:9 hero. |
@@ -132,8 +132,8 @@ Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil).
 | Account | The signed-in account (tap for its email) and Sign Out |
 | Appearance | Theme (Light / Dark), App Zoom (per device) |
 | Refresh & Sync | Auto-Refresh Interval: Off, every 15 minutes, every 30 minutes (default), every hour. A timed refresh is skipped while the app is in the background or on Data Saver; coming back to the app refreshes. |
-| General | Sort Order; History window (7, 30, 60 or 90 days); Show empty category folders; Deduplicate articles by title; Font |
-| Today | Show images (per device); Stories per Category (5–50, All); Story order (Most important first / Oldest first, no ranking / Newest first, no ranking); Learn from what I open, with Forget what I've opened |
+| General | Sort Order (oldest or newest first, for the lists and Today); History window (7, 30, 60 or 90 days); Show empty category folders; Deduplicate articles by title; Font |
+| Today | Show images (per device); Stories per Category (5–50, All); Rank stories; Learn from what I open, with Forget what I've opened |
 | Muted words | Words or phrases. Stories with them in the headline or summary are hidden and not counted; Today offers "N muted · Show". |
 | Sidebar | Folder Size (also the sidebar's feed names), Row Spacing |
 | Article List | Title Size (lists, and Today's stories a little smaller), Preview Text Size, Line Height, Source Name Size (lists, Today, the reader's source line), Preview Lines, Social Preview Lines (Bluesky/Mastodon) |
@@ -158,7 +158,7 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 |---|---|
 | Sign-in | Firebase email and password (register, sign in, forgot password, sign out with confirmation). Required: without a signed-in user the sign-in window stays up. On `localhost` a local test user stands in, and nothing syncs. |
 | What syncs | Feeds and folders; read state (as link hashes, up to 30,000, merged with arrayUnion); Read Later and Saved (full article snapshots, so they outlive feed removal); folder order, the desktop middle column's width, auto-refresh, folders in Today, muted words, and each device's tally of what you open and pass over. |
-| What stays on the device | Text sizes, theme, font, sort order, show images, Stories per Category, Story order, Learn from what I open (and its log of stories), show empty folders, de-duplicate, history window. |
+| What stays on the device | Text sizes, theme, font, sort order, show images, Stories per Category, Rank stories, Learn from what I open (and its log of stories), show empty folders, de-duplicate, history window. |
 | Merge | Read marks are a union of all devices. A changed list (muted words, folders in Today) from another device applies only when it differs, so Today is not rebuilt for nothing. |
 
 ### 3.12 Keyboard (desktop)
@@ -261,7 +261,7 @@ Feed URL
 | `newsreader_prefs` | Text sizes (per device), font, sort order, auto-refresh, de-duplicate, history window |
 | `newsreader_theme` | Light or dark |
 | `newsreader_today_images` | Show images in Today |
-| `newsreader_today_order` | Story order: `ranked`, `chrono` (oldest first) or `newest` |
+| `newsreader_today_rank` | Rank stories (`0` = off). Build 339's `newsreader_today_order` is carried over into it and Sort Order once, then removed |
 | `newsreader_learn_opens` | Learn from what I open (`0` = off) |
 | `newsreader_device_id` | This device's key for its reading tally in the cloud |
 | `newsreader_today_excluded` | Folders left out of Today |

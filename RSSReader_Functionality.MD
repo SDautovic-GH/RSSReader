@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 339).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 340).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -38,7 +38,7 @@ Double-click the story's top bar for full screen (just the story). Use the arrow
 Today shows the unread stories from the last 24 hours in the folders you include:
 
 - **Top Stories:** the five strongest stories across your folders, the ones from the most authoritative outlets or covered by several.
-- **Your folders:** one section per folder, in your Following order. Each shows up to your **Stories per Category** (Settings › Today), choosing the most important. A section starts with its **5 most important** stories, whatever feed they are from; after them come all the rest, **oldest first**. A folder whose feeds have no importance ranking at all is simply oldest first.
+- **Your folders:** one section per folder, in your Following order. Each shows up to your **Stories per Category** (Settings › Today), choosing the most important. A section starts with its **5 most important** stories, whatever feed they are from; after them come all the rest, in your **Sort Order** (oldest first unless you choose newest first). A folder whose feeds have no importance ranking at all is simply in Sort Order.
 - **One card per story:** when several outlets cover the same story, you get one card, from the most authoritative outlet, with "Also from …".
 - **Pictures:** a small picture beside a story, and a large one on the first Top Story. Turn them off in Settings › Today › Show images.
 - **Folder pills (phone):** the row of pills under the header jumps to a folder.
@@ -57,11 +57,12 @@ Today stays still while you read: new stories never appear under your finger, an
 - **Desktop:** the refresh button in the sidebar header.
 - Feeds also refresh by themselves every 30 minutes (Settings › Refresh & Sync).
 
-### Story order
-Settings › Today › **Story order**:
-- **Most important first** (the default): Top Stories, then in each folder its 5 most important stories followed by the rest, oldest first.
-- **Oldest first, no ranking:** no Top Stories. Each folder simply lists its oldest unread stories first, and newer ones come in as you read, so nothing is skipped.
-- **Newest first, no ranking:** no Top Stories. Each folder lists its latest stories first; good for a quick look at what has just happened. Older stories it has no room for wait, and drop out after 24 hours.
+### Order
+Two settings decide it:
+- **Sort Order** (Settings › General): **oldest first** or **newest first**, for your lists and for Today alike.
+- **Rank stories** (Settings › Today, on by default): Top Stories, then in each folder its 5 most important stories, followed by the rest in Sort Order. Turn it off for no ranking at all: no Top Stories, every folder simply in Sort Order.
+
+With Rank stories off and oldest first, each folder lists its oldest unread stories first, and newer ones come in as you read, so nothing is skipped. With newest first, you see each folder's latest stories, a quick look at what has just happened; older ones it has no room for drop out after 24 hours.
 
 ### Learning from what you open
 How important a story is starts from Memeorandum, a ranking of news sources. It mostly covers US news and politics, so many tech, sport and social feeds aren't ranked by it. With Settings › Today › **Learn from what I open** on (it is by default), Today also learns from you:
@@ -142,15 +143,15 @@ Tap **Search** (or press `/` on the desktop) and type. Results appear as you typ
 | Appearance | Theme | Light or dark |
 | | App Zoom | Makes everything bigger or smaller (each device keeps its own) |
 | Refresh & Sync | Auto-Refresh Interval | Off, every 15 minutes, every 30 minutes, every hour. Timed refreshes are skipped while the app is in the background or on Data Saver |
-| General | Sort Order | Oldest or newest published first, in lists |
+| General | Sort Order | Oldest or newest first, in your lists and in Today |
 | | History window | How far back History goes: 7, 30, 60 or 90 days |
 | | Show empty category folders | Shows folders with nothing unread |
 | | Deduplicate articles by title | One copy per story, favouring well-known sources |
 | | Font | The font used throughout |
 | Today | Show images | Pictures in Today |
 | | Stories per Category | How many stories each folder shows: 5 to 50, or All |
-| | Story order | Most important first; oldest first, no ranking; or newest first, no ranking |
-| | Learn from what I open | Lets what you open move sources up or down (Most important first only); Forget what I've opened starts again |
+| | Rank stories | Top Stories and each folder's 5 most important first; off for Sort Order alone |
+| | Learn from what I open | Lets what you open move sources up or down (while Rank stories is on); Forget what I've opened starts again |
 | Muted words | | Stories with these words in the headline or summary are hidden and not counted. Today offers "N muted · Show" |
 | Sidebar | Folder Size | Size of the folder and feed names in Following |
 | | Row Spacing | Space between those rows |
@@ -197,7 +198,7 @@ Text sizes are kept separately for the phone and the desktop, except Folder Size
 - auto-refresh, which folders are in Today, and muted words;
 - what you open and pass over, for Learn from what I open.
 
-**What each device keeps for itself:** text sizes, theme, font, sort order, show images, Stories per Category, Story order, the Learn from what I open switch, show empty folders, de-duplicate and the history window.
+**What each device keeps for itself:** text sizes, theme, font, sort order, show images, Stories per Category, Rank stories, the Learn from what I open switch, show empty folders, de-duplicate and the history window.
 
 Read marks from all your devices are combined. **Sign Out** (Settings › Account) asks you to confirm, then shows the sign-in window again; what is stored in the browser stays.
 
