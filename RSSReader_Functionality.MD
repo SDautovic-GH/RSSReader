@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 342).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 343).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -22,7 +22,7 @@ Both screens have the same header: the app logo, a title with a small status lin
 - **Today:** "Thu, Oct 8" and "Updated just now • 3 new", with the **headphones** button to listen.
 - **Following:** "Following" and its status, with **Edit feeds** (pencil), **Add feed** (+) and **Settings** (gear).
 
-Opening a story covers the screen. Tap **Today** in the tab bar to go back to the same place. Swipe to move between stories. While you scroll down a story, the tab bar slides away; scroll up a little and it comes back.
+Opening a story covers the screen. Tap **Today** in the tab bar to go back to the same place, even while the story is still scrolling. Swipe to move between stories. While you scroll down a story, the tab bar slides away; scroll up a little and it comes back.
 
 ### On the desktop
 - **Left:** the sidebar, with Today, Unread, Read Later, Saved, History and your folders.
@@ -50,7 +50,7 @@ Today shows the unread stories from the last 24 hours in the folders you include
 - When everything is read, Today says **"You're all caught up."** On the phone it adds **"Pull down to refresh."**
 
 ### New stories
-Today stays still while you read: new stories never appear under your finger, and nothing jumps by itself. When there are new ones, the status line counts them ("3 new"), and a **"N new stories"** pill appears. Tap it to see them at the top.
+Today stays still while you read: new stories never appear under your finger, and nothing jumps by itself. When there are new ones, the status line counts them ("3 new"), and a **"N new stories"** pill appears. Tap it to see them at the top. If you have read everything ("You're all caught up"), there is nothing to keep in place, so new stories simply appear.
 
 ### Refresh
 - **Phone:** pull down on Today.

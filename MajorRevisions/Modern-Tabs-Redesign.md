@@ -5,8 +5,8 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 342** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
-| Last Updated | 2026-10-09 |
+| Current State | **Active — Build 343** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
+| Last Updated | 2026-10-10 |
 
 ---
 
@@ -68,7 +68,7 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
 - **Consolidated actions (272–273):** top bar = Back · prev/next · Listen · Standard Stream. Per-item actions live on the item: under the headline in the reader (Read · Later · Save · Share · Open original) and on every brief card (Read · Later · Save · Share · Open in Reader · Open original), built by `buildBriefStoryActions()` in `normalizeBriefDOM`, so stored briefs get the same row. Borderless `.icon-act` buttons; ON = the filled glyph in the accent (`setActBtn`). Read is a dot (filled = unread); Standard Stream / Compact Wire use row-density icons.
 - **Single navigator on desktop (274):** the category pill bar is hidden in the desktop Today column; the sidebar's folders are the navigator there. Mobile keeps the pills, which slide to centre the tapped pill (270).
 
-### Follow-ups (Builds 275–342)
+### Follow-ups (Builds 275–343)
 - **Mobile bar (275–276):** tab labels 13px (were 11px), reader Back 15px with an 18px chevron. The selected tab shows a filled glyph (Today's sun disc, Following's folder; Search stays an outline), all tab icons use a 1.75 stroke, and Today in the sidebar, the Today tab and Light in Settings share one sun (`#icon-sun`, Lucide geometry, no fill/stroke-width on the symbol). The long-press Mark-all-read popover, orphaned since the Articles/Topics tab was removed, is retired; desktop right-click menus are untouched.
 - **Pull-to-refresh on Today (277):** the Following pull gesture now also works on the mobile Today brief. On release the brief steps down for a spinner until the refresh (and any pass queued behind one already running) finishes, then Today is rebuilt with the new stories.
 - **Read stories leave the brief (278):** a story marked read by any path disappears from every brief on screen (Today and stored briefs), via `syncBriefCards()`; the story open beside the desktop Today column stays until you move on. Emptied sections, their pills and the pill bar go too, counts follow what is left, and Back / return-to-Today land on the next unread story. Prev/next walks only what is left.
@@ -91,6 +91,19 @@ Following user feedback to eliminate redundant timeline sub-bars and unused tabs
     - Remove confirms and takes the feed's 20 stories with it (with ids on the feeds, as all 65 of the user's real feeds have).
     - Tapping a feed opens its list.
     - Muted words in Settings still work.
+- **A blank Today takes new stories at once (343, on request: "I would like the new stories to load automatically after update in Today when it is blank - etc I read everything the last time I checked. No need to tap the # new stories or Today"):**
+  - **Change:** `showNewTodayIfBlank()`. When Today is on screen with no unread story showing (built empty, or everything read since), new stories from a refresh rebuild it at its top, with no pill. It runs at the end of every refresh (`checkTodayForNewStories`) and after the return from a story (`returnToBrief`), so reading the last unread story while a refresh finds more brings you back to them. Read cards still held dimmed on screen count as read. With anything unread showing, the pill stays as it was (calm Today).
+  - **Checked (headless Edge, offline, new stories faked by copying a read article, end of a refresh = `checkTodayForNewStories()`):**
+    - Unread showing: "↑ 2 new stories" pill, nothing rebuilt.
+    - Blank: rebuilt at once with the 3 new stories, no pill.
+    - Last unread story read, 2 found meanwhile, Today tab: Today shows the 2, no pill.
+    - Desktop column blank: rebuilt with the 2.
+    - No script errors.
+- **Back to your place in Today even mid-scroll (343, on request: "after opening a story and scrolling down in the story screen then tapping Today button in the bottom bar, I often do not return to the position ... Instead, I return at the top", also "if the story screen is moving down still while I tap"):**
+  - **Cause:** Today and a story share one scroller on the phone (`#reader-view`). To tap Today after scrolling down, you swipe up to bring the tab bar back, and that swipe leaves a fling running. The tab bar sits outside the scroller, so the tap doesn't stop the fling. Today was put back and placed while the fling still ran, and the fling then carried it up, toward the top. The fling's long, slow tail explains "often".
+  - **Fix:** `stillReader(fn)`. On the Today tab's return it hides `#reader-view`'s overflow (which stops a fling), waits two frames until that has reached the screen, then returns to Today, and restores scrolling 150ms later. It applies only with overlay scrollbars (phones). With classic scrollbars, hiding one would change the content's width. A first version froze the scroller inside `selectArticle`, in the same instant as the landing; the fling still moved Today one more frame (30px), so the freeze moved to before the return. Opening a story from Today doesn't need it: a tap inside a scrolling scroller stops the fling instead of clicking.
+  - **Reduce Motion:** the block gave every element `transition-duration: 0.01ms`. That turned every style change into a transition finishing a frame late, so Today's top padding (3px, against the story's 16px) arrived after Today had been placed: 13px off. It is now `transition: none`. No code waits for `transitionend`.
+  - **Measured (headless Edge, 339px, touch input, overlay scrollbars):** with a fling running at the tap (17-19px a frame), build 342 brought Today back 181px too high, still drifting. 343 brings it back exactly, the next story at the tapped one's height (156 = 156, 252 = 252), and the same without a fling. Reduce Motion on or off: 282 = 282, steady through 600ms (it was 13px off with it on). The smoke test (Today, story and back, Following, Settings, Search, desktop) passes with no script errors.
 - **Cleanup: comments and the Tailwind block, nothing else (342, on request: "app is now over 17000 lines of code", "any changes always lead to code length increase", then "yes, cleanup please"):** `index.html` 17,779 → 14,574 lines, 883 → 780 KB. What the app does is unchanged, and that is proven, not assumed.
   - **Tailwind (−2,273 lines):** the compiled block is back to the one line Tailwind wrote. A Mac sync on 2026-10-03 had spread it over 2,274 lines; its rules were identical apart from whitespace.
   - **Comments (about −930 lines):** 355 comment blocks condensed to their reason (one removed outright). Build numbers, dates, request quotes, measurements beyond the one that makes the point and "it used to…" history went, since this file has them. Kept: platform pitfalls (115% Page Zoom anchoring, iOS scroll anchoring and scrollTop, WebKit's lazy-image report), guardrails ("never re-add", "do not reintroduce"), security contracts (linkify, the entity decoder, sanitizing article.body) and invariants other code relies on. Orphaned comments whose rules were long gone went (the Settings modal `zoom`, the selected-card stripe, the old frost designs). Comments that had gone stale were corrected: unread is kept 4 days, not 48 hours, and 339's Story order and General section no longer exist. Comments at the end of a code line were left alone. The two HTML comments the desktop build matches (`<!-- FIREBASE MODULE -->`, `<!-- PWA Service Worker…-->`) are untouched.

@@ -608,7 +608,9 @@
             margin-right: -3px;
         }
 
-        /* Respect OS-level reduced-motion preference */
+        /* Respect OS-level reduced-motion preference. transition: none, not a 0.01ms duration: that
+           turned every style change on every element into a transition finishing a frame late, so
+           Today came back 13px off its place. */
         @media (prefers-reduced-motion: reduce) {
 
             *,
@@ -616,7 +618,7 @@
             *::after {
                 animation-duration: 0.01ms !important;
                 animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
+                transition: none !important;
             }
 
             .skeleton-line {
@@ -10661,9 +10663,22 @@
             const n = cardsIn(fresh.body).filter(c => !shown.has(c.id) && !c.cov.some(x => shown.has(x))).length;
             if (!n) return;
             // Never rebuilt under you, not even at its top: the "N new stories" pill shows, and nothing moves
-            // until you tap it.
+            // until you tap it. Unless nothing unread is left on screen.
             window._todayNewCount = n;
-            window.updateTodayStatus();
+            if (!window.showNewTodayIfBlank()) window.updateTodayStatus();
+        };
+
+        // Today on screen with no unread story showing (all caught up) takes its new stories at once:
+        // there is no place to keep, so the "N new stories" pill would only be one more tap (on request).
+        window.showNewTodayIfBlank = function () {
+            const where = todayOnScreen();
+            if (!where || !(window._todayNewCount > 0)) return false;
+            const root = document.getElementById(where === 'column' ? 'today-column' : 'article-body');
+            const unread = Array.from(root?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
+                .some(c => c.getClientRects().length && !c.classList.contains('brief-card-read'));
+            if (unread) return false;
+            rebuildTodayInPlace(true);
+            return true;
         };
 
         window.openToday = async function () {
@@ -11404,9 +11419,11 @@
             };
 
             // The kept page is laid out already: land now, before it is drawn (a late correction would be a
-            // jump). A rebuilt one waits for its layout.
-            if (window._todayRestored) scrollToTarget();
-            else requestAnimationFrame(() => { setTimeout(scrollToTarget, 60); });
+            // jump). A rebuilt one waits for its layout. Back to a Today with nothing unread left, new stories
+            // found meanwhile show at once.
+            const land = () => { scrollToTarget(); window.showNewTodayIfBlank(); };
+            if (window._todayRestored) land();
+            else requestAnimationFrame(() => { setTimeout(land, 60); });
         };
 
         window.openArticleInReader = function (articleId) {
@@ -13161,6 +13178,22 @@
             });
         };
 
+        // Runs fn once #reader-view stands still. Today and a story share it on the phone, and the tab bar
+        // sits outside it, so a tab tap doesn't stop a fling there (often the swipe up that brought the bar
+        // back): it would carry Today away from its place. Overflow hidden stops the fling, fn runs two
+        // frames later, once that has reached the screen, and scrolling comes back 150ms after. Only with
+        // overlay scrollbars (touch screens), where hiding one doesn't change the content's width.
+        window.stillReader = function (fn) {
+            const rv = document.getElementById('reader-view');
+            if (!rv || !isMobile() || rv.offsetWidth !== rv.clientWidth) return fn();
+            rv.style.setProperty('overflow-y', 'hidden', 'important');
+            clearTimeout(window._readerStillTimer);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                fn();
+                window._readerStillTimer = setTimeout(() => rv.style.removeProperty('overflow-y'), 150);
+            }));
+        };
+
         // Tab click handlers. The tabs do Back's job on the phone: Today, from a story opened in Today,
         // returns to that story's place; again (or from elsewhere), Today is rebuilt at the top.
         window.onTodayTabClick = async () => {
@@ -13169,7 +13202,7 @@
             if (window._mobilePane === 'viewer' && cur && !cur.isBrief && s && s.briefId === window.TODAY_BRIEF_ID) {
                 setMobileTab('today');
                 window._todayReturnedAt = Date.now();
-                window.returnToBrief();
+                window.stillReader(() => window.returnToBrief());
                 return;
             }
             // A second tap within a second of that return is the same tap repeated, not "Today again, from
@@ -13615,7 +13648,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 342;
+        window.APP_BUILD = 343;
 
         (async function initApp() {
             try {
@@ -14476,7 +14509,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v342';
+const CACHE_NAME = 'rss-reader-v343';
 const APP_SHELL = [
     '/',
     'index.html'
