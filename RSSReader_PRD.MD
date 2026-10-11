@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 354)  
+**Version:** October 2026 (build 355)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -74,7 +74,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 |---|---|
 | Smart lists | **Unread** (with "N older than today"), **Read Later**, **Saved**, **History** (read stories within the History window). The desktop sidebar also has **Today**. |
 | Folders | Collapsible folders of feeds with unread counts. Folders with nothing unread are hidden unless "Show empty folders" is on. |
-| Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line in full, on two lines where needed ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. On the phone, Add feed and a feed's Edit open as sheets over Feeds (10px lower, so its edge shows): the fields at the top, the ✕, a pull down or a tap above to cancel, the action (Add Feed, Save) full width, text at 1.2×. On the desktop, a small centred dialog with Cancel. |
+| Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line in full, on two lines where needed ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. On the phone, Add feed and a feed's Edit open as sheets over Feeds (10px lower, so its edge shows): the fields at the top, the ✕, a pull down or a tap above to cancel, the action (Add Feed, Save) full width, text following App Zoom. On the desktop, a small centred dialog with Cancel. |
 | Right-click (desktop) | Feed: Refresh Feed, Mark All Read. Folder: Mark All Read, Collapse Folder, Collapse All Folders, Rename. |
 
 ### 3.4 Article list (Unread, folders, feeds, Read Later, Saved, History)
@@ -116,7 +116,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Search sheet | Opened from the Search button or `/`. Searches stories as you type. Shortcuts to Unread, Read Later and Saved. |
 | Phone | A sheet over the tab bar, the full height under the status bar: a grabber, the field and Done at the top (clear of the keyboard), the results down to the bottom. Done, a pull down (from the top, or from the results at their top) or a tap above it closes it; it slides down as it goes. Light and dark. |
 | Desktop | A palette under the search control. |
-| Text | 1.2 × the app's sizes on both, as in Settings: the field and headlines 18px, sources and dates 14.4px. |
+| Text | Follows App Zoom on both, as Settings does: at 100%, the field and headlines 15px, sources and dates 12px. |
 | Filters (desktop) | Scope (All folders or one folder) and read state (All, Unread, Read). |
 | Results | A compact card: the source line (bold source · date) above a medium-weight headline. |
 
@@ -132,7 +132,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 
 Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil). The gear's panel has a second page, **Text Size & Zoom**, opened from its last row and left with ‹ in the header. Each setting's description is one short line under its name (12.5px); menus sit on their setting's own line.
 
-On the phone both are an iOS sheet: it rises from the bottom to just under the status bar, over the tab bar, with round top corners, a grabber and a drawn X (16px, `#icon-close`) in a 40px grey circle (the size of the app's header buttons). The ✕, a pull down (from the header, or from the content at its top; past 110px or a quick flick, else it springs back) or a tap above it closes it, sliding down. Sliders and fields keep their own touches. On the desktop it is a centred card. In dark both are the app's own background (black on the phone, #0d1117 on the desktop), the groups in Following's card fill. Their text is 1.2 × the app's sizes (`--sheet-text`), on the phone and the desktop: labels, section labels and values 16.8px, descriptions 15px, the title 21.6px; the ✕ keeps its size.
+On the phone both are an iOS sheet: it rises from the bottom to just under the status bar, over the tab bar, with round top corners, a grabber and a drawn X (16px, `#icon-close`) in a 40px grey circle (the size of the app's header buttons). The ✕, a pull down (from the header, or from the content at its top; past 110px or a quick flick, else it springs back) or a tap above it closes it, sliding down. Sliders and fields keep their own touches. On the desktop it is a centred card. In dark both are the app's own background (black on the phone, #0d1117 on the desktop), the groups in Following's card fill. Their text follows App Zoom (`--sheet-text`, the device's App Zoom), on the phone and the desktop: at 100%, labels, section labels and values 14px, descriptions 12.5px, the title 18px; the ✕ keeps its size.
 
 | Section | Settings |
 |---|---|
