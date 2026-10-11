@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 353).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 354).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -143,7 +143,6 @@ On the phone, Settings and the feed manager slide up as a sheet. Tap **✕**, pu
 
 | Section | Setting | What it does |
 |---|---|---|
-| Account | | Shows that you are signed in (tap for the email); Sign Out |
 | Refresh | Auto-Refresh | Off, 15 minutes, 30 minutes, 1 hour. Timed refreshes are skipped while the app is in the background or on Data Saver |
 | Today | Show images | Pictures in Today |
 | | Stories per Category | How many stories each folder shows: 5 to 50, or All |
@@ -158,12 +157,13 @@ On the phone, Settings and the feed manager slide up as a sheet. Tap **✕**, pu
 | Appearance | Theme | Light or dark |
 | | Font | The font used throughout |
 | | Text size & zoom › | Opens the page below; ‹ in the header comes back |
+| Account | | Shows that you are signed in (tap for the email); Sign Out |
 
 **Text Size & Zoom** (from Appearance):
 
 | Section | Setting | What it does |
 |---|---|---|
-| | App Zoom | Makes everything bigger or smaller (each device keeps its own) |
+| | App Zoom | Makes all text bigger or smaller, Settings and Search included; the tab bar keeps its size (each device keeps its own) |
 | Today | Section Heading Size | Today's section headings, Top Stories and each folder (1.4 unless you change it) |
 | Following | Folder Size | Size of the folder and feed names in Following |
 | | Row Spacing | Space between those rows |

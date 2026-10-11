@@ -198,7 +198,7 @@
             left: 50%;
             transform: translateX(-50%);
             color: rgba(255, 255, 255, 0.4);
-            font-size: 11px;
+            font-size: calc(11px * var(--zoom));
             pointer-events: none;
             white-space: nowrap;
             transition: opacity 0.3s;
@@ -1393,6 +1393,18 @@
             background: rgba(0, 0, 0, 0.58) !important;
         }
 
+        /* The menus and the messages follow App Zoom; a menu's width grows with its text. */
+        #article-context-menu,
+        #folder-context-menu,
+        #feed-context-menu {
+            font-size: calc(16px * var(--zoom));
+            width: calc(12rem * var(--zoom));
+        }
+
+        #toast-notification {
+            font-size: calc(14px * var(--zoom));
+        }
+
         /* Search sheet above bar */
         #mobile-search-sheet {
             display: none !important;
@@ -1849,6 +1861,20 @@
             .dark #timeline-pane .px-4.py-2 {
                 background: rgba(255, 255, 255, 0.03) !important;
                 border-color: rgba(255, 255, 255, 0.06) !important;
+            }
+        }
+
+        /* App Zoom's factor on this device, for text outside the panes below or sized in px there:
+           the sheets, the phone's headers, the menus, the Undo bar, the Listen player and the messages
+           multiply their sizes by it. The tab bar keeps its size: its height places the Search sheet, the
+           Undo bar and the player. */
+        :root {
+            --zoom: var(--app-zoom, 1);
+        }
+
+        @media (max-width: 900px) {
+            :root {
+                --zoom: var(--app-zoom-mobile, 1);
             }
         }
 
@@ -2360,7 +2386,7 @@
 
         .tts-player-label {
             margin-right: 6px;
-            font-size: 15px;
+            font-size: calc(15px * var(--zoom));
             font-weight: 600;
             white-space: nowrap;
         }
@@ -2474,7 +2500,7 @@
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
             backdrop-filter: blur(24px) saturate(1.6);
             -webkit-backdrop-filter: blur(24px) saturate(1.6);
-            font-size: 15px;
+            font-size: calc(15px * var(--zoom));
             font-weight: 600;
             white-space: nowrap;
             opacity: 0;
@@ -2916,10 +2942,11 @@
                 display: none !important;
             }
 
-            /* The header parts both screens share on the phone: a 1.1rem bold title, an 11px status 2px
-               under it, 40px icon buttons. "html" lifts them over the brief and sidebar rules. */
+            /* The header parts both screens share on the phone: a 17.6px bold title, an 11px status 2px
+               under it (both x App Zoom), 40px icon buttons. "html" lifts them over the brief and sidebar
+               rules. */
             html .app-title {
-                font-size: 1.1rem !important;
+                font-size: calc(17.6px * var(--zoom)) !important;
                 font-weight: 700 !important;
                 line-height: 1 !important;
                 letter-spacing: -0.025em;
@@ -2938,7 +2965,7 @@
                 display: block;
                 height: 1em;   /* one line, empty or not, so nothing moves when it fills */
                 margin: 2px 0 0 !important;
-                font-size: 11px !important;
+                font-size: calc(11px * var(--zoom)) !important;
                 font-weight: 500;
                 line-height: 1 !important;
                 letter-spacing: normal !important;
@@ -4204,17 +4231,19 @@
             border-color: var(--divider) !important;
         }
 
-        #settings-modal .settings-close {
-            font-size: 1.6rem;
-            line-height: 1;
+        #settings-modal .settings-close svg,
+        .form-sheet .sheet-close svg {
+            display: block;
+            width: 24px;
+            height: 24px;
         }
 
-        /* Text in the Settings and Search sheets runs 20% larger than the app's: each of their font
-           sizes is a px value x --sheet-text, so one number sets them all. */
+        /* Text in the Settings and Search sheets runs 20% larger than the app's, times App Zoom: each of
+           their font sizes is a px value x --sheet-text, so one number sets them all. */
         #settings-modal,
         #mobile-search-sheet,
         .form-sheet {
-            --sheet-text: 1.2;
+            --sheet-text: calc(1.2 * var(--zoom));
         }
 
         #settings-modal {
@@ -4284,9 +4313,6 @@
                 padding: 0;
                 border: none;
                 border-radius: 9999px;
-                font-size: 18px;
-                font-weight: 700;
-                line-height: 1;
                 color: var(--text-3);
                 background: rgba(120, 120, 128, 0.24);
             }
@@ -4461,14 +4487,53 @@
             }
         }
 
-        /* A menu on its setting's own line, sized to its choice. */
+        /* A menu on its setting's own line, sized to its choice. When the label and the menu (or the
+           Theme switch) don't fit on one line (a large App Zoom), the control moves under the label, at
+           the right, rather than being cut. */
+        #settings-modal .settings-row:has(> select.settings-input.is-inline),
+        #settings-modal .settings-row:has(> .segmented) {
+            flex-wrap: wrap;
+            row-gap: 8px;
+        }
+
+        #settings-modal .settings-row > .segmented {
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        /* A label with a description starts at its own width (not flex-1's zero), so it too sends the menu
+           under it instead of squeezing into a narrow column. */
+        #settings-modal .settings-row:has(> select.settings-input.is-inline) > div {
+            flex: 1 1 auto;
+        }
+
         #settings-modal select.settings-input.is-inline {
             width: auto;
             min-width: 0;
-            max-width: 65%;
-            flex-shrink: 1;
+            max-width: 100%;
+            flex-shrink: 0;
+            margin-left: auto;
             padding: 7px 30px 7px 10px;
             background-position: right 10px center;
+        }
+
+        /* Sign Out: the app's outlined grey pill, as Mark read. */
+        #signout-btn {
+            padding: 7px 14px;
+            border: 1px solid rgba(139, 148, 158, 0.4);
+            border-radius: 999px;
+            background: transparent;
+            color: var(--text-2);
+            font-size: calc(14px * var(--sheet-text, 1));
+            font-weight: 600;
+            line-height: 1.2;
+            cursor: pointer;
+        }
+
+        #signout-btn:hover {
+            color: #4493f8;
+            border-color: rgba(68, 147, 248, 0.45);
+            background: rgba(68, 147, 248, 0.12);
         }
 
         /* A row that is a button: a link to a page (with a chevron) or an action. */
@@ -4567,7 +4632,7 @@
             transition: opacity 0.08s ease;
             z-index: 2;
             white-space: nowrap;
-            font-size: 15px;
+            font-size: calc(15px * var(--zoom));
             font-weight: 800;
             letter-spacing: 0.07em;
             text-transform: uppercase;
@@ -4651,7 +4716,7 @@
             align-items: center;
             justify-content: center;
             color: #4493f8;
-            font-size: 15px;
+            font-size: calc(15px * var(--zoom));
             font-weight: 600;
             transition: top 0.15s ease, opacity 0.15s ease;
             opacity: 0;
@@ -4731,6 +4796,11 @@
                 <path d="M4 11a9 9 0 0 1 9 9" />
                 <path d="M4 4a16 16 0 0 1 16 16" />
                 <circle cx="5" cy="19" r="1" />
+            </symbol>
+            <!-- Close: an X spanning 16 of the 24 units, so it reads at the size of a sheet's 40px circle -->
+            <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4l16 16M20 4L4 20" />
             </symbol>
             <!-- Full-screen exit: Lucide minimize-2 -->
             <symbol id="icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -5414,7 +5484,7 @@
                     <h2 id="settings-title" class="font-bold text-lg">Settings</h2>
                 </div>
                 <button onclick="closeSettings()" aria-label="Close"
-                    class="settings-close text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 -mr-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">✕</button>
+                    class="settings-close text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 -mr-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><svg aria-hidden="true"><use href="#icon-close" /></svg></button>
             </div>
 
             <!-- Two screens in one card: Following's Edit shows Feeds, the gear shows Settings. -->
@@ -5454,21 +5524,6 @@
 
             <!-- Settings: the sliders, App Zoom and Reset are on the Text size & zoom page below. -->
             <div id="settings-panel-prefs" class="hidden px-5 overflow-y-auto flex-1 no-scrollbar">
-
-                <!-- ACCOUNT -->
-                <div>
-                    <h3 class="settings-section-label">Account</h3>
-                    <div class="settings-list">
-                        <div class="settings-row">
-                            <span id="sync-status"
-                                class="settings-item-label truncate cursor-pointer hover:text-blue-500"
-                                onclick="showAccountInfo()" title="Account info">Local Only</span>
-                            <button id="signout-btn" onclick="handleSignOut()"
-                                class="hidden text-[13px] font-semibold px-3 py-1.5 rounded-lg border border-red-400 text-red-500 hover:bg-red-500 hover:text-white transition-colors outline-none flex-shrink-0"
-                                title="Sign out">Sign Out</button>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- REFRESH -->
                 <div>
@@ -5624,6 +5679,20 @@
                             <span class="settings-item-label-sm">Text size &amp; zoom</span>
                             <span class="settings-chevron" aria-hidden="true">&rsaquo;</span>
                         </button>
+                    </div>
+                </div>
+
+                <!-- ACCOUNT: last, as it is the least used (Sign Out at the bottom, as in iOS) -->
+                <div>
+                    <h3 class="settings-section-label">Account</h3>
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <span id="sync-status"
+                                class="settings-item-label truncate cursor-pointer hover:text-blue-500"
+                                onclick="showAccountInfo()" title="Account info">Local Only</span>
+                            <button id="signout-btn" onclick="handleSignOut()" class="hidden flex-shrink-0"
+                                title="Sign out">Sign Out</button>
+                        </div>
                     </div>
                 </div>
 
@@ -5817,7 +5886,7 @@
             class="form-sheet-card bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
             <div class="form-sheet-head">
                 <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Add Manual Feed</h3>
-                <button type="button" onclick="closeAddFeedModal()" aria-label="Close" class="sheet-close phone-only">✕</button>
+                <button type="button" onclick="closeAddFeedModal()" aria-label="Close" class="sheet-close phone-only"><svg aria-hidden="true"><use href="#icon-close" /></svg></button>
             </div>
             <input type="text" id="manual-feed-title" placeholder="Feed Title"
                 class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
@@ -5846,7 +5915,7 @@
             class="form-sheet-card bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
             <div class="form-sheet-head">
                 <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Edit Feed</h3>
-                <button type="button" onclick="closeEditFeedModal()" aria-label="Close" class="sheet-close phone-only">✕</button>
+                <button type="button" onclick="closeEditFeedModal()" aria-label="Close" class="sheet-close phone-only"><svg aria-hidden="true"><use href="#icon-close" /></svg></button>
             </div>
             <input type="hidden" id="edit-feed-id">
             <input type="text" id="edit-feed-title" placeholder="Feed Title"
@@ -14529,7 +14598,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 353;
+        window.APP_BUILD = 354;
 
         (async function initApp() {
             try {
@@ -15390,7 +15459,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v353';
+const CACHE_NAME = 'rss-reader-v354';
 const APP_SHELL = [
     '/',
     'index.html'

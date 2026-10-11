@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 353)  
+**Version:** October 2026 (build 354)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -132,22 +132,24 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 
 Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil). The gear's panel has a second page, **Text Size & Zoom**, opened from its last row and left with ‹ in the header. Each setting's description is one short line under its name (12.5px); menus sit on their setting's own line.
 
-On the phone both are an iOS sheet: it rises from the bottom to just under the status bar, over the tab bar, with round top corners, a grabber and the ✕ in a 40px grey circle (the size of the app's header buttons). The ✕, a pull down (from the header, or from the content at its top; past 110px or a quick flick, else it springs back) or a tap above it closes it, sliding down. Sliders and fields keep their own touches. On the desktop it is a centred card. In dark both are the app's own background (black on the phone, #0d1117 on the desktop), the groups in Following's card fill. Their text is 1.2 × the app's sizes (`--sheet-text`), on the phone and the desktop: labels, section labels and values 16.8px, descriptions 15px, the title 21.6px; the ✕ keeps its size.
+On the phone both are an iOS sheet: it rises from the bottom to just under the status bar, over the tab bar, with round top corners, a grabber and a drawn X (16px, `#icon-close`) in a 40px grey circle (the size of the app's header buttons). The ✕, a pull down (from the header, or from the content at its top; past 110px or a quick flick, else it springs back) or a tap above it closes it, sliding down. Sliders and fields keep their own touches. On the desktop it is a centred card. In dark both are the app's own background (black on the phone, #0d1117 on the desktop), the groups in Following's card fill. Their text is 1.2 × the app's sizes (`--sheet-text`), on the phone and the desktop: labels, section labels and values 16.8px, descriptions 15px, the title 21.6px; the ✕ keeps its size.
 
 | Section | Settings |
 |---|---|
-| Account | The signed-in account (tap for its email) and Sign Out |
 | Refresh | Auto-Refresh: Off, 15 minutes, 30 minutes (default), 1 hour. A timed refresh is skipped while the app is in the background or on Data Saver; coming back to the app refreshes. |
 | Today | Show images (per device); Stories per Category (5–50, All); Rank stories; Learn from what I open; Forget what I've opened |
 | Stories | Sort Order (oldest or newest first, for the lists and Today); Deduplicate by title; Muted words (words or phrases; stories with them in the headline or summary are hidden and not counted, and Today offers "N muted · Show") |
 | Following | Show empty folders; History (7, 30, 60 or 90 days) |
 | Appearance | Theme (Light / Dark); Font; Text size & zoom › |
+| Account | The signed-in account (tap for its email) and Sign Out (an outlined grey pill); last, as the least used |
+
+A menu or the Theme switch sits beside its label, and moves under it, at the right, when the two don't fit on one line (a large App Zoom).
 
 **Text Size & Zoom** page:
 
 | Section | Settings |
 |---|---|
-| (top) | App Zoom (per device) |
+| (top) | App Zoom (per device): all text, on every screen (Today, stories, lists, Following, Settings and its sheets, Search, menus, the Undo bar, the Listen player, messages). The tab bar keeps its size, since its height places the Search sheet, the Undo bar and the player. |
 | Today | Section Heading Size (Top Stories and each folder; default 1.4, per device) |
 | Following | Folder Size (also the sidebar's feed names), Row Spacing |
 | Article List | Title Size (lists, and Today's stories a little smaller), Preview Text Size (default 0.9), Line Height, Source Name Size (lists, Today, the reader's source line; default 0.8), Preview Lines, Social Preview Lines (Bluesky/Mastodon) |
