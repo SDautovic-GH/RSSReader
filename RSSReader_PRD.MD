@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 356)  
+**Version:** October 2026 (build 357)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -104,7 +104,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Surface | Buttons |
 |---|---|
 | Desktop: list cards, Today cards, reader | One row everywhere: **Read · Read Later · Save · Open original · Share**. Icon buttons with tooltips, 32px with 18px icons, 4px apart, the first icon on the text edge, grey off and blue on. |
-| Phone: Today cards | No row. The "…" on the source line, or a long-press on the card, opens a menu: **Mark as Read · Read Later · Save · Share… · Open Original** (labels follow the story's state). It is the lists' context menu; its items press the card's hidden buttons. Tapping the card opens the story. A touch or click outside any context menu only closes it (as on iOS); the tap does nothing else. |
+| Phone: Today cards | No row. The "…" on the source line, or a long-press on the card, opens a menu: **Mark as Read · Read Later · Save · Share… · Open Original** (labels follow the story's state). It is the lists' context menu; its items press the card's hidden buttons. Tapping the card opens the story. Swipes as in the lists: left marks the story (and its grouped copies) read, the card leaves and the next slides up, with "Marked read · Undo" in the Undo bar; right toggles Read Later. A hint (a pill with Mark read's check or Read Later's bookmark) and a tint follow the finger; past 60px, mostly sideways, the swipe acts. A touch or click outside any context menu only closes it (as on iOS); the tap does nothing else. |
 | Desktop: Today column | The row above, shown on hover, keyboard focus or the open story; its space stays reserved, so nothing moves. |
 | Phone: reader | **Read Later · Save · Listen** and a "…" for **Mark as Read / Unread · Share… · Open Original** (the same menu as Today's, pressing the row's hidden buttons) |
 | Phone: list cards | No row. The "…" or a long-press (500ms) opens the list's menu: Mark Above Read, Read Later, Save, Mark Read / Unread, Mark Below Read, Share…, Open Original. Swipes handle read and Read Later; a tap opens the story. |
@@ -140,7 +140,7 @@ On the phone both are an iOS sheet: it rises from the bottom to just under the s
 | Today | Show images (per device); Stories per Category (5–50, All); Rank stories; Learn from what I open; Forget what I've opened |
 | Stories | Sort Order (oldest or newest first, for the lists and Today); Deduplicate by title; Muted words (words or phrases; stories with them in the headline or summary are hidden and not counted, and Today offers "N muted · Show") |
 | Following | Show empty folders; History (7, 30, 60 or 90 days) |
-| Appearance | Theme (Light / Dark); Font; Text size & zoom › |
+| Appearance | Theme (Light / Dark, a capsule switch); Font; Text size & zoom › |
 | Account | The signed-in account (tap for its email) and Sign Out (an outlined grey pill); last, as the least used |
 
 A menu or the Theme switch sits beside its label, and moves under it, at the right, when the two don't fit on one line (a large App Zoom).
@@ -196,8 +196,8 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 
 | Requirement | Detail |
 |---|---|
-| Toasts | Short messages for actions and errors (red for failures), queued, above everything. |
-| Undo bar | "Marked N read · Undo" floats over the page above the tab bar for 5 seconds, in the tab bar's glass (light or dark). It takes no room, so nothing moves when it goes. |
+| Toasts | Short messages for actions and errors, queued, above everything: a capsule in the Undo bar's glass 8px under the status bar, in the buttons' text; failures in red. |
+| Undo bar | "Marked N read · Undo" floats over the page above the tab bar for 5 seconds, in the tab bar's glass (light or dark), the check beside the message in the buttons' text and Undo the blue pill. It takes no room, so nothing moves when it goes. |
 
 ---
 
@@ -235,7 +235,7 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 | Layer | Technology |
 |---|---|
 | Markup | HTML5, one file (`index.html`) |
-| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet` (sheets: the app's own background), `--divider`. Buttons share one style, `.pill-btn`: a pill, text `--btn-text` (14px) × App Zoom, 600, 7px 14px inside a 1px edge; `.pill-primary` fills it in the logo's blue for a screen's main action (Mark All Read in Folders, N new stories, Add feed, Muted words' Add, Add Feed / Save, Sign In), the rest are outlined grey (Mark read, Sign Out, Cancel, Create Account). Chips (folder pills, Search's shortcuts), close controls (✕, Done) and the Undo bar's Undo keep their own. Text fields and menus share the capsule shape (Settings' 30px, as tall as a pill; form fields 34px; Search's field). Menus (the "…" and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the tab bar's glass in both themes, with 14px corners, the app's dividers and a soft shadow, as wide as their longest item. Add Feed / Edit Feed (the phone's sheet and the desktop's dialog) and the login window are on the app's own surface. |
+| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet` (sheets: the app's own background), `--divider`. Buttons share one style, `.pill-btn`: a pill, text `--btn-text` (14px) × App Zoom, 600, 7px 14px inside a 1px edge; `.pill-primary` fills it in the logo's blue for a screen's main action (Mark All Read in Folders, N new stories, Add feed, Muted words' Add, Add Feed / Save, Sign In), the rest are outlined grey (Mark read, Sign Out, Cancel, Create Account). Chips (folder pills, Search's shortcuts), close controls (✕, Done) and the Undo bar's Undo keep their own. Text fields and menus share the capsule shape (Settings' 30px, as tall as a pill; form fields 34px; Search's field). Menus (the "…" and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the tab bar's glass in both themes, with 14px corners, the app's dividers and a soft shadow, as wide as their longest item. Add Feed / Edit Feed (the phone's sheet and the desktop's dialog) and the login window are on the app's own surface. Also pills: Search's Unread / Read Later / Saved, the desktop's ‹ Today and the list header's Mark Read · N. Today's folder pills keep a regular weight, on request (a row of semibold pills reads heavy), at the buttons' size. |
 | Scripting | Vanilla JavaScript, no framework |
 | Sanitising | DOMPurify 3.1.6 (cdnjs) |
 | Auth and cloud | Firebase 11.6.1 (Auth, Firestore), ES module imports |

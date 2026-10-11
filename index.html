@@ -1438,8 +1438,37 @@
             width: auto;
         }
 
+        /* Messages ("Saved", "Added to Read Later"...): a capsule in the Undo bar's glass, 8px under the
+           status bar, in the buttons' text; a failure in red. */
         #toast-notification {
-            font-size: calc(14px * var(--zoom));
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 300;
+            width: max-content;
+            max-width: calc(100vw - 32px);
+            padding: 10px 18px;
+            border-radius: 999px;
+            background: rgba(30, 30, 34, 0.92);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(24px) saturate(1.6);
+            -webkit-backdrop-filter: blur(24px) saturate(1.6);
+            font-size: calc(var(--btn-text) * var(--zoom));
+            font-weight: 600;
+            line-height: 1.2;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #toast-notification.is-error {
+            background: rgba(220, 38, 38, 0.95);
+            border-color: transparent;
+            color: #ffffff;
         }
 
         /* The login window on the app's own surface and dividers, as the sheets. */
@@ -1579,17 +1608,9 @@
             padding: 10px 14px;
         }
 
+        /* The shortcuts are the shared pill (.pill-btn), sharing the row. */
         #mobile-search-sheet .search-smart-btn {
             flex: 1;
-            padding: 8px 10px;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 10px;
-            color: #fff;
-            font-size: calc(12px * var(--sheet-text, 1));
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
         }
 
         /* Desktop search palette: the sheet's rules are not inside the mobile @media block, so
@@ -1610,6 +1631,7 @@
                 right: auto !important;
                 width: min(520px, 46vw);
                 padding: 0 !important;
+                --text-3: #8b949e;   /* the palette is dark glass in both themes */
             }
 
             #mobile-search-sheet .search-results {
@@ -1637,10 +1659,6 @@
                 background: #1c2128;
                 color: #e6edf3;
             }
-        }
-
-        #mobile-search-sheet .search-smart-btn:active {
-            background: rgba(255, 255, 255, 0.12);
         }
 
         /* On the phone Search is a sheet like Settings: over the tab bar, the full height under the
@@ -1746,16 +1764,6 @@
             html:not(.dark) #mobile-search-sheet .search-item .search-item-meta,
             html:not(.dark) #mobile-search-sheet .search-empty {
                 color: var(--text-3);
-            }
-
-            html:not(.dark) #mobile-search-sheet .search-smart-btn {
-                background: rgba(118, 118, 128, 0.12);
-                border-color: transparent;
-                color: var(--text-1);
-            }
-
-            html:not(.dark) #mobile-search-sheet .search-smart-btn:active {
-                background: rgba(118, 118, 128, 0.2);
             }
         }
 
@@ -2426,7 +2434,7 @@
 
         .tts-player-label {
             margin-right: 6px;
-            font-size: calc(15px * var(--zoom));
+            font-size: calc(var(--btn-text) * var(--zoom));
             font-weight: 600;
             white-space: nowrap;
         }
@@ -2530,9 +2538,8 @@
             z-index: 61;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            min-height: 48px;
-            padding: 2px 4px 2px 16px;
+            gap: 12px;
+            padding: 6px 6px 6px 16px;
             border-radius: 9999px;
             background: rgba(30, 30, 34, 0.92);
             color: #ffffff;
@@ -2540,7 +2547,7 @@
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
             backdrop-filter: blur(24px) saturate(1.6);
             -webkit-backdrop-filter: blur(24px) saturate(1.6);
-            font-size: calc(15px * var(--zoom));
+            font-size: calc(var(--btn-text) * var(--zoom));   /* the buttons' text */
             font-weight: 600;
             white-space: nowrap;
             opacity: 0;
@@ -2555,28 +2562,17 @@
             transform: translate(-50%, 0);
         }
 
-        #brief-undo-bar svg {
-            width: 16px;
-            height: 16px;
-            margin-right: 6px;
-            vertical-align: -3px;
+        /* The check beside the message, not above it (Tailwind's base makes an svg a block). */
+        #brief-undo-bar .brief-undo-msg {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
         }
 
-        #brief-undo-bar button {
-            min-width: 44px;
-            min-height: 44px;
-            padding: 0 14px;
-            border: none;
-            border-radius: 9999px;
-            background: transparent;
-            color: #4493f8;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        #brief-undo-bar button:active {
-            background: rgba(255, 255, 255, 0.12);
+        #brief-undo-bar .brief-undo-msg svg {
+            width: 1.15em;
+            height: 1.15em;
+            flex-shrink: 0;
         }
 
         @media (max-width: 900px) {
@@ -2590,10 +2586,11 @@
             }
         }
 
-        /* Light theme: the Undo bar and the Listen player in the tab bar's light glass, dark glyphs, Undo
-           in the logo's blue. */
+        /* Light theme: the Undo bar, the Listen player and messages in the tab bar's light glass, dark
+           glyphs. */
         html:not(.dark) .tts-player,
-        html:not(.dark) #brief-undo-bar {
+        html:not(.dark) #brief-undo-bar,
+        html:not(.dark) #toast-notification:not(.is-error) {
             background:
                 linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 45%),
                 rgba(246, 246, 248, 0.82);
@@ -2606,12 +2603,7 @@
             color: #1f2328;
         }
 
-        html:not(.dark) #brief-undo-bar button {
-            color: var(--color-blue-600);
-        }
-
-        html:not(.dark) .tts-player button:active,
-        html:not(.dark) #brief-undo-bar button:active {
+        html:not(.dark) .tts-player button:active {
             background: rgba(0, 0, 0, 0.05);
         }
 
@@ -3076,8 +3068,8 @@
             align-items: center;
             padding: 5px 12px;
             border-radius: 9999px;
-            font-size: 0.85em !important;
-            font-weight: 400;   /* regular, not semibold (build 278, on request) */
+            font-size: calc(var(--btn-text) * var(--zoom)) !important;   /* the buttons' size */
+            font-weight: 400;   /* regular, on request: a row of semibold pills reads heavy */
             white-space: nowrap !important;
             text-decoration: none;
             background: rgba(255, 255, 255, 0.08);
@@ -3183,26 +3175,13 @@
             height: 1.125rem;
         }
 
-        /* Back in the reader bar is text-style: its dark:bg-blue-950/40 class is not in the
-           compiled Tailwind, so dark mode got the light bg-blue-50, a near-white pill. */
-        #viewer-back-btn {
-            background: transparent !important;
-            color: #4493f8 !important;
-        }
-        #viewer-back-btn:hover {
-            background: rgba(68, 147, 248, 0.12) !important;
-        }
-
         /* On desktop the reader bar is padded to the article column's real edges (max-w-2xl at the
-           reader's padding: md 1rem, lg 1.5rem; its md:ml-4 / lg:ml-8 are not compiled), so Back
+           reader's padding: md 1rem, lg 1.5rem; its md:ml-4 / lg:ml-8 are not compiled), so Back's pill
            lines up with the text's left edge and the buttons with its right. */
         @media (min-width: 901px) {
             #viewer-header {
                 padding-left: 1rem !important;
                 padding-right: max(1rem, calc(100% - 43rem)) !important;
-            }
-            #viewer-back-btn {
-                margin-left: -0.75rem !important;   /* its own px-3, so the chevron sits on the text edge */
             }
         }
         @media (min-width: 64rem) {
@@ -3236,7 +3215,6 @@
             }
 
             .brief-jump-pill {
-                font-size: 0.85em !important;
                 padding: 5px 11px !important;
             }
         }
@@ -4164,19 +4142,20 @@
         }
 
         /* Segmented control (theme picker) */
+        /* The Theme switch: a capsule of capsules, in the buttons' text. */
         .segmented {
             display: inline-flex;
             padding: 2px;
             background: rgba(120, 120, 128, 0.18);
-            border-radius: 9px;
-            font-size: calc(13px * var(--sheet-text, 1));
+            border-radius: 999px;
+            font-size: calc(var(--btn-text) * var(--zoom));
             font-weight: 600;
         }
 
         .segmented button {
-            padding: 6px 12px;
-            border-radius: 7px;
-            color: #94a3b8;
+            padding: 6px 14px;
+            border-radius: 999px;
+            color: var(--text-3);
             background: transparent;
             display: flex;
             align-items: center;
@@ -4195,9 +4174,8 @@
             color: #fff;
         }
 
-        /* Settings menus: an inline-SVG chevron, since the native one is near-black and vanishes in
-           dark mode. White chevron for dark, slate for light. */
-        /* Fields and menus share the buttons' capsule shape. */
+        /* Settings menus: the buttons' capsule shape, and an inline-SVG chevron, since the native one is
+           near-black and vanishes in dark mode (white for dark, slate for light). */
         #settings-modal select.settings-input {
             padding: 8px 36px 8px 16px;
             font-size: calc(14px * var(--sheet-text, 1));
@@ -4639,6 +4617,10 @@
             overflow: hidden;
         }
 
+        .brief-story-card[data-sa-id] {
+            position: relative;
+        }
+
         .swipe-hint {
             position: absolute;
             top: 0;
@@ -4650,10 +4632,9 @@
             transition: opacity 0.08s ease;
             z-index: 2;
             white-space: nowrap;
-            font-size: calc(15px * var(--zoom));
-            font-weight: 800;
-            letter-spacing: 0.07em;
-            text-transform: uppercase;
+            font-size: calc(var(--btn-text) * var(--zoom));   /* a pill label, as the buttons */
+            font-weight: 600;
+            line-height: 1;
         }
 
         .swipe-hint-left {
@@ -4672,19 +4653,33 @@
             padding-right: 16px;
         }
 
+        /* The labels a shade deeper than the tint behind them, so they stand out from it, with the app's
+           icons: Mark read's check, Read Later's bookmark (the star is Save). */
+        .swipe-hint span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .swipe-hint svg {
+            width: 1.15em;
+            height: 1.15em;
+            flex-shrink: 0;
+        }
+
         .swipe-hint-left span {
-            background: rgba(37, 99, 235, 0.95);
+            background: #1d4ed8;
             color: #ffffff;
-            padding: 5px 11px 5px 9px;
-            border-radius: 6px;
+            padding: 7px 14px;
+            border-radius: 999px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
         }
 
         .swipe-hint-right span {
-            background: rgba(22, 163, 74, 0.95);
+            background: #15803d;
             color: #ffffff;
-            padding: 5px 9px 5px 11px;
-            border-radius: 6px;
+            padding: 7px 14px;
+            border-radius: 999px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
         }
 
@@ -5001,11 +4996,7 @@
     </svg>
 
     <!-- Global Toast Notification -->
-    <div id="toast-notification"
-        class="fixed left-1/2 transform -translate-x-1/2 px-4 py-2 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 opacity-0 pointer-events-none"
-        style="top:env(safe-area-inset-top, 0px)">
-        Notification message
-    </div>
+    <div id="toast-notification" role="status"></div>
 
     <!-- Patch the compiled Tailwind .active-item rule's bg-color in place.
          Pure CSS overrides lose to layered Tailwind utilities even with !important +
@@ -5175,8 +5166,7 @@
                 <div class="flex items-center flex-1 min-w-0">
                     <div id="timeline-count-group" class="flex items-center">
                         <button id="timeline-count" onclick="markAllRead()" title="Mark All Read"
-                            class="mr-2 hover:text-blue-500 transition-colors whitespace-nowrap text-[15px] font-normal tabular-nums">Mark
-                            Read · 0</button>
+                            class="pill-btn mr-2 tabular-nums">Mark Read · 0</button>
                         <span id="dedup-badge"
                             class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
@@ -5219,8 +5209,8 @@
                 ondblclick="toggleFullScreenManual(event)" title="Double-click the bar for full screen">
                 <div class="flex items-center">
                     <button id="viewer-back-btn" onclick="onViewerBackClick()" type="button" aria-label="Back"
-                        class="hidden inline-flex items-center gap-1.5 -ml-1 px-3 py-1.5 rounded-full text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 active:scale-95 transition-all cursor-pointer">
-                        <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="hidden pill-btn inline-flex">
+                        <svg class="stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                         <span id="viewer-back-label">Today</span>
@@ -5417,9 +5407,9 @@
                 <button class="search-close" type="button" onclick="closeSearchSheet()">Done</button>
             </div>
             <div class="search-smart">
-                <button class="search-smart-btn" type="button" onclick="searchSmart('all')">Unread</button>
-                <button class="search-smart-btn" type="button" onclick="searchSmart('later')">Read Later</button>
-                <button class="search-smart-btn" type="button" onclick="searchSmart('saved')">Saved</button>
+                <button class="search-smart-btn pill-btn" type="button" onclick="searchSmart('all')">Unread</button>
+                <button class="search-smart-btn pill-btn" type="button" onclick="searchSmart('later')">Read Later</button>
+                <button class="search-smart-btn pill-btn" type="button" onclick="searchSmart('saved')">Saved</button>
             </div>
             <!-- Scope + read-state: the two things the desktop bar had and this sheet
                  did not. Desktop-only (the CSS hides this row under 901px), so the
@@ -7949,8 +7939,7 @@
                 }</div>`;
 
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
-                <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
-                <div class="swipe-hint swipe-hint-right">Read Later &#x2605;</div>
+                ${swipeHintsHtml()}
                 <div class="min-w-0 list-card-body">
                     <div class="list-card-meta flex items-center gap-1.5 mb-1 min-w-0">
                         ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
@@ -8009,21 +7998,42 @@
             }, { passive: true });
         })();
 
-        // ===== ARTICLE LIST SWIPE GESTURES =====
-        (function () {
-            const list = document.getElementById('article-list');
+        // ===== SWIPE ACTIONS ON STORY CARDS (the phone's lists and Today) =====
+        // Left marks the story read, right toggles Read Later. The card shows its hint and a tint as it goes;
+        // past 60px, at least twice as sideways as up or down, the action runs. A move that starts more
+        // vertical is a scroll. cardOf(target) is the card a touch starts on, or null; act(card, 'read' |
+        // 'later') does the work. The click a swipe can end with is dropped.
+        function swipeHintsHtml() {
+            return '<div class="swipe-hint swipe-hint-left"><span><svg aria-hidden="true"><use href="#icon-check"/></svg>Mark Read</span></div>'
+                + '<div class="swipe-hint swipe-hint-right"><span>Read Later<svg aria-hidden="true"><use href="#icon-bookmark"/></svg></span></div>';
+        }
+
+        function attachCardSwipes(container, cardOf, act) {
             const SWIPE_THRESHOLD = 60;  // px to trigger action
             const SWIPE_RATIO = 2.0;     // horizontal must be 2x vertical
-            let _t = null; // active touch card
+            let _t = null;   // the touch in progress
+            let dropClickUntil = 0;
+            // Today's cards are built without hints: they get them on their first swipe, at the end, since
+            // Today styles a card's first block as its source line.
+            const hintsOf = card => {
+                if (!card.querySelector(':scope > .swipe-hint-left')) {
+                    card.insertAdjacentHTML('beforeend', swipeHintsHtml());
+                }
+                return [card.querySelector(':scope > .swipe-hint-left'), card.querySelector(':scope > .swipe-hint-right')];
+            };
+            const reset = card => {
+                card.querySelectorAll(':scope > .swipe-hint').forEach(h => { h.style.opacity = 0; });
+                card.style.removeProperty('background');
+            };
 
-            list.addEventListener('touchstart', (e) => {
-                const card = e.target.closest('[data-id]');
+            container.addEventListener('touchstart', (e) => {
+                const card = cardOf(e.target);
                 if (!card) return;
                 const touch = e.touches[0];
                 _t = { card, startX: touch.clientX, startY: touch.clientY, moved: false, cancelled: false };
             }, { passive: true });
 
-            list.addEventListener('touchmove', (e) => {
+            container.addEventListener('touchmove', (e) => {
                 if (!_t || _t.cancelled) return;
                 const touch = e.touches[0];
                 const dx = touch.clientX - _t.startX;
@@ -8035,48 +8045,32 @@
                 if (Math.abs(dx) < 8 && Math.abs(dy) > 4) { _t.cancelled = true; return; }
 
                 _t.moved = true;
-                const absDx = Math.abs(dx);
-
-                // Show appropriate hint overlay
-                const leftHint = _t.card.querySelector('.swipe-hint-left');
-                const rightHint = _t.card.querySelector('.swipe-hint-right');
-                if (!leftHint || !rightHint) return;
-
+                const [leftHint, rightHint] = hintsOf(_t.card);
+                const progress = Math.min(1, Math.abs(dx) / SWIPE_THRESHOLD);
                 if (dx < -8) {
                     // Swiping left → Mark Read
-                    const progress = Math.min(1, absDx / SWIPE_THRESHOLD);
-                    leftHint.style.opacity = progress * 0.9;
+                    leftHint.style.opacity = progress;   // solid once the swipe will act
                     rightHint.style.opacity = 0;
-                    _t.card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.18}) 50%, rgba(37,99,235,${progress * 0.06}) 100%)`;
+                    _t.card.style.setProperty('background', `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.18}) 50%, rgba(37,99,235,${progress * 0.06}) 100%)`, 'important');
                 } else if (dx > 8) {
                     // Swiping right → Add to Read Later
-                    const progress = Math.min(1, absDx / SWIPE_THRESHOLD);
-                    rightHint.style.opacity = progress * 0.9;
+                    rightHint.style.opacity = progress;
                     leftHint.style.opacity = 0;
-                    _t.card.style.background = `linear-gradient(to left, rgba(22,163,74,${progress * 0.35}) 0%, rgba(22,163,74,${progress * 0.18}) 50%, rgba(22,163,74,${progress * 0.06}) 100%)`;
+                    _t.card.style.setProperty('background', `linear-gradient(to left, rgba(22,163,74,${progress * 0.35}) 0%, rgba(22,163,74,${progress * 0.18}) 50%, rgba(22,163,74,${progress * 0.06}) 100%)`, 'important');
                 } else {
-                    leftHint.style.opacity = 0;
-                    rightHint.style.opacity = 0;
-                    _t.card.style.background = '';
+                    reset(_t.card);
                 }
             }, { passive: true });
 
-            list.addEventListener('touchcancel', () => {
-                if (_t) { _t.card.style.background = ''; _t = null; }
+            container.addEventListener('touchcancel', () => {
+                if (_t) { reset(_t.card); _t = null; }
             }, { passive: true });
 
-            list.addEventListener('touchend', (e) => {
+            container.addEventListener('touchend', (e) => {
                 if (!_t) return;
                 const t = _t;
                 _t = null;
-
-                // Reset visuals
-                const leftHint = t.card.querySelector('.swipe-hint-left');
-                const rightHint = t.card.querySelector('.swipe-hint-right');
-                if (leftHint) leftHint.style.opacity = 0;
-                if (rightHint) rightHint.style.opacity = 0;
-                t.card.style.background = '';
-
+                reset(t.card);
                 if (t.cancelled || !t.moved) return;
 
                 const touch = e.changedTouches[0];
@@ -8087,30 +8081,44 @@
                 if (Math.abs(dx) < SWIPE_THRESHOLD) return;
                 if (Math.abs(dy) > Math.abs(dx) / SWIPE_RATIO) return;
 
-                const id = t.card.getAttribute('data-id');
-                if (!id) return;
-                // Bucket-backed views (Read Later / Saved / Recently Read) render
-                // articles that are NOT in window.articles — search all sources.
-                const article = findArticleAnywhere(id);
-                if (!article) return;
-
-                article._excerptHtml = null;
-                if (dx < 0) {
-                    // Left swipe → Toggle Read
-                    toggleUnread(article); saveReadState();
-                    window._pinnedArticleIds.delete(id);
-                    refreshUI();
-                    window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
-                    maybeGoHomeIfTimelineEmpty();
-                } else {
-                    // Right swipe → Toggle Read Later
-                    toggleReadLater(article); saveReadLaterState();
-                    refreshUI();
-                    window.showToast(article.readLater ? 'Added to Read Later' : 'Removed from Read Later');
-                    maybeGoHomeIfTimelineEmpty();
-                }
+                dropClickUntil = Date.now() + 400;
+                act(t.card, dx < 0 ? 'read' : 'later');
             }, { passive: true });
-        })();
+
+            container.addEventListener('click', (e) => {
+                if (Date.now() > dropClickUntil) return;
+                dropClickUntil = 0;
+                e.preventDefault();
+                e.stopPropagation();
+            }, true);
+        }
+
+        attachCardSwipes(document.getElementById('article-list'), target => target.closest('[data-id]'), (card, kind) => {
+            const id = card.getAttribute('data-id');
+            // Bucket-backed views (Read Later / Saved / Recently Read) render
+            // articles that are NOT in window.articles — search all sources.
+            const article = id && findArticleAnywhere(id);
+            if (!article) return;
+
+            article._excerptHtml = null;
+            if (kind === 'read') {
+                toggleUnread(article); saveReadState();
+                window._pinnedArticleIds.delete(id);
+                refreshUI();
+                window.showToast(article.unread ? 'Marked Unread' : '✓ Marked Read');
+            } else {
+                toggleReadLater(article); saveReadLaterState();
+                refreshUI();
+                window.showToast(article.readLater ? 'Added to Read Later' : 'Removed from Read Later');
+            }
+            maybeGoHomeIfTimelineEmpty();
+        });
+
+        // Today's cards on the phone: read with Undo (the card leaves Today), Read Later as its button.
+        attachCardSwipes(document.getElementById('reader-view'),
+            target => isMobile() && window._mobilePane === 'viewer' && window.currentArticle?.id === window.TODAY_BRIEF_ID
+                ? target.closest('#article-body .brief-story-card[data-sa-id]') : null,
+            (card, kind) => kind === 'read' ? window.markBriefCardRead(card) : window.briefStoryAct('later', card.getAttribute('data-sa-id')));
 
         // ===== PULL-TO-REFRESH (mobile): Today =====
         // Today's pull is the one manual refresh on the phone, beside the automatic ones (on open, on
@@ -11171,7 +11179,7 @@
                 bar = document.createElement('div');
                 bar.id = 'brief-undo-bar';
                 bar.setAttribute('role', 'status');
-                bar.innerHTML = '<span><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-undo-text"></span></span><button type="button">Undo</button>';
+                bar.innerHTML = '<span class="brief-undo-msg"><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-undo-text"></span></span><button type="button" class="pill-btn pill-primary">Undo</button>';
                 document.body.appendChild(bar);
             }
             bar.querySelector('.brief-undo-text').textContent = text;
@@ -11201,25 +11209,10 @@
         window.markBriefSectionRead = function (btn) {
             const sec = btn && btn.closest('.brief-cat-section');
             if (!sec) return;
-            const live = new Map((window.articles || []).map(a => [a.id, a]));
-            const marked = new Set();
-            const take = id => {
-                const a = live.get(id);
-                if (a && a.unread && !a.isBrief) marked.add(a);
-            };
             const cards = Array.from(sec.querySelectorAll('.brief-story-card[data-sa-id]:not(.brief-card-read)'));
-            cards.forEach(card => {
-                take(card.getAttribute('data-sa-id'));
-                try { JSON.parse(card.getAttribute('data-cov') || '[]').forEach(take); } catch (e) { }
-            });
+            const marked = briefUnreadStories(cards);
             if (!marked.size) { window.syncBriefCards(); return; }
-            const apply = () => {
-                saveReadState();
-                refreshUI();
-                updateBadges();
-                window.updateActionButton?.();
-                window.syncBriefCards(null, { now: true });   // your tap: at once
-            };
+            const apply = applyBriefReadChange;
             const scroller = sec.closest('#today-column') || sec.closest('#reader-view');
             const next = window.briefNextShown(sec);
             const secBefore = sec.getBoundingClientRect().top;
@@ -11240,6 +11233,46 @@
                 if (scroller && next && next.getClientRects().length) scroller.scrollTop += next.getBoundingClientRect().top - nextBefore;
             });
         };
+
+        // A swipe left on a Today card (the phone): the story and its grouped copies read and the next story
+        // sliding up, as the card's Read button, and with Undo, since a swipe can slip.
+        window.markBriefCardRead = function (card) {
+            const marked = briefUnreadStories([card]);
+            if (!marked.size) return;
+            const next = window.briefNextShown(card);
+            const nextBefore = next ? next.getBoundingClientRect().top : 0;
+            marked.forEach(a => { a.unread = false; applyReadState(a); });
+            applyBriefReadChange();
+            if (next && next.getClientRects().length) window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
+            window.showBriefUndo('Marked read', () => {
+                marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
+                applyBriefReadChange();
+            });
+        };
+
+        // The unread stories these Today cards show, the copies grouped under them included.
+        function briefUnreadStories(cards) {
+            const live = new Map((window.articles || []).map(a => [a.id, a]));
+            const found = new Set();
+            const take = id => {
+                const a = live.get(id);
+                if (a && a.unread && !a.isBrief) found.add(a);
+            };
+            cards.forEach(card => {
+                take(card.getAttribute('data-sa-id'));
+                try { JSON.parse(card.getAttribute('data-cov') || '[]').forEach(take); } catch (e) { }
+            });
+            return found;
+        }
+
+        // After Today changes stories' read state: save it, and Today drops (or brings back) their cards.
+        function applyBriefReadChange() {
+            saveReadState();
+            refreshUI();
+            updateBadges();
+            window.updateActionButton?.();
+            window.syncBriefCards(null, { now: true });   // your tap: at once
+        }
 
         window.renderTodayColumn = function () {
             const col = document.getElementById('today-column');
@@ -12675,8 +12708,7 @@
             const toast = document.getElementById('toast-notification');
             if (!toast) { processToastQueue(); return; }
             toast.textContent = msg;
-            toast.className = `fixed left-1/2 transform -translate-x-1/2 px-6 py-3 text-white text-sm font-bold rounded-lg shadow-xl z-[300] transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-blue-600'}`;
-            toast.style.top = 'env(safe-area-inset-top, 0px)';
+            toast.classList.toggle('is-error', !!isError);
             toast.style.pointerEvents = 'auto';
             toast.style.opacity = '1';
             setTimeout(() => {
@@ -14600,7 +14632,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 356;
+        window.APP_BUILD = 357;
 
         (async function initApp() {
             try {
@@ -15461,7 +15493,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v356';
+const CACHE_NAME = 'rss-reader-v357';
 const APP_SHELL = [
     '/',
     'index.html'
