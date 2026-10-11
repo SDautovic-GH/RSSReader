@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 355)  
+**Version:** October 2026 (build 356)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -74,7 +74,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 |---|---|
 | Smart lists | **Unread** (with "N older than today"), **Read Later**, **Saved**, **History** (read stories within the History window). The desktop sidebar also has **Today**. |
 | Folders | Collapsible folders of feeds with unread counts. Folders with nothing unread are hidden unless "Show empty folders" is on. |
-| Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line in full, on two lines where needed ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. On the phone, Add feed and a feed's Edit open as sheets over Feeds (10px lower, so its edge shows): the fields at the top, the ✕, a pull down or a tap above to cancel, the action (Add Feed, Save) full width, text following App Zoom. On the desktop, a small centred dialog with Cancel. |
+| Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line in full, on two lines where needed ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. On the phone, Add feed and a feed's Edit open as sheets over Feeds (10px lower, so its edge shows): the fields at the top, the ✕, a pull down or a tap above to cancel, the action (Add Feed, Save) as the app's blue pill at the right, text following App Zoom. On the desktop, a small centred dialog with Cancel. |
 | Right-click (desktop) | Feed: Refresh Feed, Mark All Read. Folder: Mark All Read, Collapse Folder, Collapse All Folders, Rename. |
 
 ### 3.4 Article list (Unread, folders, feeds, Read Later, Saved, History)
@@ -235,7 +235,7 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 | Layer | Technology |
 |---|---|
 | Markup | HTML5, one file (`index.html`) |
-| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet` (sheets: the app's own background), `--divider`. |
+| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet` (sheets: the app's own background), `--divider`. Buttons share one style, `.pill-btn`: a pill, text `--btn-text` (14px) × App Zoom, 600, 7px 14px inside a 1px edge; `.pill-primary` fills it in the logo's blue for a screen's main action (Mark All Read in Folders, N new stories, Add feed, Muted words' Add, Add Feed / Save, Sign In), the rest are outlined grey (Mark read, Sign Out, Cancel, Create Account). Chips (folder pills, Search's shortcuts), close controls (✕, Done) and the Undo bar's Undo keep their own. Text fields and menus share the capsule shape (Settings' 30px, as tall as a pill; form fields 34px; Search's field). Menus (the "…" and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the tab bar's glass in both themes, with 14px corners, the app's dividers and a soft shadow, as wide as their longest item. Add Feed / Edit Feed (the phone's sheet and the desktop's dialog) and the login window are on the app's own surface. |
 | Scripting | Vanilla JavaScript, no framework |
 | Sanitising | DOMPurify 3.1.6 (cdnjs) |
 | Auth and cloud | Firebase 11.6.1 (Auth, Firestore), ES module imports |
