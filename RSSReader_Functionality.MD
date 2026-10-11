@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 359).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 360).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -106,7 +106,7 @@ The headphones button reads the stories showing in Today aloud. The player above
 Unread, folders, feeds, Read Later, Saved and History all show stories as a list:
 - Each card looks like a Today story: the source and how long ago, a picture beside the headline when there is one, the headline and a preview.
 - **Phone:** swipe left to mark read or unread, and swipe right for Read Later. Long-press for more.
-- **Right-click or long-press** a story: Mark Above Read, Read Later, Save, Mark Read/Unread, Mark Below Read.
+- **Right-click or long-press** a story: Mark Above Read, Read Later, Save, Mark Read/Unread, Mark Below Read, Share, Open Original.
 - **Order:** oldest first by default; change it in Settings › Stories › Sort Order.
 - **De-duplicate** (on by default) keeps one copy of a story published by several sources.
 - **Density (desktop):** the top bar switches between Standard Stream and Compact Wire.
@@ -119,13 +119,13 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 - **Full articles:** when a feed sends only a short excerpt, the app fetches the full article.
 - **Pictures:** tap one to enlarge it; pinch or double-tap to zoom.
 - **Podcasts:** podcast episodes get an audio player.
-- **Moving on:** j/k or ↑/↓ on the desktop, swipes on the phone. You move through the brief or list the story came from.
+- **Moving on:** j/k or ↑/↓ on the desktop, swipes on the phone. You move through the brief or list the story came from. With Today showing and no story open, j opens the first story on screen.
 
 ### Story buttons
 - **Desktop:** list cards, Today cards and the reader all have the same row: **Read · Read Later · Save · Open original · Share**. Hover for each button's name. A button turns blue when it's on: unread, in Read Later, or saved.
-- **Phone, Today cards:** swipe a story left to mark it read (**Undo** appears at the bottom), or right for Read Later, as in the lists. Tap **…** at the end of the source line, or press and hold the story, for **Mark as Read, Read Later, Save, Share and Open Original**. Tap anywhere outside the menu to close it; that tap does nothing else.
-- **Desktop, Today:** the row of buttons appears when you point at a story.
-- **Phone, reader:** Read Later, Save and Listen, and **…** for Mark as Read or Unread, Share and Open Original.
+- **Phone, Today cards:** swipe a story left to mark it read (**Undo** appears at the bottom), or right for Read Later, as in the lists. Tap **…** at the end of the source line, or press and hold the story, for **Mark Read, Read Later, Save, Share and Open Original**. Tap anywhere outside the menu to close it; that tap does nothing else.
+- **Desktop, Today:** the row of buttons appears when you point at a story. Right-click a story for the same menu as the phone's.
+- **Phone, reader:** Read Later, Save and Listen, and **…** for Mark Read or Unread, Share and Open Original.
 - **Phone, list cards:** tap **…** on the source line, or press and hold, for Read Later, Save, Mark Read, Share, Open Original and more. Swipes handle read and Read Later.
 - **Desktop, lists:** the row of buttons appears when you point at a story.
 
@@ -194,8 +194,8 @@ Text sizes are kept separately for the phone and the desktop, except Folder Size
 | `o` | Open the original |
 | `t` | Today |
 | `/` | Search |
-| `?` | All shortcuts |
-| `Esc` | Leave full screen, close a dialog |
+| `?` | All shortcuts (also listed in the empty reader) |
+| `Esc` | Close a menu or window (even while typing in it), leave full screen, or go back to Today |
 | `→` / `←`, `↓` / `↑` | In full screen: next / previous story, scroll |
 
 ---

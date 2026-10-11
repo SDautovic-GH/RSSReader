@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 359)  
+**Version:** October 2026 (build 360)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -97,16 +97,16 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Full content | Short feed excerpts trigger a full-article fetch through the proxy chain. |
 | Sanitising | All article HTML is sanitised with DOMPurify before it is shown. |
 | Media | Image lightbox (pinch or double-tap to zoom); tiny and broken images hidden; responsive embeds; an inline audio player for podcast items. |
-| Navigation | j/k or ↑/↓ (and the reader's Next) move through the brief the story came from, or through the list it came from. |
+| Navigation | j/k or ↑/↓ (and the reader's Next) move through the brief the story came from, or through the list it came from. With Today on screen and no story open, j or k opens its first story on screen. |
 
 ### 3.6 Story actions
 
 | Surface | Buttons |
 |---|---|
 | Desktop: list cards, Today cards, reader | One row everywhere: **Read · Read Later · Save · Open original · Share**. Icon buttons with tooltips, 32px with 18px icons, 4px apart, the first icon on the text edge, grey off and blue on. |
-| Phone: Today cards | No row. The "…" on the source line, or a long-press on the card, opens a menu: **Mark as Read · Read Later · Save · Share… · Open Original** (labels follow the story's state). It is the lists' context menu; its items press the card's hidden buttons. Tapping the card opens the story. Swipes as in the lists: left marks the story (and its grouped copies) read, the card leaves and the next slides up, with "Marked read · Undo" in the Undo bar; right toggles Read Later. A hint (a pill with Mark read's check or Read Later's bookmark) and a tint follow the finger; past 60px, mostly sideways, the swipe acts. A touch or click outside any context menu only closes it (as on iOS); the tap does nothing else. |
-| Desktop: Today column | The row above, shown on hover, keyboard focus or the open story; its space stays reserved, so nothing moves. |
-| Phone: reader | **Read Later · Save · Listen** and a "…" for **Mark as Read / Unread · Share… · Open Original** (the same menu as Today's, pressing the row's hidden buttons) |
+| Phone: Today cards | No row. The "…" on the source line, or a long-press on the card, opens a menu: **Mark Read · Read Later · Save · Share… · Open Original** (labels follow the story's state). It is the lists' context menu; its items press the card's hidden buttons. Tapping the card opens the story. Swipes as in the lists: left marks the story (and its grouped copies) read, the card leaves and the next slides up, with "Marked read · Undo" in the Undo bar; right toggles Read Later. A hint (a pill with Mark read's check or Read Later's bookmark) and a tint follow the finger; past 60px, mostly sideways, the swipe acts. A touch or click outside any context menu only closes it (as on iOS); the tap does nothing else. |
+| Desktop: Today column | The row above, shown on hover, keyboard focus or the open story; its space stays reserved, so nothing moves. A right-click on a story opens the phone's Today menu at the pointer (as a list card's). |
+| Phone: reader | **Read Later · Save · Listen** and a "…" for **Mark Read / Unread · Share… · Open Original** (the same menu as Today's, pressing the row's hidden buttons) |
 | Phone: list cards | No row. The "…" or a long-press (500ms) opens the list's menu: Mark Above Read, Read Later, Save, Mark Read / Unread, Mark Below Read, Share…, Open Original. Swipes handle read and Read Later; a tap opens the story. |
 
 ### 3.7 Search
@@ -190,7 +190,9 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 | `t` | Open Today |
 | `/` | Search |
 | `?` | Shortcuts |
-| `Esc` | Leave full screen, close dialogs |
+| `Esc` | Close what is on top, even from a field in it (a menu, Add / Edit Feed, the shortcuts, Settings, Search); else leave full screen; else back to Today from one of its stories |
+
+`?` opens a window on the app's surface, light or dark, listing these. With Ctrl, Cmd or Alt held a key is the browser's (Ctrl+R reloads; it no longer also marks the story read). `t`, `/`, `?` and `Esc` work with an empty list. The menus' words match the buttons' (Mark Read / Unread, Read Later).
 
 ### 3.13 Notifications
 
@@ -235,7 +237,7 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 | Layer | Technology |
 |---|---|
 | Markup | HTML5, one file (`index.html`) |
-| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet` (sheets: the app's own background), `--divider`. Buttons share one style, `.pill-btn`: a pill, text `--btn-text` (14px) × App Zoom, 600, 7px 14px inside a 1px edge; `.pill-primary` fills it in the logo's blue for a screen's main action (Mark All Read in Folders, N new stories, Add feed, Muted words' Add, Add Feed / Save, Sign In), the rest are outlined grey (Mark read, Sign Out, Cancel, Create Account). Chips (folder pills, Search's shortcuts), close controls (✕, Done) and the Undo bar's Undo keep their own. Text fields and menus share the capsule shape (Settings' 30px, as tall as a pill; form fields 34px; Search's field). Menus (the "…" and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the tab bar's glass in both themes, with 14px corners, the app's dividers and a soft shadow, as wide as their longest item. Add Feed / Edit Feed (the phone's sheet and the desktop's dialog) and the login window are on the app's own surface. Also pills: Search's Unread / Read Later / Saved, the desktop's ‹ Today and the list header's Mark Read · N. Today's folder pills keep a regular weight, on request (a row of semibold pills reads heavy), at the buttons' size. A menu's list (drawn by the browser) is white in the light theme and the glass menus' grey (#1c1c20) in dark, its group headings too (Tailwind's base leaves an optgroup transparent, which the browser draws white); its shape and scrollbar are the browser's. A story's own headings, quotes and code follow the theme's tokens, its links the logo's blue in the light theme. |
+| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet` (sheets: the app's own background), `--divider`. Buttons share one style, `.pill-btn`: a pill, text `--btn-text` (14px) × App Zoom, 600, 7px 14px inside a 1px edge; `.pill-primary` fills it in the logo's blue for a screen's main action (Mark All Read in Folders, N new stories, Add feed, Muted words' Add, Add Feed / Save, Sign In), the rest are outlined grey (Mark read, Sign Out, Cancel, Create Account). Chips (folder pills, Search's shortcuts), close controls (✕, Done) and the Undo bar's Undo keep their own. Text fields and menus share the capsule shape (Settings' 30px, as tall as a pill; form fields 34px; Search's field). Menus (the "…" and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the tab bar's glass in both themes, with 14px corners, the app's dividers and a soft shadow, as wide as their longest item. Add Feed / Edit Feed (the phone's sheet and the desktop's dialog) and the login window are on the app's own surface. Also pills: Search's Unread / Read Later / Saved, the desktop's ‹ Today and the list header's Mark Read · N. Today's folder pills keep a regular weight, on request (a row of semibold pills reads heavy), at the buttons' size. A menu's list (drawn by the browser) is white in the light theme and the glass menus' grey (#1c1c20) in dark, its group headings too (Tailwind's base leaves an optgroup transparent, which the browser draws white); its shape and scrollbar are the browser's. A story's own headings, quotes and code follow the theme's tokens, its links the logo's blue in the light theme. One hover per kind, only where there is a pointer: menu items a grey tint (black 7% light, the dark glass's own darker row), the sidebar's rows black 5% / white 6% (the open one keeps its blue), icon buttons the action buttons' grey (139,148,158 at 16%), Search's results as their press. Key chips (`.kbd`) are light in the light theme. |
 | Scripting | Vanilla JavaScript, no framework |
 | Sanitising | DOMPurify 3.1.6 (cdnjs) |
 | Auth and cloud | Firebase 11.6.1 (Auth, Firestore), ES module imports |
