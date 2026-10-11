@@ -228,10 +228,14 @@
             font-weight: 500 !important;
         }
 
-        /* Global line height for article content and list */
-        #article-body,
-        #article-title {
+        /* Global line height for article content and list. The headline follows it, tightened for a
+           headline's size (1.5 becomes 1.26). */
+        #article-body {
             line-height: var(--line-height) !important;
+        }
+
+        #article-title {
+            line-height: calc(var(--line-height) * 0.84) !important;
         }
 
         /* Byline spacing in px, so App Zoom's rem scaling can't squeeze it. The title's 12px
@@ -263,31 +267,41 @@
             line-height: var(--list-preview-line-height) !important;
         }
 
-        /* Title — off-white in dark, near-black in light. Clean hierarchy like Reeder/Apple News. */
-        .dynamic-list-title {
-            color: #0f1923 !important;
+        /* Colour tokens, light then dark: text-1 headlines and headings, text-2 summaries and
+           previews, text-3 sources, times, counts and labels; the sheet surface and its dividers.
+           Sheets (Settings, Feeds, the phone's Search) are the app's own background: white, and in
+           dark the desktop's panes (#0d1117) or the phone's black. */
+        :root {
+            --text-1: #0f1923;
+            --text-2: #374151;
+            --text-3: #57606a;
+            --surface-sheet: #ffffff;
+            --divider: #e5e7eb;
         }
 
-        .dark .dynamic-list-title {
-            color: #f0f6fc !important;
+        .dark {
+            --text-1: #f0f6fc;
+            --text-2: #ccd2d8;
+            --text-3: #8b949e;
+            --surface-sheet: #0d1117;
+            --divider: rgba(255, 255, 255, 0.09);
         }
 
+        @media (max-width: 900px) {
+            .dark {
+                --surface-sheet: #000000;
+            }
+        }
+
+        .dynamic-list-title,
         #article-title {
-            color: #0f1923 !important;
-        }
-
-        .dark #article-title {
-            color: #f0f6fc !important;
+            color: var(--text-1) !important;
         }
 
         /* Previews sit one step dimmer than titles, so the title owns the row. Social posts are
            exempt below: their preview is the content. */
         .dynamic-list-preview {
-            color: #374151 !important;
-        }
-
-        .dark .dynamic-list-preview {
-            color: #ccd2d8 !important;
+            color: var(--text-2) !important;
         }
 
         .line-clamp-social.dynamic-list-preview {
@@ -321,9 +335,23 @@
             color: #e3e9f0;
         }
 
-        #article-author,
-        #article-date {
+        #article-author {
             font-size: var(--article-meta-size) !important;
+        }
+
+        /* The time on the story's source line: the source's size, regular weight, secondary colour. */
+        .article-meta-time {
+            font-weight: 400;
+            white-space: nowrap;
+        }
+
+        .article-meta-time:not(:empty)::before {
+            content: '·';
+            margin-right: 6px;
+        }
+
+        #article-byline.byline-dup #article-author {
+            display: none !important;
         }
 
         .line-clamp-custom {
@@ -423,7 +451,7 @@
         }
 
         :root {
-            --list-preview-font-size: 1.0em;
+            --list-preview-font-size: 0.9em;
             --view-font-size: 1.0em;
             --category-font-size: 1.05em;
             --list-preview-lines: 4;
@@ -435,15 +463,17 @@
             --mob-list-preview-lines-social: 10;
             --list-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             --view-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            --mob-feed-name-size: 1.0em;
-            --mob-article-title-size: 1.2em;
-            --article-title-size: 1.2em;
+            --mob-feed-name-size: 0.8em;
+            --mob-article-title-size: 1.5em;
+            --article-title-size: 1.5em;
             --mob-body-size: 1.0em;
             --mob-author-size: 1.1em;
             --list-title-em-size: 1.1em;
-            --mob-list-preview-size: 1.0em;
+            --section-heading-size: 1.4em;
+            --mob-list-preview-size: 0.9em;
             /* one step below title — triage rhythm */
             --mob-list-title-size: 1.1em;
+            --mob-section-heading-size: 1.4em;
             --line-height: 1.5;
             --mob-line-height: 1.5;
             --feed-line-height: 1.5;
@@ -452,9 +482,8 @@
             --mob-list-preview-line-height: 1.4;
             --mob-folder-size: 1.05em;
             --mob-list-source-size: 1.0em;
-            --mob-list-date-size: 1.0em;
-            --list-source-size: 1.0em;
-            --desk-feed-name-size: 1.0em;
+            --list-source-size: 0.8em;
+            --desk-feed-name-size: 0.8em;
             --article-meta-size: 1.1em;
             --feed-row-padding: 0.25rem;
         }
@@ -596,19 +625,46 @@
             box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 10px -4px rgba(0, 0, 0, 0.6);
         }
 
-        /* Unread dot — flex sibling at the start of the source row, sits outside the truncate span.
-           margin-right offsets the row's gap-2 (8px) so the visible dot↔source distance is 5px,
-           without affecting source↔date spacing. */
+        /* Unread dot: first on the source line, outside the truncating name; margin-right takes the
+           row's 6px gap to 5px. */
         #article-list [data-id] .unread-dot {
             flex-shrink: 0;
             width: 8px;
             height: 8px;
             border-radius: 9999px;
             background: #3b82f6;
-            margin-right: -3px;
+            margin-right: -1px;
         }
 
-        /* Respect OS-level reduced-motion preference */
+        /* A list card is Today's card: one source line (source · time, "..." on the phone), a
+           thumbnail beside the headline and summary; the body holds the float. */
+        .list-card-body {
+            display: flow-root;
+        }
+
+        #article-list .list-source-label,
+        #article-list .list-date-label,
+        #article-list .list-meta-dot {
+            color: var(--text-3);
+        }
+
+        #article-list .list-date-label {
+            font-size: var(--list-source-size, 0.8em) !important;
+            font-weight: 400;
+        }
+
+        #article-list .list-meta-dot {
+            flex-shrink: 0;
+            font-size: 0.8em;
+        }
+
+        #article-list.compact-wire .list-thumb {
+            display: none;
+        }
+
+        /* Respect OS-level reduced-motion preference. transition: none, not a 0.01ms duration: that
+           turned every style change on every element into a transition finishing a frame late, so
+           Today came back 13px off its place. */
         @media (prefers-reduced-motion: reduce) {
 
             *,
@@ -616,7 +672,7 @@
             *::after {
                 animation-duration: 0.01ms !important;
                 animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
+                transition: none !important;
             }
 
             .skeleton-line {
@@ -700,6 +756,32 @@
             opacity: 0.45;
         }
 
+        /* Light theme Following: names in the reading colour, counts and labels secondary (their
+           text-gray-400 was 2.5:1), and the grouped cards and dividers visible (white/5 vanished). */
+        html:not(.dark) .dynamic-category-text {
+            color: #1f2328;
+        }
+
+        html:not(.dark) #sidebar-pane .mob-unread-count {
+            color: #57606a;
+        }
+
+        html:not(.dark) #smart-feeds-card,
+        html:not(.dark) #feed-list {
+            background: #ffffff;
+            border-color: #e5e7eb;
+        }
+
+        html:not(.dark) #smart-feeds-card .smart-feed-btn,
+        html:not(.dark) #feed-list [data-category] {
+            border-bottom-color: #eef0f2 !important;
+        }
+
+        html:not(.dark) #smart-feeds-card .smart-feed-btn:last-child,
+        html:not(.dark) #feed-list [data-category]:last-child {
+            border-bottom-color: transparent !important;
+        }
+
         .smart-feed-btn.smart-empty:hover {
             opacity: 0.75;
         }
@@ -735,11 +817,6 @@
         #article-list.compact-wire .dynamic-list-title {
             margin-bottom: 0 !important;
             line-height: 1.35 !important;
-        }
-
-        /* Top frost is mobile-only (desktop has real headers). */
-        .top-frost {
-            display: none;
         }
 
         /* ===== MOBILE LAYOUT ===== */
@@ -834,7 +911,7 @@
             }
 
             #article-list .list-date-label {
-                font-size: var(--mob-list-date-size) !important;
+                font-size: var(--mob-feed-name-size, 0.8em) !important;
             }
 
             /* Mobile article view font scaling */
@@ -846,9 +923,16 @@
                 font-size: var(--mob-article-title-size) !important;
             }
 
-            #article-author,
-            #article-date {
+            #article-author {
                 font-size: var(--mob-author-size) !important;
+            }
+
+            /* The story's buttons on the phone: Read Later, Save, Listen and a "..." for Mark as Read,
+               Share and Open Original (showStoryMenu), which presses these hidden buttons. */
+            #article-actions #unread-action-btn,
+            #article-actions #share-btn,
+            #article-actions #open-original-btn {
+                display: none !important;
             }
 
             #article-body {
@@ -864,9 +948,12 @@
                 font-size: var(--mob-list-preview-size) !important;
             }
 
-            #article-body,
-            #article-title {
+            #article-body {
                 line-height: var(--mob-line-height) !important;
+            }
+
+            #article-title {
+                line-height: calc(var(--mob-line-height) * 0.84) !important;
             }
 
             /* On the phone the Line Height slider writes --mob-line-height, read here. .article-content
@@ -972,25 +1059,6 @@
             #sidebar-pane>#sidebar-header {
                 height: auto !important;
                 padding: calc(max(env(safe-area-inset-top, 0px), 50px) + 10px) 14px 0.75rem !important;   /* bottom was 1.25rem (326) */
-            }
-
-            /* An overlay on the status strip. iOS drops backdrop-filter on masked elements, and
-               stepped blurs showed seams, so it carries no blur. */
-            .top-frost {
-                display: block;
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: max(env(safe-area-inset-top, 0px), 44px);
-                z-index: 10;
-                pointer-events: none;
-                /* Paints nothing: the OS draws its own fade under the clock, and a dim of ours stacked on it. */
-                background: none;
-            }
-
-            html:not(.dark) .top-frost {
-                background: none;
             }
 
             /* Full-screen lists carry their own status-bar offset, so the first card clears the clock. */
@@ -1252,6 +1320,39 @@
             justify-content: center;
         }
 
+        /* Light theme: the same glass in a light material, with dark glyphs and a soft pressed fill. */
+        html:not(.dark) #mobile-tab-bar .tab-pill {
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 45%),
+                rgba(246, 246, 248, 0.82);
+            border-color: rgba(0, 0, 0, 0.08);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 30px rgba(0, 0, 0, 0.16);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn,
+        html:not(.dark) #mobile-tab-bar .tab-search {
+            color: rgba(31, 35, 40, 0.72);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn.active,
+        html:not(.dark) body.search-active #mobile-tab-bar .tab-search {
+            background: rgba(0, 0, 0, 0.07);
+            color: #1f2328;
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn:active,
+        html:not(.dark) #mobile-tab-bar .tab-search:active {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn.active:active {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        html:not(.dark) .tab-icon-badge {
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+        }
+
         .tab-icon-badge {
             position: absolute;
             top: -6px;
@@ -1337,7 +1438,7 @@
             color: #fff;
             border-radius: 12px;
             padding: 10px 14px;
-            font-size: 15px;
+            font-size: calc(15px * var(--sheet-text, 1));
             outline: none;
             min-width: 0;
         }
@@ -1350,7 +1451,7 @@
             background: transparent;
             border: none;
             color: rgba(255, 255, 255, 0.78);
-            font-size: 14px;
+            font-size: calc(14px * var(--sheet-text, 1));
             font-weight: 600;
             padding: 6px 8px;
             cursor: pointer;
@@ -1382,8 +1483,8 @@
         }
 
         #mobile-search-sheet .search-item .search-item-title {
-            font-size: 14px;
-            font-weight: 600;
+            font-size: calc(15px * var(--sheet-text, 1));
+            font-weight: 500;
             overflow: hidden;
             display: -webkit-box;
             -webkit-line-clamp: 2;
@@ -1393,15 +1494,19 @@
         }
 
         #mobile-search-sheet .search-item .search-item-meta {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.5);
-            margin-top: 2px;
+            font-size: calc(12px * var(--sheet-text, 1));
+            color: rgba(255, 255, 255, 0.55);
+            margin-bottom: 3px;
+        }
+
+        #mobile-search-sheet .search-item .search-item-source {
+            font-weight: 700;
         }
 
         #mobile-search-sheet .search-empty {
             padding: 22px 14px;
             text-align: center;
-            font-size: 13px;
+            font-size: calc(13px * var(--sheet-text, 1));
             color: rgba(255, 255, 255, 0.5);
         }
 
@@ -1419,7 +1524,7 @@
             border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 10px;
             color: #fff;
-            font-size: 12px;
+            font-size: calc(12px * var(--sheet-text, 1));
             font-weight: 600;
             cursor: pointer;
             font-family: inherit;
@@ -1462,7 +1567,7 @@
                 border: none;
                 outline: none;
                 color: rgba(255, 255, 255, 0.62);
-                font-size: 12px;
+                font-size: calc(12px * var(--sheet-text, 1));
                 max-width: 220px;
             }
 
@@ -1474,6 +1579,122 @@
 
         #mobile-search-sheet .search-smart-btn:active {
             background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* On the phone Search is a sheet like Settings: over the tab bar, the full height under the
+           status bar, the field at the top (clear of the keyboard) and the results down to the bottom.
+           Done, a pull down or a tap on the dim strip above it closes it. */
+        @media (max-width: 900px) {
+            #mobile-search-sheet {
+                top: 0;
+                bottom: 0 !important;
+                z-index: 55;
+                padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 0;
+                pointer-events: auto;
+                background: rgba(0, 0, 0, 0.5);
+                transition: background-color 0.24s ease;
+                animation: sheet-dim 0.34s ease-out;
+            }
+
+            body.search-active #mobile-search-sheet {
+                display: flex !important;
+                flex-direction: column;
+            }
+
+            #mobile-search-sheet .search-inner {
+                position: relative;
+                flex: 1 1 auto;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                max-width: none;
+                margin: 0;
+                padding-top: 14px;
+                border-width: 1px 0 0;
+                border-color: var(--divider);
+                border-radius: 16px 16px 0 0;
+                background: var(--surface-sheet);
+                box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                animation: sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+            }
+
+            #mobile-search-sheet .search-inner::before {
+                content: '';
+                position: absolute;
+                top: 7px;
+                left: 50%;
+                width: 36px;
+                height: 5px;
+                margin-left: -18px;
+                border-radius: 3px;
+                background: rgba(127, 127, 127, 0.4);
+            }
+
+            #mobile-search-sheet .search-results {
+                flex: 1 1 auto;
+                min-height: 0;
+                max-height: none;
+                overscroll-behavior: contain;
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+            }
+
+            #mobile-search-sheet.sheet-closing {
+                background-color: transparent;
+            }
+
+            #mobile-search-sheet.sheet-closing .search-inner {
+                transform: translateY(100%);
+                transition: transform 0.24s cubic-bezier(0.4, 0, 1, 1);
+            }
+
+            /* Light: the white sheet, iOS's grey field and chips, the app's text colours. */
+            html:not(.dark) #mobile-search-sheet .search-inner {
+                box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
+            }
+
+            html:not(.dark) #mobile-search-sheet .search-input-row {
+                border-bottom-color: var(--divider);
+            }
+
+            html:not(.dark) #mobile-search-sheet input {
+                background: rgba(118, 118, 128, 0.12);
+                color: var(--text-1);
+            }
+
+            html:not(.dark) #mobile-search-sheet input::placeholder {
+                color: rgba(60, 60, 67, 0.6);
+            }
+
+            html:not(.dark) #mobile-search-sheet .search-close,
+            html:not(.dark) #mobile-search-sheet .search-item,
+            html:not(.dark) #mobile-search-sheet .search-item .search-item-title {
+                color: var(--text-1);
+            }
+
+            html:not(.dark) #mobile-search-sheet .search-item {
+                border-bottom-color: rgba(0, 0, 0, 0.06);
+            }
+
+            html:not(.dark) #mobile-search-sheet .search-item:active {
+                background: rgba(0, 0, 0, 0.04);
+            }
+
+            html:not(.dark) #mobile-search-sheet .search-item .search-item-meta,
+            html:not(.dark) #mobile-search-sheet .search-empty {
+                color: var(--text-3);
+            }
+
+            html:not(.dark) #mobile-search-sheet .search-smart-btn {
+                background: rgba(118, 118, 128, 0.12);
+                border-color: transparent;
+                color: var(--text-1);
+            }
+
+            html:not(.dark) #mobile-search-sheet .search-smart-btn:active {
+                background: rgba(118, 118, 128, 0.2);
+            }
         }
 
         /* ===== DEEP DARK THEME ===== */
@@ -1843,9 +2064,10 @@
             margin-bottom: 1.25em;
         }
 
+        /* The story's source line: the same source colour as the cards. */
         #article-meta {
             font-size: var(--desk-feed-name-size) !important;
-            color: #4493f8 !important;
+            color: var(--text-3) !important;
         }
 
         /* A source name too long for one line wraps, and its icon stays on the first line: 1lh is the
@@ -1878,8 +2100,7 @@
             letter-spacing: normal !important;
         }
 
-        #toggle-folders-section-btn #folders-section-count,
-        #toggle-folders-section-btn #toggle-folders-section-label {
+        #toggle-folders-section-btn #folders-section-count {
             font-size: 0.88em !important;
             text-transform: none !important;
             letter-spacing: normal !important;
@@ -2100,7 +2321,7 @@
         .mute-chip {
             padding: 5px 10px 5px 12px;
             border-radius: 9999px;
-            font-size: 13px;
+            font-size: calc(13px * var(--sheet-text, 1));
             line-height: 1.2;
             border: 1px solid rgba(139, 148, 158, 0.45);
             background: transparent;
@@ -2303,6 +2524,31 @@
             }
         }
 
+        /* Light theme: the Undo bar and the Listen player in the tab bar's light glass, dark glyphs, Undo
+           in the logo's blue. */
+        html:not(.dark) .tts-player,
+        html:not(.dark) #brief-undo-bar {
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 45%),
+                rgba(246, 246, 248, 0.82);
+            color: #1f2328;
+            border-color: rgba(0, 0, 0, 0.08);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 30px rgba(0, 0, 0, 0.16);
+        }
+
+        html:not(.dark) .tts-player button {
+            color: #1f2328;
+        }
+
+        html:not(.dark) #brief-undo-bar button {
+            color: var(--color-blue-600);
+        }
+
+        html:not(.dark) .tts-player button:active,
+        html:not(.dark) #brief-undo-bar button:active {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
         .brief-muted-btn {
             padding: 0;
             border: none;
@@ -2353,7 +2599,7 @@
             padding: 0 16px;
             border: none;
             border-radius: 9999px;
-            background: #4493f8;
+            background: var(--color-blue-600);   /* the logo's blue; white text 5.3:1 */
             color: #ffffff;
             font-size: 14px;
             font-weight: 600;
@@ -2413,20 +2659,19 @@
             font-weight: 400;
         }
 
-        /* The Mark-read row at the end of each section: marks the stories still showing above it,
-           then offers Undo in the same spot. -10px aligns the text with the column's right edge. */
+        /* The Mark-read row at the end of each section: an outlined pill on the right that marks the
+           stories still showing above it. */
         .brief-cat-end {
             display: flex;
             justify-content: flex-end;
             align-items: center;
             gap: 4px;
-            margin: 2px -10px -0.75rem 0;
-            font-size: 0.95em;   /* was 0.85em - too small (build 280, on request) */
+            margin: 6px 0 -0.5rem 0;
+            font-size: 1em;
             font-weight: 600;
-            color: #8b949e;
+            color: var(--text-3);
         }
 
-        html:not(.dark) .brief-cat-end,
         html:not(.dark) .brief-all-read-note {
             color: #57606a;
         }
@@ -2438,10 +2683,10 @@
         .brief-mark-section-btn {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 10px;
-            border: none;
-            border-radius: 8px;
+            gap: 7px;
+            padding: 7px 14px;
+            border: 1px solid rgba(139, 148, 158, 0.4);
+            border-radius: 999px;
             background: transparent;
             color: inherit;
             font: inherit;
@@ -2451,12 +2696,13 @@
 
         .brief-mark-section-btn:hover {
             color: #4493f8;
+            border-color: rgba(68, 147, 248, 0.45);
             background: rgba(68, 147, 248, 0.12);
         }
 
         .brief-cat-end svg {
-            width: 16px;
-            height: 16px;
+            width: 17px;
+            height: 17px;
             flex-shrink: 0;
         }
 
@@ -2533,6 +2779,22 @@
         .dark .brief-container h2,
         .dark .brief-header-title {
             color: #f0f6fc !important;
+        }
+
+        /* Today's date: the long form, or the short one where the long doesn't fit (fitBriefDate). An
+           inline-block, so a ResizeObserver sees its width change when a font arrives. */
+        .brief-date {
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .brief-date-short,
+        .brief-header-title.date-short .brief-date-long {
+            display: none;
+        }
+
+        .brief-header-title.date-short .brief-date-short {
+            display: inline;
         }
 
         .brief-header-meta {
@@ -2914,28 +3176,37 @@
             justify-content: space-between !important;
             width: 100% !important;
             flex-wrap: nowrap !important;
-            border-bottom: 1px solid rgba(59, 130, 246, 0.25) !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;   /* the stories' divider */
             padding-bottom: 0.45rem !important;
             margin-bottom: 0.25rem !important;
         }
 
+        .dark .brief-cat-header {
+            border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        /* Section headings: Text Size & Zoom > Today > Section Heading Size (1.4em, 22.4px, by default),
+           in the headline's colour; the folder icon keeps the accent. */
         .brief-container h3,
         .brief-cat-heading {
-            font-size: 1.35em !important;
-            font-weight: 800 !important;
+            font-size: var(--section-heading-size, 1.4em) !important;
+            font-weight: 700 !important;
             letter-spacing: -0.015em;
-            color: #2563eb !important;
+            color: var(--text-1) !important;
             margin: 0 !important;
             padding: 0 !important;
-            line-height: 1.25 !important;
+            line-height: 1 !important;   /* one line: its text truncates */
             display: inline-flex !important;
             align-items: center !important;
             gap: 0.5rem !important;
         }
 
-        .dark .brief-container h3,
-        .dark .brief-cat-heading {
-            color: #60a5fa !important;
+        .brief-cat-heading svg {
+            color: #2563eb;
+        }
+
+        .dark .brief-cat-heading svg {
+            color: #60a5fa;
         }
 
         .brief-cat-controls {
@@ -2946,10 +3217,9 @@
             flex-shrink: 0 !important;
         }
 
-        .brief-cat-section span,
         .brief-cat-count {
             font-size: 0.8em !important;
-            color: #64748b !important;
+            color: var(--text-3) !important;
             line-height: 1 !important;
             display: inline-flex !important;
             align-items: center !important;
@@ -2959,11 +3229,9 @@
 
             .brief-container h3,
             .brief-cat-heading {
-                font-size: 1.3em !important;
-                font-weight: 800 !important;
+                font-size: var(--mob-section-heading-size, 1.4em) !important;
             }
 
-            .brief-cat-section span,
             .brief-cat-count {
                 font-size: 0.8em !important;
             }
@@ -2980,7 +3248,7 @@
             border-radius: 9999px;
             flex-shrink: 0;
             padding: 0 !important;
-            color: #94a3b8;
+            color: var(--text-3);
             background: transparent;
             border: 1px solid transparent;
         }
@@ -3015,23 +3283,28 @@
             color: #34d399 !important;
         }
 
+        /* "Mark All Read in Folders": the Mark N read pill's shape, size and spacing (its 7px 14px
+           padding plus its 1px outline), filled in the logo's blue-600 (white text 5.3:1). */
         .brief-mark-all-btn {
             cursor: pointer;
             transition: all 0.15s ease;
-            padding: 0.5rem 1.25rem !important;
-            /* Generous padding: 8px top/bottom, 20px left/right */
+            padding: 8px 15px !important;
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 0.5rem !important;
+            gap: 7px !important;
             white-space: nowrap !important;
-            border-radius: 0.5rem !important;
+            border-radius: 999px !important;
             box-sizing: border-box !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;   /* as Mark N read: text-xs's 1.33 made it 4px taller */
+            box-shadow: none !important;
         }
 
         .brief-mark-all-btn svg {
-            width: 1rem !important;
-            height: 1rem !important;
+            width: 17px !important;
+            height: 17px !important;
             flex-shrink: 0 !important;
         }
 
@@ -3128,7 +3401,7 @@
             display: flex;
             align-items: center;
             gap: 0.35rem;
-            color: #94a3b8;
+            color: var(--text-3);
             white-space: nowrap;
             overflow: hidden;
         }
@@ -3145,7 +3418,7 @@
             font-size: var(--list-source-size, 1.0em) !important;
             font-weight: 700 !important;
             text-transform: none !important;
-            color: #94a3b8;
+            color: var(--text-3);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -3154,11 +3427,6 @@
             flex-shrink: 1;
         }
 
-        .dark .brief-story-source,
-        .dark .brief-story-card .brief-story-source,
-        .dark .brief-story-card .list-source-label {
-            color: #cbd5e1;
-        }
 
         /* The meta row already carries Source Name Size, so the name takes 1em of it; sizing both
            multiplied the setting. Four classes outrank every source-name rule above. */
@@ -3166,17 +3434,19 @@
             font-size: 1em !important;
         }
 
+        /* The time is the source's size, set apart by weight. */
         .brief-story-time {
-            font-size: 0.85em !important;
+            font-size: 1em !important;
             font-weight: 400 !important;
             text-transform: none !important;
-            color: #64748b;
+            color: var(--text-3);
             white-space: nowrap;
             flex-shrink: 0;
         }
 
         .brief-story-dot {
-            color: #64748b;
+            font-size: 0.8em;
+            color: var(--text-3);
             flex-shrink: 0;
         }
 
@@ -3357,12 +3627,6 @@
                 display: none !important;
             }
 
-            /* The reader's byline drops the source when it only repeats the line above the headline (about
-               half the stories). */
-            #article-byline.byline-dup #article-author,
-            #article-byline.byline-dup #article-author + span {
-                display: none !important;
-            }
         }
 
         /* Mobile Editorial Memo Flow */
@@ -3442,7 +3706,7 @@
             }
 
             .brief-story-time {
-                font-size: 0.85em !important;
+                font-size: 1em !important;
                 font-weight: 400 !important;
                 text-transform: none !important;
                 white-space: nowrap !important;
@@ -3480,31 +3744,89 @@
                 line-clamp: var(--mob-list-preview-lines-social, 10) !important;
             }
 
-            .brief-story-actions {
-                display: flex !important;
-                align-items: center !important;
-                gap: 0.5rem !important;
-                padding-top: 0.25rem !important;
+            /* No action row under a Today story: the "..." on its source line and a long-press open the
+               same actions (showBriefStoryMenu); its hidden buttons do the work. A long-press must not
+               select text or show the system callout. */
+            #article-body .brief-story-card .brief-story-actions {
+                display: none !important;
             }
 
-            .brief-story-actions button,
-            .brief-story-actions a,
-            .brief-action-btn,
-            .brief-action-link {
-                width: 1.85rem !important;
-                height: 1.85rem !important;
-                display: inline-flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                border-radius: 0.375rem !important;
-                margin: 0 !important;
+            #article-body .brief-story-card,
+            #article-body .brief-story-card img {
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                user-select: none;
+            }
+        }
+
+        /* "..." at the end of a Today story's source line (phone). The ::after widens the target. */
+        .brief-more-btn {
+            position: relative;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 22px;
+            margin-left: auto;
+            margin-right: -5px;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            background: none;
+            color: #8b949e;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .brief-more-btn::after {
+            content: '';
+            position: absolute;
+            inset: -11px -7px;
+        }
+
+        .brief-more-btn svg {
+            width: 20px;
+            height: 20px;
+            transform: rotate(90deg);
+        }
+
+        #story-more-btn svg {
+            transform: rotate(90deg);
+        }
+
+        html:not(.dark) .brief-more-btn {
+            color: #57606a;
+        }
+
+        /* Desktop Today and the lists: the action row shows on hover, keyboard focus or the open story.
+           Its space stays reserved, so nothing moves. The phone's "..." is not needed there. */
+        @media (min-width: 901px) {
+            .brief-more-btn {
+                display: none;
             }
 
-            .brief-action-btn svg,
-            .brief-action-link svg,
-            .brief-action-icon {
-                width: 1.05rem !important;
-                height: 1.05rem !important;
+            #today-column .brief-story-card .brief-story-actions {
+                opacity: 0;
+                transition: opacity 0.15s ease;
+            }
+
+            #today-column .brief-story-card:hover .brief-story-actions,
+            #today-column .brief-story-card:focus-within .brief-story-actions,
+            #today-column .brief-story-card.brief-card-active .brief-story-actions {
+                opacity: 1;
+            }
+
+            /* The same in the lists. */
+            #article-list [data-id] .story-actions {
+                opacity: 0;
+                transition: opacity 0.15s ease;
+            }
+
+            #article-list [data-id]:hover .story-actions,
+            #article-list [data-id]:focus-within .story-actions,
+            #article-list [data-id].is-active-card .story-actions {
+                opacity: 1;
             }
         }
 
@@ -3571,17 +3893,17 @@
         }
 
         .settings-section-label {
-            font-size: 14px;
+            font-size: calc(14px * var(--sheet-text, 1));
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.06em;
-            color: #94a3b8;
+            color: var(--text-3);
             margin-bottom: 10px;
             padding: 0 4px;
         }
 
         .settings-item-label-sm {
-            font-size: 14px;
+            font-size: calc(14px * var(--sheet-text, 1));
             font-weight: 500;
             color: #f0f6fc;
         }
@@ -3594,7 +3916,7 @@
             border-radius: 10px;
             background: rgba(248, 113, 113, 0.1);
             color: #f87171;
-            font-size: 13px;
+            font-size: calc(13px * var(--sheet-text, 1));
             line-height: 1.35;
         }
 
@@ -3610,18 +3932,19 @@
             border-bottom: 1px solid rgba(148, 163, 184, 0.2);
         }
 
+        /* A folder in the feed manager: Settings' group label (no blue), its line under it. */
         .fm-folder-name {
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
+            font-size: calc(14px * var(--sheet-text, 1));
+            font-weight: 600;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: #4493f8;
+            color: var(--text-3);
         }
 
         .fm-folder-sub {
             margin-top: 2px;
-            font-size: 12px;
-            color: #94a3b8;
+            font-size: calc(12px * var(--sheet-text, 1));
+            color: var(--text-3);
         }
 
         .fm-feed-open {
@@ -3644,24 +3967,21 @@
             color: #dc2626;
         }
 
-        html:not(.dark) .fm-folder-name {
-            color: #3d6bb0;
-        }
-
         html:not(.dark) .settings-item-label,
         html:not(.dark) .settings-item-label-sm {
             color: #1f2937;
         }
 
         .settings-value {
-            font-size: 14px;
+            font-size: calc(14px * var(--sheet-text, 1));
             font-weight: 600;
             color: #3b82f6;
         }
 
-        /* Grouped list (iOS-style): rows separated by hairlines, no card-in-card */
+        /* Grouped list (iOS-style): rows separated by hairlines, no card-in-card. In dark, the fill of
+           Following's folder card (white/5), so the groups show on the black sheet. */
         .settings-list {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
             overflow: hidden;
         }
@@ -3704,7 +4024,7 @@
         }
 
         .feed-row-name {
-            font-size: 15px;
+            font-size: calc(15px * var(--sheet-text, 1));
             font-weight: 600;
             color: #f0f6fc;
         }
@@ -3714,8 +4034,8 @@
         }
 
         .feed-row-cat {
-            font-size: 13px;
-            color: #94a3b8;
+            font-size: calc(13px * var(--sheet-text, 1));
+            color: var(--text-3);
             margin-top: 2px;
         }
 
@@ -3732,7 +4052,7 @@
             align-items: center;
             justify-content: center;
             border-radius: 8px;
-            color: #94a3b8;
+            color: var(--text-3);
             transition: background-color .15s, color .15s;
         }
 
@@ -3790,7 +4110,7 @@
             padding: 2px;
             background: rgba(120, 120, 128, 0.18);
             border-radius: 9px;
-            font-size: 13px;
+            font-size: calc(13px * var(--sheet-text, 1));
             font-weight: 600;
         }
 
@@ -3820,7 +4140,7 @@
            dark mode. White chevron for dark, slate for light. */
         #settings-modal select.settings-input {
             padding: 10px 36px 10px 12px;
-            font-size: 14px;
+            font-size: calc(14px * var(--sheet-text, 1));
             border-radius: 8px;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(148, 163, 184, 0.2);
@@ -3838,7 +4158,7 @@
         /* A text box in Settings. */
         #settings-modal input.settings-input {
             padding: 7px 10px;
-            font-size: 14px;
+            font-size: calc(14px * var(--sheet-text, 1));
             border-radius: 8px;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(148, 163, 184, 0.2);
@@ -3871,13 +4191,137 @@
            out here). */
         #settings-modal .settings-hint {
             margin-top: 2px;
-            font-size: 12.5px;
+            font-size: calc(12.5px * var(--sheet-text, 1));
             line-height: 1.35;
-            color: #94a3b8;
+            color: var(--text-3);
         }
 
-        html:not(.dark) #settings-modal .settings-hint {
-            color: #64748b;
+        /* The Settings panel and its header on the sheet surface, the app's own background (Tailwind's
+           gray-800 / 900 are blue-tinted greys), with the app's dividers. */
+        .dark #settings-modal > div,
+        .dark #settings-modal > div > div:first-child {
+            background: var(--surface-sheet) !important;
+            border-color: var(--divider) !important;
+        }
+
+        #settings-modal .settings-close {
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+
+        /* Text in the Settings and Search sheets runs 20% larger than the app's: each of their font
+           sizes is a px value x --sheet-text, so one number sets them all. */
+        #settings-modal,
+        #mobile-search-sheet {
+            --sheet-text: 1.2;
+        }
+
+        #settings-modal {
+            font-size: calc(16px * var(--sheet-text));
+        }
+
+        #settings-modal #settings-title {
+            font-size: calc(18px * var(--sheet-text));
+        }
+
+        #settings-modal #build-stamp {
+            font-size: calc(11px * var(--sheet-text));
+        }
+
+        /* On the phone Settings is an iOS sheet: it rises from the bottom to just under the status bar,
+           over the tab bar, with round top corners and a grabber, and pulling it down closes it
+           (sheetDrag). Absolute in the locked body like the tab bar, since fixed mis-anchors under the
+           115% Page Zoom. The desktop keeps the centred card. */
+        @media (max-width: 900px) {
+            #settings-modal {
+                position: absolute;
+                flex-direction: column;
+                justify-content: flex-end;
+                align-items: stretch;
+                padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 0;
+                animation: sheet-dim 0.34s ease-out;
+            }
+
+            #settings-modal .settings-card {
+                max-width: none !important;
+                max-height: none !important;
+                flex: 1 1 auto;
+                min-height: 0;
+                border-width: 1px 0 0;
+                border-radius: 16px 16px 0 0;
+                box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
+                animation: sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+            }
+
+            #settings-modal .settings-head {
+                position: relative;
+                padding: 22px 16px 12px;
+            }
+
+            #settings-modal .settings-head::before {
+                content: '';
+                position: absolute;
+                top: 7px;
+                left: 50%;
+                width: 36px;
+                height: 5px;
+                margin-left: -18px;
+                border-radius: 3px;
+                background: rgba(127, 127, 127, 0.4);
+            }
+
+            /* iOS's close: the ✕ in a small grey circle. */
+            #settings-modal .settings-close {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 30px;
+                height: 30px;
+                margin: 0;
+                padding: 0;
+                border-radius: 9999px;
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--text-3);
+                background: rgba(120, 120, 128, 0.24);
+            }
+
+            html:not(.dark) #settings-modal .settings-close {
+                background: rgba(118, 118, 128, 0.12);
+            }
+
+            #settings-modal #settings-panel-feeds,
+            #settings-modal #settings-panel-prefs,
+            #settings-modal #settings-panel-text {
+                max-height: none !important;
+                min-height: 0;
+                overscroll-behavior: contain;
+            }
+
+            #settings-modal #build-stamp {
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+            }
+
+            #settings-modal.sheet-closing {
+                background-color: transparent;
+            }
+
+            #settings-modal.sheet-closing .settings-card {
+                transform: translateY(100%);
+                transition: transform 0.24s cubic-bezier(0.4, 0, 1, 1);
+            }
+        }
+
+        @keyframes sheet-up {
+            from {
+                transform: translateY(100%);
+            }
+        }
+
+        @keyframes sheet-dim {
+            from {
+                background-color: transparent;
+            }
         }
 
         /* A menu on its setting's own line, sized to its choice. */
@@ -3911,19 +4355,19 @@
         }
 
         #settings-modal .settings-action {
-            font-size: 14px;
+            font-size: calc(14px * var(--sheet-text, 1));
             font-weight: 500;
             color: #4493f8;
         }
 
         .settings-chevron {
-            font-size: 22px;
+            font-size: calc(22px * var(--sheet-text, 1));
             line-height: 1;
             color: #94a3b8;
         }
 
         .settings-back-btn {
-            font-size: 28px;
+            font-size: calc(28px * var(--sheet-text, 1));
             line-height: 1;
             padding: 0 8px 4px 0;
             background: none;
@@ -4488,8 +4932,6 @@
                             <span id="folders-section-count"
                                 class="text-gray-400/80 font-normal tracking-normal"></span>
                         </div>
-                        <span id="toggle-folders-section-label"
-                            class="font-normal tracking-normal text-gray-400 group-hover:text-blue-400 transition-colors">Collapse</span>
                     </button>
                     <div id="feed-list"
                         class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
@@ -4502,7 +4944,7 @@
         <!-- PANE 2: Timeline -->
         <section id="timeline-pane"
             class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition relative"
-            style="width: 336px;">
+            style="width: 440px;">
             <div id="timeline-header"
                 class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
@@ -4519,7 +4961,7 @@
                 <button id="desk-search-trigger" onclick="toggleSearchSheet()"
                     class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 ml-2 flex-shrink-0"
                     title="Search Articles (/)">
-                    <svg class="h-5 w-5">
+                    <svg class="h-5 w-5" fill="none">
                         <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
                         <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" />
@@ -4533,8 +4975,6 @@
             <div id="today-column" class="hidden flex-1 overflow-y-auto"></div>
             <!-- Floating position pill — fades in on scroll -->
             <div id="list-position-pill" aria-hidden="true">1 / 1</div>
-            <!-- Progressive top frost (mobile) — six stacked blur layers, see CSS -->
-            <div class="top-frost" aria-hidden="true"></div>
         </section>
 
         <!-- Column Resizer -->
@@ -4542,8 +4982,6 @@
 
         <!-- PANE 3: Viewer -->
         <main id="viewer-pane" class="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
-            <!-- Progressive top frost (mobile) — six stacked blur layers, see CSS -->
-            <div class="top-frost" aria-hidden="true"></div>
             <!-- Today pull-to-refresh indicator (mobile) -->
             <div id="today-ptr-clip" aria-hidden="true">
                 <div id="today-ptr-indicator">
@@ -4656,14 +5094,14 @@
                                     <img id="article-favicon" src="" class="rounded-sm hidden"
                                         style="width:1em;height:1em;object-fit:contain;vertical-align:middle">
                                     <span id="article-source-label"></span>
+                                    <span id="article-meta-time" class="article-meta-time"></span>
                                 </p>
                                 <h1 id="article-title" onclick="openExternal()"
                                     class="font-extrabold leading-tight mb-6 dark:text-white cursor-pointer hover:opacity-80 transition-opacity"
-                                    style="font-size: 1.7em;"></h1>
+                                    style="font-size: 1.5em;"></h1>
                                 <div id="article-byline"
                                     class="flex items-center text-xs text-gray-500 mb-12 border-b border-gray-100 dark:border-gray-800">
-                                    <span id="article-author" class="font-semibold"></span><span
-                                        class="mx-2">•</span><span id="article-date"></span>
+                                    <span id="article-author" class="font-semibold"></span>
                                     <!-- The reader's action row, under the headline, for every story however it was opened. -->
                                     <div id="article-actions" class="article-actions story-actions">
                                         <button id="unread-action-btn" type="button" onclick="toggleUnreadManual()" title="Mark Read"
@@ -4678,6 +5116,8 @@
                                             aria-label="Listen" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-headphones" /></svg></button>
                                         <button id="share-btn" type="button" onclick="shareArticle()" title="Share"
                                             aria-label="Share" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-share" /></svg></button>
+                                        <button id="story-more-btn" type="button" onclick="event.stopPropagation(); window.showStoryMenu(this)" title="More"
+                                            aria-label="More actions" class="icon-act phone-only"><svg aria-hidden="true"><use href="#icon-more" /></svg></button>
                                     </div>
                                 </div>
                             </div>
@@ -4744,7 +5184,7 @@
         </div>
     </nav>
     <!-- MOBILE SEARCH SHEET -->
-    <div id="mobile-search-sheet" aria-hidden="true">
+    <div id="mobile-search-sheet" aria-hidden="true" onclick="if(event.target===this)closeSearchSheet()">
         <div class="search-inner">
             <div class="search-input-row">
                 <input id="mobile-search-input" type="search" placeholder="Search articles…" autocomplete="off"
@@ -4823,21 +5263,21 @@
     </div>
 
     <!-- SETTINGS MODAL -->
-    <div id="settings-modal" onclick="if(event.target===event.currentTarget)toggleSettings()"
+    <div id="settings-modal" onclick="if(event.target===event.currentTarget)closeSettings()"
         class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden p-4">
-        <div class="bg-white dark:bg-gray-800 w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700 animate-in zoom-in duration-200 flex flex-col"
+        <div class="settings-card bg-white dark:bg-gray-800 w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700 animate-in zoom-in duration-200 flex flex-col"
             style="max-width: 480px; max-height: 90vh">
 
             <!-- Header -->
             <div
-                class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
+                class="settings-head p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
                 <div class="flex items-center gap-1 min-w-0">
                     <button id="settings-back" type="button" onclick="switchSettingsTab('prefs')" aria-label="Back to Settings"
                         class="hidden settings-back-btn">&lsaquo;</button>
                     <h2 id="settings-title" class="font-bold text-lg">Settings</h2>
                 </div>
-                <button onclick="toggleSettings()" aria-label="Close" style="font-size:1.6rem;line-height:1"
-                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 -mr-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">✕</button>
+                <button onclick="closeSettings()" aria-label="Close"
+                    class="settings-close text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 -mr-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">✕</button>
             </div>
 
             <!-- Two screens in one card: Following's Edit shows Feeds, the gear shows Settings. -->
@@ -5068,6 +5508,24 @@
                     </div>
                 </div>
 
+                <!-- TODAY -->
+                <div>
+                    <h3 class="settings-section-label">Today</h3>
+                    <div class="settings-list">
+                        <div class="settings-row settings-row-stacked">
+                            <div class="flex justify-between items-center">
+                                <div class="min-w-0">
+                                    <span class="settings-item-label-sm">Section Heading Size</span>
+                                    <p class="settings-hint">Top Stories and each folder</p>
+                                </div>
+                                <span class="settings-value" id="shared-section-heading-val">1.4em</span>
+                            </div>
+                            <input type="range" min="6" max="24" value="14" id="shared-section-heading-slider"
+                                class="settings-range" oninput="updateSharedSize('sectionHeading', this.value)">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- FOLLOWING -->
                 <div>
                     <h3 class="settings-section-label">Following</h3>
@@ -5110,9 +5568,9 @@
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
                                 <span class="settings-item-label-sm">Preview Text Size</span>
-                                <span class="settings-value" id="shared-preview-val">1em</span>
+                                <span class="settings-value" id="shared-preview-val">0.9em</span>
                             </div>
-                            <input type="range" min="4" max="19" value="10" id="shared-preview-slider"
+                            <input type="range" min="4" max="19" value="9" id="shared-preview-slider"
                                 class="settings-range" oninput="updateSharedSize('preview', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
@@ -5130,9 +5588,9 @@
                                     <span class="settings-item-label-sm">Source Name Size</span>
                                     <p class="settings-hint">Lists, Today and stories</p>
                                 </div>
-                                <span class="settings-value" id="shared-feed-name-val">1em</span>
+                                <span class="settings-value" id="shared-feed-name-val">0.8em</span>
                             </div>
-                            <input type="range" min="4" max="19" value="10" id="shared-feed-name-slider"
+                            <input type="range" min="4" max="19" value="8" id="shared-feed-name-slider"
                                 class="settings-range" oninput="updateSharedSize('feedName', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
@@ -5164,9 +5622,9 @@
                                     <span class="settings-item-label-sm">Title Size</span>
                                     <p class="settings-hint">Stories, and Today on a computer</p>
                                 </div>
-                                <span class="settings-value" id="shared-article-title-val">1.2em</span>
+                                <span class="settings-value" id="shared-article-title-val">1.5em</span>
                             </div>
-                            <input type="range" min="4" max="22" value="12" id="shared-article-title-slider"
+                            <input type="range" min="4" max="22" value="15" id="shared-article-title-slider"
                                 class="settings-range" oninput="updateSharedSize('articleTitle', this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
@@ -5393,7 +5851,6 @@
         window.updateFoldersSectionState = function () {
             const feedList = document.getElementById('feed-list');
             const chevron = document.getElementById('folders-section-chevron');
-            const label = document.getElementById('toggle-folders-section-label');
             const btn = document.getElementById('toggle-folders-section-btn');
             const countEl = document.getElementById('folders-section-count');
 
@@ -5409,9 +5866,6 @@
             }
             if (chevron) {
                 chevron.classList.toggle('-rotate-90', isCollapsed);
-            }
-            if (label) {
-                label.textContent = isCollapsed ? 'Expand' : 'Collapse';
             }
             if (btn) {
                 btn.title = isCollapsed ? 'Expand folder categories' : 'Collapse folder categories';
@@ -5440,6 +5894,45 @@
                 localStorage.setItem('newsreader_today_rank', '0');
             }
             if (was) localStorage.removeItem('newsreader_today_order');
+        } catch (e) { }
+        // New default text sizes: Preview Text Size 0.9 and Source Name Size 0.8 (were 1.0). Every save
+        // stores every size, so a device still at an old default moves once; any other value stays.
+        try {
+            if (!localStorage.getItem('newsreader_type_ramp')) {
+                const p = JSON.parse(localStorage.getItem('newsreader_prefs') || 'null');
+                if (p) {
+                    ['sharedPreviewDesktop', 'sharedPreviewMobile'].forEach(k => { if (String(p[k]) === '10') p[k] = '9'; });
+                    if (String(p.sharedFeedName) === '10') p.sharedFeedName = '8';
+                    localStorage.setItem('newsreader_prefs', JSON.stringify(p));
+                }
+                localStorage.setItem('newsreader_type_ramp', '1');
+            }
+        } catch (e) { }
+        // The same for Article Reader > Title Size: 1.5 by default (was 1.2).
+        try {
+            if (!localStorage.getItem('newsreader_story_title')) {
+                const p = JSON.parse(localStorage.getItem('newsreader_prefs') || 'null');
+                if (p) {
+                    ['sharedArticleTitleDesktop', 'sharedArticleTitleMobile'].forEach(k => { if (String(p[k]) === '12') p[k] = '15'; });
+                    localStorage.setItem('newsreader_prefs', JSON.stringify(p));
+                }
+                localStorage.setItem('newsreader_story_title', '1');
+            }
+        } catch (e) { }
+        // Section Heading Size starts where the headings were: Title Size x 1.25, to the nearest step, on
+        // each viewport with a Title Size of its own. Elsewhere the 1.4 default is within 0.4px of them.
+        try {
+            if (!localStorage.getItem('newsreader_section_heading')) {
+                const p = JSON.parse(localStorage.getItem('newsreader_prefs') || 'null');
+                if (p) {
+                    [['sharedListTitleDesktop', 'sectionHeadingDesktop'], ['sharedListTitleMobile', 'sectionHeadingMobile']].forEach(([from, to]) => {
+                        const t = parseFloat(p[from]);
+                        if (t && p[to] == null) p[to] = String(Math.min(24, Math.max(6, Math.round(t * 1.25))));
+                    });
+                    localStorage.setItem('newsreader_prefs', JSON.stringify(p));
+                }
+                localStorage.setItem('newsreader_section_heading', '1');
+            }
         } catch (e) { }
         window._todayRank = localStorage.getItem('newsreader_today_rank') !== '0';
         window._learnOpens = localStorage.getItem('newsreader_learn_opens') !== '0';
@@ -5905,10 +6398,11 @@
             }
         });
 
-        // Restore timeline pane width
+        // Restore timeline pane width. A stored 336px is the old default (every cloud save stores a
+        // width), not a choice, so it becomes the 440px default.
+        window.paneWidthOrDefault = w => (!w || w === '336px') ? '440px' : w;
         try {
-            const w = localStorage.getItem('newsreader_pane_width');
-            if (w) timelinePane.style.width = w;
+            timelinePane.style.width = window.paneWidthOrDefault(localStorage.getItem('newsreader_pane_width'));
         } catch (e) { console.warn('Storage error:', e.message); }
 
         // --- FETCH & ARTICLE LOGIC ---
@@ -7212,21 +7706,10 @@
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
 
             const isSaved = window.savedBucket ? window.savedBucket.has(a.link) : false;
-            const starIcon = isSaved ? '#icon-star-filled' : '#icon-star';
-            const starColor = isSaved ? 'text-amber-500 dark:text-amber-400 is-saved' : 'text-gray-500 dark:text-gray-400';
-            const actionsRowHtml = `
-                <div class="card-actions phone-only flex items-center gap-1.5 pt-1.5 mt-1" onclick="event.stopPropagation()">
-                    <button type="button" onclick="selectArticle('${saId}')" class="brief-action-btn text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors" title="Open in Reader" aria-label="Open in Reader">
-                        <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
-                    </button>
-                    <button type="button" data-save-id="${saId}" data-save-link="${esc(a.link || '')}" onclick="window.toggleBriefStorySaved('${saId}', this)" class="brief-action-btn brief-save-btn ${starColor} hover:text-amber-500 transition-colors" title="${isSaved ? 'Unsave' : 'Save Article'}" aria-label="${isSaved ? 'Unsave' : 'Save Article'}">
-                        <svg class="brief-action-icon"><use href="${starIcon}"/></svg>
-                    </button>
-                    ${a.link && a.link !== '#' ? `
-                    <a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" class="brief-action-link text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors" title="Open original source" aria-label="Open original source">
-                        <svg class="brief-action-icon"><use href="#icon-external-link"/></svg>
-                    </a>` : ''}
-                </div>`;
+            // A picture beside the headline and summary, as on Today's cards: never an avatar, and a failed
+            // or tiny one leaves no box. Show images off and Compact Wire hide it.
+            const img = a.image && !/avatar/i.test(a.image) ? a.image : '';
+            const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove()" onerror="this.parentNode.remove()"></div>` : '';
             // The desktop's row: a Today card's and the reader's buttons. Read and Read Later are the
             // right-click menu's own actions, which redraw the list.
             const deskBtn = (on, onclick, label, icon, extra = '') =>
@@ -7243,18 +7726,18 @@
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 <div class="swipe-hint swipe-hint-left">&#x2713; Mark Read</div>
                 <div class="swipe-hint swipe-hint-right">Read Later &#x2605;</div>
-                <div class="min-w-0">
-                    <div class="flex items-center justify-between mb-1 gap-2">
-                        <div class="flex items-center gap-1.5 min-w-0 flex-1">
-                            ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
-                            <span class="list-source-label font-bold text-gray-500 dark:text-gray-400 truncate mr-2">${favicon}${esc(sourceLabel)}</span>
-                        </div>
-                        <span class="list-date-label text-[11px] text-gray-500 dark:text-gray-500 flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                <div class="min-w-0 list-card-body">
+                    <div class="list-card-meta flex items-center gap-1.5 mb-1 min-w-0">
+                        ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
+                        <span class="list-source-label font-bold truncate min-w-0">${favicon}${esc(sourceLabel)}</span>
+                        <span class="list-meta-dot" aria-hidden="true">•</span>
+                        <span class="list-date-label flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                        <button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showListCardMenu(this, '${saId}')" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>
                     </div>
+                    ${thumbHtml}
                     ${titleHtml}
                     ${repostLine}
                     <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
-                    ${actionsRowHtml}
                     ${deskActionsHtml}
                 </div>
             </div>`;
@@ -7703,6 +8186,29 @@
         // The section-end Mark-read button; restored after Undo / settling.
         const BRIEF_MARK_ROW_HTML = '<button type="button" class="brief-mark-section-btn" onclick="window.markBriefSectionRead(this)" title="Mark the stories above as read" aria-label="Mark the stories above as read"><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-mark-section-label">Mark read</span></button>';
 
+        // Today's heading is the long date ("Wednesday, September 30") where it fits and the short one
+        // ("Wed, Sep 30") where it doesn't: the phone's header row leaves it about 227px, and the Font
+        // setting can widen the text past that. A ResizeObserver on the heading and on the date redoes it
+        // when either changes size: a rotation, a font arriving, or a Today drawn while hidden coming into
+        // view. Headings no longer in the page are let go.
+        function fitBriefDate(container) {
+            const head = container.querySelector('.brief-header-title');
+            const date = head?.querySelector('.brief-date');
+            if (!date) return;
+            const st = window._briefDateFit ??= {
+                seen: new Set(),
+                ro: new ResizeObserver(entries => entries.forEach(e => {
+                    const h = e.target.closest('.brief-header-title');
+                    const d = h?.querySelector('.brief-date');
+                    if (!d) return;
+                    h.classList.remove('date-short');
+                    if (d.getBoundingClientRect().width > h.getBoundingClientRect().width + 0.5) h.classList.add('date-short');
+                }))
+            };
+            st.seen.forEach(el => { if (!el.isConnected) { st.ro.unobserve(el); st.seen.delete(el); } });
+            [head, date].forEach(el => { if (!st.seen.has(el)) { st.seen.add(el); st.ro.observe(el); } });
+        }
+
         function normalizeBriefDOM(container) {
             if (!container) return;
             // Lookups built once per render, not a linear search per card.
@@ -7876,9 +8382,7 @@
                             const pill = container.querySelector(`.brief-jump-pill[href="#brief-cat-${oldSlug}"]`);
                             if (pill) {
                                 pill.href = `#brief-cat-${newSlug}`;
-                                const countMatch = pill.textContent.match(/\((\d+)\)/);
-                                const countStr = countMatch ? ` (${countMatch[1]})` : '';
-                                pill.textContent = `${realCat}${countStr}`;
+                                pill.textContent = realCat;
                                 pill.onclick = (e) => {
                                     e.preventDefault();
                                     document.getElementById(`brief-cat-${newSlug}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -7975,6 +8479,7 @@
             });
             // Stories already read leave before the brief is first seen.
             window.syncBriefCards?.(container, { now: true });
+            fitBriefDate(container);
 
             // Update live unread states on buttons
             window.updateBriefMarkReadButtons?.();
@@ -8069,26 +8574,23 @@
                 titleEl.style.display = '';
                 titleEl.textContent = article.title;
             }
-            titleEl.style.fontSize = window._savedArticleTitleSize || '1.2em';
+            titleEl.style.fontSize = window._savedArticleTitleSize || '1.5em';
             const authorEl = document.getElementById('article-author');
-            const dateEl = document.getElementById('article-date');
             authorEl.textContent = article.isBrief ? (article.slot ? (article.slot.toUpperCase() + ' BRIEF') : 'BRIEF') : article.author;
-            // When the author only repeats the source above the headline, or there is none, the desktop's
-            // byline is just the date.
+            // The source line above the headline carries the source and the time ("NPR News · Oct 10,
+            // 5:00 AM"); the byline shows only an author who isn't the source.
             const _author = (article.author || '').trim().toLowerCase();
             document.getElementById('article-byline')?.classList.toggle('byline-dup',
                 !article.isBrief && (!_author || _author === (article.source || '').trim().toLowerCase()));
             const _d = new Date(article.timestamp);
-            const _datePart = _d.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric', year: 'numeric' });
-            const _timePart = _d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true });
-            dateEl.textContent = article.isBrief ? `${_datePart} · ${_timePart} ET` : `${_datePart} · ${_timePart}`;
-            if (isBskyArticle) {
-                authorEl.style.display = 'none';
-                authorEl.nextElementSibling.style.display = 'none';
-            } else {
-                authorEl.style.display = '';
-                authorEl.nextElementSibling.style.display = '';
+            const metaTimeEl = document.getElementById('article-meta-time');
+            if (metaTimeEl) {
+                const sameYear = _d.getFullYear() === new Date().getFullYear();
+                const day = _d.toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+                const time = _d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true });
+                metaTimeEl.textContent = isNaN(_d.getTime()) ? '' : `${day}, ${time}`;
             }
+            authorEl.style.display = isBskyArticle ? 'none' : '';
             const bodyEl = document.getElementById('article-body');
             // Today stays alive while a story is open: leaving detaches its page as it is and returning
             // puts it back at the same scroll, so nothing reloads or moves; the story read just drops out.
@@ -9039,7 +9541,7 @@
                 <div class="feed-row">
                     <button type="button" class="fm-feed-open min-w-0 flex-1" onclick="openFeedFromManager('${escJs(f.name)}')" title="Show its stories">
                         <div class="feed-row-name truncate">${esc(f.name)}</div>
-                        <div class="feed-row-cat truncate${st.bad ? ' fm-bad' : ''}">${esc(st.text)}</div>
+                        <div class="feed-row-cat${st.bad ? ' fm-bad' : ''}">${esc(st.text)}</div>
                     </button>
                     <div class="feed-row-actions">
                         ${st.bad ? `<button onclick="retryFeed('${escJs(f.url)}', '${escJs(f.name)}', this)" class="feed-row-action edit" title="Retry now" aria-label="Retry ${esc(f.name)}">
@@ -10372,11 +10874,7 @@
                     const countEl = sec.querySelector('.brief-cat-count');
                     if (countEl) countEl.textContent = `${shown} ${shown === 1 ? 'story' : 'stories'}`;
                     const pill = sec.id ? root.querySelector(`.brief-jump-pill[href="#${CSS.escape(sec.id)}"]`) : null;
-                    if (pill) {
-                        if (!pill.dataset.name) pill.dataset.name = pill.textContent.replace(/\s*\(\d+\)\s*$/, '').trim();
-                        pill.textContent = `${pill.dataset.name} (${shown})`;
-                        settle(pill, 'brief-gone', shown === 0);
-                    }
+                    if (pill) settle(pill, 'brief-gone', shown === 0);
                     const end = sec.querySelector('.brief-cat-end');
                     if (end) {
                         settle(end, 'is-empty', unread === 0);
@@ -10661,9 +11159,22 @@
             const n = cardsIn(fresh.body).filter(c => !shown.has(c.id) && !c.cov.some(x => shown.has(x))).length;
             if (!n) return;
             // Never rebuilt under you, not even at its top: the "N new stories" pill shows, and nothing moves
-            // until you tap it.
+            // until you tap it. Unless nothing unread is left on screen.
             window._todayNewCount = n;
-            window.updateTodayStatus();
+            if (!window.showNewTodayIfBlank()) window.updateTodayStatus();
+        };
+
+        // Today on screen with no unread story showing (all caught up) takes its new stories at once:
+        // there is no place to keep, so the "N new stories" pill would only be one more tap (on request).
+        window.showNewTodayIfBlank = function () {
+            const where = todayOnScreen();
+            if (!where || !(window._todayNewCount > 0)) return false;
+            const root = document.getElementById(where === 'column' ? 'today-column' : 'article-body');
+            const unread = Array.from(root?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
+                .some(c => c.getClientRects().length && !c.classList.contains('brief-card-read'));
+            if (unread) return false;
+            rebuildTodayInPlace(true);
+            return true;
         };
 
         window.openToday = async function () {
@@ -11091,15 +11602,20 @@
                 day: 'numeric',
                 year: 'numeric'
             });
-            // The heading's date is short ("Thu, Oct 8, 2026") and in one piece, so a large Title Size moves
-            // the whole date down, never the year alone. The phone leaves out the year; Listen says the long one.
+            // The heading is the date in one piece: long ("Saturday, October 10") where it fits, short
+            // ("Sat, Oct 10") where it doesn't (fitBriefDate). Listen says the date its own way.
             const headingDay = triggerDate.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric'
             });
-            const headingYear = triggerDate.toLocaleDateString('en-US', { timeZone: 'America/New_York', year: 'numeric' });
+            const headingLong = triggerDate.toLocaleDateString('en-US', {
+                timeZone: 'America/New_York',
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric'
+            });
             const shortDateFormatted = triggerDate.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
                 month: 'short',
@@ -11114,13 +11630,13 @@
                         <!-- No "LIVE BRIEF • Unread · last 24 hours" row above the status line any
                              more (build 331, on request: "I don't need it at all"). -->
                         <!-- On the phone, Following's header: logo, "Thu, Oct 8" over the status, Listen at
-                             the right (build 335). The desktop shows the status, "Today - Thu, Oct 8, 2026"
-                             and the details line, as before; the logo and the button are the phone's. -->
+                             the right (build 335). The desktop shows the status, "Saturday, October 10" and
+                             the details line; the logo and the button are the phone's. -->
                         <div class="app-header-row">
                             <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#icon-rss"/></svg></span>
                             <div class="app-header-text">
                                 <div class="brief-header-status app-subtitle"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
-                                <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white mb-2 leading-tight"><span class="desk-only">${esc(slotDef.name)} — </span><span class="whitespace-nowrap">${esc(headingDay)}<span class="desk-only">, ${esc(headingYear)}</span></span></h2>
+                                <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white mb-2 leading-tight"><span class="brief-date"><span class="brief-date-long">${esc(headingLong)}</span><span class="brief-date-short">${esc(headingDay)}</span></span></h2>
                             </div>
                             ${slotDef.headerAction || ''}
                         </div>
@@ -11139,7 +11655,7 @@
             if (categorySections.length > 0) {
                 html += `<div class="brief-jump-bar">`;
                 categorySections.forEach(cs => {
-                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill" onclick="event.preventDefault(); window.briefJumpTo(this);">${esc(cs.name)} (${cs.stories.length})</a>`;
+                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill" onclick="event.preventDefault(); window.briefJumpTo(this);">${esc(cs.name)}</a>`;
                 });
                 html += `</div>`;
             }
@@ -11221,6 +11737,10 @@
             const b = (cls, label, icon, onclick) =>
                 `<button type="button" class="icon-act ${cls}" onclick="${onclick}" title="${label}" aria-label="${label}"><svg aria-hidden="true"><use href="#${icon}"/></svg></button>`;
             row.className = 'brief-story-actions story-actions';   // story-actions: the desktop's one row (336)
+            const meta = card.querySelector('.brief-story-meta');
+            if (meta && !meta.querySelector('.brief-more-btn')) {
+                meta.insertAdjacentHTML('beforeend', '<button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showBriefStoryMenu(this)" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>');
+            }
             row.innerHTML =
                 b('brief-act-read', 'Mark Read', 'icon-dot-filled', `window.briefStoryAct('read', '${j}', this)`) +
                 b('brief-act-later', 'Read Later', 'icon-bookmark', `window.briefStoryAct('later', '${j}', this)`) +
@@ -11228,6 +11748,67 @@
                 b('brief-open-reader', 'Open in Reader', 'icon-newspaper', `window.openArticleInReader('${j}')`) +
                 (link ? `<a class="icon-act brief-source-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '') +
                 b('brief-act-share', 'Share', 'icon-share', `window.briefStoryAct('share', '${j}', this)`);   // last (build 308)
+        };
+
+        // An action menu (the lists' context menu) whose items press buttons on the page, so each action
+        // keeps its own handler, state and toasts. entries: [label, element] or '-'; at x, y for a
+        // long-press, else under `from`.
+        window.showActionMenu = function (from, entries, x, y) {
+            const menu = document.getElementById('article-context-menu');
+            if (!menu) return;
+            const cls = 'w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700';
+            const els = window._actionMenuEls = [];
+            menu.innerHTML = entries.map(e => {
+                if (e === '-') return '<div class="my-1 border-t border-gray-200 dark:border-gray-700"></div>';
+                if (!e || !e[1]) return '';
+                els.push(e[1]);
+                return `<button type="button" class="${cls}" onclick="window.actionMenuAct(${els.length - 1})">${e[0]}</button>`;
+            }).join('');
+            menu.classList.remove('hidden');
+            const w = menu.offsetWidth, h = menu.offsetHeight;
+            const r = from.getBoundingClientRect();
+            let left = x === undefined ? r.right - w : x - w / 2;
+            let top = y === undefined ? r.bottom + 6 : y + 12;
+            const bottomLimit = window.innerHeight - 96;   // above the tab bar
+            if (top + h > bottomLimit) top = (y === undefined ? r.top : y - 12) - h - 6;
+            menu.style.left = `${Math.max(8, Math.min(left, window.innerWidth - w - 8))}px`;
+            menu.style.top = `${Math.max(8, top)}px`;
+        };
+
+        window.actionMenuAct = function (i) {
+            const el = window._actionMenuEls?.[i];
+            window._actionMenuEls = null;
+            hideContextMenu();
+            el?.click();
+        };
+
+        const _isOn = b => !!b && (b.classList.contains('is-on') || b.classList.contains('is-saved'));
+
+        // A Today story's menu (its "..." or a long-press): the card's own buttons, hidden on the phone.
+        window.showBriefStoryMenu = function (from, x, y) {
+            const card = from.closest('.brief-story-card');
+            if (!card) return;
+            const btn = sel => card.querySelector('.brief-story-actions ' + sel);
+            const read = btn('.brief-act-read'), later = btn('.brief-act-later'), save = btn('.brief-save-btn');
+            window.showActionMenu(from, [
+                read && [_isOn(read) ? 'Mark as Read' : 'Mark as Unread', read],
+                later && [_isOn(later) ? 'Remove from Read Later' : 'Read Later', later],
+                save && [_isOn(save) ? 'Unsave' : 'Save', save],
+                '-',
+                ['Share…', btn('.brief-act-share')],
+                ['Open Original', btn('.brief-source-link')],
+            ], x, y);
+        };
+
+        // The story screen's "..." (phone): the row's buttons it hides there, when they apply.
+        window.showStoryMenu = function (from) {
+            const b = id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') ? e : null; };
+            const read = b('unread-action-btn');
+            window.showActionMenu(from, [
+                read && [_isOn(read) ? 'Mark as Read' : 'Mark as Unread', read],
+                ['Share…', b('share-btn')],
+                ['Open Original', b('open-original-btn')],
+            ]);
         };
 
         window.updateBriefStoryActionButtons = function (root) {
@@ -11404,9 +11985,11 @@
             };
 
             // The kept page is laid out already: land now, before it is drawn (a late correction would be a
-            // jump). A rebuilt one waits for its layout.
-            if (window._todayRestored) scrollToTarget();
-            else requestAnimationFrame(() => { setTimeout(scrollToTarget, 60); });
+            // jump). A rebuilt one waits for its layout. Back to a Today with nothing unread left, new stories
+            // found meanwhile show at once.
+            const land = () => { scrollToTarget(); window.showNewTodayIfBlank(); };
+            if (window._todayRestored) land();
+            else requestAnimationFrame(() => { setTimeout(land, 60); });
         };
 
         window.openArticleInReader = function (articleId) {
@@ -11579,35 +12162,124 @@
             stamp.textContent = `RSS Reader · build ${window.APP_BUILD}${used}`;
         }
 
+        // The phone's sheets (Settings, Search) slide down before they hide; on the desktop, or with
+        // Reduce Motion on, they hide at once. One that is sliding away counts as closed, so the control
+        // that opened it opens it again.
+        window.closeSheet = function (sheet, hide) {
+            clearTimeout(sheet._closeTimer);
+            if (!isMobile() || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { hide(); return; }
+            sheet.classList.add('sheet-closing');
+            sheet._closeTimer = setTimeout(() => { sheet.classList.remove('sheet-closing'); hide(); }, 240);
+        };
+        window.reopenSheet = function (sheet) {
+            clearTimeout(sheet._closeTimer);
+            sheet.classList.remove('sheet-closing');
+        };
+
+        // Pulling a phone sheet down closes it: from its header at any time, or from its content when that
+        // is scrolled to the top. Past 110px, or with a quick flick, it closes; short of that it springs
+        // back. Fields, sliders and menus keep their own touches, and the tap that ends a pull is dropped.
+        window.sheetDrag = function (card, isHandle, scrollerOf, close) {
+            if (!card) return;
+            let mode = '', startX = 0, startY = 0, dy = 0, lastY = 0, lastT = 0, speed = 0, dropClickUntil = 0;
+            card.addEventListener('touchstart', e => {
+                mode = '';
+                if (!isMobile() || e.touches.length !== 1 || e.target.closest('input, select, textarea')) return;
+                const scroller = scrollerOf();
+                if (!isHandle(e.target) && !(scroller && scroller.contains(e.target) && scroller.scrollTop <= 0)) return;
+                mode = 'maybe';
+                startX = e.touches[0].clientX;
+                startY = lastY = e.touches[0].clientY;
+                lastT = e.timeStamp;
+                dy = speed = 0;
+            }, { passive: true });
+            card.addEventListener('touchmove', e => {
+                if (!mode) return;
+                const x = e.touches[0].clientX, y = e.touches[0].clientY;
+                if (mode === 'maybe') {
+                    if (Math.abs(y - startY) < 4 && Math.abs(x - startX) < 4) return;
+                    // Up, or more sideways than down: a scroll or a slide, not a pull.
+                    if (y <= startY || Math.abs(x - startX) > Math.abs(y - startY)) { mode = ''; return; }
+                    mode = 'drag';
+                    card.style.transition = 'none';
+                }
+                e.preventDefault();
+                dy = Math.max(0, y - startY);
+                if (e.timeStamp > lastT) speed = (y - lastY) / (e.timeStamp - lastT);
+                lastY = y;
+                lastT = e.timeStamp;
+                card.style.transform = `translateY(${dy}px)`;
+            }, { passive: false });
+            const end = e => {
+                if (mode !== 'drag') { mode = ''; return; }
+                mode = '';
+                dropClickUntil = Date.now() + 400;
+                if (e.timeStamp - lastT > 80) speed = 0;   // the finger stopped before it lifted: no flick
+                if (dy > 110 || (speed > 0.5 && dy > 24)) {
+                    card.style.transition = '';
+                    card.style.transform = '';
+                    close();
+                    return;
+                }
+                card.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+                card.style.transform = '';
+                setTimeout(() => { if (!mode) card.style.transition = ''; }, 300);
+            };
+            card.addEventListener('touchend', end);
+            card.addEventListener('touchcancel', end);
+            card.addEventListener('click', e => {
+                if (Date.now() > dropClickUntil) return;
+                dropClickUntil = 0;
+                e.preventDefault();
+                e.stopPropagation();
+            }, true);
+        };
+
+        function settingsSheetOpen() {
+            const m = document.getElementById('settings-modal');
+            return !m.classList.contains('hidden') && !m.classList.contains('sheet-closing');
+        }
+        window.closeSettings = () => {
+            const modal = document.getElementById('settings-modal');
+            if (settingsSheetOpen()) window.closeSheet(modal, () => modal.classList.add('hidden'));
+        };
         // The gear: Settings. openFeedManager passes 'feeds' for Edit, so the gear never lands on Feeds.
         window.toggleSettings = (tab) => {
+            if (settingsSheetOpen()) { window.closeSettings(); return; }
             const modal = document.getElementById('settings-modal');
-            modal.classList.toggle('hidden');
-            if (!modal.classList.contains('hidden')) {
-                window.switchSettingsTab(tab === 'feeds' ? 'feeds' : 'prefs');
-                updateBuildStamp();
-                const briefSlider = document.getElementById('brief-stories-slider');
-                if (briefSlider) {
-                    const all = window._briefStoriesPerCat === Infinity;
-                    briefSlider.value = all ? 51 : (window._briefStoriesPerCat || 10);
-                    const valEl = document.getElementById('brief-stories-val');
-                    if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
-                }
-                document.getElementById('rank-stories-toggle')?.setAttribute('data-on', window._todayRank ? 'true' : 'false');
-                document.getElementById('learn-opens-toggle')?.setAttribute('data-on', window._learnOpens ? 'true' : 'false');
-                window.renderMuteChips?.();
-                renderLocalFeedList();   // the feed manager, with health as of now
+            window.reopenSheet(modal);
+            modal.classList.remove('hidden');
+            window.switchSettingsTab(tab === 'feeds' ? 'feeds' : 'prefs');
+            updateBuildStamp();
+            const briefSlider = document.getElementById('brief-stories-slider');
+            if (briefSlider) {
+                const all = window._briefStoriesPerCat === Infinity;
+                briefSlider.value = all ? 51 : (window._briefStoriesPerCat || 10);
+                const valEl = document.getElementById('brief-stories-val');
+                if (valEl) valEl.textContent = all ? 'All' : String(briefSlider.value);
             }
+            document.getElementById('rank-stories-toggle')?.setAttribute('data-on', window._todayRank ? 'true' : 'false');
+            document.getElementById('learn-opens-toggle')?.setAttribute('data-on', window._learnOpens ? 'true' : 'false');
+            window.renderMuteChips?.();
+            renderLocalFeedList();   // the feed manager, with health as of now
         };
+        window.sheetDrag(document.querySelector('#settings-modal .settings-card'),
+            t => !!t.closest('.settings-head'),
+            () => document.querySelector('#settings-modal [id^="settings-panel-"]:not(.hidden)'),
+            () => window.closeSettings());
+        window.sheetDrag(document.querySelector('#mobile-search-sheet .search-inner'),
+            t => t.matches('.search-inner') || !!t.closest('.search-input-row, .search-smart'),
+            () => document.getElementById('mobile-search-results'),
+            () => window.closeSearchSheet());
 
         // Following > Edit: Settings, on its Feeds tab - the feed manager.
         window.openFeedManager = () => {
-            if (document.getElementById('settings-modal').classList.contains('hidden')) window.toggleSettings('feeds');
+            if (!settingsSheetOpen()) window.toggleSettings('feeds');
             else window.switchSettingsTab('feeds');
         };
         // A feed's stories, from the manager: Settings closes and its list opens.
         window.openFeedFromManager = (name) => {
-            window.toggleSettings();
+            window.closeSettings();
             if (isMobile()) setMobileTab('following');
             window.setSourceFilter(name);
         };
@@ -11779,6 +12451,7 @@
         const SHARED_SIZE_MAP = {
             feedName: { props: ['--desk-feed-name-size', '--mob-feed-name-size', '--list-source-size'], label: 'shared-feed-name-val', rerender: 'feeds' },
             listTitle: { perDevice: true, desktopProps: ['--list-title-em-size'], mobileProps: ['--mob-list-title-size'], label: 'shared-list-title-val', rerender: 'timeline' },
+            sectionHeading: { perDevice: true, desktopProps: ['--section-heading-size'], mobileProps: ['--mob-section-heading-size'], label: 'shared-section-heading-val', rerender: null },
             preview: { perDevice: true, desktopProps: ['--list-preview-font-size'], mobileProps: ['--mob-list-preview-size'], label: 'shared-preview-val', rerender: 'timeline' },
             folder: { props: ['--category-font-size', '--mob-folder-size'], label: 'shared-folder-val', rerender: 'feeds' },
             body: { perDevice: true, desktopProps: ['--view-font-size'], mobileProps: ['--mob-body-size'], label: 'shared-body-val', rerender: null },
@@ -11946,6 +12619,35 @@
                     lastY = y;
                 }
             }, { passive: true });
+        })();
+        // Long-press on a Today story (phone): its menu at the finger. Moving or scrolling cancels it, and
+        // the click that ends the press doesn't open the story.
+        (function () {
+            const rv = document.getElementById('reader-view');
+            if (!rv) return;
+            let timer = 0, x0 = 0, y0 = 0, st = 0, firedAt = 0;
+            const cancel = () => { clearTimeout(timer); timer = 0; };
+            rv.addEventListener('touchstart', e => {
+                cancel();
+                const card = e.target.closest('#article-body .brief-story-card[data-sa-id]');
+                if (!card || e.touches.length !== 1 || e.target.closest('button') || !isMobile()) return;
+                x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; st = rv.scrollTop;
+                timer = setTimeout(() => {
+                    timer = 0;
+                    if (Math.abs(rv.scrollTop - st) > 2) return;
+                    firedAt = Date.now();
+                    window.showBriefStoryMenu(card, x0, y0);
+                }, 500);
+            }, { passive: true });
+            rv.addEventListener('touchmove', e => {
+                if (timer && (Math.abs(e.touches[0].clientX - x0) > 10 || Math.abs(e.touches[0].clientY - y0) > 10)) cancel();
+            }, { passive: true });
+            rv.addEventListener('touchend', cancel, { passive: true });
+            rv.addEventListener('touchcancel', cancel, { passive: true });
+            rv.addEventListener('contextmenu', e => { if (e.target.closest('#article-body .brief-story-card')) e.preventDefault(); });
+            rv.addEventListener('click', e => {
+                if (Date.now() - firedAt < 800 && !e.target.closest('#article-context-menu')) { e.preventDefault(); e.stopPropagation(); }
+            }, true);
         })();
         // Calm Today: what waited on the screen goes once it is off it, looked at when scrolling stops
         // (setting the scroll during an iOS fling would stop the fling).
@@ -12277,6 +12979,9 @@
             items += divider;
             items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
+            items += divider;
+            items += `<button onclick="hideContextMenu(); window.briefStoryAct('share', '${sid}')" class="${btnClass}">Share…</button>`;
+            if (article?.link) items += `<button onclick="hideContextMenu(); window.openArticleLink('${sid}')" class="${btnClass}">Open Original</button>`;
             const menu = document.getElementById('article-context-menu');
             menu.innerHTML = items;
             menu.classList.remove('hidden');
@@ -12284,6 +12989,17 @@
             const y = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 8);
             menu.style.top = `${y}px`;
             menu.style.left = `${x}px`;
+        };
+
+        // A list card's "..." (phone): the list's own menu, under the button.
+        window.showListCardMenu = function (btn, id) {
+            const r = btn.getBoundingClientRect();
+            showArticleContextMenu({ preventDefault() { }, clientX: r.right, clientY: r.bottom + 6 }, id);
+        };
+
+        window.openArticleLink = (id) => {
+            const a = findArticleAnywhere(id);
+            if (a?.link) window.open(a.link, '_blank', 'noopener,noreferrer');
         };
 
         // Look across all article sources (window.articles + bucket-backed views).
@@ -12334,6 +13050,7 @@
             let _touchStartX = 0, _touchStartY = 0;
             let _touchStartScrollTop = 0;
             let _swiping = false;
+            let _lpFiredAt = 0;
 
             const cancelLongPress = () => {
                 clearTimeout(_lpTimer);
@@ -12358,10 +13075,11 @@
                 _lpTimer = setTimeout(() => {
                     cancelLongPress();
                     if (_swiping) return;
+                    _lpFiredAt = Date.now();
                     window.getSelection()?.removeAllRanges();
                     if (navigator.vibrate) navigator.vibrate(30);
                     showArticleContextMenu({ preventDefault: () => { }, clientX: _touchStartX, clientY: _touchStartY }, id);
-                }, 1000);
+                }, 500);   // as on Today's cards
             }, { passive: true });
 
             list.addEventListener('touchmove', (e) => {
@@ -12380,6 +13098,30 @@
 
             // Today's pull is the one refresh, so a lifted finger only ends the long-press wait here.
             list.addEventListener('touchend', cancelLongPress, { passive: true });
+            // The click that ends a long-press doesn't open the story under the menu.
+            list.addEventListener('click', (e) => {
+                if (Date.now() - _lpFiredAt < 800 && !e.target.closest('#article-context-menu')) { e.preventDefault(); e.stopPropagation(); }
+            }, true);
+        })();
+        // A touch or click outside an open context menu only closes it, as on iOS: the tap that follows
+        // must not open the story under it. A touch that turns into a scroll closes it too; its
+        // pointercancel means no click follows, so the next tap works.
+        (function () {
+            const MENUS = ['article-context-menu', 'folder-context-menu', 'feed-context-menu'];
+            let swallowUntil = 0;
+            document.addEventListener('pointerdown', e => {
+                const open = MENUS.map(id => document.getElementById(id)).filter(m => m && !m.classList.contains('hidden'));
+                if (!open.length || open.some(m => m.contains(e.target))) return;
+                open.forEach(m => m.classList.add('hidden'));
+                swallowUntil = Date.now() + 1000;
+            }, true);
+            document.addEventListener('pointercancel', () => { swallowUntil = 0; }, true);
+            document.addEventListener('click', e => {
+                if (Date.now() > swallowUntil) return;
+                swallowUntil = 0;
+                e.preventDefault();
+                e.stopPropagation();
+            }, true);
         })();
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#article-context-menu')) document.getElementById('article-context-menu').classList.add('hidden');
@@ -12810,6 +13552,7 @@
             const lineHeight = splitSave('shared-line-height-slider', 'sharedLineHeightDesktop', 'sharedLineHeightMobile');
             const meta = splitSave('shared-meta-slider', 'sharedMetaDesktop', 'sharedMetaMobile');
             const listTitle = splitSave('shared-list-title-slider', 'sharedListTitleDesktop', 'sharedListTitleMobile');
+            const sectionHeading = splitSave('shared-section-heading-slider', 'sectionHeadingDesktop', 'sectionHeadingMobile');
             const preview = splitSave('shared-preview-slider', 'sharedPreviewDesktop', 'sharedPreviewMobile');
             const previewLH = splitSave('shared-preview-line-height-slider', 'previewLineHeightDesktop', 'previewLineHeightMobile');
             const previewLines = splitSave('lines-slider', 'previewLinesDesktop', 'previewLinesMobile');
@@ -12828,6 +13571,7 @@
                     ...lineHeight,
                     ...meta,
                     ...listTitle,
+                    ...sectionHeading,
                     ...preview,
                     ...previewLH,
                     ...previewLines,
@@ -12853,6 +13597,7 @@
                 'sharedLineHeightDesktop', 'sharedLineHeightMobile',
                 'sharedMetaDesktop', 'sharedMetaMobile',
                 'sharedListTitleDesktop', 'sharedListTitleMobile',
+                'sectionHeadingDesktop', 'sectionHeadingMobile',
                 'sharedPreviewDesktop', 'sharedPreviewMobile',
                 'previewLineHeightDesktop', 'previewLineHeightMobile',
                 'previewLinesDesktop', 'previewLinesMobile',
@@ -12919,6 +13664,7 @@
             applyPerDevice('lineHeight', 'sharedLineHeightDesktop', 'sharedLineHeightMobile', 'shared-line-height-slider', 'shared-line-height-val');
             applyPerDevice('meta', 'sharedMetaDesktop', 'sharedMetaMobile', 'shared-meta-slider', 'shared-meta-val');
             applyPerDevice('listTitle', 'sharedListTitleDesktop', 'sharedListTitleMobile', 'shared-list-title-slider', 'shared-list-title-val');
+            applyPerDevice('sectionHeading', 'sectionHeadingDesktop', 'sectionHeadingMobile', 'shared-section-heading-slider', 'shared-section-heading-val');
             applyPerDevice('preview', 'sharedPreviewDesktop', 'sharedPreviewMobile', 'shared-preview-slider', 'shared-preview-val');
             applyPerDevice('previewLineHeight', 'previewLineHeightDesktop', 'previewLineHeightMobile', 'shared-preview-line-height-slider', 'shared-preview-line-height-val');
 
@@ -13161,6 +13907,22 @@
             });
         };
 
+        // Runs fn once #reader-view stands still. Today and a story share it on the phone, and the tab bar
+        // sits outside it, so a tab tap doesn't stop a fling there (often the swipe up that brought the bar
+        // back): it would carry Today away from its place. Overflow hidden stops the fling, fn runs two
+        // frames later, once that has reached the screen, and scrolling comes back 150ms after. Only with
+        // overlay scrollbars (touch screens), where hiding one doesn't change the content's width.
+        window.stillReader = function (fn) {
+            const rv = document.getElementById('reader-view');
+            if (!rv || !isMobile() || rv.offsetWidth !== rv.clientWidth) return fn();
+            rv.style.setProperty('overflow-y', 'hidden', 'important');
+            clearTimeout(window._readerStillTimer);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                fn();
+                window._readerStillTimer = setTimeout(() => rv.style.removeProperty('overflow-y'), 150);
+            }));
+        };
+
         // Tab click handlers. The tabs do Back's job on the phone: Today, from a story opened in Today,
         // returns to that story's place; again (or from elsewhere), Today is rebuilt at the top.
         window.onTodayTabClick = async () => {
@@ -13169,7 +13931,7 @@
             if (window._mobilePane === 'viewer' && cur && !cur.isBrief && s && s.briefId === window.TODAY_BRIEF_ID) {
                 setMobileTab('today');
                 window._todayReturnedAt = Date.now();
-                window.returnToBrief();
+                window.stillReader(() => window.returnToBrief());
                 return;
             }
             // A second tap within a second of that return is the same tap repeated, not "Today again, from
@@ -13320,8 +14082,10 @@
         }, { passive: true });
 
         window.toggleSearchSheet = async () => {
-            const open = !document.body.classList.contains('search-active');
+            const sheet = document.getElementById('mobile-search-sheet');
+            const open = !document.body.classList.contains('search-active') || sheet.classList.contains('sheet-closing');
             if (open) {
+                window.reopenSheet(sheet);
                 document.body.classList.add('search-active');
                 refreshDeskSearchScope();   // keep the palette's folder list current
                 positionSearchPalette();    // drop it under the search control
@@ -13342,10 +14106,12 @@
             }
         };
         window.closeSearchSheet = () => {
-            document.body.classList.remove('search-active');
+            const sheet = document.getElementById('mobile-search-sheet');
             const input = document.getElementById('mobile-search-input');
             if (input) input.blur();
             window._readArchiveCache = null;
+            if (!document.body.classList.contains('search-active') || sheet.classList.contains('sheet-closing')) return;
+            window.closeSheet(sheet, () => document.body.classList.remove('search-active'));
         };
         window.updateSearchResults = (query) => {
             const container = document.getElementById('mobile-search-results');
@@ -13420,31 +14186,37 @@
                 return;
             }
             const frag = document.createDocumentFragment();
-            results.forEach(a => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'search-item';
-                btn.setAttribute('data-id', a.id);
-                const title = document.createElement('div');
-                title.className = 'search-item-title';
-                title.textContent = a.title || '(untitled)';
-                const meta = document.createElement('div');
-                meta.className = 'search-item-meta';
-                const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-                meta.textContent = [a.source, when].filter(Boolean).join(' · ');
-                btn.appendChild(title);
-                btn.appendChild(meta);
-                btn.addEventListener('click', () => {
-                    // Desktop keeps the results up (the reader is its own pane), so several hits open in turn; on the
-                    // phone the sheet covers the article, so it closes.
-                    if (isMobile()) closeSearchSheet();
-                    selectArticle(a.id);
-                });
-                frag.appendChild(btn);
-            });
+            results.forEach(a => frag.appendChild(searchItemEl(a)));
             container.innerHTML = '';
             container.appendChild(frag);
         };
+        // A search result: the card's source line (source · date) above the headline, compact. Desktop
+        // keeps the results up (the reader is its own pane), so several hits open in turn; on the phone
+        // the sheet covers the article, so it closes.
+        function searchItemEl(a) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-item';
+            btn.setAttribute('data-id', a.id);
+            const meta = document.createElement('div');
+            meta.className = 'search-item-meta';
+            const source = document.createElement('span');
+            source.className = 'search-item-source';
+            source.textContent = a.source || '';
+            meta.appendChild(source);
+            const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            if (when) meta.appendChild(document.createTextNode((a.source ? ' · ' : '') + when));
+            const title = document.createElement('div');
+            title.className = 'search-item-title';
+            title.textContent = a.title || '(untitled)';
+            btn.append(meta, title);
+            btn.addEventListener('click', () => {
+                if (isMobile()) closeSearchSheet();
+                selectArticle(a.id);
+            });
+            return btn;
+        }
+
         window.searchSmart = (which) => {
             const input = document.getElementById('mobile-search-input');
             if (input) input.value = '';
@@ -13471,27 +14243,7 @@
                 return;
             }
             const frag = document.createDocumentFragment();
-            filtered.forEach(a => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'search-item';
-                const title = document.createElement('div');
-                title.className = 'search-item-title';
-                title.textContent = a.title || '(untitled)';
-                const meta = document.createElement('div');
-                meta.className = 'search-item-meta';
-                const when = a.timestamp ? new Date(a.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-                meta.textContent = [a.source, when].filter(Boolean).join(' · ');
-                btn.appendChild(title);
-                btn.appendChild(meta);
-                btn.addEventListener('click', () => {
-                    // Desktop keeps the results up (the reader is its own pane), so several hits open in turn; on the
-                    // phone the sheet covers the article, so it closes.
-                    if (isMobile()) closeSearchSheet();
-                    selectArticle(a.id);
-                });
-                frag.appendChild(btn);
-            });
+            filtered.forEach(a => frag.appendChild(searchItemEl(a)));
             container.innerHTML = '';
             container.appendChild(frag);
         };
@@ -13531,6 +14283,7 @@
             { sliderId: 'shared-line-height-slider', labelId: 'shared-line-height-val', deskKey: 'sharedLineHeightDesktop', mobKey: 'sharedLineHeightMobile', fmt: v => `${parseFloat((v / 10).toFixed(1))}`, apply: v => updateSharedSize('lineHeight', v) },
             { sliderId: 'shared-meta-slider', labelId: 'shared-meta-val', deskKey: 'sharedMetaDesktop', mobKey: 'sharedMetaMobile', fmt: v => `${parseFloat((v / 10).toFixed(1))}em`, apply: v => updateSharedSize('meta', v) },
             { sliderId: 'shared-list-title-slider', labelId: 'shared-list-title-val', deskKey: 'sharedListTitleDesktop', mobKey: 'sharedListTitleMobile', fmt: v => `${parseFloat((v / 10).toFixed(1))}em`, apply: v => updateSharedSize('listTitle', v) },
+            { sliderId: 'shared-section-heading-slider', labelId: 'shared-section-heading-val', deskKey: 'sectionHeadingDesktop', mobKey: 'sectionHeadingMobile', fmt: v => `${parseFloat((v / 10).toFixed(1))}em`, apply: v => updateSharedSize('sectionHeading', v) },
             { sliderId: 'shared-preview-slider', labelId: 'shared-preview-val', deskKey: 'sharedPreviewDesktop', mobKey: 'sharedPreviewMobile', fmt: v => `${parseFloat((v / 10).toFixed(1))}em`, apply: v => updateSharedSize('preview', v) },
             { sliderId: 'shared-preview-line-height-slider', labelId: 'shared-preview-line-height-val', deskKey: 'previewLineHeightDesktop', mobKey: 'previewLineHeightMobile', fmt: v => `${parseFloat((v / 10).toFixed(1))}`, apply: v => updateSharedSize('previewLineHeight', v) },
             { sliderId: 'lines-slider', labelId: 'lines-val', deskKey: 'previewLinesDesktop', mobKey: 'previewLinesMobile', fmt: v => `${v} Lines`, apply: v => updateLines(v) },
@@ -13615,7 +14368,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 341;
+        window.APP_BUILD = 352;
 
         (async function initApp() {
             try {
@@ -14183,8 +14936,8 @@
                     if (data.paneWidth) {
                         const tp = document.getElementById('timeline-pane');
                         if (tp) {
-                            tp.style.width = data.paneWidth;
-                            try { localStorage.setItem('newsreader_pane_width', data.paneWidth); } catch (e) { }
+                            tp.style.width = window.paneWidthOrDefault(data.paneWidth);
+                            try { localStorage.setItem('newsreader_pane_width', tp.style.width); } catch (e) { }
                         }
                     }
                     if (data.categoryOrder && Array.isArray(data.categoryOrder)) {
@@ -14276,7 +15029,7 @@
                     // merge: settings added later are kept by a save that doesn't list them, and a field one save
                     // omits is never wiped.
                     await setDoc(uiRef, {
-                        paneWidth: paneWidth || '336px',
+                        paneWidth: paneWidth || '440px',
                         categoryOrder: window._categoryOrder,
                         autoRefresh,
                         todayExcluded: [...(window._todayExcluded || [])],
@@ -14476,7 +15229,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v341';
+const CACHE_NAME = 'rss-reader-v352';
 const APP_SHELL = [
     '/',
     'index.html'
