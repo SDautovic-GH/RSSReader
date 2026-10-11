@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 351)  
+**Version:** October 2026 (build 352)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -115,7 +115,8 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 |---|---|
 | Search sheet | Opened from the Search button or `/`. Searches stories as you type. Shortcuts to Unread, Read Later and Saved. |
 | Phone | A sheet over the tab bar, the full height under the status bar: a grabber, the field and Done at the top (clear of the keyboard), the results down to the bottom. Done, a pull down (from the top, or from the results at their top) or a tap above it closes it; it slides down as it goes. Light and dark. |
-| Desktop | A palette under the search control, unchanged. |
+| Desktop | A palette under the search control. |
+| Text | 1.2 × the app's sizes on both, as in Settings: the field and headlines 18px, sources and dates 14.4px. |
 | Filters (desktop) | Scope (All folders or one folder) and read state (All, Unread, Read). |
 | Results | A compact card: the source line (bold source · date) above a medium-weight headline. |
 
@@ -131,7 +132,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 
 Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil). The gear's panel has a second page, **Text Size & Zoom**, opened from its last row and left with ‹ in the header. Each setting's description is one short line under its name (12.5px); menus sit on their setting's own line.
 
-On the phone both are an iOS sheet: it rises from the bottom to just under the status bar, over the tab bar, with round top corners, a grabber and the ✕ in a grey circle. The ✕, a pull down (from the header, or from the content at its top; past 110px or a quick flick, else it springs back) or a tap above it closes it, sliding down. Sliders and fields keep their own touches. On the desktop it is a centred card. In dark both are the app's own background (black on the phone, #0d1117 on the desktop), the groups in Following's card fill.
+On the phone both are an iOS sheet: it rises from the bottom to just under the status bar, over the tab bar, with round top corners, a grabber and the ✕ in a grey circle. The ✕, a pull down (from the header, or from the content at its top; past 110px or a quick flick, else it springs back) or a tap above it closes it, sliding down. Sliders and fields keep their own touches. On the desktop it is a centred card. In dark both are the app's own background (black on the phone, #0d1117 on the desktop), the groups in Following's card fill. Their text is 1.2 × the app's sizes (`--sheet-text`), on the phone and the desktop: labels, section labels and values 16.8px, descriptions 15px, the title 21.6px; the ✕ keeps its size.
 
 | Section | Settings |
 |---|---|
