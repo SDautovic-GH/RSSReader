@@ -4212,7 +4212,8 @@
         /* Text in the Settings and Search sheets runs 20% larger than the app's: each of their font
            sizes is a px value x --sheet-text, so one number sets them all. */
         #settings-modal,
-        #mobile-search-sheet {
+        #mobile-search-sheet,
+        .form-sheet {
             --sheet-text: 1.2;
         }
 
@@ -4270,23 +4271,28 @@
                 background: rgba(127, 127, 127, 0.4);
             }
 
-            /* iOS's close: the ✕ in a small grey circle. */
-            #settings-modal .settings-close {
+            /* iOS's close: the ✕ in a grey circle, 40px like the app's header buttons. */
+            #settings-modal .settings-close,
+            .form-sheet .sheet-close {
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 30px;
-                height: 30px;
+                flex-shrink: 0;
+                width: 40px;
+                height: 40px;
                 margin: 0;
                 padding: 0;
+                border: none;
                 border-radius: 9999px;
-                font-size: 14px;
+                font-size: 18px;
                 font-weight: 700;
+                line-height: 1;
                 color: var(--text-3);
                 background: rgba(120, 120, 128, 0.24);
             }
 
-            html:not(.dark) #settings-modal .settings-close {
+            html:not(.dark) #settings-modal .settings-close,
+            html:not(.dark) .form-sheet .sheet-close {
                 background: rgba(118, 118, 128, 0.12);
             }
 
@@ -4307,6 +4313,137 @@
             }
 
             #settings-modal.sheet-closing .settings-card {
+                transform: translateY(100%);
+                transition: transform 0.24s cubic-bezier(0.4, 0, 1, 1);
+            }
+        }
+
+        /* Add Feed and Edit Feed: on the phone a sheet like Settings, over it (its edge shows 10px above),
+           the fields at the top clear of the keyboard, the ✕ for Cancel and the action full width. The
+           text runs at the sheets' 1.2. The desktop keeps the small centred dialog. */
+        @media (max-width: 900px) {
+            .form-sheet {
+                position: absolute;
+                flex-direction: column;
+                justify-content: flex-end;
+                align-items: stretch;
+                padding: calc(env(safe-area-inset-top, 0px) + 20px) 0 0;
+                animation: sheet-dim 0.34s ease-out;
+            }
+
+            .form-sheet .form-sheet-card {
+                position: relative;
+                flex: 1 1 auto;
+                min-height: 0;
+                max-width: none;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                padding: 22px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+                border-width: 1px 0 0;
+                border-color: var(--divider);
+                border-radius: 16px 16px 0 0;
+                background: var(--surface-sheet);
+                box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
+                font-size: calc(16px * var(--sheet-text));
+                animation: sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+            }
+
+            .form-sheet .form-sheet-card::before {
+                content: '';
+                position: absolute;
+                top: 7px;
+                left: 50%;
+                width: 36px;
+                height: 5px;
+                margin-left: -18px;
+                border-radius: 3px;
+                background: rgba(127, 127, 127, 0.4);
+            }
+
+            .form-sheet .form-sheet-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+
+            .form-sheet .form-sheet-head h3 {
+                margin: 0;
+                font-size: calc(18px * var(--sheet-text));
+            }
+
+            /* The fields in Settings' look. */
+            .form-sheet input:not([type=hidden]),
+            .form-sheet select {
+                padding: 12px 14px;
+                font-size: calc(14px * var(--sheet-text));
+                border-radius: 10px;
+                background-color: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(148, 163, 184, 0.2);
+                box-shadow: none;
+                color: inherit;
+            }
+
+            .form-sheet select {
+                padding-right: 36px;
+                -webkit-appearance: none;
+                appearance: none;
+                background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f0f6fc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+                background-repeat: no-repeat;
+                background-position: right 12px center;
+                background-size: 12px 12px;
+            }
+
+            .form-sheet input:focus,
+            .form-sheet select:focus {
+                border-color: #4493f8;
+            }
+
+            .form-sheet input::placeholder {
+                color: #94a3b8;
+            }
+
+            html:not(.dark) .form-sheet input:not([type=hidden]),
+            html:not(.dark) .form-sheet select {
+                background-color: #f9fafb;
+                border-color: #e5e7eb;
+            }
+
+            html:not(.dark) .form-sheet select {
+                background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+            }
+
+            html:not(.dark) .form-sheet input::placeholder {
+                color: #9ca3af;
+            }
+
+            html:not(.dark) .form-sheet input:focus,
+            html:not(.dark) .form-sheet select:focus {
+                border-color: #4493f8;
+            }
+
+            .form-sheet .form-sheet-actions {
+                display: block;
+                margin-top: 8px;
+            }
+
+            .form-sheet .form-sheet-cancel {
+                display: none;
+            }
+
+            .form-sheet .form-sheet-submit {
+                width: 100%;
+                padding: 14px;
+                border-radius: 12px;
+                font-size: calc(16px * var(--sheet-text));
+            }
+
+            .form-sheet.sheet-closing {
+                background-color: transparent;
+            }
+
+            .form-sheet.sheet-closing .form-sheet-card {
                 transform: translateY(100%);
                 transition: transform 0.24s cubic-bezier(0.4, 0, 1, 1);
             }
@@ -5674,10 +5811,14 @@
     </div>
 
     <!-- ADD FEED MODAL -->
-    <div id="add-feed-modal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop hidden p-4">
+    <div id="add-feed-modal" onclick="if(event.target===this&&window.innerWidth<=900)closeAddFeedModal()"
+        class="form-sheet fixed inset-0 z-[60] flex items-center justify-center modal-backdrop hidden p-4">
         <div
-            class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
-            <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Add Manual Feed</h3>
+            class="form-sheet-card bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
+            <div class="form-sheet-head">
+                <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Add Manual Feed</h3>
+                <button type="button" onclick="closeAddFeedModal()" aria-label="Close" class="sheet-close phone-only">✕</button>
+            </div>
             <input type="text" id="manual-feed-title" placeholder="Feed Title"
                 class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             <input type="url" id="manual-feed-url" placeholder="Feed URL"
@@ -5689,20 +5830,24 @@
                 <input type="text" id="manual-feed-newcat" placeholder="New category name"
                     class="w-full p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             </div>
-            <div class="flex justify-end space-x-3">
-                <button onclick="closeAddFeedModal()" class="px-5 py-2 text-sm text-gray-500">Cancel</button>
+            <div class="form-sheet-actions flex justify-end space-x-3">
+                <button onclick="closeAddFeedModal()" class="form-sheet-cancel px-5 py-2 text-sm text-gray-500">Cancel</button>
                 <button onclick="submitManualFeed()"
-                    class="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Add
+                    class="form-sheet-submit px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Add
                     Feed</button>
             </div>
         </div>
     </div>
 
     <!-- EDIT FEED MODAL -->
-    <div id="edit-feed-modal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop hidden p-4">
+    <div id="edit-feed-modal" onclick="if(event.target===this&&window.innerWidth<=900)closeEditFeedModal()"
+        class="form-sheet fixed inset-0 z-[60] flex items-center justify-center modal-backdrop hidden p-4">
         <div
-            class="bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
-            <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Edit Feed</h3>
+            class="form-sheet-card bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-2xl">
+            <div class="form-sheet-head">
+                <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Edit Feed</h3>
+                <button type="button" onclick="closeEditFeedModal()" aria-label="Close" class="sheet-close phone-only">✕</button>
+            </div>
             <input type="hidden" id="edit-feed-id">
             <input type="text" id="edit-feed-title" placeholder="Feed Title"
                 class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
@@ -5714,10 +5859,10 @@
                 <input type="text" id="edit-feed-newcat" placeholder="New category name"
                     class="w-full p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             </div>
-            <div class="flex justify-end space-x-3">
-                <button onclick="closeEditFeedModal()" class="px-5 py-2 text-sm text-gray-500">Cancel</button>
+            <div class="form-sheet-actions flex justify-end space-x-3">
+                <button onclick="closeEditFeedModal()" class="form-sheet-cancel px-5 py-2 text-sm text-gray-500">Cancel</button>
                 <button onclick="submitEditFeed()"
-                    class="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Save</button>
+                    class="form-sheet-submit px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Save</button>
             </div>
         </div>
     </div>
@@ -12271,6 +12416,10 @@
             t => t.matches('.search-inner') || !!t.closest('.search-input-row, .search-smart'),
             () => document.getElementById('mobile-search-results'),
             () => window.closeSearchSheet());
+        [['add-feed-modal', () => window.closeAddFeedModal()], ['edit-feed-modal', () => window.closeEditFeedModal()]].forEach(([id, close]) => {
+            const card = document.querySelector(`#${id} .form-sheet-card`);
+            window.sheetDrag(card, t => !!t.closest('.form-sheet-head'), () => card, close);
+        });
 
         // Following > Edit: Settings, on its Feeds tab - the feed manager.
         window.openFeedManager = () => {
@@ -12353,14 +12502,20 @@
             sel.onchange = () => {
                 document.getElementById('manual-feed-newcat-wrap').classList.toggle('hidden', sel.value !== '__new__');
             };
-            document.getElementById('add-feed-modal').classList.remove('hidden');
+            const modal = document.getElementById('add-feed-modal');
+            window.reopenSheet(modal);
+            modal.classList.remove('hidden');
         };
         window.closeAddFeedModal = () => {
-            document.getElementById('add-feed-modal').classList.add('hidden');
-            document.getElementById('manual-feed-title').value = '';
-            document.getElementById('manual-feed-url').value = '';
-            document.getElementById('manual-feed-newcat').value = '';
-            document.getElementById('manual-feed-newcat-wrap').classList.add('hidden');
+            const modal = document.getElementById('add-feed-modal');
+            if (modal.classList.contains('hidden') || modal.classList.contains('sheet-closing')) return;
+            window.closeSheet(modal, () => {
+                modal.classList.add('hidden');
+                document.getElementById('manual-feed-title').value = '';
+                document.getElementById('manual-feed-url').value = '';
+                document.getElementById('manual-feed-newcat').value = '';
+                document.getElementById('manual-feed-newcat-wrap').classList.add('hidden');
+            });
         };
 
         window.openEditFeedModal = (feedId) => {
@@ -12378,16 +12533,22 @@
             sel.onchange = () => {
                 document.getElementById('edit-feed-newcat-wrap').classList.toggle('hidden', sel.value !== '__new__');
             };
-            document.getElementById('edit-feed-modal').classList.remove('hidden');
+            const modal = document.getElementById('edit-feed-modal');
+            window.reopenSheet(modal);
+            modal.classList.remove('hidden');
         };
 
         window.closeEditFeedModal = () => {
-            document.getElementById('edit-feed-modal').classList.add('hidden');
-            document.getElementById('edit-feed-id').value = '';
-            document.getElementById('edit-feed-title').value = '';
-            document.getElementById('edit-feed-url').value = '';
-            document.getElementById('edit-feed-newcat').value = '';
-            document.getElementById('edit-feed-newcat-wrap').classList.add('hidden');
+            const modal = document.getElementById('edit-feed-modal');
+            if (modal.classList.contains('hidden') || modal.classList.contains('sheet-closing')) return;
+            window.closeSheet(modal, () => {
+                modal.classList.add('hidden');
+                document.getElementById('edit-feed-id').value = '';
+                document.getElementById('edit-feed-title').value = '';
+                document.getElementById('edit-feed-url').value = '';
+                document.getElementById('edit-feed-newcat').value = '';
+                document.getElementById('edit-feed-newcat-wrap').classList.add('hidden');
+            });
         };
 
         window.submitEditFeed = () => {
@@ -14368,7 +14529,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 352;
+        window.APP_BUILD = 353;
 
         (async function initApp() {
             try {
@@ -15229,7 +15390,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v352';
+const CACHE_NAME = 'rss-reader-v353';
 const APP_SHELL = [
     '/',
     'index.html'
