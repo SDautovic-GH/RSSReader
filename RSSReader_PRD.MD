@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 358)  
+**Version:** October 2026 (build 359)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -115,7 +115,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 |---|---|
 | Search sheet | Opened from the Search button or `/`. Searches stories as you type. Shortcuts to Unread, Read Later and Saved. |
 | Phone | A sheet over the tab bar, the full height under the status bar: a grabber, the field and Done at the top (clear of the keyboard), the results down to the bottom. Done, a pull down (from the top, or from the results at their top) or a tap above it closes it; it slides down as it goes. Light and dark. |
-| Desktop | A palette under the search control. |
+| Desktop | A palette under the search control, in the menus' glass: light in the light theme, dark in the dark. |
 | Text | Follows App Zoom on both, as Settings does: at 100%, the field and headlines 15px, sources and dates 12px. |
 | Filters (desktop) | Scope (All folders or one folder) and read state (All, Unread, Read), as Settings' capsule menus in the shortcuts' line. The phone's sheet has no filters. |
 | Results | A compact card: the source line (bold source · date) above a medium-weight headline. |
@@ -235,7 +235,7 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 | Layer | Technology |
 |---|---|
 | Markup | HTML5, one file (`index.html`) |
-| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet` (sheets: the app's own background), `--divider`. Buttons share one style, `.pill-btn`: a pill, text `--btn-text` (14px) × App Zoom, 600, 7px 14px inside a 1px edge; `.pill-primary` fills it in the logo's blue for a screen's main action (Mark All Read in Folders, N new stories, Add feed, Muted words' Add, Add Feed / Save, Sign In), the rest are outlined grey (Mark read, Sign Out, Cancel, Create Account). Chips (folder pills, Search's shortcuts), close controls (✕, Done) and the Undo bar's Undo keep their own. Text fields and menus share the capsule shape (Settings' 30px, as tall as a pill; form fields 34px; Search's field). Menus (the "…" and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the tab bar's glass in both themes, with 14px corners, the app's dividers and a soft shadow, as wide as their longest item. Add Feed / Edit Feed (the phone's sheet and the desktop's dialog) and the login window are on the app's own surface. Also pills: Search's Unread / Read Later / Saved, the desktop's ‹ Today and the list header's Mark Read · N. Today's folder pills keep a regular weight, on request (a row of semibold pills reads heavy), at the buttons' size. |
+| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet` (sheets: the app's own background), `--divider`. Buttons share one style, `.pill-btn`: a pill, text `--btn-text` (14px) × App Zoom, 600, 7px 14px inside a 1px edge; `.pill-primary` fills it in the logo's blue for a screen's main action (Mark All Read in Folders, N new stories, Add feed, Muted words' Add, Add Feed / Save, Sign In), the rest are outlined grey (Mark read, Sign Out, Cancel, Create Account). Chips (folder pills, Search's shortcuts), close controls (✕, Done) and the Undo bar's Undo keep their own. Text fields and menus share the capsule shape (Settings' 30px, as tall as a pill; form fields 34px; Search's field). Menus (the "…" and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the tab bar's glass in both themes, with 14px corners, the app's dividers and a soft shadow, as wide as their longest item. Add Feed / Edit Feed (the phone's sheet and the desktop's dialog) and the login window are on the app's own surface. Also pills: Search's Unread / Read Later / Saved, the desktop's ‹ Today and the list header's Mark Read · N. Today's folder pills keep a regular weight, on request (a row of semibold pills reads heavy), at the buttons' size. A menu's list (drawn by the browser) is white in the light theme and the glass menus' grey (#1c1c20) in dark, its group headings too (Tailwind's base leaves an optgroup transparent, which the browser draws white); its shape and scrollbar are the browser's. A story's own headings, quotes and code follow the theme's tokens, its links the logo's blue in the light theme. |
 | Scripting | Vanilla JavaScript, no framework |
 | Sanitising | DOMPurify 3.1.6 (cdnjs) |
 | Auth and cloud | Firebase 11.6.1 (Auth, Firestore), ES module imports |

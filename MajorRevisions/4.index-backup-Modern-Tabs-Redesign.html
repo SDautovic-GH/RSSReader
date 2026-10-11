@@ -214,6 +214,15 @@
             color: #79c0ff;
         }
 
+        /* In the light theme the dark theme's #4493f8 is 3.1:1 on white: links take the logo's blue. */
+        html:not(.dark) .article-content a {
+            color: var(--color-blue-600);
+        }
+
+        html:not(.dark) .article-content a:hover {
+            color: var(--color-blue-700, oklch(0.488 0.243 264.376));
+        }
+
         a {
             text-decoration: none !important;
         }
@@ -1631,7 +1640,6 @@
                 right: auto !important;
                 width: min(520px, 46vw);
                 padding: 0 !important;
-                --text-3: #8b949e;   /* the palette is dark glass in both themes */
             }
 
             #mobile-search-sheet .search-results {
@@ -1667,8 +1675,17 @@
             }
 
             #search-filter-row select option {
-                background: #1c2128;
-                color: #e6edf3;
+                background: #1c1c20;
+                color: #f0f6fc;
+            }
+
+            /* Its group headings (Folders, Feeds) on the list's dark too: Tailwind's base leaves an
+               optgroup transparent, which the browser's dropdown draws white. */
+            #search-filter-row select optgroup {
+                background: #1c1c20;
+                color: #8b949e;
+                font-style: normal;
+                font-weight: 600;
             }
         }
 
@@ -1740,41 +1757,69 @@
                 transition: transform 0.24s cubic-bezier(0.4, 0, 1, 1);
             }
 
-            /* Light: the white sheet, iOS's grey field and chips, the app's text colours. */
             html:not(.dark) #mobile-search-sheet .search-inner {
                 box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
             }
+        }
 
-            html:not(.dark) #mobile-search-sheet .search-input-row {
-                border-bottom-color: var(--divider);
+        /* Search in the light theme, the phone's sheet and the desktop's palette: iOS's grey field, the
+           app's text colours and dividers. */
+        html:not(.dark) #mobile-search-sheet .search-input-row,
+        html:not(.dark) #search-filter-row {
+            border-bottom-color: var(--divider);
+        }
+
+        html:not(.dark) #mobile-search-sheet input {
+            background: rgba(118, 118, 128, 0.12);
+            color: var(--text-1);
+        }
+
+        html:not(.dark) #mobile-search-sheet input::placeholder {
+            color: rgba(60, 60, 67, 0.6);
+        }
+
+        html:not(.dark) #mobile-search-sheet .search-close,
+        html:not(.dark) #mobile-search-sheet .search-item,
+        html:not(.dark) #mobile-search-sheet .search-item .search-item-title {
+            color: var(--text-1);
+        }
+
+        html:not(.dark) #mobile-search-sheet .search-item {
+            border-bottom-color: rgba(0, 0, 0, 0.06);
+        }
+
+        html:not(.dark) #mobile-search-sheet .search-item:active {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        html:not(.dark) #mobile-search-sheet .search-item .search-item-meta,
+        html:not(.dark) #mobile-search-sheet .search-empty {
+            color: var(--text-3);
+        }
+
+        /* The desktop palette in the light theme: the menus' light glass, and its filter menus light. */
+        @media (min-width: 901px) {
+            html:not(.dark) #mobile-search-sheet .search-inner {
+                background: rgba(246, 246, 248, 0.92);
+                border-color: rgba(0, 0, 0, 0.08);
+                box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
             }
 
-            html:not(.dark) #mobile-search-sheet input {
-                background: rgba(118, 118, 128, 0.12);
+            html:not(.dark) #search-filter-row select {
+                background-color: #f9fafb;
+                background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+                border-color: #e5e7eb;
                 color: var(--text-1);
             }
 
-            html:not(.dark) #mobile-search-sheet input::placeholder {
-                color: rgba(60, 60, 67, 0.6);
+            html:not(.dark) #search-filter-row select option {
+                background: #fff;
+                color: #111827;
             }
 
-            html:not(.dark) #mobile-search-sheet .search-close,
-            html:not(.dark) #mobile-search-sheet .search-item,
-            html:not(.dark) #mobile-search-sheet .search-item .search-item-title {
-                color: var(--text-1);
-            }
-
-            html:not(.dark) #mobile-search-sheet .search-item {
-                border-bottom-color: rgba(0, 0, 0, 0.06);
-            }
-
-            html:not(.dark) #mobile-search-sheet .search-item:active {
-                background: rgba(0, 0, 0, 0.04);
-            }
-
-            html:not(.dark) #mobile-search-sheet .search-item .search-item-meta,
-            html:not(.dark) #mobile-search-sheet .search-empty {
-                color: var(--text-3);
+            html:not(.dark) #search-filter-row select optgroup {
+                background: #fff;
+                color: #57606a;
             }
         }
 
@@ -1989,7 +2034,7 @@
             font-weight: 700;
             margin-top: 1.75em;
             margin-bottom: 0.6em;
-            color: #f0f6fc;
+            color: var(--text-1);
             line-height: 1.3;
         }
 
@@ -1999,7 +2044,7 @@
             font-weight: 600;
             margin-top: 1.4em;
             margin-bottom: 0.5em;
-            color: #d1d7e0;
+            color: var(--text-2);
             line-height: 1.3;
         }
 
@@ -2018,7 +2063,7 @@
             border-left: 3px solid #4493f8;
             padding-left: 1em;
             margin: 1.5em 0;
-            color: #9198a1;
+            color: var(--text-3);
             font-style: italic;
         }
 
@@ -2151,6 +2196,11 @@
             padding: 0.2em 0.4em;
             font-size: 0.9em;
             font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        html:not(.dark) .article-content pre,
+        html:not(.dark) .article-content code {
+            background: rgba(0, 0, 0, 0.05);
         }
 
         .article-content pre {
@@ -4591,14 +4641,17 @@
             background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
         }
 
-        #settings-modal select.settings-input option {
+        /* A menu's list (the browser draws it): white in the light theme, the glass menus' grey in dark. */
+        #settings-modal select.settings-input option,
+        .form-sheet select option {
             color: #111827;
             background: #fff;
         }
 
-        .dark #settings-modal select.settings-input option {
+        .dark #settings-modal select.settings-input option,
+        .dark .form-sheet select option {
             color: #f0f6fc;
-            background: #1f2937;
+            background: #1c1c20;
         }
 
         #settings-modal input[type="range"].settings-range {
@@ -14643,7 +14696,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 357;
+        window.APP_BUILD = 358;
 
         (async function initApp() {
             try {
@@ -15504,7 +15557,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v357';
+const CACHE_NAME = 'rss-reader-v358';
 const APP_SHELL = [
     '/',
     'index.html'
