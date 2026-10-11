@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 361).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 362).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -40,7 +40,7 @@ Today shows the unread stories from the last 24 hours in the folders you include
 - **Top Stories:** the five strongest stories across your folders, the ones from the most authoritative outlets or covered by several.
 - **Your folders:** one section per folder, in your Following order. Each shows up to your **Stories per Category** (Settings › Today), choosing the most important. A section starts with its **5 most important** stories, whatever feed they are from; after them come all the rest, in your **Sort Order** (oldest first unless you choose newest first). A folder whose feeds have no importance ranking at all is simply in Sort Order.
 - **One card per story:** when several outlets cover the same story, you get one card, from the most authoritative outlet, with "Also from …".
-- **Pictures:** a small picture beside a story, and a large one on the first Top Story. Turn them off in Settings › Today › Show images.
+- **Pictures:** a story with a picture shows it large across the top of its card, above the source and the headline (a small picture stays beside the story). Turn them off in Settings › Today › Show images.
 - **Folder pills (phone):** the row of pills under the header jumps to a folder.
 
 ### Reading and marking

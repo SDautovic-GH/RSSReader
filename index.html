@@ -2545,9 +2545,10 @@
             }
         }
 
-        /* Today images: a square thumbnail beside a story and one 16:9 hero for the first Top
-           Story. Boxes are reserved, so nothing jumps. !important beats .article-content img (on
-           the phone Today renders in #article-body). Settings > Today > Show images. */
+        /* Today images: each story's picture 16:9 across its card, above the source line (on request:
+           every story as the featured one was); one under 600px wide stays a square thumbnail beside the
+           story. Boxes are reserved, so nothing jumps. !important beats .article-content img (on the phone
+           Today renders in #article-body). Settings > Today > Show images. */
         .brief-thumb,
         .brief-hero {
             overflow: hidden;
@@ -2584,6 +2585,12 @@
 
         .brief-story-card .brief-story-actions {
             clear: both;
+        }
+
+        /* A large picture leads its card, so the source line's rules for a card's first div (kept for
+           briefs in the old markup) catch it too and held its gap to the source line at 2px. */
+        .brief-story-card > div.brief-hero:first-child {
+            margin-bottom: 10px !important;
         }
 
         /* A wrapping row of chips (Settings > Muted words). */
@@ -11760,9 +11767,7 @@
 
         function renderBriefSectionsHtml(categorySections, opts = {}) {
             let html = '';
-            // The hero: the first story with a picture in the first section (Top Stories).
-            let heroDone = false;
-            categorySections.forEach((cs, sectionIdx) => {
+            categorySections.forEach(cs => {
                 html += `
                     <div id="brief-cat-${cs.slug}" class="brief-cat-section mb-5 scroll-mt-20"${cs.noMarkRead ? ' data-no-mark-read="1"' : ''}>
                         <div class="brief-cat-header flex items-center justify-between pb-1 mb-2.5 flex-nowrap gap-2">
@@ -11804,8 +11809,8 @@
                     // story like the headline does.
                     const verdict = window._briefImgVerdict?.get(briefStoryImage(st));
                     const imgUrl = verdict === 'bad' ? '' : briefStoryImage(st);   // known bad: no box (317)
-                    const isHero = !!imgUrl && !heroDone && sectionIdx === 0 && verdict !== 'thumb';
-                    if (isHero) heroDone = true;
+                    // Large (16:9, above the source line) unless known to be under 600px wide.
+                    const isHero = !!imgUrl && verdict !== 'thumb';
                     const mediaHtml = imgUrl
                         ? `<div class="${isHero ? 'brief-hero' : 'brief-thumb'}" onclick="window.openArticleInReader('${saId}')"><img src="${esc(imgUrl)}" alt="" loading="lazy" decoding="async" onload="window.briefImgLoaded(this)" onerror="window.briefImgFailed(this)"></div>`
                         : '';
@@ -15056,7 +15061,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 361;
+        window.APP_BUILD = 362;
 
         (async function initApp() {
             try {
@@ -15917,7 +15922,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v361';
+const CACHE_NAME = 'rss-reader-v362';
 const APP_SHELL = [
     '/',
     'index.html'

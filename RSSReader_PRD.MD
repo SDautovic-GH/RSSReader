@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 361)  
+**Version:** October 2026 (build 362)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -58,7 +58,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Order | **Sort Order** (Settings › Stories: oldest or newest first) is the one direction for the lists and Today. **Rank stories** (Settings › Today, on by default): Top Stories, then each folder's 5 most important stories, and the rest in Sort Order. Off: no ranking and no Top Stories; each folder takes its first stories in Sort Order. Oldest first reads like a queue, its oldest stories first; newest first shows its latest. |
 | Learning from what you open | Opening a story in the reader counts as opened. Marking a story read without opening it counts as passed over, if it was shown to you as a card. Grouped copies taken along don't count, nor do read marks from another device. Stored per device for 30 days, with tallies shared through the cloud. Settings › Today › Learn from what I open (on by default), with Forget what I've opened (all devices). Changes show the next time Today is built. |
 | Story clustering | Articles about the same story from several outlets become one card, led by the most authoritative outlet (with no ranking, the first to publish), with "Also from …". |
-| Story card | Source name (as the feed writes it, full width), time, headline (medium weight, 0.95 × Article List title size), summary (Article List preview size, line height and lines), a 72px thumbnail beside the text, and a "…" at the end of the source line (phone; desktop: an action row shown on hover). Section headings are Title Size × 1.25 (22px by default), in the headline colour, with the folder icon in the accent. The first Top Story with a large enough picture gets a 16:9 hero. |
+| Story card | Source name (as the feed writes it, full width), time, headline (medium weight, 0.95 × Article List title size), summary (Article List preview size, line height and lines), and a "…" at the end of the source line (phone; desktop: an action row shown on hover). Section headings are Title Size × 1.25 (22px by default), in the headline colour, with the folder icon in the accent. A story's picture (with Show images on) leads its card, 16:9 across it, 10px above the source line, then the headline and preview; one under 600px wide stays a 72px thumbnail beside the text, and a story without one is text alone. The box is reserved before the picture loads, so nothing moves. |
 | Folder pills (phone) | A row of folder pills under the header jumps to a section. They show the folder's name only; the section heading has the count. The desktop has none: the sidebar's folders navigate. |
 | Mark read | A story leaves Today once read. "Mark N read" (an outlined grey pill, on the right) at the end of each section marks the stories still showing there (and their grouped copies) at the tap. The next section slides up and a floating Undo bar appears. "Mark All Read in Folders" sits at the very end, centred: the same pill shape, size and spacing, filled in the logo's blue (grey "All Folders Read" once everything is read). |
 | New stories | After a refresh, new stories never appear under the reader. The status line counts them ("3 new"), and a "N new stories" pill (the logo's blue) rebuilds Today at its top when tapped. When Today has no unread story showing (all caught up), it shows them at once instead: after a refresh, and on coming back from a story (`showNewTodayIfBlank`). |
@@ -81,7 +81,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 
 | Requirement | Detail |
 |---|---|
-| Card | Today's card: one source line (unread dot where it applies, source · time, and a "…" on the phone), a 72px thumbnail beside the headline and preview when the story has a picture (hidden by Show images off and in Compact Wire), then headline and preview. Bluesky/Mastodon posts show the post text instead of a headline. Desktop: the action row shows on hover, focus or the open story. |
+| Card | Today's card, with its picture as a thumbnail: one source line (unread dot where it applies, source · time, and a "…" on the phone), a 72px thumbnail beside the headline and preview when the story has a picture (hidden by Show images off and in Compact Wire), then headline and preview. Bluesky/Mastodon posts show the post text instead of a headline. Desktop: the action row shows on hover, focus or the open story. |
 | Sort order | Oldest published first (default) or newest first. |
 | Deduplication | Optional (on by default): keeps one copy per story, favouring sources ranked by Memeorandum. |
 | Pinning | A story opened from Unread stays in the list, dimmed, until the view changes. |
