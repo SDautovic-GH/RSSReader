@@ -1474,13 +1474,14 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Menus (the "..." and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the
-           tab bar's glass, light or dark, with 14px corners, the app's dividers and a soft shadow; the item
+        /* Menus (the "..." and long-press menu, the folder and feed menus, Feeds' OPML menu, the desktop's
+           dropdown lists) float in the tab bar's glass, light or dark, with 14px corners, the app's dividers and a soft shadow; the item
            under the pointer or finger takes a grey tint. Blue stays for data, red for destructive actions. */
         #article-context-menu,
         #folder-context-menu,
         #feed-context-menu,
-        #feeds-overflow-menu {
+        #feeds-overflow-menu,
+        #select-menu {
             overflow: hidden;
             border-radius: 14px;
             background: rgba(246, 246, 248, 0.92);
@@ -1500,7 +1501,8 @@
         .dark #article-context-menu,
         .dark #folder-context-menu,
         .dark #feed-context-menu,
-        .dark #feeds-overflow-menu {
+        .dark #feeds-overflow-menu,
+        .dark #select-menu {
             background: rgba(28, 28, 32, 0.96) !important;
             border-color: rgba(255, 255, 255, 0.08) !important;
             backdrop-filter: blur(20px) saturate(1.4);
@@ -1536,12 +1538,72 @@
         #article-context-menu,
         #folder-context-menu,
         #feed-context-menu,
-        #feeds-overflow-menu {
+        #feeds-overflow-menu,
+        #select-menu {
             display: flex;
             flex-direction: column;
             font-size: calc(16px * var(--zoom));
             width: max-content;
             max-width: calc(100vw - 24px);
+        }
+
+        /* A dropdown's list (desktop): a check before the current choice, Search's Folders / Feeds headings
+           over their items, the item under the pointer or the keys in the menus' grey; a long list scrolls
+           (its height is set to the room left on open). */
+        #select-menu {
+            position: fixed;
+            z-index: 400;
+            padding: 4px 0;
+            border-width: 1px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            color: var(--text-1);
+        }
+
+        #select-menu .select-opt {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px 8px 12px;
+            text-align: left;
+            white-space: nowrap;
+            color: inherit;
+            cursor: default;
+        }
+
+        #select-menu .select-check {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            visibility: hidden;
+        }
+
+        #select-menu .select-opt[aria-selected="true"] .select-check {
+            visibility: visible;
+        }
+
+        #select-menu .select-opt.is-active {
+            background: rgba(0, 0, 0, 0.07);
+        }
+
+        .dark #select-menu .select-opt.is-active {
+            background: rgba(0, 0, 0, 0.58);
+        }
+
+        #select-menu .select-opt:disabled {
+            opacity: 0.4;
+        }
+
+        #select-menu .select-group {
+            padding: 8px 18px 2px 34px;   /* 34px: the labels' edge, past the check */
+            font-size: calc(13px * var(--zoom));
+            font-weight: 600;
+            color: var(--text-3);
+        }
+
+        #select-menu .select-sep {
+            margin: 4px 0;
+            border-top: 1px solid var(--divider);
         }
 
         #article-context-menu > button,
@@ -1777,20 +1839,6 @@
             #search-filter-row select:focus {
                 border-color: #4493f8;
             }
-
-            #search-filter-row select option {
-                background: #1c1c20;
-                color: #f0f6fc;
-            }
-
-            /* Its group headings (Folders, Feeds) on the list's dark too: Tailwind's base leaves an
-               optgroup transparent, which the browser's dropdown draws white. */
-            #search-filter-row select optgroup {
-                background: #1c1c20;
-                color: #8b949e;
-                font-style: normal;
-                font-weight: 600;
-            }
         }
 
         /* On the phone Search is a sheet like Settings: over the tab bar, the full height under the
@@ -1927,14 +1975,8 @@
                 color: var(--text-1);
             }
 
-            html:not(.dark) #search-filter-row select option {
-                background: #fff;
-                color: #111827;
-            }
-
-            html:not(.dark) #search-filter-row select optgroup {
-                background: #fff;
-                color: #57606a;
+            html:not(.dark) #search-filter-row select:focus {
+                border-color: #4493f8;
             }
         }
 
@@ -5043,6 +5085,10 @@
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </symbol>
+            <symbol id="icon-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </symbol>
             <symbol id="icon-chevron-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M5 15l7-7 7 7" />
@@ -6177,6 +6223,9 @@
         <button onclick="markSingleFeedRead()"
             class="w-full text-left px-4 py-2">Mark All Read</button>
     </div>
+
+    <!-- DROPDOWN LIST (desktop): a select's open list, filled by the DROPDOWN LISTS script -->
+    <div id="select-menu" class="hidden" role="listbox"></div>
 
     <script>
         // Global Error Handler for better debugging
@@ -9428,7 +9477,8 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && closeTopLayer()) { e.preventDefault(); return; }
-            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            // A focused field or dropdown takes its own keys (a dropdown's arrows and letters).
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
             // With Ctrl, Cmd or Alt a key is the browser's (Ctrl+R reloads, it doesn't mark read); AltGr types.
             if ((e.ctrlKey || e.metaKey || e.altKey) && !e.getModifierState('AltGraph')) return;
             // Full screen: Up / Down scroll the story (Left / Right move between stories, below). It scrolls
@@ -13609,6 +13659,173 @@
             if (!e.target.closest('#feed-context-menu')) document.getElementById('feed-context-menu').classList.add('hidden');
         });
 
+        // ===== DROPDOWN LISTS (desktop) =====
+        // A <select>'s open list is the browser's: only its colours can be set. On the desktop the app opens
+        // its own instead (#select-menu, in the menus' glass): a check on the current choice, Search's
+        // Folders / Feeds headings, and a list's keys (arrows, Home / End, Enter or Space, a typed name, Esc,
+        // Tab). Choosing selects the option and fires the select's change, so each one's own handler runs.
+        // A press outside only closes it, as with the other menus. The phone keeps iOS's picker.
+        (function () {
+            const menu = document.getElementById('select-menu');
+            if (!menu) return;
+            let sel = null, items = [], active = -1, typed = '', typedAt = 0, swallowUntil = 0;
+            // Scrolls the list (only the list) so item i shows.
+            const reveal = i => {
+                const b = items[i];
+                if (!b) return;
+                if (b.offsetTop < menu.scrollTop) menu.scrollTop = b.offsetTop;
+                else if (b.offsetTop + b.offsetHeight > menu.scrollTop + menu.clientHeight) menu.scrollTop = b.offsetTop + b.offsetHeight - menu.clientHeight;
+            };
+            // Highlights item i (-1: none), in view when scroll.
+            const setActive = (i, scroll) => {
+                items[active]?.classList.remove('is-active');
+                active = i;
+                items[i]?.classList.add('is-active');
+                if (scroll) reveal(i);
+            };
+            // The next enabled item after i in direction dir, or i at the end.
+            const step = (i, dir) => {
+                for (let j = i + dir; j >= 0 && j < items.length; j += dir) if (!items[j].disabled) return j;
+                return i;
+            };
+            const current = () => items.findIndex(b => b._opt.selected);
+            const close = refocus => {
+                if (!sel) return;
+                const s = sel;
+                sel = null; items = []; active = -1;
+                menu.classList.add('hidden');
+                menu.replaceChildren();
+                if (refocus) s.focus({ preventScroll: true });
+            };
+            const choose = i => {
+                const s = sel, o = items[i]?._opt;
+                close(true);
+                if (!o || o.disabled || o.selected || !s.contains(o)) return;
+                o.selected = true;
+                s.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+            // Opened by the keys, the current choice starts highlighted; by the pointer, nothing until it moves.
+            const open = (s, byKey) => {
+                sel = s;
+                items = [];
+                active = -1;
+                menu.replaceChildren();
+                const addOpt = o => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'select-opt';
+                    b.setAttribute('role', 'option');
+                    b.setAttribute('aria-selected', String(o.selected));
+                    b.disabled = o.disabled;
+                    b.innerHTML = '<svg class="select-check" aria-hidden="true"><use href="#icon-tick" /></svg>';
+                    b.append(o.textContent.trim());
+                    b._opt = o;
+                    items.push(b);
+                    menu.append(b);
+                };
+                for (const c of s.children) {
+                    if (c.tagName === 'OPTGROUP') {
+                        if (menu.childElementCount) menu.insertAdjacentHTML('beforeend', '<div class="select-sep" role="presentation"></div>');
+                        const h = document.createElement('div');
+                        h.className = 'select-group';
+                        h.setAttribute('role', 'presentation');
+                        h.textContent = c.label;
+                        menu.append(h);
+                        for (const o of c.children) addOpt(o);
+                    } else if (c.tagName === 'OPTION') addOpt(c);
+                }
+                // Under the select, or above it when there is more room there; at least as wide; inside the
+                // window, scrolling when taller than the room.
+                const r = s.getBoundingClientRect();
+                menu.style.minWidth = `${Math.round(r.width)}px`;
+                menu.style.maxHeight = '';
+                menu.scrollTop = 0;
+                menu.classList.remove('hidden');
+                const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
+                let h = menu.offsetHeight;
+                const down = h <= below || below >= above;
+                if (h > (down ? below : above)) { h = down ? below : above; menu.style.maxHeight = `${h}px`; }
+                menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+                menu.style.top = `${down ? r.bottom + 4 : r.top - 4 - h}px`;
+                const cur = current();
+                reveal(cur);
+                if (byKey) setActive(Math.max(0, cur), true);
+            };
+
+            // A press on a select opens the list in place of the browser's. With the list open, a press
+            // outside it (on the select too) only closes it.
+            document.addEventListener('mousedown', e => {
+                if (sel) {
+                    // On an item the focus stays on the select; the list's own scrollbar keeps its drag.
+                    if (menu.contains(e.target)) { if (e.target !== menu) e.preventDefault(); return; }
+                    close(false);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    swallowUntil = Date.now() + 1000;
+                    return;
+                }
+                const s = e.target.closest('select');
+                if (!s || e.button !== 0 || s.disabled || isMobile()) return;
+                e.preventDefault();
+                s.focus({ preventScroll: true });
+                open(s, false);
+            }, true);
+            document.addEventListener('click', e => {
+                if (Date.now() > swallowUntil) return;
+                swallowUntil = 0;
+                e.preventDefault();
+                e.stopPropagation();
+            }, true);
+            menu.addEventListener('click', e => {
+                const b = e.target.closest('.select-opt');
+                if (b && !b.disabled) choose(items.indexOf(b));
+            });
+            menu.addEventListener('mousemove', e => {
+                const b = e.target.closest('.select-opt');
+                if (b && !b.disabled && b !== items[active]) setActive(items.indexOf(b), false);
+            });
+            menu.addEventListener('mouseleave', () => setActive(-1, false));
+
+            // Ahead of the app's shortcuts: the open list takes the keys; on a focused select, the keys
+            // that open the browser's list open this one.
+            window.addEventListener('keydown', e => {
+                if (sel) {
+                    const k = e.key;
+                    if (k === 'ArrowDown' || k === 'ArrowUp') setActive(active < 0 ? Math.max(0, current()) : step(active, k === 'ArrowDown' ? 1 : -1), true);
+                    else if (k === 'Home') setActive(step(-1, 1), true);
+                    else if (k === 'End') setActive(step(items.length, -1), true);
+                    else if (k === 'Enter' || k === ' ') { if (active >= 0) choose(active); else close(true); }
+                    else if (k === 'Escape') close(true);
+                    else if (k === 'Tab') { close(false); return; }   // and the focus moves on
+                    else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                        // A typed name: the next item starting with the letters typed within 0.8s.
+                        const now = Date.now();
+                        typed = (now - typedAt < 800 ? typed : '') + k.toLowerCase();
+                        typedAt = now;
+                        const from = typed.length > 1 ? Math.max(active, 0) : active + 1;
+                        for (let j = 0; j < items.length; j++) {
+                            const i = (from + j) % items.length;
+                            if (!items[i].disabled && items[i].textContent.trim().toLowerCase().startsWith(typed)) { setActive(i, true); break; }
+                        }
+                    } else return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
+                const s = e.target.closest?.('select');
+                if (!s || s.disabled || isMobile()) return;
+                if ([' ', 'Enter', 'F4', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    open(s, true);
+                }
+            }, true);
+            // A scroll behind the list, a resize or leaving the window closes it.
+            document.addEventListener('scroll', e => { if (sel && e.target !== menu) close(false); }, true);
+            window.addEventListener('resize', () => close(false));
+            window.addEventListener('blur', () => close(false));
+        })();
+
         // --- INDIVIDUAL FEED CONTEXT MENU ---
         window.showFeedContextMenu = (e, url, name) => {
             e.preventDefault();
@@ -14839,7 +15056,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 360;
+        window.APP_BUILD = 361;
 
         (async function initApp() {
             try {
@@ -15700,7 +15917,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v360';
+const CACHE_NAME = 'rss-reader-v361';
 const APP_SHELL = [
     '/',
     'index.html'
