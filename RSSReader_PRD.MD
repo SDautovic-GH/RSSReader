@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 352)  
+**Version:** October 2026 (build 353)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -74,7 +74,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 |---|---|
 | Smart lists | **Unread** (with "N older than today"), **Read Later**, **Saved**, **History** (read stories within the History window). The desktop sidebar also has **Today**. |
 | Folders | Collapsible folders of feeds with unread counts. Folders with nothing unread are hidden unless "Show empty folders" is on. |
-| Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line in full, on two lines where needed ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. |
+| Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line in full, on two lines where needed ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. On the phone, Add feed and a feed's Edit open as sheets over Feeds (10px lower, so its edge shows): the fields at the top, the ✕, a pull down or a tap above to cancel, the action (Add Feed, Save) full width, text at 1.2×. On the desktop, a small centred dialog with Cancel. |
 | Right-click (desktop) | Feed: Refresh Feed, Mark All Read. Folder: Mark All Read, Collapse Folder, Collapse All Folders, Rename. |
 
 ### 3.4 Article list (Unread, folders, feeds, Read Later, Saved, History)
@@ -132,7 +132,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 
 Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil). The gear's panel has a second page, **Text Size & Zoom**, opened from its last row and left with ‹ in the header. Each setting's description is one short line under its name (12.5px); menus sit on their setting's own line.
 
-On the phone both are an iOS sheet: it rises from the bottom to just under the status bar, over the tab bar, with round top corners, a grabber and the ✕ in a grey circle. The ✕, a pull down (from the header, or from the content at its top; past 110px or a quick flick, else it springs back) or a tap above it closes it, sliding down. Sliders and fields keep their own touches. On the desktop it is a centred card. In dark both are the app's own background (black on the phone, #0d1117 on the desktop), the groups in Following's card fill. Their text is 1.2 × the app's sizes (`--sheet-text`), on the phone and the desktop: labels, section labels and values 16.8px, descriptions 15px, the title 21.6px; the ✕ keeps its size.
+On the phone both are an iOS sheet: it rises from the bottom to just under the status bar, over the tab bar, with round top corners, a grabber and the ✕ in a 40px grey circle (the size of the app's header buttons). The ✕, a pull down (from the header, or from the content at its top; past 110px or a quick flick, else it springs back) or a tap above it closes it, sliding down. Sliders and fields keep their own touches. On the desktop it is a centred card. In dark both are the app's own background (black on the phone, #0d1117 on the desktop), the groups in Following's card fill. Their text is 1.2 × the app's sizes (`--sheet-text`), on the phone and the desktop: labels, section labels and values 16.8px, descriptions 15px, the title 21.6px; the ✕ keeps its size.
 
 | Section | Settings |
 |---|---|

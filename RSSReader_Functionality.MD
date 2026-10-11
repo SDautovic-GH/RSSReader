@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 352).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 353).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -92,7 +92,7 @@ The headphones button reads the stories showing in Today aloud. The player above
 - Feeds are grouped by folder. Each folder has **In Today** and **Rename**.
 - Each feed shows when it was last checked and how new its newest story is, or that it isn't loading, in full.
 - **Edit** changes a feed's name, address or folder. **Remove** deletes it (you confirm first). **Retry** tries a feed that isn't loading.
-- **Add feed:** paste an RSS/Atom address, a Bluesky profile, a Mastodon RSS address or a YouTube playlist feed.
+- **Add feed:** paste an RSS/Atom address, a Bluesky profile, a Mastodon RSS address or a YouTube playlist feed. On the phone, Add feed and a feed's Edit slide up over the feed manager; tap **✕** or pull down to cancel.
 - **OPML:** import or export your whole list.
 
 ### Right-click (desktop)
