@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 357)  
+**Version:** October 2026 (build 358)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -117,7 +117,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Phone | A sheet over the tab bar, the full height under the status bar: a grabber, the field and Done at the top (clear of the keyboard), the results down to the bottom. Done, a pull down (from the top, or from the results at their top) or a tap above it closes it; it slides down as it goes. Light and dark. |
 | Desktop | A palette under the search control. |
 | Text | Follows App Zoom on both, as Settings does: at 100%, the field and headlines 15px, sources and dates 12px. |
-| Filters (desktop) | Scope (All folders or one folder) and read state (All, Unread, Read). |
+| Filters (desktop) | Scope (All folders or one folder) and read state (All, Unread, Read), as Settings' capsule menus in the shortcuts' line. The phone's sheet has no filters. |
 | Results | A compact card: the source line (bold source · date) above a medium-weight headline. |
 
 ### 3.8 Listen (text to speech)
