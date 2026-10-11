@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 363).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 364).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -40,7 +40,7 @@ Today shows the unread stories from the last 24 hours in the folders you include
 - **Top Stories:** the five strongest stories across your folders, the ones from the most authoritative outlets or covered by several.
 - **Your folders:** one section per folder, in your Following order. Each shows up to your **Stories per Category** (Settings › Today), choosing the most important. A section starts with its **5 most important** stories, whatever feed they are from; after them come all the rest, in your **Sort Order** (oldest first unless you choose newest first). A folder whose feeds have no importance ranking at all is simply in Sort Order.
 - **One card per story:** when several outlets cover the same story, you get one card, from the most authoritative outlet, with "Also from …".
-- **Pictures:** a story with a picture shows it large across the top of its card, above the source and the headline (a small picture stays beside the story). Pictures load at the size they are shown, so they stay sharp and light. Turn them off in Settings › Today › Show images.
+- **Pictures:** a story with a picture shows it large across its card, under the source, the headline and the preview (a small picture stays beside the story). Pictures load at the size they are shown, so they stay sharp and light. Turn them off in Settings › Today › Show images.
 - **Folder pills (phone):** the row of pills under the header jumps to a folder.
 
 ### Reading and marking
@@ -116,7 +116,7 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 ## Reading a Story
 
 - **At the top:** one line with the source and the time (tap it to see that feed's stories), then the headline, then the author when it isn't just the source.
-- **Full articles:** when a feed sends only a short excerpt, the app fetches the full article.
+- **Full articles:** when a feed sends only a short excerpt, the app fetches the full article. A page's own copy of the headline and byline is left out (the header already has them), and the byline's author shows in the header.
 - **Pictures:** tap one to enlarge it; pinch or double-tap to zoom.
 - **Podcasts:** podcast episodes get an audio player.
 - **Moving on:** j/k or ↑/↓ on the desktop, swipes on the phone. You move through the brief or list the story came from. With Today showing and no story open, j opens the first story on screen.

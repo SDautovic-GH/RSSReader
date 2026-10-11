@@ -1474,14 +1474,13 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Menus (the "..." and long-press menu, the folder and feed menus, Feeds' OPML menu, the desktop's
-           dropdown lists) float in the tab bar's glass, light or dark, with 14px corners, the app's dividers and a soft shadow; the item
+        /* Menus (the "..." and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the
+           tab bar's glass, light or dark, with 14px corners, the app's dividers and a soft shadow; the item
            under the pointer or finger takes a grey tint. Blue stays for data, red for destructive actions. */
         #article-context-menu,
         #folder-context-menu,
         #feed-context-menu,
-        #feeds-overflow-menu,
-        #select-menu {
+        #feeds-overflow-menu {
             overflow: hidden;
             border-radius: 14px;
             background: rgba(246, 246, 248, 0.92);
@@ -1501,8 +1500,7 @@
         .dark #article-context-menu,
         .dark #folder-context-menu,
         .dark #feed-context-menu,
-        .dark #feeds-overflow-menu,
-        .dark #select-menu {
+        .dark #feeds-overflow-menu {
             background: rgba(28, 28, 32, 0.96) !important;
             border-color: rgba(255, 255, 255, 0.08) !important;
             backdrop-filter: blur(20px) saturate(1.4);
@@ -1547,17 +1545,25 @@
             max-width: calc(100vw - 24px);
         }
 
-        /* A dropdown's list (desktop): a check before the current choice, Search's Folders / Feeds headings
-           over their items, the item under the pointer or the keys in the menus' grey; a long list scrolls
-           (its height is set to the room left on open). */
+        /* A dropdown's list (desktop): on the app's own surface, as the search palette (on request: not the
+           menus' grey glass), with the menus' corners and shadow; a check before the current choice, Search's
+           Folders / Feeds headings over their items, the item under the pointer or the keys in a grey tint;
+           a long list scrolls (its height is set to the room left on open). */
         #select-menu {
             position: fixed;
             z-index: 400;
             padding: 4px 0;
-            border-width: 1px;
+            border: 1px solid var(--divider);
+            border-radius: 14px;
+            background: var(--surface-sheet);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
             overflow-y: auto;
             overscroll-behavior: contain;
             color: var(--text-1);
+        }
+
+        .dark #select-menu {
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
         }
 
         #select-menu .select-opt {
@@ -1583,11 +1589,11 @@
         }
 
         #select-menu .select-opt.is-active {
-            background: rgba(0, 0, 0, 0.07);
+            background: rgba(0, 0, 0, 0.06);
         }
 
         .dark #select-menu .select-opt.is-active {
-            background: rgba(0, 0, 0, 0.58);
+            background: rgba(255, 255, 255, 0.08);
         }
 
         #select-menu .select-opt:disabled {
@@ -2542,10 +2548,11 @@
             }
         }
 
-        /* Today images: each story's picture 16:9 across its card, above the source line (on request:
-           every story as the featured one was); one under 600px wide stays a square thumbnail beside the
-           story. Boxes are reserved, so nothing jumps. !important beats .article-content img (on the phone
-           Today renders in #article-body). Settings > Today > Show images. */
+        /* Today images: each story's picture 16:9 across its card, after its text (on request: the source
+           line, headline and preview first, so each story starts with its source); one under 600px wide
+           stays a square thumbnail beside the story. Boxes are reserved, so nothing jumps. !important beats
+           .article-content img (on the phone Today renders in #article-body). Settings > Today > Show
+           images. */
         .brief-thumb,
         .brief-hero {
             position: relative;
@@ -2575,7 +2582,7 @@
         .brief-hero {
             width: 100%;
             aspect-ratio: 16 / 9;
-            margin: 0 0 10px;
+            margin: 10px 0 2px;
             border-radius: 12px;
         }
 
@@ -2593,12 +2600,6 @@
 
         .brief-story-card .brief-story-actions {
             clear: both;
-        }
-
-        /* A large picture leads its card, so the source line's rules for a card's first div (kept for
-           briefs in the old markup) catch it too and held its gap to the source line at 2px. */
-        .brief-story-card > div.brief-hero:first-child {
-            margin-bottom: 10px !important;
         }
 
         /* A wrapping row of chips (Settings > Muted words). */
@@ -9098,6 +9099,7 @@
                 stripJsonBlobs(bodyEl);
                 stripImagePlaceholders(bodyEl);
                 stripLeadingEmptyBlocks(bodyEl);
+                stripRepeatedHeader(bodyEl, article);
                 normalizeBodyStyles(bodyEl);       // feed fonts/sizes must not beat the app's
                 initBodyImages(bodyEl, article);   // normalize/drop unusable images first...
                 ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
@@ -9422,6 +9424,7 @@
                             bodyEl.innerHTML = sanitized;
                             stripImagePlaceholders(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
+                            stripRepeatedHeader(bodyEl, article);
                             normalizeBodyStyles(bodyEl);
                             initBodyImages(bodyEl, article);
                             ensureLeadImage(bodyEl, article);
@@ -9614,6 +9617,44 @@
                 }
                 return;
             }
+        }
+
+        // A page's own headline and byline at the top of a story (MacRumors' title bar, then "Sunday October 11,
+        // 2026 8:08 am PDT by Tim Hardwick") repeat the reader's header and push the story down. Before the
+        // first paragraph: a heading with the story's title goes, and the short block after it with a <time>
+        // or an author link; that author moves to the header when the feed named none (its author is the
+        // source). Wrappers left empty go too.
+        function stripRepeatedHeader(bodyEl, article) {
+            const want = normTitle(article.title);
+            if (!want) return;
+            const firstP = Array.from(bodyEl.querySelectorAll('p')).find(p => p.textContent.trim().split(/\s+/).length > 12);
+            const before = el => !firstP || !!(el.compareDocumentPosition(firstP) & Node.DOCUMENT_POSITION_FOLLOWING);
+            const heading = Array.from(bodyEl.querySelectorAll('h1, h2')).find(h => normTitle(h.textContent) === want);
+            if (!heading || !before(heading)) return;
+            let next = null;
+            for (let e = heading; e && e !== bodyEl && !next; e = e.parentElement) next = e.nextElementSibling;
+            const isByline = next && before(next) && !next.querySelector('img, picture, video, iframe')
+                && next.textContent.trim().split(/\s+/).length < 30
+                && !!next.querySelector('time, a[rel~="author"], [class*="author"], [class*="byline"]');
+            const drop = el => {
+                let up = el.parentElement;
+                el.remove();
+                while (up && up !== bodyEl && !up.textContent.trim() && !up.querySelector('img, picture, video, iframe, audio')) {
+                    const p = up.parentElement;
+                    up.remove();
+                    up = p;
+                }
+            };
+            if (isByline) {
+                const name = next.querySelector('a[rel~="author"], [class*="author"]')?.textContent.trim();
+                const own = (article.author || '').trim().toLowerCase();
+                if (name && name.length < 60 && (!own || own === (article.source || '').trim().toLowerCase())) {
+                    document.getElementById('article-author').textContent = name;
+                    document.getElementById('article-byline')?.classList.remove('byline-dup');
+                }
+                drop(next);
+            }
+            drop(heading);
         }
 
         // The feed's own lead image (media:content / thumbnail / enclosure -> article.image), which many
@@ -11893,8 +11934,8 @@
                     const mediaHtml = imgUrl
                         ? `<div class="${isHero ? 'brief-hero' : 'brief-thumb'}" onclick="window.openArticleInReader('${saId}')"><img src="${esc(imgUrl)}" alt="" loading="lazy" decoding="async" onload="window.briefImgLoaded(this)" onerror="window.briefImgFailed(this)"></div>`
                         : '';
-                    // The hero leads the card; a thumbnail goes after the source / time line, so that line keeps the
-                    // full width and the picture sits beside the headline and summary.
+                    // The large picture follows the story's text; a thumbnail goes after the source / time line, so
+                    // that line keeps the full width and the picture sits beside the headline and summary.
                     const heroHtml = isHero ? mediaHtml : '';
                     const thumbHtml = isHero ? '' : mediaHtml;
 
@@ -11929,7 +11970,6 @@
 
                     html += `
                         <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}${firstAttr}>
-                            ${heroHtml}
                             <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
                                 ${favHtml}
                                 <span class="brief-story-source list-source-label font-bold truncate">${esc(st.source)}</span>
@@ -11940,6 +11980,7 @@
                             ${thumbHtml}
                             ${storyBodyHtml}
                             ${alsoReported}
+                            ${heroHtml}
                             <div class="brief-story-actions flex items-center gap-1.5 pt-0.5">
                                 <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-gray-500 dark:text-gray-400" title="Open in Reader" aria-label="Open in Reader">
                                     <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
@@ -13745,7 +13786,7 @@
 
         // ===== DROPDOWN LISTS (desktop) =====
         // A <select>'s open list is the browser's: only its colours can be set. On the desktop the app opens
-        // its own instead (#select-menu, in the menus' glass): a check on the current choice, Search's
+        // its own instead (#select-menu, on the search palette's surface): a check on the current choice, Search's
         // Folders / Feeds headings, and a list's keys (arrows, Home / End, Enter or Space, a typed name, Esc,
         // Tab). Choosing selects the option and fires the select's change, so each one's own handler runs.
         // A press outside only closes it, as with the other menus. The phone keeps iOS's picker.
@@ -15140,7 +15181,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 363;
+        window.APP_BUILD = 364;
 
         (async function initApp() {
             try {
@@ -16001,7 +16042,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v363';
+const CACHE_NAME = 'rss-reader-v364';
 const APP_SHELL = [
     '/',
     'index.html'

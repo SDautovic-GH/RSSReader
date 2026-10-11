@@ -1536,12 +1536,80 @@
         #article-context-menu,
         #folder-context-menu,
         #feed-context-menu,
-        #feeds-overflow-menu {
+        #feeds-overflow-menu,
+        #select-menu {
             display: flex;
             flex-direction: column;
             font-size: calc(16px * var(--zoom));
             width: max-content;
             max-width: calc(100vw - 24px);
+        }
+
+        /* A dropdown's list (desktop): on the app's own surface, as the search palette (on request: not the
+           menus' grey glass), with the menus' corners and shadow; a check before the current choice, Search's
+           Folders / Feeds headings over their items, the item under the pointer or the keys in a grey tint;
+           a long list scrolls (its height is set to the room left on open). */
+        #select-menu {
+            position: fixed;
+            z-index: 400;
+            padding: 4px 0;
+            border: 1px solid var(--divider);
+            border-radius: 14px;
+            background: var(--surface-sheet);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            color: var(--text-1);
+        }
+
+        .dark #select-menu {
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+        }
+
+        #select-menu .select-opt {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px 8px 12px;
+            text-align: left;
+            white-space: nowrap;
+            color: inherit;
+            cursor: default;
+        }
+
+        #select-menu .select-check {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            visibility: hidden;
+        }
+
+        #select-menu .select-opt[aria-selected="true"] .select-check {
+            visibility: visible;
+        }
+
+        #select-menu .select-opt.is-active {
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        .dark #select-menu .select-opt.is-active {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        #select-menu .select-opt:disabled {
+            opacity: 0.4;
+        }
+
+        #select-menu .select-group {
+            padding: 8px 18px 2px 34px;   /* 34px: the labels' edge, past the check */
+            font-size: calc(13px * var(--zoom));
+            font-weight: 600;
+            color: var(--text-3);
+        }
+
+        #select-menu .select-sep {
+            margin: 4px 0;
+            border-top: 1px solid var(--divider);
         }
 
         #article-context-menu > button,
@@ -1614,16 +1682,17 @@
             display: block !important;
         }
 
+        /* The search palette (desktop) on the app's own surface, the reader's colour, as the phone's sheet
+           and Settings are (on request: the grey glass didn't match the reader); the phone's sheet sets its
+           own shape below. */
         #mobile-search-sheet .search-inner {
             pointer-events: auto;
             max-width: 520px;
             margin: 0 auto;
             border-radius: 22px;
-            background: rgba(28, 28, 30, 0.92);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--surface-sheet);
+            border: 1px solid var(--divider);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(40px) saturate(1.8);
-            -webkit-backdrop-filter: blur(40px) saturate(1.8);
             overflow: hidden;
         }
 
@@ -1777,20 +1846,6 @@
             #search-filter-row select:focus {
                 border-color: #4493f8;
             }
-
-            #search-filter-row select option {
-                background: #1c1c20;
-                color: #f0f6fc;
-            }
-
-            /* Its group headings (Folders, Feeds) on the list's dark too: Tailwind's base leaves an
-               optgroup transparent, which the browser's dropdown draws white. */
-            #search-filter-row select optgroup {
-                background: #1c1c20;
-                color: #8b949e;
-                font-style: normal;
-                font-weight: 600;
-            }
         }
 
         /* On the phone Search is a sheet like Settings: over the tab bar, the full height under the
@@ -1827,8 +1882,6 @@
                 border-radius: 16px 16px 0 0;
                 background: var(--surface-sheet);
                 box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
-                backdrop-filter: none;
-                -webkit-backdrop-filter: none;
                 animation: sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1);
             }
 
@@ -1912,11 +1965,9 @@
             color: var(--text-3);
         }
 
-        /* The desktop palette in the light theme: the menus' light glass, and its filter menus light. */
+        /* The desktop palette in the light theme: a lighter shadow, and its filter menus light. */
         @media (min-width: 901px) {
             html:not(.dark) #mobile-search-sheet .search-inner {
-                background: rgba(246, 246, 248, 0.92);
-                border-color: rgba(0, 0, 0, 0.08);
                 box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
             }
 
@@ -1927,14 +1978,8 @@
                 color: var(--text-1);
             }
 
-            html:not(.dark) #search-filter-row select option {
-                background: #fff;
-                color: #111827;
-            }
-
-            html:not(.dark) #search-filter-row select optgroup {
-                background: #fff;
-                color: #57606a;
+            html:not(.dark) #search-filter-row select:focus {
+                border-color: #4493f8;
             }
         }
 
@@ -2503,14 +2548,27 @@
             }
         }
 
-        /* Today images: a square thumbnail beside a story and one 16:9 hero for the first Top
-           Story. Boxes are reserved, so nothing jumps. !important beats .article-content img (on
-           the phone Today renders in #article-body). Settings > Today > Show images. */
+        /* Today images: each story's picture 16:9 across its card, after its text (on request: the source
+           line, headline and preview first, so each story starts with its source); one under 600px wide
+           stays a square thumbnail beside the story. Boxes are reserved, so nothing jumps. !important beats
+           .article-content img (on the phone Today renders in #article-body). Settings > Today > Show
+           images. */
         .brief-thumb,
         .brief-hero {
+            position: relative;
             overflow: hidden;
             background: rgba(127, 127, 127, 0.12);
             cursor: pointer;
+        }
+
+        /* smoothPicture's copy of a picture far larger than its box, over it; a click goes to the box. */
+        .brief-thumb > canvas.pic-smooth,
+        .brief-hero > canvas.pic-smooth {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
 
         .brief-thumb {
@@ -2524,7 +2582,7 @@
         .brief-hero {
             width: 100%;
             aspect-ratio: 16 / 9;
-            margin: 0 0 10px;
+            margin: 10px 0 2px;
             border-radius: 12px;
         }
 
@@ -5043,6 +5101,10 @@
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </symbol>
+            <symbol id="icon-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </symbol>
             <symbol id="icon-chevron-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M5 15l7-7 7 7" />
@@ -6177,6 +6239,9 @@
         <button onclick="markSingleFeedRead()"
             class="w-full text-left px-4 py-2">Mark All Read</button>
     </div>
+
+    <!-- DROPDOWN LIST (desktop): a select's open list, filled by the DROPDOWN LISTS script -->
+    <div id="select-menu" class="hidden" role="listbox"></div>
 
     <script>
         // Global Error Handler for better debugging
@@ -7576,7 +7641,7 @@
                         const med = item.querySelector('media\\:thumbnail, media\\:content');
                         if (med) return med.getAttribute('url');
                         const imgMatch = rawBody.match(/<img[^>]+src=["']([^"']+)["']/i);
-                        return imgMatch ? imgMatch[1] : null;
+                        return imgMatch ? decodeEntities(imgMatch[1]) : null;   // &#038; would cut the query
                     })();
                     const art = {
                         id: _existingIds.get(link) || crypto.randomUUID(),
@@ -8092,8 +8157,8 @@
             const isSaved = window.savedBucket ? window.savedBucket.has(a.link) : false;
             // A picture beside the headline and summary, as on Today's cards: never an avatar, and a failed
             // or tiny one leaves no box. Show images off and Compact Wire hide it.
-            const img = a.image && !/avatar/i.test(a.image) ? a.image : '';
-            const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove()" onerror="this.parentNode.remove()"></div>` : '';
+            const img = a.image && !/avatar/i.test(a.image) ? window.pictureUrl(a.image, 400) : '';
+            const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove(); else window.smoothPicture(this)" onerror="this.parentNode.remove()"></div>` : '';
             // The desktop's row: a Today card's and the reader's buttons. Read and Read Later are the
             // right-click menu's own actions, which redraw the list.
             const deskBtn = (on, onclick, label, icon, extra = '') =>
@@ -9034,6 +9099,7 @@
                 stripJsonBlobs(bodyEl);
                 stripImagePlaceholders(bodyEl);
                 stripLeadingEmptyBlocks(bodyEl);
+                stripRepeatedHeader(bodyEl, article);
                 normalizeBodyStyles(bodyEl);       // feed fonts/sizes must not beat the app's
                 initBodyImages(bodyEl, article);   // normalize/drop unusable images first...
                 ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
@@ -9358,6 +9424,7 @@
                             bodyEl.innerHTML = sanitized;
                             stripImagePlaceholders(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
+                            stripRepeatedHeader(bodyEl, article);
                             normalizeBodyStyles(bodyEl);
                             initBodyImages(bodyEl, article);
                             ensureLeadImage(bodyEl, article);
@@ -9428,7 +9495,8 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && closeTopLayer()) { e.preventDefault(); return; }
-            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            // A focused field or dropdown takes its own keys (a dropdown's arrows and letters).
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
             // With Ctrl, Cmd or Alt a key is the browser's (Ctrl+R reloads, it doesn't mark read); AltGr types.
             if ((e.ctrlKey || e.metaKey || e.altKey) && !e.getModifierState('AltGraph')) return;
             // Full screen: Up / Down scroll the story (Left / Right move between stories, below). It scrolls
@@ -9549,6 +9617,44 @@
                 }
                 return;
             }
+        }
+
+        // A page's own headline and byline at the top of a story (MacRumors' title bar, then "Sunday October 11,
+        // 2026 8:08 am PDT by Tim Hardwick") repeat the reader's header and push the story down. Before the
+        // first paragraph: a heading with the story's title goes, and the short block after it with a <time>
+        // or an author link; that author moves to the header when the feed named none (its author is the
+        // source). Wrappers left empty go too.
+        function stripRepeatedHeader(bodyEl, article) {
+            const want = normTitle(article.title);
+            if (!want) return;
+            const firstP = Array.from(bodyEl.querySelectorAll('p')).find(p => p.textContent.trim().split(/\s+/).length > 12);
+            const before = el => !firstP || !!(el.compareDocumentPosition(firstP) & Node.DOCUMENT_POSITION_FOLLOWING);
+            const heading = Array.from(bodyEl.querySelectorAll('h1, h2')).find(h => normTitle(h.textContent) === want);
+            if (!heading || !before(heading)) return;
+            let next = null;
+            for (let e = heading; e && e !== bodyEl && !next; e = e.parentElement) next = e.nextElementSibling;
+            const isByline = next && before(next) && !next.querySelector('img, picture, video, iframe')
+                && next.textContent.trim().split(/\s+/).length < 30
+                && !!next.querySelector('time, a[rel~="author"], [class*="author"], [class*="byline"]');
+            const drop = el => {
+                let up = el.parentElement;
+                el.remove();
+                while (up && up !== bodyEl && !up.textContent.trim() && !up.querySelector('img, picture, video, iframe, audio')) {
+                    const p = up.parentElement;
+                    up.remove();
+                    up = p;
+                }
+            };
+            if (isByline) {
+                const name = next.querySelector('a[rel~="author"], [class*="author"]')?.textContent.trim();
+                const own = (article.author || '').trim().toLowerCase();
+                if (name && name.length < 60 && (!own || own === (article.source || '').trim().toLowerCase())) {
+                    document.getElementById('article-author').textContent = name;
+                    document.getElementById('article-byline')?.classList.remove('byline-dup');
+                }
+                drop(next);
+            }
+            drop(heading);
         }
 
         // The feed's own lead image (media:content / thumbnail / enclosure -> article.image), which many
@@ -11670,6 +11776,73 @@
             return alt ? alt.image : '';
         }
 
+        // A picture at about the size it is shown, from the image servers that make copies: Brightspot's dims3
+        // (NPR) and WordPress's (The Verge: w=). Feeds link their originals, up to 8,080px and 19MB; Today's 19
+        // pictures cost 57.7MB as sent and 5.8MB as 1200px copies. Smaller originals and other servers stay
+        // as they are (smoothPicture draws those). The feed's escaped ampersands are decoded first: "&#038;"
+        // made the rest of the query a fragment.
+        window.pictureUrl = function (url, w) {
+            if (!url) return url;
+            url = url.replace(/&#0*38;|&amp;/gi, '&');
+            const dims = url.match(/\/dims3\/.*?\/resize\/(\d+)x\d+!\//);
+            if (dims) return +dims[1] > w ? url.replace(/\/resize\/\d+x\d+!\//, `/resize/${w}/quality/85/format/webp/`) : url;
+            if (/\/wp-content\/uploads\//.test(url)) {
+                const m = url.match(/[?&]w=(\d+)/);
+                if (m) return +m[1] > w ? url.replace(/([?&])w=\d+/, `$1w=${w}`) : url;
+                return url + (url.includes('?') ? '&' : '?') + 'w=' + w;
+            }
+            return url;
+        };
+
+        // Edge drawing with the GPU shrinks a picture many times its box without smoothing: jagged edges,
+        // speckled flats (a 6000px photo in Today's box scored 28 dB against a proper resize; this, 34). So a
+        // picture more than twice its box, in device pixels, is drawn into a canvas over it with high-quality
+        // smoothing, cropped as object-fit: cover. Within twice the browser's own drawing is clean, and the
+        // canvas goes. A hidden box (no size) keeps what it has.
+        window.smoothPicture = function (img) {
+            const box = img.parentElement;
+            const dpr = window.devicePixelRatio || 1;
+            const bw = Math.round((box?.clientWidth || 0) * dpr), bh = Math.round((box?.clientHeight || 0) * dpr);
+            if (!bw || !bh || !img.naturalWidth || !img.naturalHeight) return;
+            const s = Math.max(bw / img.naturalWidth, bh / img.naturalHeight);
+            const had = box.querySelector(':scope > canvas.pic-smooth');
+            if (s >= 0.5) { had?.remove(); return; }
+            if (had && had.width === bw && had.height === bh && had.dataset.src === img.currentSrc) return;   // drawn already
+            img.decode().catch(() => { }).then(() => {   // decoded off the main thread first
+                if (!img.isConnected) return;
+                let cv = box.querySelector(':scope > canvas.pic-smooth');
+                if (!cv) {
+                    cv = document.createElement('canvas');
+                    cv.className = 'pic-smooth';
+                    cv.setAttribute('aria-hidden', 'true');
+                    box.append(cv);
+                }
+                cv.width = bw;
+                cv.height = bh;
+                cv.dataset.src = img.currentSrc;
+                const ctx = cv.getContext('2d');
+                ctx.imageSmoothingQuality = 'high';
+                const sw = bw / s, sh = bh / s;
+                ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, 0, 0, bw, bh);
+            });
+        };
+        // Again when a pane changes width (the desktop's dividers, a window resize) or the screen's scale does
+        // (a window moved to another monitor, browser zoom).
+        (function () {
+            let t = 0;
+            const all = () => {
+                clearTimeout(t);
+                t = setTimeout(() => document.querySelectorAll('.brief-hero > img, .brief-thumb > img').forEach(img => {
+                    if (img.complete && img.naturalWidth) window.smoothPicture(img);
+                }), 150);
+            };
+            const ro = new ResizeObserver(all);
+            ['today-column', 'article-list', 'reader-view'].forEach(id => { const el = document.getElementById(id); if (el) ro.observe(el); });
+            const watchScale = () => window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+                .addEventListener('change', () => { all(); watchScale(); }, { once: true });
+            watchScale();
+        })();
+
         // Image guardrails, from each image's onload / onerror: a failed or too-small picture leaves no
         // box; a hero too small for full width becomes a thumbnail. The verdict ('bad', 'thumb', 'ok') is
         // remembered, so a rebuilt Today draws each known picture in its final form at once.
@@ -11684,6 +11857,8 @@
                 box.classList.replace('brief-hero', 'brief-thumb');
                 // A thumbnail's place is after the source / time line.
                 box.parentElement?.querySelector(':scope > .brief-story-meta')?.after(box);
+                const img = box.querySelector('img');
+                if (img) window.smoothPicture(img);
             }
         }
         function briefImgChange(box, kind) {
@@ -11701,6 +11876,7 @@
             }
             window._briefImgVerdict.set(url, img.naturalWidth < 600 ? 'thumb' : 'ok');
             if (box && box.classList.contains('brief-hero') && img.naturalWidth < 600) briefImgChange(box, 'thumb');
+            window.smoothPicture(img);
         };
         window.briefImgFailed = function (img) {
             window._briefImgVerdict.set(img.getAttribute('src'), 'bad');
@@ -11710,9 +11886,7 @@
 
         function renderBriefSectionsHtml(categorySections, opts = {}) {
             let html = '';
-            // The hero: the first story with a picture in the first section (Top Stories).
-            let heroDone = false;
-            categorySections.forEach((cs, sectionIdx) => {
+            categorySections.forEach(cs => {
                 html += `
                     <div id="brief-cat-${cs.slug}" class="brief-cat-section mb-5 scroll-mt-20"${cs.noMarkRead ? ' data-no-mark-read="1"' : ''}>
                         <div class="brief-cat-header flex items-center justify-between pb-1 mb-2.5 flex-nowrap gap-2">
@@ -11752,15 +11926,16 @@
                     const covAttr = covIds.length ? ` data-cov="${esc(JSON.stringify(covIds))}"` : '';
                     // Picture: lazy (loads only near the screen); the box is reserved by CSS; tapping it opens the
                     // story like the headline does.
-                    const verdict = window._briefImgVerdict?.get(briefStoryImage(st));
-                    const imgUrl = verdict === 'bad' ? '' : briefStoryImage(st);   // known bad: no box (317)
-                    const isHero = !!imgUrl && !heroDone && sectionIdx === 0 && verdict !== 'thumb';
-                    if (isHero) heroDone = true;
+                    const picUrl = window.pictureUrl(briefStoryImage(st), 1200);
+                    const verdict = window._briefImgVerdict?.get(picUrl);
+                    const imgUrl = verdict === 'bad' ? '' : picUrl;   // known bad: no box (317)
+                    // Large (16:9, above the source line) unless known to be under 600px wide.
+                    const isHero = !!imgUrl && verdict !== 'thumb';
                     const mediaHtml = imgUrl
                         ? `<div class="${isHero ? 'brief-hero' : 'brief-thumb'}" onclick="window.openArticleInReader('${saId}')"><img src="${esc(imgUrl)}" alt="" loading="lazy" decoding="async" onload="window.briefImgLoaded(this)" onerror="window.briefImgFailed(this)"></div>`
                         : '';
-                    // The hero leads the card; a thumbnail goes after the source / time line, so that line keeps the
-                    // full width and the picture sits beside the headline and summary.
+                    // The large picture follows the story's text; a thumbnail goes after the source / time line, so
+                    // that line keeps the full width and the picture sits beside the headline and summary.
                     const heroHtml = isHero ? mediaHtml : '';
                     const thumbHtml = isHero ? '' : mediaHtml;
 
@@ -11795,7 +11970,6 @@
 
                     html += `
                         <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}${firstAttr}>
-                            ${heroHtml}
                             <div class="brief-story-meta flex items-center gap-1.5 text-gray-400 mb-0.5 flex-nowrap min-w-0">
                                 ${favHtml}
                                 <span class="brief-story-source list-source-label font-bold truncate">${esc(st.source)}</span>
@@ -11806,6 +11980,7 @@
                             ${thumbHtml}
                             ${storyBodyHtml}
                             ${alsoReported}
+                            ${heroHtml}
                             <div class="brief-story-actions flex items-center gap-1.5 pt-0.5">
                                 <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-gray-500 dark:text-gray-400" title="Open in Reader" aria-label="Open in Reader">
                                     <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
@@ -13609,6 +13784,173 @@
             if (!e.target.closest('#feed-context-menu')) document.getElementById('feed-context-menu').classList.add('hidden');
         });
 
+        // ===== DROPDOWN LISTS (desktop) =====
+        // A <select>'s open list is the browser's: only its colours can be set. On the desktop the app opens
+        // its own instead (#select-menu, on the search palette's surface): a check on the current choice, Search's
+        // Folders / Feeds headings, and a list's keys (arrows, Home / End, Enter or Space, a typed name, Esc,
+        // Tab). Choosing selects the option and fires the select's change, so each one's own handler runs.
+        // A press outside only closes it, as with the other menus. The phone keeps iOS's picker.
+        (function () {
+            const menu = document.getElementById('select-menu');
+            if (!menu) return;
+            let sel = null, items = [], active = -1, typed = '', typedAt = 0, swallowUntil = 0;
+            // Scrolls the list (only the list) so item i shows.
+            const reveal = i => {
+                const b = items[i];
+                if (!b) return;
+                if (b.offsetTop < menu.scrollTop) menu.scrollTop = b.offsetTop;
+                else if (b.offsetTop + b.offsetHeight > menu.scrollTop + menu.clientHeight) menu.scrollTop = b.offsetTop + b.offsetHeight - menu.clientHeight;
+            };
+            // Highlights item i (-1: none), in view when scroll.
+            const setActive = (i, scroll) => {
+                items[active]?.classList.remove('is-active');
+                active = i;
+                items[i]?.classList.add('is-active');
+                if (scroll) reveal(i);
+            };
+            // The next enabled item after i in direction dir, or i at the end.
+            const step = (i, dir) => {
+                for (let j = i + dir; j >= 0 && j < items.length; j += dir) if (!items[j].disabled) return j;
+                return i;
+            };
+            const current = () => items.findIndex(b => b._opt.selected);
+            const close = refocus => {
+                if (!sel) return;
+                const s = sel;
+                sel = null; items = []; active = -1;
+                menu.classList.add('hidden');
+                menu.replaceChildren();
+                if (refocus) s.focus({ preventScroll: true });
+            };
+            const choose = i => {
+                const s = sel, o = items[i]?._opt;
+                close(true);
+                if (!o || o.disabled || o.selected || !s.contains(o)) return;
+                o.selected = true;
+                s.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+            // Opened by the keys, the current choice starts highlighted; by the pointer, nothing until it moves.
+            const open = (s, byKey) => {
+                sel = s;
+                items = [];
+                active = -1;
+                menu.replaceChildren();
+                const addOpt = o => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'select-opt';
+                    b.setAttribute('role', 'option');
+                    b.setAttribute('aria-selected', String(o.selected));
+                    b.disabled = o.disabled;
+                    b.innerHTML = '<svg class="select-check" aria-hidden="true"><use href="#icon-tick" /></svg>';
+                    b.append(o.textContent.trim());
+                    b._opt = o;
+                    items.push(b);
+                    menu.append(b);
+                };
+                for (const c of s.children) {
+                    if (c.tagName === 'OPTGROUP') {
+                        if (menu.childElementCount) menu.insertAdjacentHTML('beforeend', '<div class="select-sep" role="presentation"></div>');
+                        const h = document.createElement('div');
+                        h.className = 'select-group';
+                        h.setAttribute('role', 'presentation');
+                        h.textContent = c.label;
+                        menu.append(h);
+                        for (const o of c.children) addOpt(o);
+                    } else if (c.tagName === 'OPTION') addOpt(c);
+                }
+                // Under the select, or above it when there is more room there; at least as wide; inside the
+                // window, scrolling when taller than the room.
+                const r = s.getBoundingClientRect();
+                menu.style.minWidth = `${Math.round(r.width)}px`;
+                menu.style.maxHeight = '';
+                menu.scrollTop = 0;
+                menu.classList.remove('hidden');
+                const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
+                let h = menu.offsetHeight;
+                const down = h <= below || below >= above;
+                if (h > (down ? below : above)) { h = down ? below : above; menu.style.maxHeight = `${h}px`; }
+                menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+                menu.style.top = `${down ? r.bottom + 4 : r.top - 4 - h}px`;
+                const cur = current();
+                reveal(cur);
+                if (byKey) setActive(Math.max(0, cur), true);
+            };
+
+            // A press on a select opens the list in place of the browser's. With the list open, a press
+            // outside it (on the select too) only closes it.
+            document.addEventListener('mousedown', e => {
+                if (sel) {
+                    // On an item the focus stays on the select; the list's own scrollbar keeps its drag.
+                    if (menu.contains(e.target)) { if (e.target !== menu) e.preventDefault(); return; }
+                    close(false);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    swallowUntil = Date.now() + 1000;
+                    return;
+                }
+                const s = e.target.closest('select');
+                if (!s || e.button !== 0 || s.disabled || isMobile()) return;
+                e.preventDefault();
+                s.focus({ preventScroll: true });
+                open(s, false);
+            }, true);
+            document.addEventListener('click', e => {
+                if (Date.now() > swallowUntil) return;
+                swallowUntil = 0;
+                e.preventDefault();
+                e.stopPropagation();
+            }, true);
+            menu.addEventListener('click', e => {
+                const b = e.target.closest('.select-opt');
+                if (b && !b.disabled) choose(items.indexOf(b));
+            });
+            menu.addEventListener('mousemove', e => {
+                const b = e.target.closest('.select-opt');
+                if (b && !b.disabled && b !== items[active]) setActive(items.indexOf(b), false);
+            });
+            menu.addEventListener('mouseleave', () => setActive(-1, false));
+
+            // Ahead of the app's shortcuts: the open list takes the keys; on a focused select, the keys
+            // that open the browser's list open this one.
+            window.addEventListener('keydown', e => {
+                if (sel) {
+                    const k = e.key;
+                    if (k === 'ArrowDown' || k === 'ArrowUp') setActive(active < 0 ? Math.max(0, current()) : step(active, k === 'ArrowDown' ? 1 : -1), true);
+                    else if (k === 'Home') setActive(step(-1, 1), true);
+                    else if (k === 'End') setActive(step(items.length, -1), true);
+                    else if (k === 'Enter' || k === ' ') { if (active >= 0) choose(active); else close(true); }
+                    else if (k === 'Escape') close(true);
+                    else if (k === 'Tab') { close(false); return; }   // and the focus moves on
+                    else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                        // A typed name: the next item starting with the letters typed within 0.8s.
+                        const now = Date.now();
+                        typed = (now - typedAt < 800 ? typed : '') + k.toLowerCase();
+                        typedAt = now;
+                        const from = typed.length > 1 ? Math.max(active, 0) : active + 1;
+                        for (let j = 0; j < items.length; j++) {
+                            const i = (from + j) % items.length;
+                            if (!items[i].disabled && items[i].textContent.trim().toLowerCase().startsWith(typed)) { setActive(i, true); break; }
+                        }
+                    } else return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
+                const s = e.target.closest?.('select');
+                if (!s || s.disabled || isMobile()) return;
+                if ([' ', 'Enter', 'F4', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    open(s, true);
+                }
+            }, true);
+            // A scroll behind the list, a resize or leaving the window closes it.
+            document.addEventListener('scroll', e => { if (sel && e.target !== menu) close(false); }, true);
+            window.addEventListener('resize', () => close(false));
+            window.addEventListener('blur', () => close(false));
+        })();
+
         // --- INDIVIDUAL FEED CONTEXT MENU ---
         window.showFeedContextMenu = (e, url, name) => {
             e.preventDefault();
@@ -14839,7 +15181,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 359;
+        window.APP_BUILD = 363;
 
         (async function initApp() {
             try {
@@ -15700,7 +16042,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v359';
+const CACHE_NAME = 'rss-reader-v363';
 const APP_SHELL = [
     '/',
     'index.html'
