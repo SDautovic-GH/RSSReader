@@ -60,12 +60,12 @@
             margin-top: 18px;
         }
 
-        .dark #settings-modal button:hover {
+        .dark #settings-modal button:not(.pill-btn):hover {
             background-color: rgba(255, 255, 255, 0.08) !important;
             color: white !important;
         }
 
-        #settings-modal button:hover {
+        #settings-modal button:not(.pill-btn):hover {
             background-color: rgba(0, 0, 0, 0.05);
         }
 
@@ -1372,11 +1372,33 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Dark context menus use the tab bar's neutral glass and its active recess. Blue stays
-           for data, red for destructive actions. */
+        /* Menus (the "..." and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the
+           tab bar's glass, light or dark, with 14px corners, the app's dividers and a soft shadow. Blue
+           stays for data, red for destructive actions. */
+        #article-context-menu,
+        #folder-context-menu,
+        #feed-context-menu,
+        #feeds-overflow-menu {
+            overflow: hidden;
+            border-radius: 14px;
+            background: rgba(246, 246, 248, 0.92);
+            border-color: rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
+        }
+
+        #article-context-menu > div,
+        #folder-context-menu > div,
+        #feed-context-menu > div,
+        #feeds-overflow-menu > div {
+            border-color: var(--divider);
+        }
+
         .dark #article-context-menu,
         .dark #folder-context-menu,
-        .dark #feed-context-menu {
+        .dark #feed-context-menu,
+        .dark #feeds-overflow-menu {
             background: rgba(28, 28, 32, 0.96) !important;
             border-color: rgba(255, 255, 255, 0.08) !important;
             backdrop-filter: blur(20px) saturate(1.4);
@@ -1389,20 +1411,48 @@
         .dark #folder-context-menu button:not([class*="text-red"]):hover,
         .dark #folder-context-menu button:not([class*="text-red"]):active,
         .dark #feed-context-menu button:hover,
-        .dark #feed-context-menu button:active {
+        .dark #feed-context-menu button:active,
+        .dark #feeds-overflow-menu button:hover,
+        .dark #feeds-overflow-menu button:active {
             background: rgba(0, 0, 0, 0.58) !important;
         }
 
-        /* The menus and the messages follow App Zoom; a menu's width grows with its text. */
+        /* The menus and the messages follow App Zoom; a menu is as wide as its longest item. Its items
+           stack in a column that stretches them, not at width 100%, which Chrome counts against the
+           window when sizing the menu to its content. */
         #article-context-menu,
         #folder-context-menu,
-        #feed-context-menu {
+        #feed-context-menu,
+        #feeds-overflow-menu {
+            display: flex;
+            flex-direction: column;
             font-size: calc(16px * var(--zoom));
-            width: calc(12rem * var(--zoom));
+            width: max-content;
+            max-width: calc(100vw - 24px);
+        }
+
+        #article-context-menu > button,
+        #folder-context-menu > button,
+        #feed-context-menu > button,
+        #feeds-overflow-menu > button {
+            width: auto;
         }
 
         #toast-notification {
             font-size: calc(14px * var(--zoom));
+        }
+
+        /* The login window on the app's own surface and dividers, as the sheets. */
+        .dark #login-modal > div {
+            background: var(--surface-sheet) !important;
+            border-color: var(--divider) !important;
+        }
+
+        /* The login window's fields: the buttons' capsule, as tall as Add Feed's. */
+        #login-modal input {
+            padding: 8px 16px;
+            line-height: 1.15;
+            border-radius: 999px;
         }
 
         /* Search sheet above bar */
@@ -1448,8 +1498,8 @@
             background: rgba(255, 255, 255, 0.08);
             border: none;
             color: #fff;
-            border-radius: 12px;
-            padding: 10px 14px;
+            border-radius: 999px;
+            padding: 10px 16px;
             font-size: calc(15px * var(--sheet-text, 1));
             outline: none;
             min-width: 0;
@@ -2334,16 +2384,6 @@
             min-width: 0;
         }
 
-        .mute-add-btn {
-            padding: 0 16px;
-            border: none;
-            border-radius: 8px;
-            background: #4493f8;
-            color: #ffffff;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
         .mute-chip {
             padding: 5px 10px 5px 12px;
             border-radius: 9999px;
@@ -2620,18 +2660,7 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 30;
-            align-items: center;
-            min-height: 36px;
-            padding: 0 16px;
-            border: none;
-            border-radius: 9999px;
-            background: var(--color-blue-600);   /* the logo's blue; white text 5.3:1 */
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 600;
-            white-space: nowrap;
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-            cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -2706,30 +2735,57 @@
             display: none;
         }
 
-        .brief-mark-section-btn {
-            display: inline-flex;
+        /* The app's text buttons share one look, Mark read's: a pill, its text --btn-text x App Zoom,
+           600, 7px 14px inside a 1px edge. A screen's main action is filled in the logo's blue
+           (.pill-primary, white text 5.3:1); the others are outlined grey and take the accent on hover. */
+        :root {
+            --btn-text: 14px;
+        }
+
+        .pill-btn {
             align-items: center;
+            align-self: center;
+            justify-content: center;
             gap: 7px;
             padding: 7px 14px;
             border: 1px solid rgba(139, 148, 158, 0.4);
             border-radius: 999px;
             background: transparent;
-            color: inherit;
-            font: inherit;
+            color: var(--text-3);
+            font-family: inherit;
+            font-size: calc(var(--btn-text) * var(--zoom));
+            font-weight: 600;
             line-height: 1;
+            white-space: nowrap;
+            box-shadow: none;
             cursor: pointer;
         }
 
-        .brief-mark-section-btn:hover {
+        .pill-btn svg {
+            width: 1.15em;
+            height: 1.15em;
+            flex-shrink: 0;
+        }
+
+        .pill-btn:not(.pill-primary):not(:disabled):hover {
             color: #4493f8;
             border-color: rgba(68, 147, 248, 0.45);
             background: rgba(68, 147, 248, 0.12);
         }
 
-        .brief-cat-end svg {
-            width: 17px;
-            height: 17px;
-            flex-shrink: 0;
+        .pill-btn.pill-primary {
+            border-color: var(--color-blue-600);
+            background: var(--color-blue-600);
+            color: #ffffff;
+        }
+
+        .pill-btn.pill-primary:hover {
+            border-color: var(--color-blue-700, oklch(0.488 0.243 264.376));
+            background: var(--color-blue-700, oklch(0.488 0.243 264.376));
+        }
+
+        .pill-btn:disabled {
+            cursor: default;
         }
 
         /* DAILY BRIEFS TYPOGRAPHY & APP ZOOM / FONT SCALING */
@@ -3310,31 +3366,7 @@
             color: #34d399 !important;
         }
 
-        /* "Mark All Read in Folders": the Mark N read pill's shape, size and spacing (its 7px 14px
-           padding plus its 1px outline), filled in the logo's blue-600 (white text 5.3:1). */
-        .brief-mark-all-btn {
-            cursor: pointer;
-            transition: all 0.15s ease;
-            padding: 8px 15px !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 7px !important;
-            white-space: nowrap !important;
-            border-radius: 999px !important;
-            box-sizing: border-box !important;
-            font-size: 16px !important;
-            font-weight: 600 !important;
-            line-height: 1 !important;   /* as Mark N read: text-xs's 1.33 made it 4px taller */
-            box-shadow: none !important;
-        }
-
-        .brief-mark-all-btn svg {
-            width: 17px !important;
-            height: 17px !important;
-            flex-shrink: 0 !important;
-        }
-
+        /* "Mark All Read in Folders" is the shared pill, filled while there is anything to mark. */
         .brief-mark-all-btn span {
             font-size: inherit !important;
             color: inherit !important;
@@ -4165,10 +4197,12 @@
 
         /* Settings menus: an inline-SVG chevron, since the native one is near-black and vanishes in
            dark mode. White chevron for dark, slate for light. */
+        /* Fields and menus share the buttons' capsule shape. */
         #settings-modal select.settings-input {
-            padding: 10px 36px 10px 12px;
+            padding: 8px 36px 8px 16px;
             font-size: calc(14px * var(--sheet-text, 1));
-            border-radius: 8px;
+            line-height: 1.15;
+            border-radius: 999px;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(148, 163, 184, 0.2);
             color: inherit;
@@ -4178,15 +4212,16 @@
             appearance: none;
             background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f0f6fc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
             background-repeat: no-repeat;
-            background-position: right 12px center;
+            background-position: right 14px center;
             background-size: 12px 12px;
         }
 
-        /* A text box in Settings. */
+        /* A text box in Settings: a capsule as tall as the pill beside it. */
         #settings-modal input.settings-input {
-            padding: 7px 10px;
+            padding: 6px 14px;
             font-size: calc(14px * var(--sheet-text, 1));
-            border-radius: 8px;
+            line-height: 1.15;
+            border-radius: 999px;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(148, 163, 184, 0.2);
             color: inherit;
@@ -4344,6 +4379,69 @@
             }
         }
 
+        /* Add Feed and Edit Feed, on the phone's sheet and in the desktop's dialog: the app's own surface
+           and dividers, text x App Zoom, and Settings' fields. */
+        .form-sheet .form-sheet-card {
+            background: var(--surface-sheet);
+            border-color: var(--divider);
+            font-size: calc(16px * var(--sheet-text));
+        }
+
+        .form-sheet h3 {
+            font-size: calc(18px * var(--sheet-text));
+        }
+
+        .form-sheet input:not([type=hidden]),
+        .form-sheet select {
+            padding: 8px 16px;
+            font-size: calc(14px * var(--sheet-text));
+            line-height: 1.15;
+            border-radius: 999px;
+            background-color: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: none;
+            color: inherit;
+        }
+
+        .form-sheet select {
+            padding-right: 38px;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f0f6fc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 12px 12px;
+        }
+
+        .form-sheet input:focus,
+        .form-sheet select:focus {
+            border-color: #4493f8;
+        }
+
+        .form-sheet input::placeholder {
+            color: #94a3b8;
+        }
+
+        html:not(.dark) .form-sheet input:not([type=hidden]),
+        html:not(.dark) .form-sheet select {
+            background-color: #f9fafb;
+            border-color: #e5e7eb;
+        }
+
+        html:not(.dark) .form-sheet select {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+        }
+
+        html:not(.dark) .form-sheet input::placeholder {
+            color: #9ca3af;
+        }
+
+        html:not(.dark) .form-sheet input:focus,
+        html:not(.dark) .form-sheet select:focus {
+            border-color: #4493f8;
+        }
+
+
         /* Add Feed and Edit Feed: on the phone a sheet like Settings, over it (its edge shows 10px above),
            the fields at the top clear of the keyboard, the ✕ for Cancel and the action full width. The
            text runs at the sheets' 1.2. The desktop keeps the small centred dialog. */
@@ -4366,11 +4464,8 @@
                 overscroll-behavior: contain;
                 padding: 22px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
                 border-width: 1px 0 0;
-                border-color: var(--divider);
                 border-radius: 16px 16px 0 0;
-                background: var(--surface-sheet);
                 box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
-                font-size: calc(16px * var(--sheet-text));
                 animation: sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1);
             }
 
@@ -4396,74 +4491,16 @@
 
             .form-sheet .form-sheet-head h3 {
                 margin: 0;
-                font-size: calc(18px * var(--sheet-text));
-            }
-
-            /* The fields in Settings' look. */
-            .form-sheet input:not([type=hidden]),
-            .form-sheet select {
-                padding: 12px 14px;
-                font-size: calc(14px * var(--sheet-text));
-                border-radius: 10px;
-                background-color: rgba(255, 255, 255, 0.04);
-                border: 1px solid rgba(148, 163, 184, 0.2);
-                box-shadow: none;
-                color: inherit;
-            }
-
-            .form-sheet select {
-                padding-right: 36px;
-                -webkit-appearance: none;
-                appearance: none;
-                background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23f0f6fc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-                background-repeat: no-repeat;
-                background-position: right 12px center;
-                background-size: 12px 12px;
-            }
-
-            .form-sheet input:focus,
-            .form-sheet select:focus {
-                border-color: #4493f8;
-            }
-
-            .form-sheet input::placeholder {
-                color: #94a3b8;
-            }
-
-            html:not(.dark) .form-sheet input:not([type=hidden]),
-            html:not(.dark) .form-sheet select {
-                background-color: #f9fafb;
-                border-color: #e5e7eb;
-            }
-
-            html:not(.dark) .form-sheet select {
-                background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231f2937' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-            }
-
-            html:not(.dark) .form-sheet input::placeholder {
-                color: #9ca3af;
-            }
-
-            html:not(.dark) .form-sheet input:focus,
-            html:not(.dark) .form-sheet select:focus {
-                border-color: #4493f8;
             }
 
             .form-sheet .form-sheet-actions {
-                display: block;
-                margin-top: 8px;
+                margin-top: 4px;
             }
 
             .form-sheet .form-sheet-cancel {
                 display: none;
             }
 
-            .form-sheet .form-sheet-submit {
-                width: 100%;
-                padding: 14px;
-                border-radius: 12px;
-                font-size: calc(16px * var(--sheet-text));
-            }
 
             .form-sheet.sheet-closing {
                 background-color: transparent;
@@ -4513,27 +4550,8 @@
             max-width: 100%;
             flex-shrink: 0;
             margin-left: auto;
-            padding: 7px 30px 7px 10px;
-            background-position: right 10px center;
-        }
-
-        /* Sign Out: the app's outlined grey pill, as Mark read. */
-        #signout-btn {
-            padding: 7px 14px;
-            border: 1px solid rgba(139, 148, 158, 0.4);
-            border-radius: 999px;
-            background: transparent;
-            color: var(--text-2);
-            font-size: calc(14px * var(--sheet-text, 1));
-            font-weight: 600;
-            line-height: 1.2;
-            cursor: pointer;
-        }
-
-        #signout-btn:hover {
-            color: #4493f8;
-            border-color: rgba(68, 147, 248, 0.45);
-            background: rgba(68, 147, 248, 0.12);
+            padding: 6px 32px 6px 14px;
+            background-position: right 12px center;
         }
 
         /* A row that is a button: a link to a page (with a chevron) or an action. */
@@ -5453,12 +5471,8 @@
             <input type="password" id="login-password" placeholder="Password"
                 class="w-full mb-6 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
 
-            <button id="login-btn" onclick="handleSignIn()"
-                class="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all mb-3">Sign
-                In</button>
-            <button id="register-btn" onclick="handleRegister()"
-                class="w-full py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all">Create
-                Account</button>
+            <button id="login-btn" onclick="handleSignIn()" class="pill-btn pill-primary w-full mb-3">Sign In</button>
+            <button id="register-btn" onclick="handleRegister()" class="pill-btn w-full">Create Account</button>
 
             <p class="text-center mt-4">
                 <button onclick="handleForgotPassword()"
@@ -5492,8 +5506,7 @@
             <!-- Feeds (the feed manager) -->
             <div id="settings-panel-feeds" class="px-5 pt-8 pb-6 overflow-y-auto flex-1 no-scrollbar">
                 <div class="flex items-center justify-between mb-4">
-                    <button onclick="openAddFeedModal()"
-                        class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-[14px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 active:scale-95 transition-all">
+                    <button onclick="openAddFeedModal()" class="pill-btn pill-primary inline-flex">
                         <svg class="w-4 h-4">
                             <use href="#icon-plus" />
                         </svg>
@@ -5614,7 +5627,7 @@
                                 <input id="mute-input" type="text" class="settings-input" placeholder="Add a word or phrase"
                                     autocomplete="off"
                                     onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.addMuteWord(); }">
-                                <button type="button" class="mute-add-btn" onclick="window.addMuteWord()">Add</button>
+                                <button type="button" class="mute-add-btn pill-btn pill-primary" onclick="window.addMuteWord()">Add</button>
                             </div>
                             <div id="mute-words" class="today-folder-chips"></div>
                         </div>
@@ -5690,7 +5703,7 @@
                             <span id="sync-status"
                                 class="settings-item-label truncate cursor-pointer hover:text-blue-500"
                                 onclick="showAccountInfo()" title="Account info">Local Only</span>
-                            <button id="signout-btn" onclick="handleSignOut()" class="hidden flex-shrink-0"
+                            <button id="signout-btn" onclick="handleSignOut()" class="hidden pill-btn flex-shrink-0"
                                 title="Sign out">Sign Out</button>
                         </div>
                     </div>
@@ -5900,9 +5913,8 @@
                     class="w-full p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div class="form-sheet-actions flex justify-end space-x-3">
-                <button onclick="closeAddFeedModal()" class="form-sheet-cancel px-5 py-2 text-sm text-gray-500">Cancel</button>
-                <button onclick="submitManualFeed()"
-                    class="form-sheet-submit px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Add
+                <button onclick="closeAddFeedModal()" class="form-sheet-cancel pill-btn">Cancel</button>
+                <button onclick="submitManualFeed()" class="form-sheet-submit pill-btn pill-primary">Add
                     Feed</button>
             </div>
         </div>
@@ -5929,9 +5941,8 @@
                     class="w-full p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div class="form-sheet-actions flex justify-end space-x-3">
-                <button onclick="closeEditFeedModal()" class="form-sheet-cancel px-5 py-2 text-sm text-gray-500">Cancel</button>
-                <button onclick="submitEditFeed()"
-                    class="form-sheet-submit px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md">Save</button>
+                <button onclick="closeEditFeedModal()" class="form-sheet-cancel pill-btn">Cancel</button>
+                <button onclick="submitEditFeed()" class="form-sheet-submit pill-btn pill-primary">Save</button>
             </div>
         </div>
     </div>
@@ -8398,7 +8409,7 @@
         window._briefCopies = new Map();
 
         // The section-end Mark-read button; restored after Undo / settling.
-        const BRIEF_MARK_ROW_HTML = '<button type="button" class="brief-mark-section-btn" onclick="window.markBriefSectionRead(this)" title="Mark the stories above as read" aria-label="Mark the stories above as read"><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-mark-section-label">Mark read</span></button>';
+        const BRIEF_MARK_ROW_HTML = '<button type="button" class="brief-mark-section-btn pill-btn inline-flex" onclick="window.markBriefSectionRead(this)" title="Mark the stories above as read" aria-label="Mark the stories above as read"><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-mark-section-label">Mark read</span></button>';
 
         // Today's heading is the long date ("Wednesday, September 30") where it fits and the short one
         // ("Wed, Sep 30") where it doesn't: the phone's header row leaves it about 227px, and the Font
@@ -8670,7 +8681,7 @@
                 const footerDiv = document.createElement('div');
                 footerDiv.className = 'brief-footer text-sm text-gray-500 dark:text-gray-400';
                 footerDiv.innerHTML = `
-                    <button type="button" onclick="window.markBriefCategoriesRead(this)" class="brief-mark-all-btn inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm" title="Mark all articles read in covered category folders">
+                    <button type="button" onclick="window.markBriefCategoriesRead(this)" class="brief-mark-all-btn pill-btn pill-primary inline-flex" title="Mark all articles read in covered category folders">
                         <svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg>
                         <span>Mark All Read in Folders</span>
                     </button>
@@ -11311,7 +11322,7 @@
             if (!_todayPill) {
                 _todayPill = document.createElement('button');
                 _todayPill.type = 'button';
-                _todayPill.className = 'today-new-pill';
+                _todayPill.className = 'today-new-pill pill-btn pill-primary';
                 _todayPill.onclick = () => window.showNewTodayStories();
             }
             return _todayPill;
@@ -11886,7 +11897,7 @@
                 html += renderBriefSectionsHtml(categorySections);
                 html += `
                     <div class="brief-footer text-sm text-gray-500 dark:text-gray-400">
-                        <button type="button" onclick="window.markBriefCategoriesRead(this)" class="brief-mark-all-btn inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm" title="Mark all articles read in covered category folders">
+                        <button type="button" onclick="window.markBriefCategoriesRead(this)" class="brief-mark-all-btn pill-btn pill-primary inline-flex" title="Mark all articles read in covered category folders">
                             <svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg>
                             <span>Mark All Read in Folders</span>
                         </button>
@@ -12519,12 +12530,12 @@
             const m = document.getElementById('feeds-overflow-menu');
             const trigger = document.getElementById('feeds-overflow-trigger');
             const willOpen = m.classList.contains('hidden');
+            m.classList.toggle('hidden');
             if (willOpen && trigger) {
                 const r = trigger.getBoundingClientRect();
                 m.style.top = `${r.bottom + 4}px`;
-                m.style.left = `${Math.max(8, r.right - 176)}px`; // 176 = w-44
+                m.style.left = `${Math.max(8, r.right - m.offsetWidth)}px`;   // its right edge under the trigger's
             }
-            m.classList.toggle('hidden');
             if (willOpen) {
                 setTimeout(() => document.addEventListener('click', closeFeedsOverflow, { once: true }), 0);
             }
@@ -13734,23 +13745,14 @@
             });
 
             container.querySelectorAll('.brief-mark-all-btn').forEach(btn => {
-                const isFooter = btn.closest('.brief-footer');
                 if (!anyUnread || forceAllRead) {
                     btn.disabled = true;
-                    if (isFooter) {
-                        btn.className = 'brief-mark-all-btn inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-default shadow-none';
-                    } else {
-                        btn.className = 'brief-mark-all-btn inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-gray-800/60 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700/60 cursor-default shadow-none';
-                    }
+                    btn.className = 'brief-mark-all-btn pill-btn inline-flex';
                     btn.title = 'All covered category folders are read';
                     btn.innerHTML = '<svg class="w-3.5 h-3.5 text-green-500"><use href="#icon-check"/></svg> <span>All Folders Read</span>';
                 } else {
                     btn.disabled = false;
-                    if (isFooter) {
-                        btn.className = 'brief-mark-all-btn inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm cursor-pointer';
-                    } else {
-                        btn.className = 'brief-mark-all-btn inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 transition-all shadow-sm cursor-pointer';
-                    }
+                    btn.className = 'brief-mark-all-btn pill-btn pill-primary inline-flex';
                     btn.title = 'Mark all articles read in covered category folders';
                     btn.innerHTML = '<svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg> <span>Mark All Read in Folders</span>';
                 }
@@ -14598,7 +14600,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 355;
+        window.APP_BUILD = 356;
 
         (async function initApp() {
             try {
@@ -15459,7 +15461,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v355';
+const CACHE_NAME = 'rss-reader-v356';
 const APP_SHELL = [
     '/',
     'index.html'
