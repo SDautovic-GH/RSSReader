@@ -1676,16 +1676,17 @@
             display: block !important;
         }
 
+        /* The search palette (desktop) on the app's own surface, the reader's colour, as the phone's sheet
+           and Settings are (on request: the grey glass didn't match the reader); the phone's sheet sets its
+           own shape below. */
         #mobile-search-sheet .search-inner {
             pointer-events: auto;
             max-width: 520px;
             margin: 0 auto;
             border-radius: 22px;
-            background: rgba(28, 28, 30, 0.92);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--surface-sheet);
+            border: 1px solid var(--divider);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(40px) saturate(1.8);
-            -webkit-backdrop-filter: blur(40px) saturate(1.8);
             overflow: hidden;
         }
 
@@ -1875,8 +1876,6 @@
                 border-radius: 16px 16px 0 0;
                 background: var(--surface-sheet);
                 box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
-                backdrop-filter: none;
-                -webkit-backdrop-filter: none;
                 animation: sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1);
             }
 
@@ -1960,11 +1959,9 @@
             color: var(--text-3);
         }
 
-        /* The desktop palette in the light theme: the menus' light glass, and its filter menus light. */
+        /* The desktop palette in the light theme: a lighter shadow, and its filter menus light. */
         @media (min-width: 901px) {
             html:not(.dark) #mobile-search-sheet .search-inner {
-                background: rgba(246, 246, 248, 0.92);
-                border-color: rgba(0, 0, 0, 0.08);
                 box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
             }
 
@@ -2551,9 +2548,20 @@
            Today renders in #article-body). Settings > Today > Show images. */
         .brief-thumb,
         .brief-hero {
+            position: relative;
             overflow: hidden;
             background: rgba(127, 127, 127, 0.12);
             cursor: pointer;
+        }
+
+        /* smoothPicture's copy of a picture far larger than its box, over it; a click goes to the box. */
+        .brief-thumb > canvas.pic-smooth,
+        .brief-hero > canvas.pic-smooth {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
 
         .brief-thumb {
@@ -7632,7 +7640,7 @@
                         const med = item.querySelector('media\\:thumbnail, media\\:content');
                         if (med) return med.getAttribute('url');
                         const imgMatch = rawBody.match(/<img[^>]+src=["']([^"']+)["']/i);
-                        return imgMatch ? imgMatch[1] : null;
+                        return imgMatch ? decodeEntities(imgMatch[1]) : null;   // &#038; would cut the query
                     })();
                     const art = {
                         id: _existingIds.get(link) || crypto.randomUUID(),
@@ -8148,8 +8156,8 @@
             const isSaved = window.savedBucket ? window.savedBucket.has(a.link) : false;
             // A picture beside the headline and summary, as on Today's cards: never an avatar, and a failed
             // or tiny one leaves no box. Show images off and Compact Wire hide it.
-            const img = a.image && !/avatar/i.test(a.image) ? a.image : '';
-            const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove()" onerror="this.parentNode.remove()"></div>` : '';
+            const img = a.image && !/avatar/i.test(a.image) ? window.pictureUrl(a.image, 400) : '';
+            const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove(); else window.smoothPicture(this)" onerror="this.parentNode.remove()"></div>` : '';
             // The desktop's row: a Today card's and the reader's buttons. Read and Read Later are the
             // right-click menu's own actions, which redraw the list.
             const deskBtn = (on, onclick, label, icon, extra = '') =>
@@ -11727,6 +11735,73 @@
             return alt ? alt.image : '';
         }
 
+        // A picture at about the size it is shown, from the image servers that make copies: Brightspot's dims3
+        // (NPR) and WordPress's (The Verge: w=). Feeds link their originals, up to 8,080px and 19MB; Today's 19
+        // pictures cost 57.7MB as sent and 5.8MB as 1200px copies. Smaller originals and other servers stay
+        // as they are (smoothPicture draws those). The feed's escaped ampersands are decoded first: "&#038;"
+        // made the rest of the query a fragment.
+        window.pictureUrl = function (url, w) {
+            if (!url) return url;
+            url = url.replace(/&#0*38;|&amp;/gi, '&');
+            const dims = url.match(/\/dims3\/.*?\/resize\/(\d+)x\d+!\//);
+            if (dims) return +dims[1] > w ? url.replace(/\/resize\/\d+x\d+!\//, `/resize/${w}/quality/85/format/webp/`) : url;
+            if (/\/wp-content\/uploads\//.test(url)) {
+                const m = url.match(/[?&]w=(\d+)/);
+                if (m) return +m[1] > w ? url.replace(/([?&])w=\d+/, `$1w=${w}`) : url;
+                return url + (url.includes('?') ? '&' : '?') + 'w=' + w;
+            }
+            return url;
+        };
+
+        // Edge drawing with the GPU shrinks a picture many times its box without smoothing: jagged edges,
+        // speckled flats (a 6000px photo in Today's box scored 28 dB against a proper resize; this, 34). So a
+        // picture more than twice its box, in device pixels, is drawn into a canvas over it with high-quality
+        // smoothing, cropped as object-fit: cover. Within twice the browser's own drawing is clean, and the
+        // canvas goes. A hidden box (no size) keeps what it has.
+        window.smoothPicture = function (img) {
+            const box = img.parentElement;
+            const dpr = window.devicePixelRatio || 1;
+            const bw = Math.round((box?.clientWidth || 0) * dpr), bh = Math.round((box?.clientHeight || 0) * dpr);
+            if (!bw || !bh || !img.naturalWidth || !img.naturalHeight) return;
+            const s = Math.max(bw / img.naturalWidth, bh / img.naturalHeight);
+            const had = box.querySelector(':scope > canvas.pic-smooth');
+            if (s >= 0.5) { had?.remove(); return; }
+            if (had && had.width === bw && had.height === bh && had.dataset.src === img.currentSrc) return;   // drawn already
+            img.decode().catch(() => { }).then(() => {   // decoded off the main thread first
+                if (!img.isConnected) return;
+                let cv = box.querySelector(':scope > canvas.pic-smooth');
+                if (!cv) {
+                    cv = document.createElement('canvas');
+                    cv.className = 'pic-smooth';
+                    cv.setAttribute('aria-hidden', 'true');
+                    box.append(cv);
+                }
+                cv.width = bw;
+                cv.height = bh;
+                cv.dataset.src = img.currentSrc;
+                const ctx = cv.getContext('2d');
+                ctx.imageSmoothingQuality = 'high';
+                const sw = bw / s, sh = bh / s;
+                ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, 0, 0, bw, bh);
+            });
+        };
+        // Again when a pane changes width (the desktop's dividers, a window resize) or the screen's scale does
+        // (a window moved to another monitor, browser zoom).
+        (function () {
+            let t = 0;
+            const all = () => {
+                clearTimeout(t);
+                t = setTimeout(() => document.querySelectorAll('.brief-hero > img, .brief-thumb > img').forEach(img => {
+                    if (img.complete && img.naturalWidth) window.smoothPicture(img);
+                }), 150);
+            };
+            const ro = new ResizeObserver(all);
+            ['today-column', 'article-list', 'reader-view'].forEach(id => { const el = document.getElementById(id); if (el) ro.observe(el); });
+            const watchScale = () => window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+                .addEventListener('change', () => { all(); watchScale(); }, { once: true });
+            watchScale();
+        })();
+
         // Image guardrails, from each image's onload / onerror: a failed or too-small picture leaves no
         // box; a hero too small for full width becomes a thumbnail. The verdict ('bad', 'thumb', 'ok') is
         // remembered, so a rebuilt Today draws each known picture in its final form at once.
@@ -11741,6 +11816,8 @@
                 box.classList.replace('brief-hero', 'brief-thumb');
                 // A thumbnail's place is after the source / time line.
                 box.parentElement?.querySelector(':scope > .brief-story-meta')?.after(box);
+                const img = box.querySelector('img');
+                if (img) window.smoothPicture(img);
             }
         }
         function briefImgChange(box, kind) {
@@ -11758,6 +11835,7 @@
             }
             window._briefImgVerdict.set(url, img.naturalWidth < 600 ? 'thumb' : 'ok');
             if (box && box.classList.contains('brief-hero') && img.naturalWidth < 600) briefImgChange(box, 'thumb');
+            window.smoothPicture(img);
         };
         window.briefImgFailed = function (img) {
             window._briefImgVerdict.set(img.getAttribute('src'), 'bad');
@@ -11807,8 +11885,9 @@
                     const covAttr = covIds.length ? ` data-cov="${esc(JSON.stringify(covIds))}"` : '';
                     // Picture: lazy (loads only near the screen); the box is reserved by CSS; tapping it opens the
                     // story like the headline does.
-                    const verdict = window._briefImgVerdict?.get(briefStoryImage(st));
-                    const imgUrl = verdict === 'bad' ? '' : briefStoryImage(st);   // known bad: no box (317)
+                    const picUrl = window.pictureUrl(briefStoryImage(st), 1200);
+                    const verdict = window._briefImgVerdict?.get(picUrl);
+                    const imgUrl = verdict === 'bad' ? '' : picUrl;   // known bad: no box (317)
                     // Large (16:9, above the source line) unless known to be under 600px wide.
                     const isHero = !!imgUrl && verdict !== 'thumb';
                     const mediaHtml = imgUrl
@@ -15061,7 +15140,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 362;
+        window.APP_BUILD = 363;
 
         (async function initApp() {
             try {
@@ -15922,7 +16001,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v362';
+const CACHE_NAME = 'rss-reader-v363';
 const APP_SHELL = [
     '/',
     'index.html'
