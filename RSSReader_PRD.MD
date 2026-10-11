@@ -1,6 +1,6 @@
 # RSS Reader — Product Requirements Document
 
-**Version:** October 2026 (build 350)  
+**Version:** October 2026 (build 351)  
 **Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
@@ -41,7 +41,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Requirement | Detail |
 |---|---|
 | Phone tab bar | A glass pill with **Today** and **Following**, plus a separate **Search** button. The Today tab carries the unread badge (99+ cap). The selected tab shows a filled glyph. |
-| Phone header | Today and Following share one header: the app logo, a title (Today: the date, e.g. "Thu, Oct 8"; Following: "Following") with an 11px status line under it ("Updated just now • 3 new"), and 40px icon buttons at the right (Today: Listen; Following: edit feeds, add feed, settings). Logos sit 12px under the iPhone's clock strip on both. |
+| Phone header | Today and Following share one header: the app logo, a title (Today: the date, "Saturday, October 10", or "Sat, Oct 10" where the long form doesn't fit the row; Following: "Following") with an 11px status line under it ("Updated just now • 3 new"), and 40px icon buttons at the right (Today: Listen; Following: edit feeds, add feed, settings). Logos sit 12px under the iPhone's clock strip on both. |
 | Phone reader | Opens over Today or a list. No top bar; the Today tab returns to Today at the story's place. Swipes move between stories. The tab bar slides away while a story scrolls down and returns on scroll up. |
 | Desktop layout | Three panes: sidebar (Following), a middle column (Today or a list, 440px by default, resizable, width synced) and the reader. Today stays in the middle column while a story is open beside it. |
 | Desktop full screen | Double-click the reader's top bar: the story alone. Arrow keys move between stories, Up/Down scroll, Esc leaves. |
@@ -74,7 +74,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 |---|---|
 | Smart lists | **Unread** (with "N older than today"), **Read Later**, **Saved**, **History** (read stories within the History window). The desktop sidebar also has **Today**. |
 | Folders | Collapsible folders of feeds with unread counts. Folders with nothing unread are hidden unless "Show empty folders" is on. |
-| Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. |
+| Feed manager | The pencil (Edit) opens Settings › Feeds. Feeds are grouped by folder; each folder has an In Today switch and Rename. Each feed has a status line in full, on two lines where needed ("Checked 5m ago · newest story 2h ago", "Not loading since …", "Not checked yet"), Edit (name, URL, folder), Remove (with confirmation) and, for a feed that isn't loading, Retry. Add feed, and OPML import and export. |
 | Right-click (desktop) | Feed: Refresh Feed, Mark All Read. Folder: Mark All Read, Collapse Folder, Collapse All Folders, Rename. |
 
 ### 3.4 Article list (Unread, folders, feeds, Read Later, Saved, History)
@@ -106,7 +106,7 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Desktop: list cards, Today cards, reader | One row everywhere: **Read · Read Later · Save · Open original · Share**. Icon buttons with tooltips, 32px with 18px icons, 4px apart, the first icon on the text edge, grey off and blue on. |
 | Phone: Today cards | No row. The "…" on the source line, or a long-press on the card, opens a menu: **Mark as Read · Read Later · Save · Share… · Open Original** (labels follow the story's state). It is the lists' context menu; its items press the card's hidden buttons. Tapping the card opens the story. A touch or click outside any context menu only closes it (as on iOS); the tap does nothing else. |
 | Desktop: Today column | The row above, shown on hover, keyboard focus or the open story; its space stays reserved, so nothing moves. |
-| Phone: reader | **Save · Listen · Share** and a "…" for **Mark as Read / Unread · Read Later · Open Original** (the same menu as Today's, pressing the row's hidden buttons) |
+| Phone: reader | **Read Later · Save · Listen** and a "…" for **Mark as Read / Unread · Share… · Open Original** (the same menu as Today's, pressing the row's hidden buttons) |
 | Phone: list cards | No row. The "…" or a long-press (500ms) opens the list's menu: Mark Above Read, Read Later, Save, Mark Read / Unread, Mark Below Read, Share…, Open Original. Swipes handle read and Read Later; a tap opens the story. |
 
 ### 3.7 Search
@@ -114,6 +114,8 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Requirement | Detail |
 |---|---|
 | Search sheet | Opened from the Search button or `/`. Searches stories as you type. Shortcuts to Unread, Read Later and Saved. |
+| Phone | A sheet over the tab bar, the full height under the status bar: a grabber, the field and Done at the top (clear of the keyboard), the results down to the bottom. Done, a pull down (from the top, or from the results at their top) or a tap above it closes it; it slides down as it goes. Light and dark. |
+| Desktop | A palette under the search control, unchanged. |
 | Filters (desktop) | Scope (All folders or one folder) and read state (All, Unread, Read). |
 | Results | A compact card: the source line (bold source · date) above a medium-weight headline. |
 
@@ -122,12 +124,14 @@ A fast, private, single-file RSS reader that works as a Progressive Web App on p
 | Requirement | Detail |
 |---|---|
 | Listen | Reads a story, or Today, aloud with the browser's speech synthesis. |
-| Player | Floats above the tab bar while listening: "Listening" / "Paused", Pause or Resume, Stop. Keeps the screen awake while playing. |
+| Player | Floats above the tab bar while listening, in the tab bar's glass (light or dark): "Listening" / "Paused", Pause or Resume, Stop. Keeps the screen awake while playing. |
 | Buttons | Today: the header's headphones button (phone), the details line (desktop). Story: the reader row (phone), the top bar (desktop). The icon becomes Stop while playing. |
 
 ### 3.9 Settings
 
 Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil). The gear's panel has a second page, **Text Size & Zoom**, opened from its last row and left with ‹ in the header. Each setting's description is one short line under its name (12.5px); menus sit on their setting's own line.
+
+On the phone both are an iOS sheet: it rises from the bottom to just under the status bar, over the tab bar, with round top corners, a grabber and the ✕ in a grey circle. The ✕, a pull down (from the header, or from the content at its top; past 110px or a quick flick, else it springs back) or a tap above it closes it, sliding down. Sliders and fields keep their own touches. On the desktop it is a centred card. In dark both are the app's own background (black on the phone, #0d1117 on the desktop), the groups in Following's card fill.
 
 | Section | Settings |
 |---|---|
@@ -143,8 +147,9 @@ Settings has two panels: **Settings** (the gear) and **Feeds** (the pencil). The
 | Section | Settings |
 |---|---|
 | (top) | App Zoom (per device) |
+| Today | Section Heading Size (Top Stories and each folder; default 1.4, per device) |
 | Following | Folder Size (also the sidebar's feed names), Row Spacing |
-| Article List | Title Size (lists, Today's stories a little smaller, and Today's section headings at 1.25×), Preview Text Size (default 0.9), Line Height, Source Name Size (lists, Today, the reader's source line; default 0.8), Preview Lines, Social Preview Lines (Bluesky/Mastodon) |
+| Article List | Title Size (lists, and Today's stories a little smaller), Preview Text Size (default 0.9), Line Height, Source Name Size (lists, Today, the reader's source line; default 0.8), Preview Lines, Social Preview Lines (Bluesky/Mastodon) |
 | Article Reader | Title Size (stories, and Today's heading on a computer; default 1.5), Body Text Size, Line Height, Author & Date Size |
 | Reset text sizes to defaults | Puts every size and spacing back to its default. Theme, font, sort order, auto-refresh, de-duplicate, history window and app zoom are kept. |
 
@@ -189,7 +194,7 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 | Requirement | Detail |
 |---|---|
 | Toasts | Short messages for actions and errors (red for failures), queued, above everything. |
-| Undo bar | "Marked N read · Undo" floats over the page above the tab bar for 5 seconds. It takes no room, so nothing moves when it goes. |
+| Undo bar | "Marked N read · Undo" floats over the page above the tab bar for 5 seconds, in the tab bar's glass (light or dark). It takes no room, so nothing moves when it goes. |
 
 ---
 
@@ -227,7 +232,7 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 | Layer | Technology |
 |---|---|
 | Markup | HTML5, one file (`index.html`) |
-| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet`, `--divider`. |
+| Styling | Tailwind CSS v4, compiled and inline (no CDN, so only classes already used exist), plus hand-written CSS. Colour tokens in `:root` / `.dark`: `--text-1` headlines, `--text-2` summaries, `--text-3` sources, times, counts and labels, `--surface-sheet` (sheets: the app's own background), `--divider`. |
 | Scripting | Vanilla JavaScript, no framework |
 | Sanitising | DOMPurify 3.1.6 (cdnjs) |
 | Auth and cloud | Firebase 11.6.1 (Auth, Firestore), ES module imports |

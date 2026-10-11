@@ -1,6 +1,6 @@
 # RSS Reader — Functionality Summary
 
-**As of October 2026 (build 350).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 351).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
@@ -19,7 +19,7 @@
 The bottom bar has **Today** and **Following**, plus a separate **Search** button. The Today tab shows how many stories are unread.
 
 Both screens have the same header: the app logo, a title with a small status line under it, and buttons on the right.
-- **Today:** "Thu, Oct 8" and "Updated just now • 3 new", with the **headphones** button to listen.
+- **Today:** "Saturday, October 10" (or "Sat, Oct 10" when the full date doesn't fit, for instance with a wide font) and "Updated just now • 3 new", with the **headphones** button to listen.
 - **Following:** "Following" and its status, with **Edit feeds** (pencil), **Add feed** (+) and **Settings** (gear).
 
 Opening a story covers the screen. Tap **Today** in the tab bar to go back to the same place, even while the story is still scrolling. Swipe to move between stories. While you scroll down a story, the tab bar slides away; scroll up a little and it comes back.
@@ -90,7 +90,7 @@ The headphones button reads the stories showing in Today aloud. The player above
 
 ### The feed manager (the pencil)
 - Feeds are grouped by folder. Each folder has **In Today** and **Rename**.
-- Each feed shows when it was last checked and how new its newest story is, or that it isn't loading.
+- Each feed shows when it was last checked and how new its newest story is, or that it isn't loading, in full.
 - **Edit** changes a feed's name, address or folder. **Remove** deletes it (you confirm first). **Retry** tries a feed that isn't loading.
 - **Add feed:** paste an RSS/Atom address, a Bluesky profile, a Mastodon RSS address or a YouTube playlist feed.
 - **OPML:** import or export your whole list.
@@ -125,7 +125,7 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 - **Desktop:** list cards, Today cards and the reader all have the same row: **Read · Read Later · Save · Open original · Share**. Hover for each button's name. A button turns blue when it's on: unread, in Read Later, or saved.
 - **Phone, Today cards:** tap **…** at the end of the source line, or press and hold the story, for **Mark as Read, Read Later, Save, Share and Open Original**. Tap anywhere outside the menu to close it; that tap does nothing else.
 - **Desktop, Today:** the row of buttons appears when you point at a story.
-- **Phone, reader:** Save, Listen and Share, and **…** for Mark as Read or Unread, Read Later and Open Original.
+- **Phone, reader:** Read Later, Save and Listen, and **…** for Mark as Read or Unread, Share and Open Original.
 - **Phone, list cards:** tap **…** on the source line, or press and hold, for Read Later, Save, Mark Read, Share, Open Original and more. Swipes handle read and Read Later.
 - **Desktop, lists:** the row of buttons appears when you point at a story.
 
@@ -133,11 +133,13 @@ Unread, folders, feeds, Read Later, Saved and History all show stories as a list
 
 ## Search
 
-Tap **Search** (or press `/` on the desktop) and type. Results appear as you type, each with its source and date above the headline. Buttons jump to Unread, Read Later or Saved. On the desktop you can also limit the search to one folder, and to unread or read stories.
+Tap **Search** (or press `/` on the desktop) and type. Results appear as you type, each with its source and date above the headline. Buttons jump to Unread, Read Later or Saved. On the phone Search fills the screen as a sheet: tap **Done**, pull it down, or tap just above it to close it. On the desktop you can also limit the search to one folder, and to unread or read stories.
 
 ---
 
 ## Settings Reference (the gear)
+
+On the phone, Settings and the feed manager slide up as a sheet. Tap **✕**, pull it down, or tap just above it to close it.
 
 | Section | Setting | What it does |
 |---|---|---|
@@ -162,9 +164,10 @@ Tap **Search** (or press `/` on the desktop) and type. Results appear as you typ
 | Section | Setting | What it does |
 |---|---|---|
 | | App Zoom | Makes everything bigger or smaller (each device keeps its own) |
+| Today | Section Heading Size | Today's section headings, Top Stories and each folder (1.4 unless you change it) |
 | Following | Folder Size | Size of the folder and feed names in Following |
 | | Row Spacing | Space between those rows |
-| Article List | Title Size | Headlines in lists, in Today a little smaller, and Today's section headings |
+| Article List | Title Size | Headlines in lists, and in Today a little smaller |
 | | Preview Text Size | Preview text in lists and summaries in Today (0.9 unless you change it) |
 | | Line Height | Line spacing of those headlines and previews |
 | | Source Name Size | Source names and times in lists, Today and above a story's headline (0.8 unless you change it) |
