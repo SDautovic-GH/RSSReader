@@ -19,8 +19,8 @@ catch {
 # -------------------------------------------
 # Configuration
 # -------------------------------------------
-$RepoPath = "C:\.ScriptLibrary\RSSReader"
-$OneDrivePath = "C:\Users\21968\OneDrive - WilmerHale\.ScriptLibrary\RSSReader"
+$RepoPath = "C:\.Developer\RSSReader"
+$OneDrivePath = "C:\Users\21968\OneDrive - WilmerHale\.Developer\RSSReader"
 $MainBranch = "main"
 $RemoteName = "origin"
 
