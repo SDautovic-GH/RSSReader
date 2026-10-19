@@ -5,8 +5,8 @@
 | Goal | Make the brief layout (grouped, deduplicated, ranked) the default way to read feeds |
 | Reference Style | Apple News (Today header, glass tab pill, separate search) + Google News (editorial sections, consensus clustering) |
 | Target File | `RSSReader/index.html` |
-| Current State | **Active — Build 364** deployed to production (Phase 5 complete, plus follow-ups; automatic briefs removed) |
-| Last Updated | 2026-10-10 |
+| Current State | **Active — Build 365** deployed to production at `today.dautovic.com` (Cloudflare Workers Builds CI; Rebranding to Today, pill styling refinements, automated webhooks) |
+| Last Updated | 2026-10-18 |
 
 ---
 

@@ -1,7 +1,7 @@
-# RSS Reader — Product Requirements Document
+# Today (formerly RSS Reader) — Product Requirements Document
 
-**Version:** October 2026 (build 364)  
-**Status:** Live at sdautovic-gh.github.io/RSSReader; maintained and refined build by build  
+**Version:** October 2026 (build 365)  
+**Status:** Live at today.dautovic.com (mirrored at sdautovic-gh.github.io/RSSReader); maintained and refined build by build  
 **Change history and decisions:** `MajorRevisions/Modern-Tabs-Redesign.md` records every build from 264 (the Today redesign) onward, with the reasons and measurements.
 
 ---
@@ -242,7 +242,7 @@ Text sizes are saved per device (phone and desktop separately), except Folder Si
 | Sanitising | DOMPurify 3.1.6 (cdnjs) |
 | Auth and cloud | Firebase 11.6.1 (Auth, Firestore), ES module imports |
 | Offline | Articles, feeds and read state are in IndexedDB, so the app reads offline. An inline service worker is defined, but browsers reject its `blob:` URL, so it never registers and there is no asset cache. |
-| Deploy | `SyncGit-RSSReader.ps1` (`/sync-rssreader`) commits, bumps the cache version and build number, and pushes to GitHub Pages. |
+| Deploy | `SyncGit-macOS-RSSReader.ps1` (or `SyncGit-RSSReader.ps1`) commits, bumps cache version and build number, and pushes to GitHub `main`. Cloudflare Workers Builds automatically triggers, pulls the commit, and deploys `today.dautovic.com` via edge in ~20s (also mirrored to GitHub Pages). |
 
 ### Data flow
 ```

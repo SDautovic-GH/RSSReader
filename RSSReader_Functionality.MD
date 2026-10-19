@@ -1,12 +1,12 @@
-# RSS Reader — Functionality Summary
+# Today (formerly RSS Reader) — Functionality Summary
 
-**As of October 2026 (build 364).** A single-file Progressive Web App RSS reader for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
+**As of October 2026 (build 365).** A single-file Progressive Web App for phone and desktop, with cloud sync between devices. It opens on **Today**, a live brief of your unread stories from the last 24 hours, grouped by your own folders. Every change since build 264 is recorded in `MajorRevisions/Modern-Tabs-Redesign.md`.
 
 ---
 
 ## Getting Started
 
-1. Open the app (sdautovic-gh.github.io/RSSReader), or add it to your phone's home screen.
+1. Open the app (**[today.dautovic.com](https://today.dautovic.com)**, or mirrored at `sdautovic-gh.github.io/RSSReader`), or add it to your phone's home screen.
 2. Sign in with your email and password. The app needs an account: the sign-in window stays until you sign in, and from then on feeds and read marks follow you between devices.
 3. Add feeds: **Following** › the **pencil** (Edit feeds) › Add feed, or import an OPML file there.
 4. Read in **Today**.
