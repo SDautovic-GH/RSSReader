@@ -10521,13 +10521,74 @@
             return { url: input, title: '' };
         };
 
-        window.submitManualFeed = () => {
+        window.discoverFeedUrl = async function (rawInput) {
+            const resolved = resolveFeedShortcut(rawInput);
+            let targetUrl = resolved.url;
+            let detectedTitle = resolved.title;
+            if (!targetUrl) return { url: '', title: '' };
+
+            // If it already looks like a direct feed or social endpoint, return it immediately
+            if (/\.(rss|atom|xml|json)(\?|$)/i.test(targetUrl) ||
+                /\/feed(\/|\?|$)/i.test(targetUrl) ||
+                /\/rss(\/|\?|$)/i.test(targetUrl) ||
+                isBlueskyFeed(targetUrl)) {
+                return { url: targetUrl, title: detectedTitle };
+            }
+
+            try {
+                // Fetch the webpage HTML via proxy
+                const { text: htmlText } = await fetchWithProxyFallback(targetUrl);
+                if (htmlText) {
+                    // Check if the URL returned was already an XML feed (some sites serve RSS at root or redirect)
+                    if (/^\s*<\?xml/i.test(htmlText) || /^\s*<(rss|feed)/i.test(htmlText)) {
+                        return { url: targetUrl, title: detectedTitle };
+                    }
+
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(htmlText, 'text/html');
+
+                    // Check for standard RSS/Atom autodiscovery <link> tags in <head>
+                    const linkEl = doc.querySelector('link[type="application/rss+xml"], link[type="application/atom+xml"], link[type="application/json"], link[type="application/feed+json"]');
+                    if (linkEl && linkEl.getAttribute('href')) {
+                        const href = linkEl.getAttribute('href').trim();
+                        const feedUrl = new URL(href, targetUrl).href;
+                        const pageTitle = linkEl.getAttribute('title') || doc.querySelector('title')?.textContent?.trim() || detectedTitle;
+                        return { url: feedUrl, title: pageTitle.replace(/\s*[-–|•].*$/, '') };
+                    }
+
+                    // Extract page title if available for fallback
+                    if (!detectedTitle) {
+                        const t = doc.querySelector('title')?.textContent?.trim();
+                        if (t) detectedTitle = t.replace(/\s*[-–|•].*$/, '');
+                    }
+                }
+
+                // If no link tag found, test standard candidate paths (/feed, /feed/, /rss.xml)
+                const origin = new URL(targetUrl).origin;
+                for (const path of ['/feed', '/rss.xml', '/feed.xml']) {
+                    const testUrl = origin + path;
+                    const { text: candidateText } = await fetchWithProxyFallback(testUrl);
+                    if (candidateText && (/^\s*<\?xml/i.test(candidateText) || /^\s*<(rss|feed)/i.test(candidateText))) {
+                        return { url: testUrl, title: detectedTitle };
+                    }
+                }
+            } catch (e) {
+                console.warn('Feed autodiscovery failed:', e.message);
+            }
+
+            return { url: targetUrl, title: detectedTitle };
+        };
+
+        window.submitManualFeed = async () => {
             const rawTitle = document.getElementById('manual-feed-title').value.trim();
             const rawUrl = document.getElementById('manual-feed-url').value.trim();
             if (!rawUrl) return;
-            const res = resolveFeedShortcut(rawUrl);
+
+            // Automatically discover RSS/Atom feed from website URLs
+            const res = await window.discoverFeedUrl(rawUrl);
             const u = res.url || rawUrl;
             const t = rawTitle || res.title || u;
+
             const sel = document.getElementById('manual-feed-category');
             let cat = sel.value === '__new__'
                 ? (document.getElementById('manual-feed-newcat').value.trim() || 'Uncategorized')
@@ -10537,9 +10598,6 @@
             window.feeds.push(f);
             renderFeeds();
             closeAddFeedModal();
-            // New feed: backfill only the latest 10 — a fresh feed shouldn't dump a
-            // month of already-old items into Unread (subsequent refreshes use the
-            // shared default depth and pick up new items normally).
             fetchRecentArticles(u, t, 10);
             saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds([f]);
@@ -13085,8 +13143,10 @@
             const titleInput = document.getElementById('manual-feed-title');
             if (urlInput && !urlInput._shortcutAttached) {
                 urlInput._shortcutAttached = true;
-                urlInput.addEventListener('blur', () => {
-                    const res = window.resolveFeedShortcut(urlInput.value);
+                urlInput.addEventListener('blur', async () => {
+                    const val = urlInput.value.trim();
+                    if (!val) return;
+                    const res = await window.discoverFeedUrl(val);
                     if (res.url && res.url !== urlInput.value) urlInput.value = res.url;
                     if (res.title && !titleInput.value.trim()) titleInput.value = res.title;
                 });
@@ -15323,7 +15383,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 367;
+        window.APP_BUILD = 368;
 
         (async function initApp() {
             try {
@@ -16186,7 +16246,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v367';
+const CACHE_NAME = 'rss-reader-v368';
 const APP_SHELL = [
     '/',
     'index.html'
