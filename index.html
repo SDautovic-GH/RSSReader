@@ -5419,7 +5419,7 @@
                 class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
                 <div class="flex items-center flex-1 min-w-0">
                     <div id="timeline-count-group" class="flex items-center">
-                        <button id="timeline-count" onclick="markAllRead()" title="Mark All Read"
+                        <button id="timeline-count" onclick="markAllRead()" oncontextmenu="showTimelineMarkReadMenu(event); return false;" title="Mark All Read (Right-click or hold for older options)"
                             class="pill-btn mr-2 tabular-nums">Mark Read · 0</button>
                         <span id="dedup-badge"
                             class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
@@ -6138,9 +6138,10 @@
                 <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-white">Add Manual Feed</h3>
                 <button type="button" onclick="closeAddFeedModal()" aria-label="Close" class="sheet-close phone-only"><svg aria-hidden="true"><use href="#icon-close" /></svg></button>
             </div>
-            <input type="text" id="manual-feed-title" placeholder="Feed Title"
+            <input type="text" id="manual-feed-title" placeholder="Feed Title (optional)"
                 class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-            <input type="url" id="manual-feed-url" placeholder="Feed URL"
+            <input type="text" inputmode="url" id="manual-feed-url" placeholder="Feed URL, @bsky, substack:author..."
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
                 class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
             <select id="manual-feed-category"
                 class="w-full mb-3 p-3 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
@@ -6219,6 +6220,8 @@
         class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-base">
         <button id="fc-mark-read" onclick="markFolderRead()"
             class="w-full text-left px-4 py-2">Mark All Read</button>
+        <button id="fc-mark-older-24h" onclick="markFolderRead({ olderThanDays: 1 })"
+            class="w-full text-left px-4 py-2 text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-100">Older than 24 hours</button>
         <button id="fc-toggle-collapse" onclick="toggleFolderCollapseFromContext()"
             class="w-full text-left px-4 py-2">Collapse Folder</button>
         <button id="fc-toggle-all" onclick="toggleAllCategoriesFromContext()"
@@ -6871,6 +6874,22 @@
         // { text, proxyIndex } (0 = primary), or { text: null, proxyIndex: -1 } if all failed. A
         // fallback marks the feed slow, and fetchAllStaggered moves slow feeds to the back.
         async function fetchWithProxyFallback(feedUrl) {
+            // Direct fetch for CORS-enabled feeds (e.g. self-hosted workers or dautovic.com)
+            // Prevents Cloudflare 1042 worker-to-worker loop error when a worker proxies another worker.
+            if (feedUrl.includes('.workers.dev') || feedUrl.includes('dautovic.com')) {
+                try {
+                    const res = await fetch(feedUrl, { signal: AbortSignal.timeout(6000) });
+                    if (res.ok) {
+                        const txt = await res.text();
+                        if (txt) {
+                            const trimmed = txt.trim().replace(/^\uFEFF/, '');
+                            if (trimmed.startsWith('<')) return { text: trimmed, proxyIndex: 0 };
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Direct fetch failed [${feedUrl}]:`, e.message);
+                }
+            }
             for (let i = 0; i < PROXIES.length; i++) {
                 const proxyFn = PROXIES[i];
                 try {
@@ -10433,10 +10452,82 @@
             reader.readAsText(file);
         };
 
+        window.resolveFeedShortcut = function (raw) {
+            if (!raw) return { url: '', title: '' };
+            let input = String(raw).trim();
+            if (!input) return { url: '', title: '' };
+
+            // 1. Bluesky: @handle.bsky.social, user.bsky.social, bsky:handle, or https://bsky.app/profile/user
+            const bskyAppMatch = input.match(/^https?:\/\/bsky\.app\/profile\/([^/?#]+)(?:\/rss)?/i);
+            const bskyPrefixMatch = input.match(/^bsky:(?:@)?([^/?#]+)/i);
+            const bskyHandleMatch = input.match(/^@?([a-zA-Z0-9_.-]+\.bsky\.social)$/i);
+            if (bskyAppMatch) {
+                const handle = bskyAppMatch[1];
+                return { url: `https://bsky.app/profile/${handle}/rss`, title: `@${handle}` };
+            } else if (bskyPrefixMatch) {
+                const handle = bskyPrefixMatch[1];
+                const fullHandle = handle.includes('.') ? handle : `${handle}.bsky.social`;
+                return { url: `https://bsky.app/profile/${fullHandle}/rss`, title: `@${fullHandle}` };
+            } else if (bskyHandleMatch) {
+                const handle = bskyHandleMatch[1];
+                return { url: `https://bsky.app/profile/${handle}/rss`, title: `@${handle}` };
+            }
+
+            // 2. Substack: substack:author, author.substack.com
+            const substackPrefixMatch = input.match(/^substack:(?:@)?([^/?#]+)/i);
+            const substackUrlMatch = input.match(/^(?:https?:\/\/)?([a-zA-Z0-9_-]+)\.substack\.com(?:\/feed)?(?:\/.*)?$/i);
+            if (substackPrefixMatch) {
+                const slug = substackPrefixMatch[1].toLowerCase();
+                const niceTitle = slug.charAt(0).toUpperCase() + slug.slice(1);
+                return { url: `https://${slug}.substack.com/feed`, title: `${niceTitle} (Substack)` };
+            } else if (substackUrlMatch) {
+                const slug = substackUrlMatch[1].toLowerCase();
+                const niceTitle = slug.charAt(0).toUpperCase() + slug.slice(1);
+                return { url: `https://${slug}.substack.com/feed`, title: `${niceTitle}` };
+            }
+
+            // 3. Medium: medium:@writer, medium:writer, https://medium.com/@writer
+            const mediumPrefixMatch = input.match(/^medium:(?:@)?([^/?#]+)/i);
+            const mediumUrlMatch = input.match(/^(?:https?:\/\/)?(?:www\.)?medium\.com\/(?:feed\/)?@([^/?#]+)/i);
+            if (mediumPrefixMatch) {
+                const writer = mediumPrefixMatch[1];
+                return { url: `https://medium.com/feed/@${writer}`, title: `@${writer} on Medium` };
+            } else if (mediumUrlMatch) {
+                const writer = mediumUrlMatch[1];
+                return { url: `https://medium.com/feed/@${writer}`, title: `@${writer} on Medium` };
+            }
+
+            // 4. YouTube: channel ID, playlist, or prefix
+            const ytPrefixMatch = input.match(/^youtube:([^/?#]+)/i);
+            if (ytPrefixMatch) {
+                const val = ytPrefixMatch[1];
+                if (val.startsWith('UC')) return { url: `https://www.youtube.com/feeds/videos.xml?channel_id=${val}`, title: 'YouTube Channel' };
+                if (val.startsWith('PL')) return { url: `https://www.youtube.com/feeds/videos.xml?playlist_id=${val}`, title: 'YouTube Playlist' };
+            }
+            const ytChannelMatch = input.match(/^(?:https?:\/\/)?(?:www\.)?youtube\.com\/channel\/(UC[a-zA-Z0-9_-]+)/i);
+            if (ytChannelMatch) {
+                return { url: `https://www.youtube.com/feeds/videos.xml?channel_id=${ytChannelMatch[1]}`, title: 'YouTube Channel' };
+            }
+            const ytPlaylistMatch = input.match(/^(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([a-zA-Z0-9_-]+)/i);
+            if (ytPlaylistMatch) {
+                return { url: `https://www.youtube.com/feeds/videos.xml?playlist_id=${ytPlaylistMatch[1]}`, title: 'YouTube Playlist' };
+            }
+
+            // 5. Bare domain without protocol (e.g. daringfireball.net/feeds/sponsors)
+            if (!/^https?:\/\//i.test(input) && /^[\w-]+(\.[\w-]+)+[/#?]?.*$/i.test(input)) {
+                input = 'https://' + input;
+            }
+
+            return { url: input, title: '' };
+        };
+
         window.submitManualFeed = () => {
-            const t = document.getElementById('manual-feed-title').value.trim();
-            const u = document.getElementById('manual-feed-url').value.trim();
-            if (!t || !u) return;
+            const rawTitle = document.getElementById('manual-feed-title').value.trim();
+            const rawUrl = document.getElementById('manual-feed-url').value.trim();
+            if (!rawUrl) return;
+            const res = resolveFeedShortcut(rawUrl);
+            const u = res.url || rawUrl;
+            const t = rawTitle || res.title || u;
             const sel = document.getElementById('manual-feed-category');
             let cat = sel.value === '__new__'
                 ? (document.getElementById('manual-feed-newcat').value.trim() || 'Uncategorized')
@@ -12990,6 +13081,16 @@
                 document.getElementById('manual-feed-newcat-wrap').classList.toggle('hidden', sel.value !== '__new__');
             };
             const modal = document.getElementById('add-feed-modal');
+            const urlInput = document.getElementById('manual-feed-url');
+            const titleInput = document.getElementById('manual-feed-title');
+            if (urlInput && !urlInput._shortcutAttached) {
+                urlInput._shortcutAttached = true;
+                urlInput.addEventListener('blur', () => {
+                    const res = window.resolveFeedShortcut(urlInput.value);
+                    if (res.url && res.url !== urlInput.value) urlInput.value = res.url;
+                    if (res.title && !titleInput.value.trim()) titleInput.value = res.title;
+                });
+            }
             window.reopenSheet(modal);
             modal.classList.remove('hidden');
         };
@@ -13577,16 +13678,24 @@
                 const srcFeed = window.feeds.find(f => f.name === window.currentSourceFilter);
                 toMark = window.articles.filter(a => a.unread && (a.source === window.currentSourceFilter || (srcFeed && a.feedUrl && a.feedUrl === srcFeed.url)));
             } else {
-                toMark = window.currentTimeline || window.articles;
+                toMark = (window.currentTimeline || window.articles).filter(a => a.unread);
             }
+
+            if (opts.olderThanDays) {
+                const cutoff = Date.now() - (opts.olderThanDays * 86400000);
+                toMark = toMark.filter(a => (a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0)) <= cutoff);
+            }
+
             toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a); });
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
-            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter);
+            const isSmartFeedWithFetch = (window.currentSmartFeed === 'all' && !window.currentCategoryFilter && !window.currentSourceFilter && !opts.olderThanDays);
             const inFolderOrSource = !!(window.currentCategoryFilter || window.currentSourceFilter);
             const remainingUnread = window.articles.filter(a => a.unread).length;
-            if (isMobile()) {
+            if (opts.olderThanDays) {
+                if (!opts.suppressToast) window.showToast(opts.olderThanDays === 1 ? 'Marked items older than 24h read' : `Marked items older than ${opts.olderThanDays}d read`);
+            } else if (isMobile()) {
                 setMobilePane('sidebar');
                 if (inFolderOrSource && remainingUnread > 0) {
                     // Suppress acknowledgment toast — unread items still remain in other folders.
@@ -13600,6 +13709,26 @@
             } else if (remainingUnread === 0) {
                 if (!opts.suppressToast) window.showToast('Marked all read');
             }
+        };
+
+        window.showTimelineMarkReadMenu = (e) => {
+            if (e && e.preventDefault) e.preventDefault();
+            const btnClass = "w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700/50";
+            const divider = `<div class="my-1 border-t border-gray-200 dark:border-gray-700"></div>`;
+            let items = `
+                <button onclick="hideContextMenu(); markAllRead()" class="${btnClass} font-semibold">Mark All Read</button>
+                ${divider}
+                <button onclick="hideContextMenu(); markAllRead({ olderThanDays: 1 })" class="${btnClass}">Older than 24 hours</button>
+            `;
+            const menu = document.getElementById('article-context-menu');
+            menu.innerHTML = items;
+            menu.classList.remove('hidden');
+            const target = document.getElementById('timeline-count');
+            const rect = target ? target.getBoundingClientRect() : null;
+            const x = rect ? Math.min(rect.left, window.innerWidth - 200) : (e?.clientX || 100);
+            const y = rect ? (rect.bottom + 4) : (e?.clientY || 100);
+            menu.style.top = `${y}px`;
+            menu.style.left = `${x}px`;
         };
 
         window.toggleUnreadManual = () => {
@@ -13633,6 +13762,7 @@
             items += divider;
             items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
+            items += `<button onclick="hideContextMenu(); markAllRead({ olderThanDays: 1 })" class="${btnClass}">Mark Older Than 24h Read</button>`;
             items += divider;
             items += `<button onclick="hideContextMenu(); window.briefStoryAct('share', '${sid}')" class="${btnClass}">Share…</button>`;
             if (article?.link) items += `<button onclick="hideContextMenu(); window.openArticleLink('${sid}')" class="${btnClass}">Open Original</button>`;
@@ -14090,6 +14220,7 @@
                 if (el) el.classList.toggle('hidden', !on);
             };
             show('fc-mark-read', isCategory || isAllUnread);
+            show('fc-mark-older-24h', isCategory || isAllUnread);
             show('fc-rename', isCategory);
             show('fc-delete', isCategory);
             show('fc-toggle-collapse', isCategory);
@@ -14113,19 +14244,31 @@
             menu.style.left = `${e.pageX}px`;
         };
 
-        window.markFolderRead = () => {
+        window.markFolderRead = (opts = {}) => {
             const type = window.folderContextType;
             const key = window.folderContextKey;
+            const cutoff = opts.olderThanDays ? (Date.now() - opts.olderThanDays * 86400000) : 0;
+            const matchesAge = (a) => !cutoff || ((a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0)) <= cutoff);
+
             if (type === 'smart') {
                 if (key === 'all') {
-                    window.articles.forEach(a => { if (a.unread) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a); } });
+                    window.articles.forEach(a => { if (a.unread && matchesAge(a)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a); } });
                 }
             } else if (type === 'category') {
-                const sources = new Set(window.feeds.filter(f => f.category === key).map(f => f.name));
-                window.articles.forEach(a => { if (sources.has(a.source)) { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a); } });
+                const catFeeds = window.feeds.filter(f => f.category === key);
+                const sources = new Set(catFeeds.map(f => f.name));
+                const catUrls = new Set(catFeeds.map(f => f.url));
+                window.articles.forEach(a => {
+                    if (a.unread && (sources.has(a.source) || (a.feedUrl && catUrls.has(a.feedUrl))) && matchesAge(a)) {
+                        a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a);
+                    }
+                });
             }
             saveReadState(); refreshUI();
             document.getElementById('folder-context-menu').classList.add('hidden');
+            if (opts.olderThanDays) {
+                window.showToast(opts.olderThanDays === 1 ? 'Marked items older than 24h read' : `Marked items older than ${opts.olderThanDays}d read`);
+            }
         };
 
         // --- BRIEF MARK-READ UTILITIES ---
@@ -15180,7 +15323,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 366;
+        window.APP_BUILD = 367;
 
         (async function initApp() {
             try {
@@ -16043,7 +16186,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v366';
+const CACHE_NAME = 'rss-reader-v367';
 const APP_SHELL = [
     '/',
     'index.html'
