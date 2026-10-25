@@ -9231,6 +9231,8 @@
             if (article._fullBodyLoaded) return;
 
             if (isMastodonPost(article.link)) return;   // JS-only shell, feed already complete
+            if (article.feedUrl && article.feedUrl.includes('newsletter')) return; // Newsletters are complete by design
+            if (article.link && (article.link.includes('newsletter-bridge') || article.link.includes('workers.dev/item/'))) return;
             try {
                 const domain = new URL(article.link).hostname.replace('www.', '');
                 if (JS_RENDERED_DOMAINS.has(domain)) {
@@ -9461,10 +9463,12 @@
             if (!isBlueskyFeed(article.feedUrl) && !isMastodonPost(article.link)) {
                 const bodyEl = document.getElementById('article-body');
                 if (bodyEl && window.currentArticle?.id === article.id) {
+                    if (bodyEl.querySelector('.truncation-stub')) return;
                     const words = bodyEl.textContent.trim().split(/\s+/).filter(Boolean).length;
                     const hasMedia = !!bodyEl.querySelector('audio, video');
                     if (words < 50 && !hasMedia && article.link && article.link !== '#') {
                         const stubEl = document.createElement('p');
+                        stubEl.className = 'truncation-stub';
                         stubEl.style.cssText = 'margin-top:1.2em;color:#9198a1;font-style:italic;font-size:0.9em;';
                         stubEl.innerHTML = (words === 0 ? 'Full content is not available in the RSS feed.' : 'Content may be truncated in the RSS feed.')
                             + ` <a href="${DOMPurify.sanitize(article.link)}" target="_blank" rel="noopener noreferrer" style="color:#4493f8;text-decoration:underline;">Read full article →</a>`;
@@ -15383,7 +15387,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 368;
+        window.APP_BUILD = 369;
 
         (async function initApp() {
             try {
@@ -16246,7 +16250,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v368';
+const CACHE_NAME = 'rss-reader-v369';
 const APP_SHELL = [
     '/',
     'index.html'

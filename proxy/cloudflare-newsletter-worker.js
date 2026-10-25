@@ -1,19 +1,26 @@
 /**
  * Cloudflare Email Routing Worker: Newsletter-to-RSS Bridge
  * 
- * Production-grade MIME parser, Quoted-Printable & Base64 decoder,
- * and clean RSS 2.0 generator for Today.
+ * Production-grade MIME parser, RFC 2047 header decoder,
+ * Quoted-Printable & Base64 decoders, HTML cleaner, and clean RSS 2.0 generator.
  */
 
 export default {
   // 1. Inbound email handler (triggered by Cloudflare Email Routing)
   async email(message, env, ctx) {
     try {
-      const rawFrom = message.from || message.headers.get('from') || 'Unknown Sender';
+      const rawFromHeader = message.from || message.headers.get('from') || 'Unknown Sender';
+      const rawFrom = decodeMimeHeader(rawFromHeader);
       const to = message.to || '';
-      const subject = message.headers.get('subject') || 'Untitled Issue';
+      const subject = decodeMimeHeader(message.headers.get('subject') || 'Untitled Issue');
       const dateHeader = message.headers.get('date');
       const timestamp = dateHeader ? new Date(dateHeader).getTime() : Date.now();
+
+      // Automatically filter out unsubscribe receipts so they never clutter the reading feed
+      if (/you['’]re unsubscribed|successfully unsubscribed|unsubscribe confirmation/i.test(subject)) {
+        console.log('Filtered out unsubscribe notification email:', subject);
+        return;
+      }
 
       // Read raw MIME payload
       const rawText = await new Response(message.raw).text();
@@ -26,7 +33,7 @@ export default {
       if (parsed.html) {
         finalHtml = cleanEmailHtml(parsed.html);
       } else if (parsed.text) {
-        // Format plain text with paragraphs and clickable links
+        // Format plain text with paragraphs and line breaks
         finalHtml = parsed.text
           .split(/\r?\n\r?\n/)
           .map(para => `<p>${escapeHtml(para.trim()).replace(/\r?\n/g, '<br>')}</p>`)
@@ -79,7 +86,7 @@ export default {
     }
   },
 
-  // 2. HTTP endpoints (RSS feed & maintenance)
+  // 2. HTTP endpoints (RSS feed, article reader & maintenance)
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
@@ -107,6 +114,41 @@ export default {
         headers: { 
           'Content-Type': 'text/plain; charset=utf-8',
           'Access-Control-Allow-Origin': '*' 
+        }
+      });
+    }
+
+    // Endpoint: /item/:id -> Standalone clean HTML article view for browser / reader fallback
+    if (url.pathname.startsWith('/item/')) {
+      const id = url.pathname.replace('/item/', '').trim();
+      const items = (await KV.get('newsletter_items', { type: 'json' })) || [];
+      const item = items.find(i => i.id === id);
+      if (!item) {
+        return new Response('Article not found', { status: 404 });
+      }
+      const pageHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(item.title)}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 680px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1a1a1a; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+    .meta { color: #666; font-size: 0.9rem; margin-bottom: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.8rem; }
+    img { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(item.title)}</h1>
+  <div class="meta">${escapeHtml(item.from)} · ${escapeHtml(item.dateRfc822)}</div>
+  <div class="content">${item.body}</div>
+</body>
+</html>`;
+      return new Response(pageHtml, {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
         }
       });
     }
@@ -148,6 +190,24 @@ export default {
 /* ==========================================================================
    MIME & Content Parsing Utilities
    ========================================================================== */
+
+/**
+ * Decodes RFC 2047 encoded-word headers (e.g. =?UTF-8?Q?You=E2=80=99re_unsubscribed.?=)
+ */
+function decodeMimeHeader(headerStr) {
+  if (!headerStr) return '';
+  const collapsed = String(headerStr).replace(/\?=\s+=\?/g, '?==?');
+  return collapsed.replace(/=\?([^?]+)\?([QBqb])\?([^?]+)\?=/g, (_, charset, encoding, text) => {
+    const enc = encoding.toUpperCase();
+    if (enc === 'Q') {
+      const qp = text.replace(/_/g, ' ');
+      return decodeQuotedPrintable(qp);
+    } else if (enc === 'B') {
+      return decodeBase64Utf8(text);
+    }
+    return text;
+  });
+}
 
 /**
  * Recursively parses raw MIME payload into decoded HTML and plain text parts.
