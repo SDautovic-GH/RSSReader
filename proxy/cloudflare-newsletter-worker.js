@@ -345,6 +345,16 @@ function cleanEmailHtml(html) {
   // Strip invisible 1px tracking beacons (e.g. Substack p.gif)
   clean = clean.replace(/<img[^>]+(?:width=['"]?1['"]?|height=['"]?1['"]?|p\.gif)[^>]*>/gi, '');
 
+  // Strip hardcoded dark/light colors and backgrounds from inline styles so newsletters adapt to reader themes
+  clean = clean.replace(/style=(["'])(.*?)\1/gi, (match, quote, styleContent) => {
+    const cleaned = styleContent
+      .replace(/(?:^|;)\s*(?:color|background|background-color)\s*:[^;]+/gi, '')
+      .replace(/^;+|;+$/g, '')
+      .trim();
+    return cleaned ? `style=${quote}${cleaned}${quote}` : '';
+  });
+  clean = clean.replace(/\s+(?:color|bgcolor)=(["']).*?\1/gi, '');
+
   return clean.trim();
 }
 

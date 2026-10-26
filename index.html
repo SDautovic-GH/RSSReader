@@ -335,8 +335,13 @@
             opacity: 0.6;
         }
 
-        .dark #article-body {
+        .dark #article-body,
+        .dark #article-body :is(p, span, div, li, td, th, h1, h2, h3, h4, h5, h6, blockquote, em, strong, article, section) {
             color: #e3e9f0 !important;
+        }
+
+        .dark #article-body a {
+            color: #58a6ff !important;
         }
 
         /* Folder and smart-feed names use the reading text colour. */
@@ -9726,6 +9731,9 @@
                     el.style.removeProperty('font-size');
                     el.style.removeProperty('font-family');
                     el.style.removeProperty('line-height');
+                    el.style.removeProperty('color');
+                    el.style.removeProperty('background');
+                    el.style.removeProperty('background-color');
                     // Content must flow: transforms and absolute / fixed positioning go. ESPN shifts the story up
                     // 43px to sit under its sticky scoreboard, and without its CSS text prints over the score.
                     el.style.removeProperty('transform');
@@ -9740,6 +9748,10 @@
                         }
                     }
                     if (!(el.getAttribute('style') || '').trim()) el.removeAttribute('style');
+                });
+                bodyEl.querySelectorAll('[color], [bgcolor]').forEach(el => {
+                    el.removeAttribute('color');
+                    el.removeAttribute('bgcolor');
                 });
             } catch (e) { /* never block rendering over cosmetics */ }
         }
@@ -15387,7 +15399,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 369;
+        window.APP_BUILD = 370;
 
         (async function initApp() {
             try {
@@ -16250,7 +16262,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v369';
+const CACHE_NAME = 'rss-reader-v370';
 const APP_SHELL = [
     '/',
     'index.html'
