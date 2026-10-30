@@ -2760,27 +2760,32 @@
         .brief-cat-recap-btn {
             display: inline-flex !important;
             align-items: center !important;
-            gap: 4px;
-            padding: 0;
-            border: none;
+            justify-content: center !important;
+            width: 28px;
+            height: 28px;
+            padding: 0 !important;
+            border: 1px solid transparent;
+            border-radius: 9999px;
             background: transparent;
             color: #4493f8;
-            font: inherit;
-            font-size: 0.8em !important;
-            font-weight: 500;
-            line-height: 1 !important;
+            flex-shrink: 0;
             cursor: pointer;
-            white-space: nowrap;
-            transition: opacity 0.15s;
+            transition: all 0.15s ease;
         }
 
         .brief-cat-recap-btn:hover {
-            opacity: 0.8;
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.12);
+        }
+
+        .dark .brief-cat-recap-btn:hover {
+            color: #60a5fa;
+            background: rgba(59, 130, 246, 0.2);
         }
 
         .brief-cat-recap-btn svg {
-            width: 1.05em;
-            height: 1.05em;
+            width: 1.05rem !important;
+            height: 1.05rem !important;
             flex-shrink: 0;
         }
 
@@ -2917,6 +2922,40 @@
             font-size: 0.86em !important;
             font-weight: 500;
             color: var(--text-3) !important;
+        }
+
+        #article-body .ai-briefing-cite-link,
+        .ai-briefing-cite-link {
+            font-size: 0.86em !important;
+            font-weight: 500;
+            color: #2563eb !important;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.15s ease;
+        }
+
+        .dark #article-body .ai-briefing-cite-link,
+        .dark .ai-briefing-cite-link {
+            color: #58a6ff !important;
+        }
+
+        #article-body .ai-briefing-cite-link:hover,
+        .ai-briefing-cite-link:hover {
+            text-decoration: underline;
+            opacity: 0.88;
+        }
+
+        #article-body .ai-reader-briefing li.ai-bullet-return-pulse {
+            background: rgba(59, 130, 246, 0.14);
+            border-radius: 8px;
+            padding: 4px 8px;
+            margin-left: -8px;
+            margin-right: -8px;
+            transition: background 0.6s ease;
+        }
+
+        #ai-briefing-return-bar {
+            margin-bottom: 14px;
         }
 
         #article-body .ai-bullet-dot {
@@ -5769,6 +5808,12 @@
                         </div>
 
                         <article id="article-content" class="hidden animate-in fade-in duration-300">
+                            <div id="ai-briefing-return-bar" class="hidden">
+                                <button type="button" onclick="window.returnToAiBriefing()" class="pill-btn text-xs inline-flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                    <span id="ai-briefing-return-label">Back to Briefing</span>
+                                </button>
+                            </div>
                             <div id="article-header-card">
                                 <p id="article-meta" onclick="filterByCurrentSource()"
                                     class="flex items-center gap-1.5 text-[10px] font-bold mb-2 cursor-pointer hover:opacity-70 transition-opacity">
@@ -9265,6 +9310,23 @@
                     if (Array.isArray(s.storyIds)) s.storyIndex = s.storyIds.indexOf(article.id);
                 }
             }
+            if (window._openingFromAiBriefing) {
+                window._openingFromAiBriefing = false;
+            } else if (window._returnToAiBriefingState && window._returnToAiBriefingState.targetArticleId !== article.id) {
+                window._returnToAiBriefingState = null;
+            }
+            const aiReturnBar = document.getElementById('ai-briefing-return-bar');
+            const aiReturnLbl = document.getElementById('ai-briefing-return-label');
+            if (aiReturnBar) {
+                if (window._returnToAiBriefingState && window._returnToAiBriefingState.targetArticleId === article.id) {
+                    const bTitle = window._returnToAiBriefingState.aiArticleTitle || 'Briefing';
+                    const shortTitle = bTitle.split('—')[0].trim() || 'Briefing';
+                    if (aiReturnLbl) aiReturnLbl.textContent = `Back to ${shortTitle}`;
+                    aiReturnBar.classList.remove('hidden');
+                } else {
+                    aiReturnBar.classList.add('hidden');
+                }
+            }
             window.syncBriefCards?.();
             if (!article.isBrief) {
                 window.articles.forEach(a => { if (a.id === id) a.unread = false; });
@@ -9828,6 +9890,8 @@
                     }
                 } else if (window.currentArticle && window.currentArticle.isBrief) {
                     window.generateTodayBriefing?.();
+                } else if (window._returnToAiBriefingState) {
+                    window.returnToAiBriefing();
                 } else if (window._returnToBriefState) {
                     window.returnToBrief();
                 } else if (window.currentArticle) {
@@ -9844,10 +9908,12 @@
                     toggleSearchSheet();
                 }
             } else if (e.key === 'Escape') {
-                // With nothing on top: leave full screen and stay on the story; else back to Today from one
+                // With nothing on top: leave full screen and stay on the story; else back to AI briefing or Today from one
                 // of its stories; else (phone) back to the list.
                 if (document.body.classList.contains('is-fullscreen')) {
                     window.setReadingFullScreen(false);
+                } else if (window._returnToAiBriefingState) {
+                    window.returnToAiBriefing();
                 } else if (window._returnToBriefState) {
                     window.returnToBrief();
                 } else if (typeof isMobile === 'function' && isMobile() && window._mobilePane === 'viewer') {
@@ -11648,11 +11714,81 @@
             throw new Error(lastErr || 'Gemini API request failed');
         };
 
-        function formatGeminiBriefing(text) {
+        function cleanBriefingCitationText(rawText) {
+            return (rawText || '').replace(/\[([^\]]+)\]/g, (_, inner) => {
+                const cleaned = inner
+                    .split(/\s*,\s*/)
+                    .map(part => part.replace(/\s*\(?#\d+\)?/g, '').trim())
+                    .filter(Boolean)
+                    .join(', ');
+                return cleaned ? `[${cleaned}]` : '';
+            });
+        }
+
+        function resolveCitationStory(rawPart, bulletText, storiesList) {
+            if (!Array.isArray(storiesList) || !storiesList.length) return { story: null, label: rawPart.trim() };
+            const part = (rawPart || '').trim();
+            const numMatch = part.match(/#(\d+)/);
+            let label = part.replace(/\s*\(?#\d+\)?/g, '').trim();
+            if (numMatch) {
+                const idx = parseInt(numMatch[1], 10) - 1;
+                const story = storiesList[idx] || null;
+                if (!label && story) label = story.source || story.author || 'Source';
+                return { story, label: label || part };
+            }
+            // Fallback when the model omits #N: match by source/author name and score by keyword overlap with the bullet text
+            const normLabel = label.toLowerCase();
+            if (!normLabel) return { story: null, label };
+            const candidates = storiesList.filter(a => {
+                const s = (a.source || '').trim().toLowerCase();
+                const au = (a.author || '').trim().toLowerCase();
+                return s === normLabel || au === normLabel || (s && normLabel.includes(s)) || (s && s.includes(normLabel));
+            });
+            if (!candidates.length) return { story: null, label };
+            if (candidates.length === 1) return { story: candidates[0], label };
+            const words = (bulletText || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4);
+            let best = candidates[0];
+            let bestScore = -1;
+            for (const c of candidates) {
+                const hay = `${c.title || ''} ${c.excerpt || ''} ${c.snippet || ''}`.toLowerCase();
+                let score = 0;
+                for (const w of words) {
+                    if (hay.includes(w)) score++;
+                }
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = c;
+                }
+            }
+            return { story: best, label };
+        }
+
+        function renderBriefingCitations(escapedLine, rawLine, storiesList) {
+            return escapedLine.replace(/\[([^\]]+)\]/g, (_, innerEscaped) => {
+                const rawInner = innerEscaped
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#39;/g, "'");
+                const parts = rawInner.split(/\s*,\s*/).filter(Boolean);
+                const renderedParts = parts.map(part => {
+                    const { story, label } = resolveCitationStory(part, rawLine, storiesList);
+                    if (story && (story.id || story.link)) {
+                        return `<a href="#" class="ai-briefing-cite-link" data-ai-story-id="${esc(story.id || '')}" data-ai-story-link="${esc(story.link || '')}" title="${esc(story.title || label)}">${esc(label)}</a>`;
+                    }
+                    return esc(label);
+                });
+                return `<span class="ai-briefing-cite">[${renderedParts.join(', ')}]</span>`;
+            });
+        }
+
+        function formatGeminiBriefing(text, storiesList = []) {
             if (!text) return '';
             const lines = text.split('\n');
             let out = '<div class="ai-reader-briefing">';
             let inList = false;
+            let bulletIdx = 0;
             for (let rawLine of lines) {
                 const line = rawLine.trim();
                 if (!line) {
@@ -11666,22 +11802,97 @@
                 } else if (/^(?:[-•*]|\d+\.)\s+/.test(line)) {
                     if (!inList) { out += '<ul class="space-y-2 pl-0 my-1">'; inList = true; }
                     const content = line.replace(/^(?:[-•*]|\d+\.)\s+/, '');
-                    const escaped = esc(content)
-                        .replace(/\[([^\]]+)\]/g, '<span class="ai-briefing-cite">[$1]</span>')
+                    const withCites = renderBriefingCitations(esc(content), content, storiesList)
                         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                    out += `<li><span class="ai-bullet-dot">•</span><span>${escaped}</span></li>`;
+                    out += `<li data-ai-bullet-idx="${bulletIdx++}"><span class="ai-bullet-dot">•</span><span>${withCites}</span></li>`;
                 } else {
                     if (inList) { out += '</ul>'; inList = false; }
-                    const escaped = esc(line)
-                        .replace(/\[([^\]]+)\]/g, '<span class="ai-briefing-cite">[$1]</span>')
+                    const withCites = renderBriefingCitations(esc(line), line, storiesList)
                         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                    out += `<p class="mb-2">${escaped}</p>`;
+                    out += `<p class="mb-2">${withCites}</p>`;
                 }
             }
             if (inList) out += '</ul>';
             out += '</div>';
             return out;
         }
+
+        window.openStoryFromAiBriefing = function (linkEl) {
+            if (!linkEl) return false;
+            const storyId = linkEl.getAttribute('data-ai-story-id') || '';
+            const storyLink = linkEl.getAttribute('data-ai-story-link') || '';
+            let targetArt = (storyId && (window.readerArticleById?.(storyId) || findArticleAnywhere?.(storyId))) || null;
+            if (!targetArt && storyLink) {
+                targetArt = (window.articles || []).find(a => a.link === storyLink)
+                    || (window._readArchiveCache || []).find(a => a.link === storyLink)
+                    || window.savedBucket?.get?.(storyLink)
+                    || window.readLaterBucket?.get?.(storyLink)
+                    || (storyId && window.readerArticleById?.(storyLink))
+                    || null;
+            }
+            if (!targetArt) {
+                if (storyLink && storyLink !== '#') {
+                    window.open(storyLink, '_blank', 'noopener,noreferrer');
+                } else {
+                    window.showToast?.('Story is no longer in local cache');
+                }
+                return false;
+            }
+
+            const cur = window.currentArticle;
+            const readerView = document.getElementById('reader-view');
+            const li = linkEl.closest('li[data-ai-bullet-idx]');
+            if (cur && (cur.isAiBriefing || (cur.link && cur.link.startsWith('https://ai.google.dev/briefing/')))) {
+                window._aiBriefingArticles.set(cur.id, cur);
+                window._returnToAiBriefingState = {
+                    aiArticle: cur,
+                    aiArticleId: cur.id,
+                    aiArticleTitle: cur.title || 'Briefing',
+                    targetArticleId: targetArt.id,
+                    scrollTop: readerView ? readerView.scrollTop : 0,
+                    bulletIdx: li ? li.getAttribute('data-ai-bullet-idx') : null,
+                    prevReturnToBriefState: window._returnToBriefState || null
+                };
+            }
+            window._openingFromAiBriefing = true;
+            if (typeof isMobile === 'function' && isMobile()) setMobilePane('viewer');
+            selectArticle(targetArt.id);
+            return false;
+        };
+
+        window.returnToAiBriefing = function () {
+            const state = window._returnToAiBriefingState;
+            if (!state) return;
+            window._returnToAiBriefingState = null;
+            if (state.aiArticle && state.aiArticleId) {
+                window._aiBriefingArticles.set(state.aiArticleId, state.aiArticle);
+            }
+            if (state.prevReturnToBriefState) {
+                window._returnToBriefState = state.prevReturnToBriefState;
+            }
+            selectArticle(state.aiArticleId);
+            if (typeof isMobile === 'function' && isMobile()) {
+                setMobilePane('viewer');
+            }
+            const restorePos = () => {
+                const rv = document.getElementById('reader-view');
+                if (rv && typeof state.scrollTop === 'number') {
+                    rv.scrollTop = state.scrollTop;
+                }
+                if (state.bulletIdx !== null && state.bulletIdx !== undefined) {
+                    const li = document.querySelector(`#article-body li[data-ai-bullet-idx="${state.bulletIdx}"]`);
+                    if (li) {
+                        li.classList.add('ai-bullet-return-pulse');
+                        setTimeout(() => li.classList.remove('ai-bullet-return-pulse'), 2200);
+                    }
+                }
+            };
+            restorePos();
+            requestAnimationFrame(() => {
+                restorePos();
+                setTimeout(restorePos, 50);
+            });
+        };
 
         window._aiBriefingArticles = window._aiBriefingArticles || new Map();
         window._autoMorningBriefing = (function () {
@@ -11864,12 +12075,15 @@
                     return false;
                 }
 
+                const allBriefingStories = [];
                 const groupedText = categoryGroups.map(cg => {
-                    const lines = cg.stories.slice(0, 35).map((a, i) => {
+                    const lines = cg.stories.slice(0, 35).map(a => {
+                        allBriefingStories.push(a);
+                        const refNum = allBriefingStories.length;
                         const title = (a.title || '').replace(/\s+/g, ' ').trim();
                         const snippet = (a.excerpt || a.snippet || '').replace(/\s+/g, ' ').trim().slice(0, 220);
                         const body = (snippet && snippet !== title) ? `${title} - ${snippet}` : (title || snippet);
-                        return `  ${i + 1}. [${a.source || 'Unknown'}] ${body}`;
+                        return `  #${refNum} [${a.source || 'Unknown'}] ${body}`;
                     }).join('\n');
                     return `## ${cg.name} (${cg.stories.length} stories)\n${lines}`;
                 }).join('\n\n');
@@ -11880,7 +12094,7 @@ Instructions:
 1. Cover every section listed below in order, using a markdown header (### Section Name) for each section.
 2. Under each section header, cover all distinct, noteworthy stories and discussions in that section (typically 3 to 7 bullet points per section, scaled to how many stories the section has — merge only duplicate coverage of the exact same event).
 3. Start every bullet with a short bold lead-in phrase followed by a colon, e.g. - **Topic or Headline:** 1 to 2 sharp sentences explaining what happened and why it matters.
-4. At the end of each bullet point, cite the reporting outlet(s) or author(s) in brackets, e.g. [The Verge, Reuters].
+4. At the end of each bullet point, cite the reporting outlet(s) or author(s) along with their item number (#N) in brackets, e.g. [NYT Technology #1] or [The Verge #4, Reuters #7]. Always include the #N number so each source citation can link directly to its article.
 5. Maintain an objective, high-signal, executive tone. Avoid filler or intro/outro commentary.
 
 Coverage by Section:
@@ -11889,8 +12103,9 @@ ${groupedText}`;
                 const rawText = await window.callGeminiApi(prompt);
                 if (!rawText) return false;
 
-                window._lastAiBriefingText = rawText;
-                const formattedHtml = formatGeminiBriefing(rawText);
+                const cleanText = cleanBriefingCitationText(rawText);
+                window._lastAiBriefingText = cleanText;
+                const formattedHtml = formatGeminiBriefing(rawText, allBriefingStories);
                 const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                 const subtitle = `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
                 // For automatic morning briefings: open in the desktop reading pane only if no other story is open; on phone keep Today on screen and show the bar
@@ -11899,7 +12114,7 @@ ${groupedText}`;
                     slug: 'executive-briefing',
                     title: `${isAutoMorning ? 'Morning ' : ''}Executive Briefing — ${dateLabel}`,
                     subtitle,
-                    rawText,
+                    rawText: cleanText,
                     formattedHtml,
                     openInReader: shouldOpenInReader
                 });
@@ -12056,7 +12271,7 @@ ${groupedText}`;
                     const title = (a.title || '').replace(/\s+/g, ' ').trim();
                     const snippet = (a.excerpt || a.snippet || '').replace(/\s+/g, ' ').trim().slice(0, 220);
                     const text = (snippet && snippet !== title) ? `${title} - ${snippet}` : (title || snippet);
-                    return `${i + 1}. [${a.source || 'Unknown'}] ${text}`;
+                    return `#${i + 1} [${a.source || 'Unknown'}] ${text}`;
                 }).join('\n');
 
                 const prompt = `You are an executive intelligence editor for a personal news digest. Synthesize the following ${topStories.length} unread items from the "${catName}" section into a comprehensive, high-signal category recap so the reader does not miss any worthwhile story or discussion.
@@ -12065,7 +12280,7 @@ Instructions:
 1. Organize the recap into 3 to 5 thematic markdown headers (### Theme Name).
 2. Under each theme, cover all distinct, noteworthy stories or posts (typically 2 to 5 bullet points per theme, merging only duplicate coverage of the same event).
 3. Start every bullet with a short bold lead-in phrase followed by a colon, e.g. - **Topic or Point:** 1 to 2 sharp sentences explaining what happened or what is being discussed and why it matters.
-4. At the end of each bullet point, cite the source or author in brackets, e.g. [Scripting.com, Ars Technica].
+4. At the end of each bullet point, cite the source or author along with its item number (#N) in brackets, e.g. [Scripting.com #1] or [Scripting.com #1, Ars Technica #4]. Always include the #N number so each source citation can link directly to its article.
 5. Maintain an objective, sharp, executive tone. Avoid filler or intro/outro commentary.
 
 Items in ${catName}:
@@ -12074,15 +12289,16 @@ ${articleList}`;
                 const rawText = await window.callGeminiApi(prompt);
                 if (!rawText) return;
 
-                window._catAiRecapTexts.set(normCat, rawText);
-                const formattedHtml = formatGeminiBriefing(rawText);
+                const cleanText = cleanBriefingCitationText(rawText);
+                window._catAiRecapTexts.set(normCat, cleanText);
+                const formattedHtml = formatGeminiBriefing(rawText, topStories);
                 const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                 const subtitle = `${topStories.length} unread ${topStories.length === 1 ? 'story' : 'stories'} in ${catName}`;
                 const art = window.registerAndOpenAiArticle({
                     slug: `recap-${normCat.replace(/[^a-z0-9]+/g, '-')}`,
                     title: `${catName} Recap — ${dateLabel}`,
                     subtitle,
-                    rawText,
+                    rawText: cleanText,
                     formattedHtml
                 });
 
@@ -12482,7 +12698,7 @@ ${sampleText}`;
                 metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>${todayListenBtn('brief-listen-btn desk-only')}<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-briefing-btn" onclick="window.generateTodayBriefing()" title="AI Executive Briefing (B)"><svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>Briefing</button>` + (mutedCount
                     ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span><button type="button" class="brief-muted-btn" onclick="window.toggleShowMuted()">${window._showMuted ? `Hide ${mutedCount} muted` : `${mutedCount} muted · Show`}</button>`
                     : ''),
-                headerAction: todayListenBtn('brief-listen-btn app-header-btn phone-only')
+                headerAction: `<button type="button" class="app-header-btn phone-only" onclick="window.generateTodayBriefing()" title="AI Executive Briefing" aria-label="AI Executive Briefing"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></button>` + todayListenBtn('brief-listen-btn app-header-btn phone-only')
             }, sections, totalStories);
 
             let body = composed.body;
@@ -13110,11 +13326,10 @@ ${sampleText}`;
                                 <svg class="w-4 h-4 flex-shrink-0"><use href="#${cs.icon || 'icon-rss'}"/></svg>
                                 <span class="truncate">${esc(cs.name)}</span>
                             </h3>
-                            <div class="brief-cat-controls flex items-center gap-2 flex-shrink-0 leading-none">
-                                <span class="brief-cat-count text-gray-500 font-medium whitespace-nowrap">${cs.stories.length} stories</span>
-                                <span class="brief-meta-dot text-gray-500 flex-shrink-0" style="font-size:0.8em;line-height:1">•</span>
-                                <button type="button" data-recap-cat="${esc(cs.name)}" onclick="window.generateCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="brief-cat-recap-btn" title="AI Recap for '${esc(cs.name)}'">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>Recap
+                            <div class="brief-cat-controls flex items-center gap-1 flex-shrink-0 leading-none">
+                                <span class="brief-cat-count text-gray-500 font-medium whitespace-nowrap mr-0.5">${cs.stories.length} stories</span>
+                                <button type="button" data-recap-cat="${esc(cs.name)}" onclick="window.generateCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="brief-cat-recap-btn" title="AI Recap for '${esc(cs.name)}'" aria-label="AI Recap for '${esc(cs.name)}'">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
                                 </button>
                                 ${cs.noMarkRead ? '' : `<button type="button" data-brief-cat="${esc(cs.name)}" onclick="window.markBriefCategoryRead(this.getAttribute('data-brief-cat'), this)" class="brief-cat-mark-read-btn" title="Mark '${esc(cs.name)}' folder as read" aria-label="Mark '${esc(cs.name)}' folder as read">
                                     <svg><use href="#icon-check"/></svg>
@@ -14722,6 +14937,13 @@ ${sampleText}`;
             });
 
             document.getElementById('article-body').addEventListener('click', (e) => {
+                const aiCiteLink = e.target.closest('.ai-briefing-cite-link');
+                if (aiCiteLink) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.openStoryFromAiBriefing(aiCiteLink);
+                    return;
+                }
                 const img = e.target.closest('img');
                 if (!img) return;
                 if (img.closest('.brief-thumb, .brief-hero')) return;   // Today pictures open the story (build 290)
@@ -16033,8 +16255,14 @@ ${sampleText}`;
         // Tab click handlers. The tabs do Back's job on the phone: Today, from a story opened in Today,
         // returns to that story's place; again (or from elsewhere), Today is rebuilt at the top.
         window.onTodayTabClick = async () => {
-            const s = window._returnToBriefState;
             const cur = window.currentArticle;
+            if (window._mobilePane === 'viewer' && cur && !cur.isBrief && window._returnToAiBriefingState) {
+                setMobileTab('today');
+                window._todayReturnedAt = Date.now();
+                window.stillReader(() => window.returnToAiBriefing());
+                return;
+            }
+            const s = window._returnToBriefState;
             if (window._mobilePane === 'viewer' && cur && !cur.isBrief && s && s.briefId === window.TODAY_BRIEF_ID) {
                 setMobileTab('today');
                 window._todayReturnedAt = Date.now();
@@ -16100,7 +16328,11 @@ ${sampleText}`;
             if (viewerHeader) {
                 viewerHeader.style.display = 'flex';
             }
-            if (backBtn && window._todayInColumn && typeof isMobile === 'function' && !isMobile()) {
+            if (backBtn && window._returnToAiBriefingState && window._returnToAiBriefingState.targetArticleId === art.id) {
+                backBtn.classList.remove('hidden');
+                const bTitle = window._returnToAiBriefingState.aiArticleTitle || 'Briefing';
+                if (backLabel) backLabel.textContent = bTitle.includes('Recap') ? 'Recap' : 'Briefing';
+            } else if (backBtn && window._todayInColumn && typeof isMobile === 'function' && !isMobile()) {
                 // Desktop Today column: Back closes the story and returns to its card in
                 // the brief beside it (closeStoryToTodayColumn) - the same bar as mobile.
                 backBtn.classList.remove('hidden');
@@ -16121,6 +16353,10 @@ ${sampleText}`;
 
         // Desktop only: the phone has no reader top bar (the tabs do this).
         window.onViewerBackClick = () => {
+            if (window._returnToAiBriefingState) {
+                window.returnToAiBriefing();
+                return;
+            }
             if (window._todayInColumn) {
                 window.closeStoryToTodayColumn();
                 return;
@@ -16475,7 +16711,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 380;
+        window.APP_BUILD = 381;
 
         (async function initApp() {
             try {
@@ -17346,7 +17582,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v380';
+const CACHE_NAME = 'rss-reader-v381';
 const APP_SHELL = [
     '/',
     'index.html'
