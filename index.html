@@ -2696,6 +2696,20 @@
             background: rgba(255, 255, 255, 0.12);
         }
 
+        .tts-player .tts-speed-btn {
+            width: 32px;
+            height: 32px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: rgba(255, 255, 255, 0.12);
+            margin: 0 2px;
+        }
+
+        html:not(.dark) .tts-player .tts-speed-btn {
+            background: rgba(0, 0, 0, 0.07);
+        }
+
         .tts-player svg {
             width: 18px;
             height: 18px;
@@ -2712,11 +2726,63 @@
             }
         }
 
-        /* Listen in the story row is the phone's; desktop has it in the top bar. */
+        /* Listen & TL;DR in the story row are the phone's; desktop has them in the top bar. */
         @media (min-width: 901px) {
-            #listen-action-btn {
+            #listen-action-btn,
+            #tldr-action-btn {
                 display: none !important;
             }
+        }
+
+        .brief-briefing-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: #4493f8;
+            font: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: opacity 0.15s;
+        }
+
+        .brief-briefing-btn:hover {
+            opacity: 0.8;
+        }
+
+        .brief-briefing-btn svg {
+            width: 1.05em;
+            height: 1.05em;
+        }
+
+        .ai-briefing-card {
+            border: 1px solid rgba(68, 147, 248, 0.25);
+            background: rgba(68, 147, 248, 0.04);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .dark .ai-briefing-card {
+            background: rgba(22, 38, 66, 0.45);
+            border-color: rgba(68, 147, 248, 0.28);
+        }
+
+        .ai-tldr-card {
+            border: 1px solid rgba(68, 147, 248, 0.25);
+            background: rgba(68, 147, 248, 0.05);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+        }
+
+        .dark .ai-tldr-card {
+            background: rgba(22, 38, 66, 0.4);
+            border-color: rgba(68, 147, 248, 0.25);
         }
 
         /* The headphones alone; the stop icon shows while Today plays. The padding, taken back by the
@@ -5499,6 +5565,13 @@
                                 <use href="#icon-headphones" />
                             </svg>
                         </button>
+                        <!-- AI TL;DR Button (Desktop) -->
+                        <button id="tldr-desk-btn" onclick="window.generateArticleTLDR()" title="AI TL;DR (Shift+B)" aria-label="AI TL;DR"
+                            class="hidden icon-act">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1-1.3-1.3Z"/>
+                            </svg>
+                        </button>
                     </div>
                     <!-- View mode toggle: Standard Stream / Compact Wire -->
                     <button onclick="toggleViewMode()" id="view-density-toggle" title="Standard Stream (switch to Compact Wire)"
@@ -5579,6 +5652,8 @@
                                             aria-label="Save" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-star" /></svg></button>
                                         <button id="open-original-btn" type="button" onclick="openExternal()" title="Open original source"
                                             aria-label="Open original source" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-external-link" /></svg></button>
+                                        <button id="tldr-action-btn" type="button" onclick="window.generateArticleTLDR()" title="AI TL;DR (Shift+B)"
+                                            aria-label="AI TL;DR" class="hidden icon-act"><svg aria-hidden="true" style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></button>
                                         <button id="listen-action-btn" type="button" onclick="toggleTTS()" title="Listen"
                                             aria-label="Listen" class="hidden icon-act"><svg aria-hidden="true"><use href="#icon-headphones" /></svg></button>
                                         <button id="share-btn" type="button" onclick="shareArticle()" title="Share"
@@ -5588,6 +5663,7 @@
                                     </div>
                                 </div>
                             </div>
+                            <div id="ai-tldr-container" class="hidden"></div>
                             <div id="article-body"
                                 class="article-content dynamic-view-text text-gray-800 dark:text-gray-300 leading-relaxed space-y-4">
                             </div>
@@ -5613,6 +5689,10 @@
         <span id="tts-player-label" class="tts-player-label">Listening</span>
         <button id="tts-pause-btn" type="button" onclick="window.togglePauseTTS()" title="Pause" aria-label="Pause">
             <svg aria-hidden="true"><use href="#icon-pause" /></svg>
+        </button>
+        <button id="tts-speed-btn" type="button" onclick="window.cycleTTSSpeed()" title="Playback speed" aria-label="Playback speed" class="tts-speed-btn">1×</button>
+        <button id="tts-next-btn" type="button" onclick="window.ttsNextStory()" title="Next article in queue" aria-label="Next article in queue">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
         </button>
         <button type="button" onclick="stopTTS()" title="Stop" aria-label="Stop listening">
             <svg aria-hidden="true"><use href="#icon-stop" /></svg>
@@ -5937,6 +6017,24 @@
                     </div>
                 </div>
 
+                <!-- AI & BRIEFINGS -->
+                <div>
+                    <h3 class="settings-section-label">AI &amp; Briefings</h3>
+                    <div class="settings-list">
+                        <div class="settings-row settings-row-stacked">
+                            <div>
+                                <label class="settings-item-label-sm" for="gemini-api-key-input">Gemini API Key</label>
+                                <p class="settings-hint">Powers on-demand Executive Briefings (shortcut B) and article TL;DRs via Google Gemini Flash</p>
+                            </div>
+                            <div class="flex gap-2 items-center mt-2">
+                                <input id="gemini-api-key-input" type="password" class="settings-input flex-1" placeholder="Paste Google AI Studio API key"
+                                    autocomplete="off" onchange="window.saveGeminiApiKey(this.value)">
+                                <button type="button" class="pill-btn pill-primary text-xs flex-shrink-0" onclick="window.saveGeminiApiKey(document.getElementById('gemini-api-key-input').value)">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ACCOUNT: last, as it is the least used (Sign Out at the bottom, as in iOS) -->
                 <div>
                     <h3 class="settings-section-label">Account</h3>
@@ -6206,6 +6304,7 @@
             <h3 class="settings-section-label">Story</h3>
             <div class="shortcuts-row"><span>Mark read / unread</span><span class="shortcuts-keys"><kbd class="kbd">r</kbd></span></div>
             <div class="shortcuts-row"><span>Read Later (from a Today story: back to Today)</span><span class="shortcuts-keys"><kbd class="kbd">b</kbd></span></div>
+            <div class="shortcuts-row"><span>AI TL;DR (from Today: Executive Briefing)</span><span class="shortcuts-keys"><kbd class="kbd">Shift</kbd>+<kbd class="kbd">B</kbd></span></div>
             <div class="shortcuts-row"><span>Open the original</span><span class="shortcuts-keys"><kbd class="kbd">o</kbd></span></div>
             <h3 class="settings-section-label">App</h3>
             <div class="shortcuts-row"><span>Today</span><span class="shortcuts-keys"><kbd class="kbd">t</kbd></span></div>
@@ -6225,8 +6324,12 @@
         class="hidden fixed z-[100] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 w-48 text-base">
         <button id="fc-mark-read" onclick="markFolderRead()"
             class="w-full text-left px-4 py-2">Mark All Read</button>
-        <button id="fc-mark-older-24h" onclick="markFolderRead({ olderThanDays: 1 })"
-            class="w-full text-left px-4 py-2 text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-100">Older than 24 hours</button>
+        <button id="fc-mark-older-1d" onclick="markFolderRead({ olderThanDays: 1 })"
+            class="w-full text-left px-4 py-2 text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-100">Older than 1 day</button>
+        <button id="fc-mark-older-3d" onclick="markFolderRead({ olderThanDays: 3 })"
+            class="w-full text-left px-4 py-2 text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-100">Older than 3 days</button>
+        <button id="fc-mark-older-1w" onclick="markFolderRead({ olderThanDays: 7 })"
+            class="w-full text-left px-4 py-2 text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-100">Older than 1 week</button>
         <button id="fc-toggle-collapse" onclick="toggleFolderCollapseFromContext()"
             class="w-full text-left px-4 py-2">Collapse Folder</button>
         <button id="fc-toggle-all" onclick="toggleAllCategoriesFromContext()"
@@ -9020,6 +9123,12 @@
                 saveReadState();
             }
 
+            const tldrBox = document.getElementById('ai-tldr-container');
+            if (tldrBox) {
+                tldrBox.innerHTML = '';
+                tldrBox.classList.add('hidden');
+            }
+
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('article-content').classList.remove('hidden');
             const faviconEl = document.getElementById('article-favicon');
@@ -9559,7 +9668,15 @@
                 e.preventDefault();
                 if (typeof openToday === 'function') openToday();
             } else if (e.key === 'b' || e.key === 'B') {
-                if (window._returnToBriefState) {
+                if (e.shiftKey) {
+                    if (window.currentArticle && window.currentArticle.isBrief) {
+                        window.generateTodayBriefing?.();
+                    } else if (window.currentArticle) {
+                        window.generateArticleTLDR?.();
+                    }
+                } else if (window.currentArticle && window.currentArticle.isBrief) {
+                    window.generateTodayBriefing?.();
+                } else if (window._returnToBriefState) {
                     window.returnToBrief();
                 } else if (window.currentArticle) {
                     handleReadLaterAction();
@@ -11062,7 +11179,46 @@
         window._ttsPieces = null;
         window._ttsIndex = 0;
         window._ttsPaused = false;
+        window._ttsRate = parseFloat(localStorage.getItem('newsreader_tts_rate') || '1');
         let _ttsRun = 0;
+
+        window.cycleTTSSpeed = function () {
+            const rates = [1, 1.25, 1.5, 2];
+            let idx = rates.indexOf(window._ttsRate);
+            if (idx === -1) idx = 0;
+            window._ttsRate = rates[(idx + 1) % rates.length];
+            try { localStorage.setItem('newsreader_tts_rate', String(window._ttsRate)); } catch (e) { }
+            updateTTSButton();
+            if (window._ttsActive && !window._ttsPaused) {
+                ttsSpeakFrom(window._ttsIndex);
+            }
+        };
+
+        window.ttsNextStory = function () {
+            if (!window._ttsActive) return;
+            if (window._ttsSource === 'story' && window.currentArticle && !window.currentArticle.isBrief) {
+                if (window.currentArticle.unread) {
+                    toggleUnread(window.currentArticle);
+                    saveReadState();
+                    refreshUI();
+                    updateActionButton();
+                }
+                const timeline = window.currentTimeline || [];
+                const curId = window.currentArticle?.id;
+                const next = timeline.find(a => a.unread && a.id !== curId);
+                if (next) {
+                    window.showToast(`Up next: ${next.title}`);
+                    selectArticle(next.id);
+                    setTimeout(() => {
+                        window._ttsActive = false;
+                        window.toggleTTS('story');
+                    }, 350);
+                    return;
+                }
+            }
+            stopTTS();
+        };
+
         function ttsSpeakFrom(i) {
             const run = ++_ttsRun;
             speechSynthesis.cancel();
@@ -11072,8 +11228,34 @@
                 const pieces = window._ttsPieces || [];
                 for (let k = i; k < pieces.length; k++) {
                     const u = new SpeechSynthesisUtterance(pieces[k]);
+                    u.rate = window._ttsRate || 1;
                     u.onstart = () => { if (run === _ttsRun) window._ttsIndex = k; };
-                    if (k === pieces.length - 1) u.onend = () => { if (run === _ttsRun) endTTS(); };
+                    if (k === pieces.length - 1) u.onend = () => {
+                        if (run !== _ttsRun) return;
+                        if (window._ttsSource === 'story' && window.currentArticle && !window.currentArticle.isBrief) {
+                            if (window.currentArticle.unread) {
+                                toggleUnread(window.currentArticle);
+                                saveReadState();
+                                refreshUI();
+                                updateActionButton();
+                            }
+                            const timeline = window.currentTimeline || [];
+                            const curId = window.currentArticle?.id;
+                            const next = timeline.find(a => a.unread && a.id !== curId);
+                            if (next) {
+                                window.showToast(`Up next: ${next.title}`);
+                                selectArticle(next.id);
+                                setTimeout(() => {
+                                    if (run === _ttsRun) {
+                                        window._ttsActive = false;
+                                        window.toggleTTS('story');
+                                    }
+                                }, 350);
+                                return;
+                            }
+                        }
+                        endTTS();
+                    };
                     u.onerror = (e) => {
                         if (run !== _ttsRun) return;
                         if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
@@ -11181,10 +11363,303 @@
                 pb.title = paused ? 'Resume' : 'Pause';
                 pb.setAttribute('aria-label', pb.title);
             }
+            const spd = document.getElementById('tts-speed-btn');
+            if (spd) spd.textContent = `${window._ttsRate || 1}×`;
+            const nxt = document.getElementById('tts-next-btn');
+            if (nxt) nxt.classList.toggle('hidden', window._ttsSource === 'today');
             document.body.classList.toggle('tts-on', !!active);
             // The wake lock follows: held only while playing.
             ttsSetAwake(ttsPlaying());
         }
+
+        // --- GEMINI AI BRIEFING & TL;DR ---
+        window.getGeminiApiKey = function () {
+            try { return localStorage.getItem('newsreader_gemini_api_key') || ''; } catch (e) { return ''; }
+        };
+
+        window.saveGeminiApiKey = function (key) {
+            const val = (key || '').trim();
+            try {
+                if (val) localStorage.setItem('newsreader_gemini_api_key', val);
+                else localStorage.removeItem('newsreader_gemini_api_key');
+            } catch (e) { }
+            const input = document.getElementById('gemini-api-key-input');
+            if (input && input.value !== val) input.value = val;
+            window.showToast(val ? 'Gemini API key saved' : 'Gemini API key removed');
+        };
+
+        window.callGeminiApi = async function (prompt) {
+            const key = window.getGeminiApiKey();
+            if (!key) {
+                window.showToast('Enter your Gemini API Key in Settings → AI & Briefings');
+                window.toggleSettings('prefs');
+                return null;
+            }
+            const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+            for (const model of models) {
+                try {
+                    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: {
+                                temperature: 0.2,
+                                maxOutputTokens: 1024
+                            }
+                        })
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text) return text;
+                    } else {
+                        const errJson = await resp.json().catch(() => ({}));
+                        console.warn(`Gemini API ${model} error (${resp.status}):`, errJson);
+                        if (resp.status === 400 || resp.status === 403) {
+                            throw new Error(errJson?.error?.message || 'Invalid Gemini API Key');
+                        }
+                    }
+                } catch (err) {
+                    if (err.message && err.message.includes('API Key')) throw err;
+                    console.warn(`Error trying ${model}:`, err);
+                }
+            }
+            throw new Error('Gemini API call failed. Please check network connection and API key.');
+        };
+
+        function formatGeminiBriefing(text) {
+            if (!text) return '';
+            const lines = text.split('\n');
+            let out = '';
+            let inList = false;
+            for (let rawLine of lines) {
+                const line = rawLine.trim();
+                if (!line) {
+                    if (inList) { out += '</ul>'; inList = false; }
+                    continue;
+                }
+                if (line.startsWith('###') || line.startsWith('##')) {
+                    if (inList) { out += '</ul>'; inList = false; }
+                    const heading = line.replace(/^#+\s*/, '');
+                    out += `<h4 class="font-bold text-xs md:text-sm text-blue-600 dark:text-blue-400 mt-3 mb-1.5 uppercase tracking-wide">${esc(heading)}</h4>`;
+                } else if (line.startsWith('-') || line.startsWith('*') || /^\d+\./.test(line)) {
+                    if (!inList) { out += '<ul class="space-y-1.5 pl-0 my-1">'; inList = true; }
+                    const content = line.replace(/^[-*•\d\.\s]+/, '');
+                    const escaped = esc(content)
+                        .replace(/\[([^\]]+)\]/g, '<span class="text-[11px] font-medium opacity-80 text-blue-600 dark:text-blue-300">[$1]</span>')
+                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                    out += `<li class="flex items-start gap-2"><span class="text-blue-500 font-bold leading-none select-none">•</span><span>${escaped}</span></li>`;
+                } else {
+                    if (inList) { out += '</ul>'; inList = false; }
+                    const escaped = esc(line).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                    out += `<p class="mb-1">${escaped}</p>`;
+                }
+            }
+            if (inList) out += '</ul>';
+            return out;
+        }
+
+        window.generateTodayBriefing = async function () {
+            const key = window.getGeminiApiKey();
+            if (!key) {
+                window.showToast('Enter your Gemini API key in Settings → AI & Briefings');
+                window.toggleSettings('prefs');
+                return;
+            }
+            const slots = document.querySelectorAll('.today-ai-briefing-slot');
+            if (!slots.length) {
+                window.showToast('Open Today Brief first to generate briefing');
+                return;
+            }
+            slots.forEach(slot => {
+                slot.classList.remove('hidden');
+                slot.innerHTML = `
+                    <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
+                        <span class="inline-flex items-center gap-2 font-medium">
+                            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+                            Synthesizing executive briefing with Gemini Flash…
+                        </span>
+                        <span class="text-gray-400 text-[11px] desk-only">Analyzing unread coverage</span>
+                    </div>
+                `;
+            });
+
+            try {
+                const now = Date.now();
+                const windowStart = now - (window.TODAY_WINDOW_HOURS || 24) * 3600000;
+                const excluded = window._todayExcluded;
+                const pool = (window.articles || []).filter(a => {
+                    if (!a.unread || a.isBrief) return false;
+                    const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
+                    if (ts < windowStart) return false;
+                    if (excluded && excluded.size && excluded.has(getCategoryForArticle(a))) return false;
+                    if (window.isMuted(a) && !window._showMuted) return false;
+                    return true;
+                });
+
+                if (!pool.length) {
+                    window.showToast('No unread stories to synthesize');
+                    slots.forEach(s => s.classList.add('hidden'));
+                    return;
+                }
+
+                const topStories = pool.slice(0, 35);
+                const articleList = topStories.map((a, i) => `${i + 1}. [${a.source || 'Unknown'}] ${a.title} - ${(a.excerpt || a.snippet || '').replace(/\s+/g, ' ').slice(0, 150)}`).join('\n');
+
+                const prompt = `You are an executive intelligence editor for a personal news digest. Synthesize the following unread news coverage from the last 24 hours into a high-level executive morning briefing.
+
+Instructions:
+1. Identify 3 to 5 key themes/storylines.
+2. For each theme, provide a concise markdown header (### Theme Name) and 2 to 3 bullet points explaining what happened and why it matters.
+3. At the end of each bullet point, cite the reporting outlet(s) in brackets, e.g. [The Verge, Reuters].
+4. Maintain an objective, high-signal, executive tone. Avoid filler or meta commentary.
+
+Articles:
+${articleList}`;
+
+                const rawText = await window.callGeminiApi(prompt);
+                if (!rawText) return;
+
+                window._lastAiBriefingText = rawText;
+                const formattedHtml = formatGeminiBriefing(rawText);
+
+                const cardMarkup = `
+                    <div class="ai-briefing-card">
+                        <div class="flex items-center justify-between pb-3 mb-3 border-b border-blue-200/50 dark:border-blue-800/40">
+                            <div class="flex items-center gap-2">
+                                <span class="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+                                </span>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="font-bold text-sm text-gray-900 dark:text-gray-100">Executive Briefing</h3>
+                                        <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">Gemini Flash</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 dark:text-gray-400">Synthesized from ${topStories.length} unread stories</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="window.copyTodayBriefing()" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded transition-colors" title="Copy briefing text">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                </button>
+                                <button type="button" onclick="window.dismissTodayBriefing()" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded transition-colors" title="Dismiss">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="ai-briefing-body space-y-3 text-xs md:text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+                            ${formattedHtml}
+                        </div>
+                    </div>
+                `;
+
+                slots.forEach(slot => {
+                    slot.classList.remove('hidden');
+                    slot.innerHTML = cardMarkup;
+                });
+            } catch (err) {
+                slots.forEach(slot => {
+                    slot.innerHTML = `
+                        <div class="ai-briefing-card flex items-center justify-between text-xs text-red-500">
+                            <span>${esc(err.message || 'Failed to generate briefing')}</span>
+                            <button type="button" onclick="window.dismissTodayBriefing()" class="text-xs text-gray-400 hover:text-gray-600">Dismiss</button>
+                        </div>
+                    `;
+                });
+            }
+        };
+
+        window.copyTodayBriefing = function () {
+            if (!window._lastAiBriefingText) return;
+            navigator.clipboard?.writeText(window._lastAiBriefingText)
+                .then(() => window.showToast('Briefing copied to clipboard'))
+                .catch(() => window.showToast('Could not copy to clipboard'));
+        };
+
+        window.dismissTodayBriefing = function () {
+            document.querySelectorAll('.today-ai-briefing-slot').forEach(s => {
+                s.classList.add('hidden');
+                s.innerHTML = '';
+            });
+        };
+
+        window.generateArticleTLDR = async function () {
+            const art = window.currentArticle;
+            if (!art || art.isBrief) return;
+            const box = document.getElementById('ai-tldr-container');
+            if (!box) return;
+
+            const key = window.getGeminiApiKey();
+            if (!key) {
+                window.showToast('Enter your Gemini API key in Settings → AI & Briefings');
+                window.toggleSettings('prefs');
+                return;
+            }
+
+            box.classList.remove('hidden');
+            box.innerHTML = `
+                <div class="ai-tldr-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
+                    <span class="inline-flex items-center gap-2 font-medium">
+                        <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+                        Generating executive TL;DR with Gemini Flash…
+                    </span>
+                </div>
+            `;
+
+            try {
+                const bodyEl = document.getElementById('article-body');
+                const textContent = bodyEl ? bodyEl.innerText.trim() : (art.body || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                const sampleText = textContent.slice(0, 10000);
+
+                const prompt = `Summarize the following news article for a busy executive in exactly 3 concise, punchy bullet points.
+Guidelines:
+- Each bullet must capture a crucial fact, outcome, or takeaway.
+- Keep each bullet under 35 words.
+- Format strictly as 3 bullet points starting with "- ". Do not include intro or outro text.
+
+Article Title: ${art.title}
+Source: ${art.source || 'Unknown'}
+Content:
+${sampleText}`;
+
+                const rawText = await window.callGeminiApi(prompt);
+                if (!rawText) return;
+
+                const bullets = rawText.split('\n')
+                    .map(l => l.trim())
+                    .filter(l => l.startsWith('-') || l.startsWith('*') || /^\d+\./.test(l))
+                    .map(l => l.replace(/^[-*•\d\.\s]+/, '').trim())
+                    .filter(Boolean);
+
+                const bulletListHtml = bullets.map(b => `<li class="flex items-start gap-2"><span class="text-blue-500 font-bold leading-none select-none">•</span><span>${esc(b)}</span></li>`).join('');
+
+                box.innerHTML = `
+                    <div class="ai-tldr-card text-xs md:text-sm">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-blue-200/50 dark:border-blue-800/40">
+                            <div class="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+                                <span>Executive TL;DR</span>
+                                <span class="text-[10px] font-normal lowercase tracking-normal text-gray-500 dark:text-gray-400">· Gemini Flash</span>
+                            </div>
+                            <button type="button" onclick="document.getElementById('ai-tldr-container').classList.add('hidden')" class="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" title="Close TL;DR">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                        <ul class="space-y-1.5 text-gray-800 dark:text-gray-200 leading-snug">
+                            ${bulletListHtml}
+                        </ul>
+                    </div>
+                `;
+            } catch (err) {
+                box.innerHTML = `
+                    <div class="ai-tldr-card flex items-center justify-between text-xs text-red-500">
+                        <span>${esc(err.message || 'Failed to generate TL;DR')}</span>
+                        <button type="button" onclick="document.getElementById('ai-tldr-container').classList.add('hidden')" class="text-xs text-gray-400 hover:text-gray-600">Dismiss</button>
+                    </div>
+                `;
+            }
+        };
 
         // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
         window.toggleViewMode = () => {
@@ -11427,7 +11902,7 @@
                 windowEnd: now,
                 // Listen to Today, then "3 muted - Show" / "Hide 3 muted". On the phone Listen is a header button
                 // like Following's; both copies are .brief-listen-btn, so updateTTSButton keeps them in step.
-                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>${todayListenBtn('brief-listen-btn desk-only')}` + (mutedCount
+                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>${todayListenBtn('brief-listen-btn desk-only')}<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-briefing-btn" onclick="window.generateTodayBriefing()" title="AI Executive Briefing (B)"><svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>Briefing</button>` + (mutedCount
                     ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span><button type="button" class="brief-muted-btn" onclick="window.toggleShowMuted()">${window._showMuted ? `Hide ${mutedCount} muted` : `${mutedCount} muted · Show`}</button>`
                     : ''),
                 headerAction: todayListenBtn('brief-listen-btn app-header-btn phone-only')
@@ -12440,6 +12915,7 @@
                             ${slotDef.metaExtra || ''}
                         </div>
                     </div>
+                    <div class="today-ai-briefing-slot hidden"></div>
             `;
 
             // Sticky Jump Pills (Table of Contents)
@@ -13057,6 +13533,8 @@
             }
             document.getElementById('rank-stories-toggle')?.setAttribute('data-on', window._todayRank ? 'true' : 'false');
             document.getElementById('learn-opens-toggle')?.setAttribute('data-on', window._learnOpens ? 'true' : 'false');
+            const geminiInput = document.getElementById('gemini-api-key-input');
+            if (geminiInput) geminiInput.value = window.getGeminiApiKey();
             window.renderMuteChips?.();
             renderLocalFeedList();   // the feed manager, with health as of now
         };
@@ -13728,9 +14206,13 @@
             const savedBtn = document.getElementById('saved-action-btn');
             const origBtn = document.getElementById('open-original-btn');
             const deskNavGroup = document.getElementById('desk-nav-group');
+            const tldrBtn = document.getElementById('tldr-action-btn');
+            const tldrDeskBtn = document.getElementById('tldr-desk-btn');
             const art = window.currentArticle;
             const hasArticle = !!art;
-            [laterBtn, shareBtn, ttsBtn, listenBtn, unreadBtn, savedBtn, origBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            const isRegularArticle = hasArticle && !art.isBrief;
+            [laterBtn, shareBtn, unreadBtn, savedBtn, origBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
+            [ttsBtn, listenBtn, tldrBtn, tldrDeskBtn].forEach(el => el?.classList.toggle('hidden', !isRegularArticle));
             window.updateBriefStoryActionButtons?.();
             if (!hasArticle) return;
 
@@ -13770,7 +14252,10 @@
             const inFolderOrSource = !!(window.currentCategoryFilter || window.currentSourceFilter);
             const remainingUnread = window.articles.filter(a => a.unread).length;
             if (opts.olderThanDays) {
-                if (!opts.suppressToast) window.showToast(opts.olderThanDays === 1 ? 'Marked items older than 24h read' : `Marked items older than ${opts.olderThanDays}d read`);
+                if (!opts.suppressToast) {
+                    const msg = opts.olderThanDays === 1 ? 'Marked items older than 1 day read' : (opts.olderThanDays === 7 ? 'Marked items older than 1 week read' : `Marked items older than ${opts.olderThanDays} days read`);
+                    window.showToast(msg);
+                }
             } else if (isMobile()) {
                 setMobilePane('sidebar');
                 if (inFolderOrSource && remainingUnread > 0) {
@@ -13794,7 +14279,9 @@
             let items = `
                 <button onclick="hideContextMenu(); markAllRead()" class="${btnClass} font-semibold">Mark All Read</button>
                 ${divider}
-                <button onclick="hideContextMenu(); markAllRead({ olderThanDays: 1 })" class="${btnClass}">Older than 24 hours</button>
+                <button onclick="hideContextMenu(); markAllRead({ olderThanDays: 1 })" class="${btnClass}">Older than 1 day</button>
+                <button onclick="hideContextMenu(); markAllRead({ olderThanDays: 3 })" class="${btnClass}">Older than 3 days</button>
+                <button onclick="hideContextMenu(); markAllRead({ olderThanDays: 7 })" class="${btnClass}">Older than 1 week</button>
             `;
             const menu = document.getElementById('article-context-menu');
             menu.innerHTML = items;
@@ -13838,7 +14325,9 @@
             items += divider;
             items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
-            items += `<button onclick="hideContextMenu(); markAllRead({ olderThanDays: 1 })" class="${btnClass}">Mark Older Than 24h Read</button>`;
+            items += `<button onclick="hideContextMenu(); markAllRead({ olderThanDays: 1 })" class="${btnClass}">Older than 1 day</button>`;
+            items += `<button onclick="hideContextMenu(); markAllRead({ olderThanDays: 3 })" class="${btnClass}">Older than 3 days</button>`;
+            items += `<button onclick="hideContextMenu(); markAllRead({ olderThanDays: 7 })" class="${btnClass}">Older than 1 week</button>`;
             items += divider;
             items += `<button onclick="hideContextMenu(); window.briefStoryAct('share', '${sid}')" class="${btnClass}">Share…</button>`;
             if (article?.link) items += `<button onclick="hideContextMenu(); window.openArticleLink('${sid}')" class="${btnClass}">Open Original</button>`;
@@ -14296,7 +14785,9 @@
                 if (el) el.classList.toggle('hidden', !on);
             };
             show('fc-mark-read', isCategory || isAllUnread);
-            show('fc-mark-older-24h', isCategory || isAllUnread);
+            show('fc-mark-older-1d', isCategory || isAllUnread);
+            show('fc-mark-older-3d', isCategory || isAllUnread);
+            show('fc-mark-older-1w', isCategory || isAllUnread);
             show('fc-rename', isCategory);
             show('fc-delete', isCategory);
             show('fc-toggle-collapse', isCategory);
@@ -14343,7 +14834,8 @@
             saveReadState(); refreshUI();
             document.getElementById('folder-context-menu').classList.add('hidden');
             if (opts.olderThanDays) {
-                window.showToast(opts.olderThanDays === 1 ? 'Marked items older than 24h read' : `Marked items older than ${opts.olderThanDays}d read`);
+                const msg = opts.olderThanDays === 1 ? 'Marked items older than 1 day read' : (opts.olderThanDays === 7 ? 'Marked items older than 1 week read' : `Marked items older than ${opts.olderThanDays} days read`);
+                window.showToast(msg);
             }
         };
 
@@ -15399,7 +15891,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 370;
+        window.APP_BUILD = 371;
 
         (async function initApp() {
             try {
@@ -16262,7 +16754,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v370';
+const CACHE_NAME = 'rss-reader-v371';
 const APP_SHELL = [
     '/',
     'index.html'
