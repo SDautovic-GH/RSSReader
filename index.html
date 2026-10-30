@@ -11440,32 +11440,50 @@
             const models = await window.resolveGeminiModels(key);
             let lastErr = '';
             for (const model of models) {
-                const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: {
-                            temperature: 0.2,
-                            maxOutputTokens: 1024
+                try {
+                    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: {
+                                temperature: 0.2,
+                                maxOutputTokens: 1024
+                            }
+                        })
+                    });
+
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text) {
+                            // Promote the working model to the front so subsequent calls skip busy models
+                            if (window._geminiResolvedModels?.[0] !== model) {
+                                window._geminiResolvedModels = [model, ...models.filter(m => m !== model)];
+                            }
+                            return text;
                         }
-                    })
-                });
+                        lastErr = 'Gemini returned an empty response';
+                        continue;
+                    }
 
-                if (resp.ok) {
-                    const data = await resp.json();
-                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (text) return text;
-                    throw new Error('Gemini returned an empty response');
+                    const errJson = await resp.json().catch(() => ({}));
+                    const msg = errJson?.error?.message || `HTTP ${resp.status} (${resp.statusText || 'Error'})`;
+                    console.warn(`Gemini API ${model} failed (${resp.status}):`, msg, errJson);
+                    lastErr = msg;
+                    // Stop immediately only if the API key itself is invalid or forbidden; otherwise try the next Flash model
+                    const lmsg = msg.toLowerCase();
+                    if ((resp.status === 400 || resp.status === 403) && (lmsg.includes('api key') || lmsg.includes('api_key') || lmsg.includes('permission'))) {
+                        throw new Error(msg);
+                    }
+                } catch (err) {
+                    lastErr = err.message || String(err);
+                    const lmsg = lastErr.toLowerCase();
+                    if (lmsg.includes('api key') || lmsg.includes('api_key') || lmsg.includes('permission')) {
+                        throw err;
+                    }
+                    console.warn(`Gemini API ${model} error, trying next model:`, err);
                 }
-
-                const errJson = await resp.json().catch(() => ({}));
-                const msg = errJson?.error?.message || `HTTP ${resp.status} (${resp.statusText || 'Error'})`;
-                console.warn(`Gemini API ${model} failed (${resp.status}):`, msg, errJson);
-                lastErr = msg;
-                // Fall back to the next Flash candidate if this model is unavailable or has 0 free-tier quota (429)
-                if (resp.status === 404 || resp.status === 429) continue;
-                throw new Error(msg);
             }
             window._geminiResolvedModels = null;
             throw new Error(lastErr || 'Gemini API request failed');
@@ -15934,7 +15952,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 374;
+        window.APP_BUILD = 375;
 
         (async function initApp() {
             try {
@@ -16797,7 +16815,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v374';
+const CACHE_NAME = 'rss-reader-v375';
 const APP_SHELL = [
     '/',
     'index.html'
