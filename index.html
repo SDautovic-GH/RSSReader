@@ -2763,6 +2763,7 @@
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 20px;
+            color: var(--text-2);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
         }
@@ -2778,11 +2779,88 @@
             border-radius: 10px;
             padding: 14px 16px;
             margin-bottom: 24px;
+            color: var(--text-2);
         }
 
         .dark .ai-tldr-card {
             background: rgba(22, 38, 66, 0.4);
             border-color: rgba(68, 147, 248, 0.25);
+        }
+
+        .ai-briefing-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--divider);
+        }
+
+        .ai-briefing-title {
+            font-size: calc(14px * var(--zoom, 1));
+            font-weight: 700;
+            color: var(--text-1);
+            line-height: 1.25;
+        }
+
+        .ai-briefing-sub {
+            font-size: calc(11px * var(--zoom, 1));
+            color: var(--text-3);
+            margin-top: 2px;
+        }
+
+        .ai-briefing-badge {
+            font-size: calc(10px * var(--zoom, 1));
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(59, 130, 246, 0.12);
+            color: #2563eb;
+        }
+
+        .dark .ai-briefing-badge {
+            background: rgba(68, 147, 248, 0.2);
+            color: #79b8ff;
+        }
+
+        .ai-briefing-body,
+        .ai-briefing-body li,
+        .ai-briefing-body p,
+        .ai-tldr-card ul,
+        .ai-tldr-card li {
+            color: var(--text-2) !important;
+            font-size: calc(13.5px * var(--zoom, 1));
+            line-height: 1.55 !important;
+        }
+
+        .ai-briefing-body strong,
+        .ai-tldr-card strong {
+            color: var(--text-1) !important;
+            font-weight: 600;
+        }
+
+        .ai-briefing-theme {
+            font-size: calc(12px * var(--zoom, 1));
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #2563eb !important;
+            margin-top: 14px;
+            margin-bottom: 6px;
+        }
+
+        .ai-briefing-body > .ai-briefing-theme:first-child {
+            margin-top: 2px;
+        }
+
+        .dark .ai-briefing-theme {
+            color: #58a6ff !important;
+        }
+
+        .ai-briefing-cite {
+            font-size: calc(11.5px * var(--zoom, 1));
+            font-weight: 500;
+            color: var(--text-3) !important;
         }
 
         /* The headphones alone; the stop icon shows while Today plays. The padding, taken back by the
@@ -11441,21 +11519,26 @@
             let lastErr = '';
             for (const model of models) {
                 try {
+                    const genConfig = {
+                        temperature: 0.2,
+                        maxOutputTokens: 4096
+                    };
+                    if (model.includes('2.5')) {
+                        genConfig.thinkingConfig = { thinkingBudget: 0 };
+                    }
                     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contents: [{ parts: [{ text: prompt }] }],
-                            generationConfig: {
-                                temperature: 0.2,
-                                maxOutputTokens: 1024
-                            }
+                            generationConfig: genConfig
                         })
                     });
 
                     if (resp.ok) {
                         const data = await resp.json();
-                        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        const parts = data?.candidates?.[0]?.content?.parts || [];
+                        const text = parts.filter(p => !p.thought && p.text).map(p => p.text).join('') || parts[0]?.text;
                         if (text) {
                             // Promote the working model to the front so subsequent calls skip busy models
                             if (window._geminiResolvedModels?.[0] !== model) {
@@ -11503,18 +11586,20 @@
                 if (line.startsWith('###') || line.startsWith('##')) {
                     if (inList) { out += '</ul>'; inList = false; }
                     const heading = line.replace(/^#+\s*/, '');
-                    out += `<h4 class="font-bold text-xs md:text-sm text-blue-600 dark:text-blue-400 mt-3 mb-1.5 uppercase tracking-wide">${esc(heading)}</h4>`;
+                    out += `<div class="ai-briefing-theme">${esc(heading)}</div>`;
                 } else if (line.startsWith('-') || line.startsWith('*') || /^\d+\./.test(line)) {
-                    if (!inList) { out += '<ul class="space-y-1.5 pl-0 my-1">'; inList = true; }
+                    if (!inList) { out += '<ul class="space-y-2 pl-0 my-1">'; inList = true; }
                     const content = line.replace(/^[-*•\d\.\s]+/, '');
                     const escaped = esc(content)
-                        .replace(/\[([^\]]+)\]/g, '<span class="text-[11px] font-medium opacity-80 text-blue-600 dark:text-blue-300">[$1]</span>')
+                        .replace(/\[([^\]]+)\]/g, '<span class="ai-briefing-cite">[$1]</span>')
                         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                    out += `<li class="flex items-start gap-2"><span class="text-blue-500 font-bold leading-none select-none">•</span><span>${escaped}</span></li>`;
+                    out += `<li class="flex items-start gap-2"><span class="text-blue-500 font-bold select-none" style="line-height:1.55">•</span><span>${escaped}</span></li>`;
                 } else {
                     if (inList) { out += '</ul>'; inList = false; }
-                    const escaped = esc(line).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                    out += `<p class="mb-1">${escaped}</p>`;
+                    const escaped = esc(line)
+                        .replace(/\[([^\]]+)\]/g, '<span class="ai-briefing-cite">[$1]</span>')
+                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                    out += `<p class="mb-1.5">${escaped}</p>`;
                 }
             }
             if (inList) out += '</ul>';
@@ -11587,17 +11672,17 @@ ${articleList}`;
 
                 const cardMarkup = `
                     <div class="ai-briefing-card">
-                        <div class="flex items-center justify-between pb-3 mb-3 border-b border-blue-200/50 dark:border-blue-800/40">
-                            <div class="flex items-center gap-2">
+                        <div class="ai-briefing-header">
+                            <div class="flex items-center gap-2.5">
                                 <span class="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
                                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
                                 </span>
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <h3 class="font-bold text-sm text-gray-900 dark:text-gray-100">Executive Briefing</h3>
-                                        <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">Gemini Flash</span>
+                                        <div class="ai-briefing-title">Executive Briefing</div>
+                                        <span class="ai-briefing-badge">Gemini Flash</span>
                                     </div>
-                                    <p class="text-[11px] text-gray-500 dark:text-gray-400">Synthesized from ${topStories.length} unread stories</p>
+                                    <div class="ai-briefing-sub">Synthesized from ${topStories.length} unread stories</div>
                                 </div>
                             </div>
                             <div class="flex items-center gap-1">
@@ -11609,7 +11694,7 @@ ${articleList}`;
                                 </button>
                             </div>
                         </div>
-                        <div class="ai-briefing-body space-y-3 text-xs md:text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+                        <div class="ai-briefing-body space-y-2">
                             ${formattedHtml}
                         </div>
                     </div>
@@ -11696,18 +11781,18 @@ ${sampleText}`;
                 const bulletListHtml = bullets.map(b => `<li class="flex items-start gap-2"><span class="text-blue-500 font-bold leading-none select-none">•</span><span>${esc(b)}</span></li>`).join('');
 
                 box.innerHTML = `
-                    <div class="ai-tldr-card text-xs md:text-sm">
-                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-blue-200/50 dark:border-blue-800/40">
+                    <div class="ai-tldr-card">
+                        <div class="ai-briefing-header" style="padding-bottom:8px;margin-bottom:10px">
                             <div class="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">
                                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
                                 <span>Executive TL;DR</span>
-                                <span class="text-[10px] font-normal lowercase tracking-normal text-gray-500 dark:text-gray-400">· Gemini Flash</span>
+                                <span class="ai-briefing-badge" style="text-transform:none;letter-spacing:normal">Gemini Flash</span>
                             </div>
                             <button type="button" onclick="document.getElementById('ai-tldr-container').classList.add('hidden')" class="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded" title="Close TL;DR">
                                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
                         </div>
-                        <ul class="space-y-1.5 text-gray-800 dark:text-gray-200 leading-snug">
+                        <ul class="space-y-1.5">
                             ${bulletListHtml}
                         </ul>
                     </div>
@@ -15952,7 +16037,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 375;
+        window.APP_BUILD = 376;
 
         (async function initApp() {
             try {
@@ -16815,7 +16900,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v375';
+const CACHE_NAME = 'rss-reader-v376';
 const APP_SHELL = [
     '/',
     'index.html'
