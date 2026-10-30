@@ -2757,6 +2757,33 @@
             height: 1.05em;
         }
 
+        .brief-cat-recap-btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 4px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: #4493f8;
+            font: inherit;
+            font-size: 0.8em !important;
+            font-weight: 500;
+            line-height: 1 !important;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: opacity 0.15s;
+        }
+
+        .brief-cat-recap-btn:hover {
+            opacity: 0.8;
+        }
+
+        .brief-cat-recap-btn svg {
+            width: 1.05em;
+            height: 1.05em;
+            flex-shrink: 0;
+        }
+
         .ai-briefing-card {
             border: 1px solid rgba(68, 147, 248, 0.25);
             background: rgba(68, 147, 248, 0.04);
@@ -11730,6 +11757,203 @@ ${articleList}`;
             });
         };
 
+        window._catAiRecapTexts = window._catAiRecapTexts || new Map();
+
+        window.generateCategoryRecap = async function (catName, btnEl) {
+            const key = window.getGeminiApiKey();
+            if (!key) {
+                window.showToast('Enter your Gemini API key in Settings → AI & Briefings');
+                window.toggleSettings('prefs');
+                return;
+            }
+            const clickedSec = btnEl?.closest('.brief-cat-section');
+            const secId = clickedSec?.id;
+            const normCat = (catName || '').trim().toLowerCase();
+
+            const matchingSections = Array.from(document.querySelectorAll('.brief-cat-section')).filter(sec => {
+                if (secId && sec.id === secId) return true;
+                const h = sec.querySelector('.brief-cat-heading')?.textContent?.trim()?.toLowerCase();
+                return h && h === normCat;
+            });
+            if (!matchingSections.length) return;
+
+            const slots = matchingSections.map(sec => {
+                let slot = sec.querySelector('.cat-ai-recap-slot');
+                if (!slot) {
+                    slot = document.createElement('div');
+                    slot.className = 'cat-ai-recap-slot hidden';
+                    const header = sec.querySelector('.brief-cat-header');
+                    if (header && header.nextSibling) sec.insertBefore(slot, header.nextSibling);
+                    else sec.prepend(slot);
+                }
+                return slot;
+            });
+
+            const setSlots = (fn) => {
+                if (typeof window.keepTodayInPlace === 'function') window.keepTodayInPlace(fn);
+                else fn();
+            };
+
+            setSlots(() => {
+                slots.forEach(slot => {
+                    slot.classList.remove('hidden');
+                    slot.innerHTML = `
+                        <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="margin-bottom:14px">
+                            <span class="inline-flex items-center gap-2 font-medium">
+                                <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+                                Synthesizing ${esc(catName)} recap with Gemini Flash…
+                            </span>
+                        </div>
+                    `;
+                });
+            });
+
+            try {
+                const refSec = clickedSec || matchingSections[0];
+                const byId = new Map((window.articles || []).map(a => [String(a.id), a]));
+                const stories = [];
+                const seenIds = new Set();
+
+                // 1. Collect unread stories currently rendered in this category section
+                refSec.querySelectorAll('.brief-story-card[data-sa-id]:not(.brief-card-read)').forEach(card => {
+                    const id = card.getAttribute('data-sa-id');
+                    const art = byId.get(String(id));
+                    if (art && !seenIds.has(art.id)) {
+                        seenIds.add(art.id);
+                        stories.push(art);
+                    }
+                });
+
+                // 2. Include any additional unread stories in this category from the 24h window (up to 40 total)
+                if (normCat !== 'top stories') {
+                    const now = Date.now();
+                    const windowStart = now - (window.TODAY_WINDOW_HOURS || 24) * 3600000;
+                    for (const a of (window.articles || [])) {
+                        if (stories.length >= 40) break;
+                        if (!a.unread || a.isBrief || seenIds.has(a.id)) continue;
+                        const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
+                        if (ts < windowStart) continue;
+                        if (window.isMuted?.(a) && !window._showMuted) continue;
+                        if ((getCategoryForArticle(a) || '').trim().toLowerCase() === normCat) {
+                            seenIds.add(a.id);
+                            stories.push(a);
+                        }
+                    }
+                }
+
+                if (!stories.length) {
+                    window.showToast(`No unread stories in ${catName} to recap`);
+                    setSlots(() => slots.forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; }));
+                    return;
+                }
+
+                const topStories = stories.slice(0, 40);
+                const articleList = topStories.map((a, i) => {
+                    const title = (a.title || '').replace(/\s+/g, ' ').trim();
+                    const snippet = (a.excerpt || a.snippet || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+                    const text = (snippet && snippet !== title) ? `${title} - ${snippet}` : (title || snippet);
+                    return `${i + 1}. [${a.source || 'Unknown'}] ${text}`;
+                }).join('\n');
+
+                const prompt = `You are an executive intelligence editor for a personal news digest. Synthesize the following unread items from the "${catName}" section into a concise, high-signal category recap.
+
+Instructions:
+1. Identify 2 to 4 key themes, discussions, or storylines in "${catName}".
+2. For each theme, provide a concise markdown header (### Theme Name) and 1 to 3 bullet points explaining what happened or what people are discussing and why it matters.
+3. At the end of each bullet point, cite the source or author in brackets, e.g. [Scripting.com, Ars Technica].
+4. Maintain an objective, sharp, executive tone. Avoid filler or meta commentary.
+
+Items in ${catName}:
+${articleList}`;
+
+                const rawText = await window.callGeminiApi(prompt);
+                if (!rawText) return;
+
+                window._catAiRecapTexts.set(normCat, rawText);
+                const formattedHtml = formatGeminiBriefing(rawText);
+
+                const cardMarkup = `
+                    <div class="ai-briefing-card" style="margin-bottom:14px">
+                        <div class="ai-briefing-header">
+                            <div class="flex items-center gap-2.5">
+                                <span class="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+                                </span>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="ai-briefing-title">${esc(catName)} Recap</div>
+                                        <span class="ai-briefing-badge">Gemini Flash</span>
+                                    </div>
+                                    <div class="ai-briefing-sub">Synthesized from ${topStories.length} unread ${topStories.length === 1 ? 'story' : 'stories'}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button type="button" data-recap-cat="${esc(catName)}" onclick="window.copyCategoryRecap(this.getAttribute('data-recap-cat'))" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded transition-colors" title="Copy recap text">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                </button>
+                                <button type="button" data-recap-cat="${esc(catName)}" onclick="window.dismissCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded transition-colors" title="Dismiss">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="ai-briefing-body space-y-2">
+                            ${formattedHtml}
+                        </div>
+                    </div>
+                `;
+
+                setSlots(() => {
+                    slots.forEach(slot => {
+                        slot.classList.remove('hidden');
+                        slot.innerHTML = cardMarkup;
+                    });
+                });
+            } catch (err) {
+                setSlots(() => {
+                    slots.forEach(slot => {
+                        slot.innerHTML = `
+                            <div class="ai-briefing-card flex items-start justify-between text-xs text-red-500" style="gap:12px;margin-bottom:14px">
+                                <span style="min-width:0;overflow-wrap:anywhere">${esc(err.message || 'Failed to generate recap')}</span>
+                                <button type="button" data-recap-cat="${esc(catName)}" onclick="window.dismissCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="pill-btn text-xs" style="flex-shrink:0">Dismiss</button>
+                            </div>
+                        `;
+                    });
+                });
+            }
+        };
+
+        window.copyCategoryRecap = function (catName) {
+            const normCat = (catName || '').trim().toLowerCase();
+            const text = window._catAiRecapTexts?.get(normCat);
+            if (!text) return;
+            navigator.clipboard?.writeText(text)
+                .then(() => window.showToast(`${catName} recap copied to clipboard`))
+                .catch(() => window.showToast('Could not copy to clipboard'));
+        };
+
+        window.dismissCategoryRecap = function (catName, btnEl) {
+            const normCat = (catName || '').trim().toLowerCase();
+            const clickedSlot = btnEl?.closest('.cat-ai-recap-slot');
+            const run = () => {
+                if (clickedSlot) {
+                    clickedSlot.classList.add('hidden');
+                    clickedSlot.innerHTML = '';
+                }
+                document.querySelectorAll('.brief-cat-section').forEach(sec => {
+                    const h = sec.querySelector('.brief-cat-heading')?.textContent?.trim()?.toLowerCase();
+                    if (h && h === normCat) {
+                        const slot = sec.querySelector('.cat-ai-recap-slot');
+                        if (slot) {
+                            slot.classList.add('hidden');
+                            slot.innerHTML = '';
+                        }
+                    }
+                });
+            };
+            if (typeof window.keepTodayInPlace === 'function') window.keepTodayInPlace(run);
+            else run();
+        };
+
         window.generateArticleTLDR = async function () {
             const art = window.currentArticle;
             if (!art || art.isBrief) return;
@@ -12681,11 +12905,16 @@ ${sampleText}`;
                             </h3>
                             <div class="brief-cat-controls flex items-center gap-2 flex-shrink-0 leading-none">
                                 <span class="brief-cat-count text-gray-500 font-medium whitespace-nowrap">${cs.stories.length} stories</span>
+                                <span class="brief-meta-dot text-gray-500 flex-shrink-0" style="font-size:0.8em;line-height:1">•</span>
+                                <button type="button" data-recap-cat="${esc(cs.name)}" onclick="window.generateCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="brief-cat-recap-btn" title="AI Recap for '${esc(cs.name)}'">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>Recap
+                                </button>
                                 ${cs.noMarkRead ? '' : `<button type="button" data-brief-cat="${esc(cs.name)}" onclick="window.markBriefCategoryRead(this.getAttribute('data-brief-cat'), this)" class="brief-cat-mark-read-btn" title="Mark '${esc(cs.name)}' folder as read" aria-label="Mark '${esc(cs.name)}' folder as read">
                                     <svg><use href="#icon-check"/></svg>
                                 </button>`}
                             </div>
                         </div>
+                        <div class="cat-ai-recap-slot hidden"></div>
                         <div class="space-y-3">
                 `;
                 cs.stories.forEach(st => {
@@ -16037,7 +16266,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 376;
+        window.APP_BUILD = 377;
 
         (async function initApp() {
             try {
@@ -16900,7 +17129,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v376';
+const CACHE_NAME = 'rss-reader-v377';
 const APP_SHELL = [
     '/',
     'index.html'
