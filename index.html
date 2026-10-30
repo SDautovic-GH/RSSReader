@@ -2860,34 +2860,70 @@
             line-height: 1.55 !important;
         }
 
+        /* When opened as an article inside the Reading Pane (#article-body), follow the user's
+           exact Article Reader font size, line height and App Zoom. */
+        #article-body .ai-reader-briefing,
+        #article-body .ai-reader-briefing li,
+        #article-body .ai-reader-briefing p {
+            color: var(--text-2) !important;
+            font-size: 1em !important;
+            line-height: inherit !important;
+        }
+
+        #article-body .ai-reader-briefing ul {
+            list-style: none !important;
+            padding-left: 0 !important;
+            margin: 0.4em 0 1.1em !important;
+        }
+
+        #article-body .ai-reader-briefing li {
+            display: flex;
+            align-items: baseline;
+            gap: 0.55em;
+            margin-bottom: 0.65em;
+        }
+
+        #article-body .ai-reader-briefing strong,
         .ai-briefing-body strong,
         .ai-tldr-card strong {
             color: var(--text-1) !important;
             font-weight: 600;
         }
 
+        #article-body .ai-briefing-theme,
         .ai-briefing-theme {
-            font-size: calc(12px * var(--zoom, 1));
-            font-weight: 700;
-            letter-spacing: 0.04em;
+            font-size: 0.85em !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
             color: #2563eb !important;
-            margin-top: 14px;
-            margin-bottom: 6px;
+            margin-top: 1.4em;
+            margin-bottom: 0.45em;
+            line-height: 1.3 !important;
         }
 
+        #article-body .ai-reader-briefing > .ai-briefing-theme:first-child,
         .ai-briefing-body > .ai-briefing-theme:first-child {
-            margin-top: 2px;
+            margin-top: 0.2em;
         }
 
+        .dark #article-body .ai-briefing-theme,
         .dark .ai-briefing-theme {
             color: #58a6ff !important;
         }
 
+        #article-body .ai-briefing-cite,
         .ai-briefing-cite {
-            font-size: calc(11.5px * var(--zoom, 1));
+            font-size: 0.86em !important;
             font-weight: 500;
             color: var(--text-3) !important;
+        }
+
+        #article-body .ai-bullet-dot {
+            color: #3b82f6 !important;
+            font-weight: 700;
+            user-select: none;
+            flex-shrink: 0;
         }
 
         /* The headphones alone; the stop icon shows while Today plays. The padding, taken back by the
@@ -9200,6 +9236,9 @@
             if (!article && window._todayBrief && window._todayBrief.id === id) {
                 article = window._todayBrief;
             }
+            if (!article && window._aiBriefingArticles?.has(id)) {
+                article = window._aiBriefingArticles.get(id);
+            }
             if (!article) return;
 
             const prevArticle = window.currentArticle;   // build 317: Today kept alive below
@@ -9447,7 +9486,7 @@
 
         async function attemptFullContentLoad(article) {
             if (!article || !article.link || article.link === '#') return;
-            if (article._fullBodyLoaded) return;
+            if (article._fullBodyLoaded || article.isAiBriefing || article.link.includes('ai.google.dev/briefing')) return;
 
             if (isMastodonPost(article.link)) return;   // JS-only shell, feed already complete
             if (article.feedUrl && article.feedUrl.includes('newsletter')) return; // Newsletters are complete by design
@@ -11184,6 +11223,7 @@
         // An article the reader can open by id: the live list, or the read archive.
         window.readerArticleById = function (id) {
             return (window.articles || []).find(a => a.id === id)
+                || (window._aiBriefingArticles?.get(id))
                 || (Array.isArray(window._readArchiveCache) ? window._readArchiveCache.find(a => a.id === id || a.link === id) : null)
                 || null;
         };
@@ -11548,7 +11588,7 @@
                 try {
                     const genConfig = {
                         temperature: 0.2,
-                        maxOutputTokens: 4096
+                        maxOutputTokens: 8192
                     };
                     if (model.includes('2.5')) {
                         genConfig.thinkingConfig = { thinkingBudget: 0 };
@@ -11602,7 +11642,7 @@
         function formatGeminiBriefing(text) {
             if (!text) return '';
             const lines = text.split('\n');
-            let out = '';
+            let out = '<div class="ai-reader-briefing">';
             let inList = false;
             for (let rawLine of lines) {
                 const line = rawLine.trim();
@@ -11612,26 +11652,71 @@
                 }
                 if (line.startsWith('###') || line.startsWith('##')) {
                     if (inList) { out += '</ul>'; inList = false; }
-                    const heading = line.replace(/^#+\s*/, '');
+                    const heading = line.replace(/^#+\s*/, '').replace(/\*\*/g, '');
                     out += `<div class="ai-briefing-theme">${esc(heading)}</div>`;
-                } else if (line.startsWith('-') || line.startsWith('*') || /^\d+\./.test(line)) {
+                } else if (/^(?:[-•*]|\d+\.)\s+/.test(line)) {
                     if (!inList) { out += '<ul class="space-y-2 pl-0 my-1">'; inList = true; }
-                    const content = line.replace(/^[-*•\d\.\s]+/, '');
+                    const content = line.replace(/^(?:[-•*]|\d+\.)\s+/, '');
                     const escaped = esc(content)
                         .replace(/\[([^\]]+)\]/g, '<span class="ai-briefing-cite">[$1]</span>')
                         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                    out += `<li class="flex items-start gap-2"><span class="text-blue-500 font-bold select-none" style="line-height:1.55">•</span><span>${escaped}</span></li>`;
+                    out += `<li><span class="ai-bullet-dot">•</span><span>${escaped}</span></li>`;
                 } else {
                     if (inList) { out += '</ul>'; inList = false; }
                     const escaped = esc(line)
                         .replace(/\[([^\]]+)\]/g, '<span class="ai-briefing-cite">[$1]</span>')
                         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                    out += `<p class="mb-1.5">${escaped}</p>`;
+                    out += `<p class="mb-2">${escaped}</p>`;
                 }
             }
             if (inList) out += '</ul>';
+            out += '</div>';
             return out;
         }
+
+        window._aiBriefingArticles = window._aiBriefingArticles || new Map();
+
+        window.registerAndOpenAiArticle = function ({ slug, title, subtitle, rawText, formattedHtml }) {
+            const now = Date.now();
+            const daySlug = new Date(now).toISOString().slice(0, 10);
+            const id = `ai-${slug}-${daySlug}-${now}`;
+            const link = `https://ai.google.dev/briefing/${encodeURIComponent(slug)}/${daySlug}/${now}`;
+            const plainExcerpt = (rawText || '')
+                .replace(/^#+\s+.*$/gm, '')
+                .replace(/[*_`#]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 260);
+            const art = {
+                id,
+                link,
+                title,
+                source: 'Gemini Flash',
+                author: subtitle,
+                timestamp: new Date(now).toISOString(),
+                _ts: now,
+                excerpt: plainExcerpt,
+                body: formattedHtml,
+                unread: false,
+                _fullBodyLoaded: true,
+                isAiBriefing: true
+            };
+            window._aiBriefingArticles.set(id, art);
+            window.openArticleInReader(id);
+            return art;
+        };
+
+        window.toggleSaveAiArticle = async function (articleId, btnEl) {
+            const art = window._aiBriefingArticles?.get(articleId) || findArticleAnywhere(articleId);
+            if (!art || !art.link || !window.savedBucket) return;
+            const wasSaved = window.savedBucket.has(art.link);
+            if (wasSaved) await window.savedBucket.remove(art.link);
+            else await window.savedBucket.add(art);
+            const nowSaved = !wasSaved;
+            if (btnEl) btnEl.textContent = nowSaved ? 'Saved ★' : 'Save ★';
+            window.showToast?.(nowSaved ? 'Saved to Following → Saved' : 'Removed from Saved');
+            if (typeof window.updateActionButton === 'function') window.updateActionButton();
+        };
 
         window.generateTodayBriefing = async function () {
             const key = window.getGeminiApiKey();
@@ -11648,12 +11733,11 @@
             slots.forEach(slot => {
                 slot.classList.remove('hidden');
                 slot.innerHTML = `
-                    <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
+                    <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="padding:11px 14px;margin-bottom:14px">
                         <span class="inline-flex items-center gap-2 font-medium">
                             <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
-                            Synthesizing executive briefing with Gemini Flash…
+                            Synthesizing Executive Briefing across all sections…
                         </span>
-                        <span class="text-gray-400 text-[11px] desk-only">Analyzing unread coverage</span>
                     </div>
                 `;
             });
@@ -11712,22 +11796,23 @@
                 }
 
                 const groupedText = categoryGroups.map(cg => {
-                    const lines = cg.stories.slice(0, 25).map((a, i) => {
+                    const lines = cg.stories.slice(0, 35).map((a, i) => {
                         const title = (a.title || '').replace(/\s+/g, ' ').trim();
-                        const snippet = (a.excerpt || a.snippet || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+                        const snippet = (a.excerpt || a.snippet || '').replace(/\s+/g, ' ').trim().slice(0, 220);
                         const body = (snippet && snippet !== title) ? `${title} - ${snippet}` : (title || snippet);
                         return `  ${i + 1}. [${a.source || 'Unknown'}] ${body}`;
                     }).join('\n');
                     return `## ${cg.name} (${cg.stories.length} stories)\n${lines}`;
                 }).join('\n\n');
 
-                const prompt = `You are an executive intelligence editor for a personal news digest. Synthesize the following unread coverage across ${categoryGroups.length} sections (${totalStories} stories total) into a structured Executive Briefing broken down by section.
+                const prompt = `You are an executive intelligence editor for a personal news digest. Synthesize the following unread coverage across ${categoryGroups.length} sections (${totalStories} stories total) into a comprehensive, structured Executive Briefing broken down by section so the reader does not miss any important story.
 
 Instructions:
 1. Cover every section listed below in order, using a markdown header (### Section Name) for each section.
-2. Under each section header, write 1 to 3 concise, high-signal bullet points summarizing the most important developments or discussions in that section and why they matter.
-3. At the end of each bullet point, cite the reporting outlet(s) or author(s) in brackets, e.g. [The Verge, Reuters].
-4. Maintain an objective, sharp, executive tone. Avoid filler or meta commentary.
+2. Under each section header, cover all distinct, noteworthy stories and discussions in that section (typically 3 to 7 bullet points per section, scaled to how many stories the section has — merge only duplicate coverage of the exact same event).
+3. Start every bullet with a short bold lead-in phrase followed by a colon, e.g. - **Topic or Headline:** 1 to 2 sharp sentences explaining what happened and why it matters.
+4. At the end of each bullet point, cite the reporting outlet(s) or author(s) in brackets, e.g. [The Verge, Reuters].
+5. Maintain an objective, high-signal, executive tone. Avoid filler or intro/outro commentary.
 
 Coverage by Section:
 ${groupedText}`;
@@ -11737,40 +11822,42 @@ ${groupedText}`;
 
                 window._lastAiBriefingText = rawText;
                 const formattedHtml = formatGeminiBriefing(rawText);
+                const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                const subtitle = `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
+                const art = window.registerAndOpenAiArticle({
+                    slug: 'executive-briefing',
+                    title: `Executive Briefing — ${dateLabel}`,
+                    subtitle,
+                    rawText,
+                    formattedHtml
+                });
 
-                const cardMarkup = `
-                    <div class="ai-briefing-card">
-                        <div class="ai-briefing-header">
-                            <div class="flex items-center gap-2.5">
-                                <span class="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-                                </span>
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <div class="ai-briefing-title">Executive Briefing</div>
-                                        <span class="ai-briefing-badge">Gemini Flash</span>
-                                    </div>
-                                    <div class="ai-briefing-sub">Synthesized from ${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}</div>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <button type="button" onclick="window.copyTodayBriefing()" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded transition-colors" title="Copy briefing text">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                </button>
-                                <button type="button" onclick="window.dismissTodayBriefing()" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded transition-colors" title="Dismiss">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </button>
+                const isSaved = window.savedBucket?.has(art.link);
+                const barMarkup = `
+                    <div class="ai-briefing-card flex items-center justify-between gap-2" style="padding:10px 14px;margin-bottom:14px">
+                        <div class="flex items-center gap-2 min-w-0 cursor-pointer" onclick="window.openArticleInReader('${escJs(art.id)}')">
+                            <span class="text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+                            </span>
+                            <div class="min-w-0">
+                                <div class="ai-briefing-title truncate">Executive Briefing</div>
+                                <div class="ai-briefing-sub truncate">${esc(subtitle)} · Saved in History</div>
                             </div>
                         </div>
-                        <div class="ai-briefing-body space-y-2">
-                            ${formattedHtml}
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button type="button" onclick="window.openArticleInReader('${escJs(art.id)}')" class="pill-btn text-xs">Open</button>
+                            <button type="button" onclick="window.toggleSaveAiArticle('${escJs(art.id)}', this)" class="pill-btn text-xs">${isSaved ? 'Saved ★' : 'Save ★'}</button>
+                            <button type="button" onclick="window.copyTodayBriefing()" class="pill-btn text-xs" title="Copy briefing text">Copy</button>
+                            <button type="button" onclick="window.dismissTodayBriefing()" class="p-1 text-gray-400 hover:text-gray-600" title="Dismiss">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
                         </div>
                     </div>
                 `;
 
                 slots.forEach(slot => {
                     slot.classList.remove('hidden');
-                    slot.innerHTML = cardMarkup;
+                    slot.innerHTML = barMarkup;
                 });
             } catch (err) {
                 slots.forEach(slot => {
@@ -11839,10 +11926,10 @@ ${groupedText}`;
                 slots.forEach(slot => {
                     slot.classList.remove('hidden');
                     slot.innerHTML = `
-                        <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="margin-bottom:14px">
+                        <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="padding:10px 14px;margin-bottom:12px">
                             <span class="inline-flex items-center gap-2 font-medium">
                                 <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
-                                Synthesizing ${esc(catName)} recap with Gemini Flash…
+                                Synthesizing ${esc(catName)} recap…
                             </span>
                         </div>
                     `;
@@ -11865,12 +11952,12 @@ ${groupedText}`;
                     }
                 });
 
-                // 2. Include any additional unread stories in this category from the 24h window (up to 40 total)
+                // 2. Include any additional unread stories in this category from the 24h window (up to 45 total)
                 if (normCat !== 'top stories') {
                     const now = Date.now();
                     const windowStart = now - (window.TODAY_WINDOW_HOURS || 24) * 3600000;
                     for (const a of (window.articles || [])) {
-                        if (stories.length >= 40) break;
+                        if (stories.length >= 45) break;
                         if (!a.unread || a.isBrief || seenIds.has(a.id)) continue;
                         const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
                         if (ts < windowStart) continue;
@@ -11888,21 +11975,22 @@ ${groupedText}`;
                     return;
                 }
 
-                const topStories = stories.slice(0, 40);
+                const topStories = stories.slice(0, 45);
                 const articleList = topStories.map((a, i) => {
                     const title = (a.title || '').replace(/\s+/g, ' ').trim();
-                    const snippet = (a.excerpt || a.snippet || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+                    const snippet = (a.excerpt || a.snippet || '').replace(/\s+/g, ' ').trim().slice(0, 220);
                     const text = (snippet && snippet !== title) ? `${title} - ${snippet}` : (title || snippet);
                     return `${i + 1}. [${a.source || 'Unknown'}] ${text}`;
                 }).join('\n');
 
-                const prompt = `You are an executive intelligence editor for a personal news digest. Synthesize the following unread items from the "${catName}" section into a concise, high-signal category recap.
+                const prompt = `You are an executive intelligence editor for a personal news digest. Synthesize the following ${topStories.length} unread items from the "${catName}" section into a comprehensive, high-signal category recap so the reader does not miss any worthwhile story or discussion.
 
 Instructions:
-1. Identify 2 to 4 key themes, discussions, or storylines in "${catName}".
-2. For each theme, provide a concise markdown header (### Theme Name) and 1 to 3 bullet points explaining what happened or what people are discussing and why it matters.
-3. At the end of each bullet point, cite the source or author in brackets, e.g. [Scripting.com, Ars Technica].
-4. Maintain an objective, sharp, executive tone. Avoid filler or meta commentary.
+1. Organize the recap into 3 to 5 thematic markdown headers (### Theme Name).
+2. Under each theme, cover all distinct, noteworthy stories or posts (typically 2 to 5 bullet points per theme, merging only duplicate coverage of the same event).
+3. Start every bullet with a short bold lead-in phrase followed by a colon, e.g. - **Topic or Point:** 1 to 2 sharp sentences explaining what happened or what is being discussed and why it matters.
+4. At the end of each bullet point, cite the source or author in brackets, e.g. [Scripting.com, Ars Technica].
+5. Maintain an objective, sharp, executive tone. Avoid filler or intro/outro commentary.
 
 Items in ${catName}:
 ${articleList}`;
@@ -11912,33 +12000,35 @@ ${articleList}`;
 
                 window._catAiRecapTexts.set(normCat, rawText);
                 const formattedHtml = formatGeminiBriefing(rawText);
+                const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                const subtitle = `${topStories.length} unread ${topStories.length === 1 ? 'story' : 'stories'} in ${catName}`;
+                const art = window.registerAndOpenAiArticle({
+                    slug: `recap-${normCat.replace(/[^a-z0-9]+/g, '-')}`,
+                    title: `${catName} Recap — ${dateLabel}`,
+                    subtitle,
+                    rawText,
+                    formattedHtml
+                });
 
-                const cardMarkup = `
-                    <div class="ai-briefing-card" style="margin-bottom:14px">
-                        <div class="ai-briefing-header">
-                            <div class="flex items-center gap-2.5">
-                                <span class="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-                                </span>
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <div class="ai-briefing-title">${esc(catName)} Recap</div>
-                                        <span class="ai-briefing-badge">Gemini Flash</span>
-                                    </div>
-                                    <div class="ai-briefing-sub">Synthesized from ${topStories.length} unread ${topStories.length === 1 ? 'story' : 'stories'}</div>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <button type="button" data-recap-cat="${esc(catName)}" onclick="window.copyCategoryRecap(this.getAttribute('data-recap-cat'))" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded transition-colors" title="Copy recap text">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                </button>
-                                <button type="button" data-recap-cat="${esc(catName)}" onclick="window.dismissCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded transition-colors" title="Dismiss">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </button>
+                const isSaved = window.savedBucket?.has(art.link);
+                const barMarkup = `
+                    <div class="ai-briefing-card flex items-center justify-between gap-2" style="padding:10px 14px;margin-bottom:12px">
+                        <div class="flex items-center gap-2 min-w-0 cursor-pointer" onclick="window.openArticleInReader('${escJs(art.id)}')">
+                            <span class="text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+                            </span>
+                            <div class="min-w-0">
+                                <div class="ai-briefing-title truncate">${esc(catName)} Recap</div>
+                                <div class="ai-briefing-sub truncate">${esc(subtitle)} · Saved in History</div>
                             </div>
                         </div>
-                        <div class="ai-briefing-body space-y-2">
-                            ${formattedHtml}
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button type="button" onclick="window.openArticleInReader('${escJs(art.id)}')" class="pill-btn text-xs">Open</button>
+                            <button type="button" onclick="window.toggleSaveAiArticle('${escJs(art.id)}', this)" class="pill-btn text-xs">${isSaved ? 'Saved ★' : 'Save ★'}</button>
+                            <button type="button" data-recap-cat="${esc(catName)}" onclick="window.copyCategoryRecap(this.getAttribute('data-recap-cat'))" class="pill-btn text-xs">Copy</button>
+                            <button type="button" data-recap-cat="${esc(catName)}" onclick="window.dismissCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="p-1 text-gray-400 hover:text-gray-600" title="Dismiss">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -11946,7 +12036,7 @@ ${articleList}`;
                 setSlots(() => {
                     slots.forEach(slot => {
                         slot.classList.remove('hidden');
-                        slot.innerHTML = cardMarkup;
+                        slot.innerHTML = barMarkup;
                     });
                 });
             } catch (err) {
@@ -14770,6 +14860,7 @@ ${sampleText}`;
         // Look across all article sources (window.articles + bucket-backed views).
         function findArticleAnywhere(id) {
             return (window.articles || []).find(a => a.id === id)
+                || (window._aiBriefingArticles?.get(id))
                 || (Array.isArray(window._savedArticles) && window._savedArticles.find(a => a.id === id))
                 || (Array.isArray(window._readLaterArticles) && window._readLaterArticles.find(a => a.id === id))
                 || (Array.isArray(window._recentlyReadArticles) && window._recentlyReadArticles.find(a => a.id === id))
@@ -16307,7 +16398,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 378;
+        window.APP_BUILD = 379;
 
         (async function initApp() {
             try {
@@ -17170,7 +17261,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v378';
+const CACHE_NAME = 'rss-reader-v379';
 const APP_SHELL = [
     '/',
     'index.html'
