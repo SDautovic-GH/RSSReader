@@ -6173,6 +6173,14 @@
                                 <button type="button" class="pill-btn pill-primary text-xs flex-shrink-0" onclick="window.saveGeminiApiKey(document.getElementById('gemini-api-key-input').value)">Save</button>
                             </div>
                         </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Morning Briefing on first open</label>
+                                <p class="settings-hint">Auto-generate once a day after 5:00 AM</p>
+                            </div>
+                            <button id="auto-morning-briefing-toggle" onclick="window.toggleAutoMorningBriefing()" class="toggle-switch"
+                                data-on="false" aria-label="Morning Briefing on first open"></button>
+                        </div>
                     </div>
                 </div>
 
@@ -11154,6 +11162,7 @@
                 if (!window._refreshPending) {
                     window.updateTodayStatus?.();
                     window.checkTodayForNewStories?.();
+                    setTimeout(() => window.maybeRunAutoMorningBriefing?.(), 400);
                 }
                 if (window._refreshPending) {
                     const nextOpts = window._refreshPending;
@@ -11675,8 +11684,59 @@
         }
 
         window._aiBriefingArticles = window._aiBriefingArticles || new Map();
+        window._autoMorningBriefing = (function () {
+            try { return localStorage.getItem('newsreader_auto_morning_briefing') === '1'; } catch (e) { return false; }
+        })();
 
-        window.registerAndOpenAiArticle = function ({ slug, title, subtitle, rawText, formattedHtml }) {
+        window.toggleAutoMorningBriefing = function () {
+            window._autoMorningBriefing = !window._autoMorningBriefing;
+            try { localStorage.setItem('newsreader_auto_morning_briefing', window._autoMorningBriefing ? '1' : '0'); } catch (e) { }
+            document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', window._autoMorningBriefing ? 'true' : 'false');
+            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+            window.showToast(window._autoMorningBriefing ? 'Morning Briefing on first open enabled' : 'Morning Briefing on first open off');
+            if (window._autoMorningBriefing) {
+                setTimeout(() => window.maybeRunAutoMorningBriefing?.(), 200);
+            }
+        };
+
+        function getLocalMorningBriefingDayKey() {
+            const now = new Date();
+            if (now.getHours() < 5) return null; // Wait until 5:00 AM local time
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        window.maybeRunAutoMorningBriefing = async function () {
+            if (!window._autoMorningBriefing) return;
+            if (!window.getGeminiApiKey()) return;
+            if (window._autoBriefingInFlight || window._refreshInFlight || window._refreshPending) return;
+            const dayKey = getLocalMorningBriefingDayKey();
+            if (!dayKey) return;
+            try {
+                if (localStorage.getItem('newsreader_last_auto_briefing_day') === dayKey) return;
+            } catch (e) { }
+            const hasUnread = (window.articles || []).some(a => a.unread && !a.isBrief && a.source !== 'System');
+            if (!hasUnread) return;
+
+            window._autoBriefingInFlight = true;
+            try {
+                // If the user hasn't opened a story yet, refresh Today's sections in place so just-fetched morning stories are included
+                const col = document.getElementById('today-column');
+                if ((!window.currentArticle || window.currentArticle.isBrief) && (!col || col.scrollTop < 40)) {
+                    if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
+                }
+                const ok = await window.generateTodayBriefing({ isAutoMorning: true });
+                if (ok) {
+                    try { localStorage.setItem('newsreader_last_auto_briefing_day', dayKey); } catch (e) { }
+                }
+            } finally {
+                window._autoBriefingInFlight = false;
+            }
+        };
+
+        window.registerAndOpenAiArticle = function ({ slug, title, subtitle, rawText, formattedHtml, openInReader = true }) {
             const now = Date.now();
             const daySlug = new Date(now).toISOString().slice(0, 10);
             const id = `ai-${slug}-${daySlug}-${now}`;
@@ -11702,7 +11762,13 @@
                 isAiBriefing: true
             };
             window._aiBriefingArticles.set(id, art);
-            window.openArticleInReader(id);
+            if (openInReader) {
+                window.openArticleInReader(id);
+            } else {
+                window._readLinks.add(art.link);
+                archiveReadArticle(art);
+                saveReadState();
+            }
             return art;
         };
 
@@ -11718,17 +11784,20 @@
             if (typeof window.updateActionButton === 'function') window.updateActionButton();
         };
 
-        window.generateTodayBriefing = async function () {
+        window.generateTodayBriefing = async function (opts = {}) {
+            const isAutoMorning = !!opts.isAutoMorning;
             const key = window.getGeminiApiKey();
             if (!key) {
-                window.showToast('Enter your Gemini API key in Settings → AI & Briefings');
-                window.toggleSettings('prefs');
-                return;
+                if (!isAutoMorning) {
+                    window.showToast('Enter your Gemini API key in Settings → AI & Briefings');
+                    window.toggleSettings('prefs');
+                }
+                return false;
             }
             const slots = document.querySelectorAll('.today-ai-briefing-slot');
-            if (!slots.length) {
+            if (!slots.length && !isAutoMorning) {
                 window.showToast('Open Today Brief first to generate briefing');
-                return;
+                return false;
             }
             slots.forEach(slot => {
                 slot.classList.remove('hidden');
@@ -11736,7 +11805,7 @@
                     <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="padding:11px 14px;margin-bottom:14px">
                         <span class="inline-flex items-center gap-2 font-medium">
                             <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
-                            Synthesizing Executive Briefing across all sections…
+                            ${isAutoMorning ? 'Preparing your Morning Executive Briefing…' : 'Synthesizing Executive Briefing across all sections…'}
                         </span>
                     </div>
                 `;
@@ -11790,9 +11859,9 @@
                 }
 
                 if (!totalStories) {
-                    window.showToast('No unread stories to synthesize');
+                    if (!isAutoMorning) window.showToast('No unread stories to synthesize');
                     slots.forEach(s => s.classList.add('hidden'));
-                    return;
+                    return false;
                 }
 
                 const groupedText = categoryGroups.map(cg => {
@@ -11818,18 +11887,21 @@ Coverage by Section:
 ${groupedText}`;
 
                 const rawText = await window.callGeminiApi(prompt);
-                if (!rawText) return;
+                if (!rawText) return false;
 
                 window._lastAiBriefingText = rawText;
                 const formattedHtml = formatGeminiBriefing(rawText);
                 const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                 const subtitle = `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
+                // For automatic morning briefings: open in the desktop reading pane only if no other story is open; on phone keep Today on screen and show the bar
+                const shouldOpenInReader = !isAutoMorning || (!isMobile() && (!window.currentArticle || window.currentArticle.isBrief));
                 const art = window.registerAndOpenAiArticle({
                     slug: 'executive-briefing',
-                    title: `Executive Briefing — ${dateLabel}`,
+                    title: `${isAutoMorning ? 'Morning ' : ''}Executive Briefing — ${dateLabel}`,
                     subtitle,
                     rawText,
-                    formattedHtml
+                    formattedHtml,
+                    openInReader: shouldOpenInReader
                 });
 
                 const isSaved = window.savedBucket?.has(art.link);
@@ -11840,7 +11912,7 @@ ${groupedText}`;
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
                             </span>
                             <div class="min-w-0">
-                                <div class="ai-briefing-title truncate">Executive Briefing</div>
+                                <div class="ai-briefing-title truncate">${isAutoMorning ? 'Morning Executive Briefing' : 'Executive Briefing'}</div>
                                 <div class="ai-briefing-sub truncate">${esc(subtitle)} · Saved in History</div>
                             </div>
                         </div>
@@ -11855,12 +11927,14 @@ ${groupedText}`;
                     </div>
                 `;
 
-                slots.forEach(slot => {
+                window._todayAiBriefingBarHtml = barMarkup;
+                document.querySelectorAll('.today-ai-briefing-slot').forEach(slot => {
                     slot.classList.remove('hidden');
                     slot.innerHTML = barMarkup;
                 });
+                return true;
             } catch (err) {
-                slots.forEach(slot => {
+                document.querySelectorAll('.today-ai-briefing-slot').forEach(slot => {
                     slot.innerHTML = `
                         <div class="ai-briefing-card flex items-start justify-between text-xs text-red-500" style="gap:12px">
                             <span style="min-width:0;overflow-wrap:anywhere">${esc(err.message || 'Failed to generate briefing')}</span>
@@ -11868,6 +11942,7 @@ ${groupedText}`;
                         </div>
                     `;
                 });
+                return false;
             }
         };
 
@@ -11879,6 +11954,7 @@ ${groupedText}`;
         };
 
         window.dismissTodayBriefing = function () {
+            window._todayAiBriefingBarHtml = '';
             document.querySelectorAll('.today-ai-briefing-slot').forEach(s => {
                 s.classList.add('hidden');
                 s.innerHTML = '';
@@ -13421,7 +13497,7 @@ ${sampleText}`;
                             ${slotDef.metaExtra || ''}
                         </div>
                     </div>
-                    <div class="today-ai-briefing-slot hidden"></div>
+                    <div class="today-ai-briefing-slot ${window._todayAiBriefingBarHtml ? '' : 'hidden'}">${window._todayAiBriefingBarHtml || ''}</div>
             `;
 
             // Sticky Jump Pills (Table of Contents)
@@ -14039,6 +14115,7 @@ ${sampleText}`;
             }
             document.getElementById('rank-stories-toggle')?.setAttribute('data-on', window._todayRank ? 'true' : 'false');
             document.getElementById('learn-opens-toggle')?.setAttribute('data-on', window._learnOpens ? 'true' : 'false');
+            document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', window._autoMorningBriefing ? 'true' : 'false');
             const geminiInput = document.getElementById('gemini-api-key-input');
             if (geminiInput) geminiInput.value = window.getGeminiApiKey();
             window.renderMuteChips?.();
@@ -16398,7 +16475,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 379;
+        window.APP_BUILD = 380;
 
         (async function initApp() {
             try {
@@ -16536,6 +16613,8 @@ ${sampleText}`;
                         const btn = document.getElementById('show-empty-cats-toggle');
                         if (btn) btn.setAttribute('data-on', 'true');
                     }
+
+                    document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', window._autoMorningBriefing ? 'true' : 'false');
 
                     const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
                     if (prefs.autoRefresh) {
@@ -16995,6 +17074,11 @@ ${sampleText}`;
                             localStorage.setItem('newsreader_prefs', JSON.stringify(prefs));
                         } catch (e) { }
                     }
+                    if (typeof data.autoMorningBriefing === 'boolean') {
+                        window._autoMorningBriefing = data.autoMorningBriefing;
+                        try { localStorage.setItem('newsreader_auto_morning_briefing', data.autoMorningBriefing ? '1' : '0'); } catch (e) { }
+                        document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', data.autoMorningBriefing ? 'true' : 'false');
+                    }
                 }
             }).catch(e => console.warn('Could not load remote UI prefs:', e));
         }
@@ -17064,6 +17148,7 @@ ${sampleText}`;
                         paneWidth: paneWidth || '440px',
                         categoryOrder: window._categoryOrder,
                         autoRefresh,
+                        autoMorningBriefing: !!window._autoMorningBriefing,
                         todayExcluded: [...(window._todayExcluded || [])],
                         muteWords: window._muteWords || [],
                         updatedAt: new Date().toISOString()
@@ -17261,7 +17346,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v379';
+const CACHE_NAME = 'rss-reader-v380';
 const APP_SHELL = [
     '/',
     'index.html'
