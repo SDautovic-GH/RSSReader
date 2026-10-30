@@ -649,10 +649,16 @@
             margin-right: -1px;
         }
 
-        /* A list card is Today's card: one source line (source · time, "..." on the phone), a
-           thumbnail beside the headline and summary; the body holds the float. */
+        /* A list card is Today's card: headline, summary, and a quiet source · time + "..." footer at
+           the bottom; a thumbnail floats beside the headline and summary; the body holds the float. */
         .list-card-body {
             display: flow-root;
+        }
+
+        .list-card-meta {
+            clear: both;
+            margin-top: 0.35rem !important;
+            margin-bottom: 0 !important;
         }
 
         #article-list .list-source-label,
@@ -673,6 +679,10 @@
 
         #article-list.compact-wire .list-thumb {
             display: none;
+        }
+
+        #article-list [data-id] .story-actions {
+            display: none !important;
         }
 
         /* Respect OS-level reduced-motion preference. transition: none, not a 0.01ms duration: that
@@ -2915,6 +2925,29 @@
             color: #58a6ff !important;
         }
 
+        #article-body .ai-briefing-theme-link,
+        .ai-briefing-theme-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25em;
+            color: inherit !important;
+            text-decoration: none !important;
+            cursor: pointer;
+            transition: opacity 0.15s ease;
+        }
+
+        #article-body .ai-briefing-theme-link:hover,
+        .ai-briefing-theme-link:hover {
+            opacity: 0.82;
+            text-decoration: underline !important;
+        }
+
+        .ai-theme-arrow {
+            font-size: 1.1em;
+            line-height: 1;
+            opacity: 0.7;
+        }
+
         #article-body .ai-briefing-cite,
         .ai-briefing-cite {
             font-size: var(--list-source-size, 0.86em) !important;
@@ -2930,7 +2963,7 @@
             color: #2563eb !important;
             text-decoration: none;
             cursor: pointer;
-            transition: opacity 0.15s ease;
+            transition: opacity 0.15s ease, color 0.15s ease;
         }
 
         @media (max-width: 900px) {
@@ -2947,10 +2980,96 @@
             color: #58a6ff !important;
         }
 
+        #article-body .ai-briefing-cite-link.is-visited,
+        .ai-briefing-cite-link.is-visited,
+        .dark #article-body .ai-briefing-cite-link.is-visited,
+        .dark .ai-briefing-cite-link.is-visited {
+            color: var(--text-3) !important;
+            opacity: 0.8;
+        }
+
+        #article-body .ai-briefing-cite-link.is-visited::before,
+        .ai-briefing-cite-link.is-visited::before {
+            content: '✓\00a0';
+            font-size: 0.88em;
+            opacity: 0.85;
+        }
+
         #article-body .ai-briefing-cite-link:hover,
         .ai-briefing-cite-link:hover {
             text-decoration: underline;
             opacity: 0.88;
+        }
+
+        /* Clean, borderless inline Category Recap inside Today sections (no blue box or badge) */
+        .ai-inline-recap {
+            padding: 0.35rem 0 0.85rem;
+            margin-bottom: 0.65rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+            background: transparent;
+        }
+
+        .dark .ai-inline-recap {
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .ai-inline-recap-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.55rem;
+            font-size: var(--list-source-size, 0.82em);
+            color: var(--text-3) !important;
+        }
+
+        .ai-inline-recap-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-shrink: 0;
+        }
+
+        .ai-inline-recap-act {
+            border: none;
+            background: transparent;
+            padding: 0;
+            font: inherit;
+            font-weight: 500;
+            color: var(--text-3) !important;
+            cursor: pointer;
+            transition: color 0.15s ease;
+        }
+
+        .ai-inline-recap-act:hover {
+            color: #2563eb !important;
+        }
+
+        .dark .ai-inline-recap-act:hover {
+            color: #58a6ff !important;
+        }
+
+        .ai-inline-recap .ai-reader-briefing ul {
+            list-style: none !important;
+            padding-left: 0 !important;
+            margin: 0.3em 0 0.85em !important;
+        }
+
+        .ai-inline-recap .ai-reader-briefing li {
+            display: flex;
+            align-items: baseline;
+            gap: 0.55em;
+            margin-bottom: 0.55em;
+            font-size: var(--list-preview-font-size, 1.0em) !important;
+            line-height: var(--list-preview-line-height, 1.42) !important;
+            color: var(--text-2) !important;
+        }
+
+        @media (max-width: 900px) {
+            .ai-inline-recap .ai-reader-briefing li {
+                font-size: var(--mob-list-preview-size, 1.0em) !important;
+                line-height: var(--mob-list-preview-line-height, 1.42) !important;
+            }
         }
 
         #article-body .ai-reader-briefing li.ai-bullet-return-pulse {
@@ -5166,6 +5285,7 @@
 
         .brief-story-card[data-sa-id] {
             position: relative;
+            overflow: hidden;
         }
 
         .swipe-hint {
@@ -8508,51 +8628,36 @@
             // Bluesky posts use Mastodon-style: no headline, full text in the preview row.
             const feedObj = (window.feeds || []).find(f => (f.name === a.source || f.title === a.source || f.id === a.feedId || f.url === a.feedUrl));
             const sourceLabel = a.source || feedObj?.name || feedObj?.title || 'News';
-            const favicon = getFavicon(sourceLabel);
 
             // For Bluesky reposts, show the original author above the post text so the
-            // person being read is visible without losing the feed name at the top.
+            // person being read is visible without losing the feed name at the bottom.
             const repostLine = (isBsky && a.bskyIsRepost && a.bskyOriginalAuthor)
                 ? `<p class="bsky-repost-byline dynamic-list-preview text-blue-400 font-semibold mb-1">↻ ${esc(a.bskyOriginalAuthor)}</p>`
                 : '';
-            const titleHtml = isBsky ? '' : `<h3 class="font-bold text-gray-900 dark:text-white leading-snug mb-1 dynamic-list-title">${esc(a.title)}</h3>`;
+            const titleHtml = isBsky ? '' : `<h3 class="font-semibold text-gray-900 dark:text-white leading-snug mb-1 dynamic-list-title">${esc(a.title)}</h3>`;
             const previewCls = isBsky
-                ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-social dynamic-list-preview'
-                : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview';
+                ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-social dynamic-list-preview mb-1.5'
+                : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview mb-1.5';
 
-            const isSaved = window.savedBucket ? window.savedBucket.has(a.link) : false;
             // A picture beside the headline and summary, as on Today's cards: never an avatar, and a failed
             // or tiny one leaves no box. Show images off and Compact Wire hide it.
             const img = a.image && !/avatar/i.test(a.image) ? window.pictureUrl(a.image, 400) : '';
             const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove(); else window.smoothPicture(this)" onerror="this.parentNode.remove()"></div>` : '';
-            // The desktop's row: a Today card's and the reader's buttons. Read and Read Later are the
-            // right-click menu's own actions, which redraw the list.
-            const deskBtn = (on, onclick, label, icon, extra = '') =>
-                `<button type="button" class="icon-act${on ? ' is-on' : ''}${extra}" onclick="${onclick}" title="${label}" aria-label="${label}"><svg aria-hidden="true"><use href="#${icon}"/></svg></button>`;
-            const deskActionsHtml = `
-                <div class="story-actions desk-only mt-1" onclick="event.stopPropagation()">${
-                    deskBtn(a.unread, `window.toggleArticleUnread('${saId}')`, a.unread ? 'Mark Read' : 'Mark Unread', a.unread ? 'icon-dot-filled' : 'icon-dot-hollow')
-                    + deskBtn(a.readLater, `window.toggleArticleReadLater('${saId}')`, a.readLater ? 'Remove from Read Later' : 'Read Later', a.readLater ? 'icon-bookmark-filled' : 'icon-bookmark')
-                    + `<button type="button" class="icon-act brief-save-btn${isSaved ? ' is-on' : ''}" data-save-id="${saId}" data-save-link="${esc(a.link || '')}" onclick="window.toggleBriefStorySaved('${saId}', this)" title="${isSaved ? 'Unsave' : 'Save'}" aria-label="${isSaved ? 'Unsave' : 'Save'}"><svg aria-hidden="true"><use href="#${isSaved ? 'icon-star-filled' : 'icon-star'}"/></svg></button>`
-                    + (a.link && a.link !== '#' ? `<a class="icon-act" href="${esc(a.link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '')
-                    + deskBtn(false, `window.briefStoryAct('share', '${saId}', this)`, 'Share', 'icon-share')
-                }</div>`;
 
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 ${swipeHintsHtml()}
                 <div class="min-w-0 list-card-body">
-                    <div class="list-card-meta flex items-center gap-1.5 mb-1 min-w-0">
+                    ${thumbHtml}
+                    ${repostLine}
+                    ${titleHtml}
+                    <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
+                    <div class="list-card-meta flex items-center gap-1.5 min-w-0">
                         ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
-                        <span class="list-source-label font-bold truncate min-w-0">${favicon}${esc(sourceLabel)}</span>
+                        <span class="list-source-label truncate min-w-0">${esc(sourceLabel)}</span>
                         <span class="list-meta-dot" aria-hidden="true">•</span>
                         <span class="list-date-label flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         <button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showListCardMenu(this, '${saId}')" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>
                     </div>
-                    ${thumbHtml}
-                    ${titleHtml}
-                    ${repostLine}
-                    <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
-                    ${deskActionsHtml}
                 </div>
             </div>`;
         }
@@ -8624,6 +8729,7 @@
             const reset = card => {
                 card.querySelectorAll(':scope > .swipe-hint').forEach(h => { h.style.opacity = 0; });
                 card.style.removeProperty('background');
+                card.style.removeProperty('transform');
             };
 
             container.addEventListener('touchstart', (e) => {
@@ -8647,13 +8753,15 @@
                 _t.moved = true;
                 const [leftHint, rightHint] = hintsOf(_t.card);
                 const progress = Math.min(1, Math.abs(dx) / SWIPE_THRESHOLD);
-                if (dx < -8) {
-                    // Swiping left → Mark Read
-                    leftHint.style.opacity = progress;   // solid once the swipe will act
+                const shiftX = Math.max(-28, Math.min(28, dx * 0.35));
+                _t.card.style.transform = `translateX(${shiftX.toFixed(1)}px)`;
+                if (dx > 8) {
+                    // Swiping right → Mark Read (reveals left-side check pill, like Apple Mail / Reeder)
+                    leftHint.style.opacity = progress;
                     rightHint.style.opacity = 0;
                     _t.card.style.setProperty('background', `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.18}) 50%, rgba(37,99,235,${progress * 0.06}) 100%)`, 'important');
-                } else if (dx > 8) {
-                    // Swiping right → Add to Read Later
+                } else if (dx < -8) {
+                    // Swiping left → Read Later (reveals right-side bookmark pill)
                     rightHint.style.opacity = progress;
                     leftHint.style.opacity = 0;
                     _t.card.style.setProperty('background', `linear-gradient(to left, rgba(22,163,74,${progress * 0.35}) 0%, rgba(22,163,74,${progress * 0.18}) 50%, rgba(22,163,74,${progress * 0.06}) 100%)`, 'important');
@@ -8682,7 +8790,7 @@
                 if (Math.abs(dy) > Math.abs(dx) / SWIPE_RATIO) return;
 
                 dropClickUntil = Date.now() + 400;
-                act(t.card, dx < 0 ? 'read' : 'later');
+                act(t.card, dx > 0 ? 'read' : 'later');
             }, { passive: true });
 
             container.addEventListener('click', (e) => {
@@ -9264,6 +9372,20 @@
                     headerWrap.style.borderBottom = 'none';
                 }
                 const catName = headingEl.textContent.trim();
+                const normCat = catName.toLowerCase();
+                if (window._catAiRecapHtmlMap?.has(normCat)) {
+                    let recapSlot = catSection.querySelector('.cat-ai-recap-slot');
+                    if (!recapSlot && headerWrap) {
+                        recapSlot = document.createElement('div');
+                        recapSlot.className = 'cat-ai-recap-slot';
+                        if (headerWrap.nextSibling) catSection.insertBefore(recapSlot, headerWrap.nextSibling);
+                        else catSection.appendChild(recapSlot);
+                    }
+                    if (recapSlot) {
+                        recapSlot.classList.remove('hidden');
+                        recapSlot.innerHTML = window._catAiRecapHtmlMap.get(normCat);
+                    }
+                }
                 const countEl = catSection.querySelector('.brief-cat-count');
                 if (countEl) countEl.classList.add('whitespace-nowrap');
                 let controlsEl = catSection.querySelector('.brief-cat-controls');
@@ -11814,6 +11936,28 @@
             return { story: best, label };
         }
 
+        window._visitedAiCiteIds = window._visitedAiCiteIds || new Set();
+
+        window.isAiCiteStoryVisited = function (storyId, storyLink) {
+            if (storyId && window._visitedAiCiteIds?.has(String(storyId))) return true;
+            if (storyLink && window._readLinks?.has?.(storyLink)) return true;
+            if (storyId) {
+                const art = (window.articles || []).find(a => String(a.id) === String(storyId));
+                if (art && art.unread === false) return true;
+            }
+            return false;
+        };
+
+        window.syncAiBriefingVisitedLinks = function (root) {
+            (root || document).querySelectorAll('a.ai-briefing-cite-link').forEach(a => {
+                const sid = a.getAttribute('data-ai-story-id') || '';
+                const slink = a.getAttribute('data-ai-story-link') || '';
+                if (window.isAiCiteStoryVisited(sid, slink)) {
+                    a.classList.add('is-visited');
+                }
+            });
+        };
+
         function renderBriefingCitations(escapedLine, rawLine, storiesList) {
             return escapedLine.replace(/\[([^\]]+)\]/g, (_, innerEscaped) => {
                 const rawInner = innerEscaped
@@ -11826,7 +11970,8 @@
                 const renderedParts = parts.map(part => {
                     const { story, label } = resolveCitationStory(part, rawLine, storiesList);
                     if (story && (story.id || story.link)) {
-                        return `<a href="#" class="ai-briefing-cite-link" data-ai-story-id="${esc(story.id || '')}" data-ai-story-link="${esc(story.link || '')}" title="${esc(story.title || label)}">${esc(label)}</a>`;
+                        const visitedCls = window.isAiCiteStoryVisited(story.id, story.link) ? ' is-visited' : '';
+                        return `<a href="#" class="ai-briefing-cite-link${visitedCls}" data-ai-story-id="${esc(story.id || '')}" data-ai-story-link="${esc(story.link || '')}" onclick="event.preventDefault(); event.stopPropagation(); return window.openStoryFromAiBriefing(this);" title="${esc(story.title || label)}">${esc(label)}</a>`;
                     }
                     return esc(label);
                 });
@@ -11834,8 +11979,9 @@
             });
         }
 
-        function formatGeminiBriefing(text, storiesList = []) {
+        function formatGeminiBriefing(text, storiesList = [], opts = {}) {
             if (!text) return '';
+            const linkCategories = opts.linkCategories !== false;
             const lines = text.split('\n');
             let out = '<div class="ai-reader-briefing">';
             let inList = false;
@@ -11848,8 +11994,12 @@
                 }
                 if (line.startsWith('###') || line.startsWith('##')) {
                     if (inList) { out += '</ul>'; inList = false; }
-                    const heading = line.replace(/^#+\s*/, '').replace(/\*\*/g, '');
-                    out += `<div class="ai-briefing-theme">${esc(heading)}</div>`;
+                    const heading = line.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/\s*\(\d+\s+stories\)\s*$/i, '').trim();
+                    if (linkCategories) {
+                        out += `<div class="ai-briefing-theme"><a href="#" class="ai-briefing-theme-link" data-ai-cat-name="${esc(heading)}" onclick="return window.jumpToBriefCategoryFromAi(this.getAttribute('data-ai-cat-name'))">${esc(heading)} <span class="ai-theme-arrow" aria-hidden="true">›</span></a></div>`;
+                    } else {
+                        out += `<div class="ai-briefing-theme">${esc(heading)}</div>`;
+                    }
                 } else if (/^(?:[-•*]|\d+\.)\s+/.test(line)) {
                     if (!inList) { out += '<ul class="space-y-2 pl-0 my-1">'; inList = true; }
                     const content = line.replace(/^(?:[-•*]|\d+\.)\s+/, '');
@@ -11867,6 +12017,47 @@
             out += '</div>';
             return out;
         }
+
+        window.jumpToBriefCategoryFromAi = function (catName) {
+            if (!catName) return false;
+            const norm = catName.trim().toLowerCase().replace(/\s*\(\d+\s+stories\)\s*$/i, '');
+            const findSec = (root) => {
+                if (!root) return null;
+                const secs = Array.from(root.querySelectorAll('.brief-cat-section'));
+                return secs.find(sec => {
+                    const h = (sec.querySelector('.brief-cat-heading')?.textContent || '').trim().toLowerCase();
+                    return h === norm || h.includes(norm) || norm.includes(h);
+                }) || null;
+            };
+            const highlightSec = (sec) => {
+                if (!sec) return;
+                sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                const head = sec.querySelector('.brief-cat-header') || sec;
+                head.classList.add('brief-card-return-pulse');
+                setTimeout(() => head.classList.remove('brief-card-return-pulse'), 2200);
+            };
+            if (typeof isMobile === 'function' && isMobile()) {
+                window._returnToAiBriefingState = null;
+                document.getElementById('ai-briefing-return-bar')?.remove();
+                selectArticle(window.TODAY_BRIEF_ID);
+                setMobilePane('viewer');
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        const sec = findSec(document.getElementById('article-body'));
+                        highlightSec(sec);
+                    }, 40);
+                });
+                return false;
+            }
+            const col = document.getElementById('today-column');
+            const sec = findSec(col) || findSec(document.getElementById('article-body'));
+            if (sec) {
+                highlightSec(sec);
+            } else {
+                window.showToast?.(`Section "${catName}" not found in Today`);
+            }
+            return false;
+        };
 
         window.openStoryFromAiBriefing = function (linkEl) {
             if (!linkEl) return false;
@@ -11890,10 +12081,32 @@
                 return false;
             }
 
+            window._visitedAiCiteIds.add(String(targetArt.id));
+            linkEl.classList.add('is-visited');
+            window.syncAiBriefingVisitedLinks();
+
+            // If clicked inside an inline Category Recap in Today, persist the visited class in _catAiRecapHtmlMap and open via openArticleInReader
+            const inlineSlot = linkEl.closest('.cat-ai-recap-slot');
+            if (inlineSlot) {
+                const sec = inlineSlot.closest('.brief-cat-section');
+                const catHeading = sec?.querySelector('.brief-cat-heading')?.textContent?.trim()?.toLowerCase();
+                if (catHeading && window._catAiRecapHtmlMap?.has(catHeading)) {
+                    window._catAiRecapHtmlMap.set(catHeading, inlineSlot.innerHTML);
+                }
+                window.openArticleInReader(targetArt.id);
+                return false;
+            }
+
             const cur = window.currentArticle;
             const readerView = document.getElementById('reader-view');
             const li = linkEl.closest('li[data-ai-bullet-idx]');
             if (cur && (cur.isAiBriefing || (cur.link && cur.link.startsWith('https://ai.google.dev/briefing/')))) {
+                const ab = document.getElementById('article-body');
+                if (ab) {
+                    const clone = ab.cloneNode(true);
+                    clone.querySelector('#ai-briefing-return-bar')?.remove();
+                    cur.body = clone.innerHTML;
+                }
                 window._aiBriefingArticles.set(cur.id, cur);
                 window._returnToAiBriefingState = {
                     aiArticle: cur,
@@ -11926,6 +12139,7 @@
                 setMobilePane('viewer');
             }
             const restorePos = () => {
+                window.syncAiBriefingVisitedLinks(document.getElementById('article-body'));
                 const rv = document.getElementById('reader-view');
                 if (rv && typeof state.scrollTop === 'number') {
                     rv.scrollTop = state.scrollTop;
@@ -12228,6 +12442,7 @@ ${groupedText}`;
         };
 
         window._catAiRecapTexts = window._catAiRecapTexts || new Map();
+        window._catAiRecapHtmlMap = window._catAiRecapHtmlMap || new Map();
 
         window.generateCategoryRecap = async function (catName, btnEl) {
             const key = window.getGeminiApiKey();
@@ -12268,11 +12483,13 @@ ${groupedText}`;
                 slots.forEach(slot => {
                     slot.classList.remove('hidden');
                     slot.innerHTML = `
-                        <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="padding:10px 14px;margin-bottom:12px">
-                            <span class="inline-flex items-center gap-2 font-medium">
-                                <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
-                                Synthesizing ${esc(catName)} recap…
-                            </span>
+                        <div class="ai-inline-recap">
+                            <div class="ai-inline-recap-bar">
+                                <span class="inline-flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400">
+                                    <svg class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+                                    Synthesizing ${esc(catName)} recap…
+                                </span>
+                            </div>
                         </div>
                     `;
                 });
@@ -12342,7 +12559,7 @@ ${articleList}`;
 
                 const cleanText = cleanBriefingCitationText(rawText);
                 window._catAiRecapTexts.set(normCat, cleanText);
-                const formattedHtml = formatGeminiBriefing(rawText, topStories);
+                const formattedHtml = formatGeminiBriefing(rawText, topStories, { linkCategories: false });
                 const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                 const subtitle = `${topStories.length} unread ${topStories.length === 1 ? 'story' : 'stories'} in ${catName}`;
                 const art = window.registerAndOpenAiArticle({
@@ -12350,45 +12567,40 @@ ${articleList}`;
                     title: `${catName} Recap — ${dateLabel}`,
                     subtitle,
                     rawText: cleanText,
-                    formattedHtml
+                    formattedHtml,
+                    openInReader: false
                 });
 
                 const isSaved = window.savedBucket?.has(art.link);
-                const barMarkup = `
-                    <div class="ai-briefing-card flex items-center justify-between gap-2" style="padding:10px 14px;margin-bottom:12px">
-                        <div class="flex items-center gap-2 min-w-0 cursor-pointer" onclick="window.openArticleInReader('${escJs(art.id)}')">
-                            <span class="text-blue-600 dark:text-blue-400 flex-shrink-0">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-                            </span>
-                            <div class="min-w-0">
-                                <div class="ai-briefing-title truncate">${esc(catName)} Recap</div>
-                                <div class="ai-briefing-sub truncate">${esc(subtitle)} · Saved in History</div>
+                const inlineMarkup = `
+                    <div class="ai-inline-recap">
+                        <div class="ai-inline-recap-bar">
+                            <span>Recap · ${esc(subtitle)}</span>
+                            <div class="ai-inline-recap-actions">
+                                <button type="button" onclick="window.openArticleInReader('${escJs(art.id)}')" class="ai-inline-recap-act" title="Open in Reader">Reader</button>
+                                <button type="button" onclick="window.toggleSaveAiArticle('${escJs(art.id)}', this)" class="ai-inline-recap-act">${isSaved ? 'Saved ★' : 'Save ★'}</button>
+                                <button type="button" data-recap-cat="${esc(catName)}" onclick="window.copyCategoryRecap(this.getAttribute('data-recap-cat'))" class="ai-inline-recap-act">Copy</button>
+                                <button type="button" data-recap-cat="${esc(catName)}" onclick="window.dismissCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="ai-inline-recap-act" title="Dismiss" aria-label="Dismiss recap">✕</button>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1.5 flex-shrink-0">
-                            <button type="button" onclick="window.openArticleInReader('${escJs(art.id)}')" class="pill-btn text-xs">Open</button>
-                            <button type="button" onclick="window.toggleSaveAiArticle('${escJs(art.id)}', this)" class="pill-btn text-xs">${isSaved ? 'Saved ★' : 'Save ★'}</button>
-                            <button type="button" data-recap-cat="${esc(catName)}" onclick="window.copyCategoryRecap(this.getAttribute('data-recap-cat'))" class="pill-btn text-xs">Copy</button>
-                            <button type="button" data-recap-cat="${esc(catName)}" onclick="window.dismissCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="p-1 text-gray-400 hover:text-gray-600" title="Dismiss">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                        </div>
+                        ${formattedHtml}
                     </div>
                 `;
 
+                window._catAiRecapHtmlMap.set(normCat, inlineMarkup);
                 setSlots(() => {
                     slots.forEach(slot => {
                         slot.classList.remove('hidden');
-                        slot.innerHTML = barMarkup;
+                        slot.innerHTML = inlineMarkup;
                     });
                 });
             } catch (err) {
                 setSlots(() => {
                     slots.forEach(slot => {
                         slot.innerHTML = `
-                            <div class="ai-briefing-card flex items-start justify-between text-xs text-red-500" style="gap:12px;margin-bottom:14px">
+                            <div class="ai-inline-recap flex items-start justify-between text-xs text-red-500" style="gap:12px">
                                 <span style="min-width:0;overflow-wrap:anywhere">${esc(err.message || 'Failed to generate recap')}</span>
-                                <button type="button" data-recap-cat="${esc(catName)}" onclick="window.dismissCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="pill-btn text-xs" style="flex-shrink:0">Dismiss</button>
+                                <button type="button" data-recap-cat="${esc(catName)}" onclick="window.dismissCategoryRecap(this.getAttribute('data-recap-cat'), this)" class="ai-inline-recap-act" style="flex-shrink:0">Dismiss</button>
                             </div>
                         `;
                     });
@@ -12407,6 +12619,7 @@ ${articleList}`;
 
         window.dismissCategoryRecap = function (catName, btnEl) {
             const normCat = (catName || '').trim().toLowerCase();
+            window._catAiRecapHtmlMap?.delete(normCat);
             const clickedSlot = btnEl?.closest('.cat-ai-recap-slot');
             const run = () => {
                 if (clickedSlot) {
@@ -15195,10 +15408,20 @@ ${sampleText}`;
             menu.style.left = `${x}px`;
         };
 
-        // A list card's "..." (phone): the list's own menu, under the button.
+        // A list card's "..." (desktop & phone): the list's own menu, right-aligned under the button.
         window.showListCardMenu = function (btn, id) {
             const r = btn.getBoundingClientRect();
             showArticleContextMenu({ preventDefault() { }, clientX: r.right, clientY: r.bottom + 6 }, id);
+            const menu = document.getElementById('article-context-menu');
+            if (menu && !menu.classList.contains('hidden')) {
+                const w = menu.offsetWidth, h = menu.offsetHeight;
+                const left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+                let top = r.bottom + 6;
+                const bottomLimit = window.innerHeight - (typeof isMobile === 'function' && isMobile() ? 96 : 16);
+                if (top + h > bottomLimit) top = Math.max(8, r.top - h - 6);
+                menu.style.left = `${left}px`;
+                menu.style.top = `${top}px`;
+            }
         };
 
         window.openArticleLink = (id) => {
@@ -16761,7 +16984,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 387;
+        window.APP_BUILD = 388;
 
         (async function initApp() {
             try {
@@ -17632,7 +17855,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v387';
+const CACHE_NAME = 'rss-reader-v388';
 const APP_SHELL = [
     '/',
     'index.html'
