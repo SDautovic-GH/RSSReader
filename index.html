@@ -9697,11 +9697,13 @@
                 titleEl.style.display = 'none';
             } else {
                 titleEl.style.display = '';
-                if (article.isAiBriefing && !/[:\d]\s*[AP]M/i.test(article.title || '') && article.timestamp) {
-                    const _bd = new Date(article.timestamp);
-                    if (!isNaN(_bd.getTime())) {
-                        const timeStr = _bd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                        article.title = `${article.title} — ${timeStr}`;
+                if (article.isAiBriefing) {
+                    // For AI Briefings, clean any legacy "Briefing — " prefix or trailing time from the title
+                    let t = (article.title || '').replace(/^(?:Morning\s+)?Briefing\s*—\s*/i, '').replace(/\s*—\s*[:\d\sAPMapm]+$/, '').trim();
+                    if (t) article.title = t;
+                    // Ensure subtitle has "Briefing · " prefix
+                    if (article.author && !article.author.startsWith('Briefing') && !article.author.startsWith('Morning Briefing')) {
+                        article.author = `Briefing · ${article.author}`;
                     }
                 }
                 titleEl.textContent = article.title;
@@ -11864,7 +11866,10 @@
             if (!box) return (document.getElementById('article-body')?.innerText || '').replace(/[›✓•]/g, ' ');
             const parts = [];
             const titleEl = document.getElementById('article-title');
-            if (titleEl?.textContent?.trim()) parts.push(`${titleEl.textContent.trim()}.`);
+            if (titleEl?.textContent?.trim()) {
+                const t = titleEl.textContent.trim();
+                parts.push(t.toLowerCase().includes('briefing') ? `${t}.` : `Briefing. ${t}.`);
+            }
             box.querySelectorAll('.ai-briefing-theme, li, p').forEach(el => {
                 const raw = (el.textContent || '').replace(/[›✓•]/g, ' ').replace(/\s+/g, ' ').trim();
                 if (!raw) return;
@@ -13097,10 +13102,9 @@ Coverage by Section:
 ${blocksText}`;
 
                 const now = new Date();
-                const dateLabel = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                const timeLabel = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                const subtitle = `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
-                const briefingTitle = `${isAutoMorning ? 'Morning ' : ''}Briefing — ${dateLabel} — ${timeLabel}`;
+                const dateLabel = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+                const subtitle = `${isAutoMorning ? 'Morning Briefing' : 'Briefing'} · ${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
+                const briefingTitle = dateLabel;
 
                 let art = null;
                 if (shouldOpenInReader) {
@@ -17846,7 +17850,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 402;
+        window.APP_BUILD = 403;
 
         (async function initApp() {
             try {
@@ -18717,7 +18721,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v402';
+const CACHE_NAME = 'rss-reader-v403';
 const APP_SHELL = [
     '/',
     'index.html'
