@@ -2877,21 +2877,32 @@
         }
 
         /* When opened as an article inside the Reading Pane (#article-body), follow the user's
-           exact Article Reader font size, line height and App Zoom. */
+           exact Article Reader font size, line height, font family and App Zoom settings. */
         #article-body .ai-reader-briefing,
         #article-body .ai-reader-briefing li,
         #article-body .ai-reader-briefing p,
         #article-body .ai-briefing-story,
         .ai-briefing-story {
             color: var(--text-2) !important;
-            font-size: 1em !important;
-            line-height: inherit !important;
+            font-family: var(--view-font-family, inherit) !important;
+            font-size: var(--mob-body-size, 1em) !important;
+            line-height: var(--mob-line-height, 1.5) !important;
+        }
+
+        @media (min-width: 901px) {
+            #article-body .ai-reader-briefing,
+            #article-body .ai-reader-briefing li,
+            #article-body .ai-reader-briefing p,
+            #article-body .ai-briefing-story,
+            .ai-briefing-story {
+                font-size: var(--view-font-size, 1em) !important;
+                line-height: var(--line-height, 1.5) !important;
+            }
         }
 
         .ai-briefing-story {
             padding-left: 0 !important;
             margin-bottom: 0.85em !important;
-            line-height: 1.6 !important;
             display: block !important;
         }
 
@@ -2918,7 +2929,7 @@
 
         #article-body .ai-briefing-theme,
         .ai-briefing-theme {
-            font-size: 0.85em !important;
+            font-size: var(--mob-section-heading-size, 0.85em) !important;
             font-weight: 700 !important;
             letter-spacing: 0.05em;
             text-transform: uppercase;
@@ -2926,6 +2937,13 @@
             margin-top: 1.4em;
             margin-bottom: 0.45em;
             line-height: 1.3 !important;
+        }
+
+        @media (min-width: 901px) {
+            #article-body .ai-briefing-theme,
+            .ai-briefing-theme {
+                font-size: var(--section-heading-size, 0.85em) !important;
+            }
         }
 
         #article-body .ai-reader-briefing > .ai-briefing-theme:first-child,
@@ -3511,16 +3529,18 @@
         #article-body.is-brief-body {
             padding-top: 3px !important;
             padding-bottom: 2rem !important;
-            font-size: 1em !important;
-            line-height: normal !important;
+            font-size: var(--view-font-size, 1em) !important;
+            line-height: var(--line-height, 1.5) !important;
+            font-family: var(--view-font-family, inherit) !important;
         }
 
         @media (max-width: 900px) {
             #article-body.is-brief-body {
                 padding-top: 3px !important;
                 padding-bottom: 0 !important;   /* was 2rem (335): see .brief-container */
-                font-size: 1em !important;
-                line-height: normal !important;
+                font-size: var(--mob-body-size, 1em) !important;
+                line-height: var(--mob-line-height, 1.5) !important;
+                font-family: var(--view-font-family, inherit) !important;
             }
         }
 
@@ -3540,6 +3560,11 @@
             /* Generous breathing room on desktop */
         }
 
+        .brief-container.ai-reader-article {
+            font-size: inherit !important;
+            line-height: inherit !important;
+        }
+
         @media (max-width: 900px) {
             .brief-container {
                 font-size: 1em !important;
@@ -3555,7 +3580,7 @@
             background: transparent !important;
             border: none !important;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-            padding: 3px 0 0.85rem 0 !important;
+            padding: 3px 0 0 0 !important;
             border-radius: 0 !important;
             margin-bottom: 1rem !important;
             width: 100%;
@@ -3573,7 +3598,7 @@
             font-weight: 700 !important;
             font-family: inherit !important;
             margin-top: 0 !important;
-            margin-bottom: 0.35rem;
+            margin-bottom: 0 !important;
             color: #0f1923 !important;
         }
 
@@ -3582,20 +3607,23 @@
             color: #f0f6fc !important;
         }
 
-        /* Today's date: the long form, or the short one where the long doesn't fit (fitBriefDate). An
-           inline-block, so a ResizeObserver sees its width change when a font arrives. */
+        /* Today's date: always show full date ("Saturday, October 31") */
         .brief-date {
             display: inline-block;
             white-space: nowrap;
         }
 
-        .brief-date-short,
+        .brief-date-short {
+            display: none !important;
+        }
+
+        .brief-date-long,
         .brief-header-title.date-short .brief-date-long {
-            display: none;
+            display: inline !important;
         }
 
         .brief-header-title.date-short .brief-date-short {
-            display: inline;
+            display: none !important;
         }
 
         .brief-header-meta {
@@ -3605,6 +3633,12 @@
             flex-wrap: wrap !important;
             align-items: center !important;
             gap: 0.35rem 0.5rem !important;
+        }
+
+        @media (max-width: 900px) {
+            .brief-header-meta {
+                display: none !important;
+            }
         }
 
         .brief-header-meta span {
@@ -4848,11 +4882,11 @@
         }
 
         .pub-category-label {
-            font-size: calc(13px * var(--sheet-text, 1)) !important;
+            font-size: calc(12px * var(--sheet-text, 1)) !important;
             font-weight: 600 !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.06em !important;
-            color: var(--text-3) !important;
+            letter-spacing: 0.05em !important;
+            color: var(--text-3, #8b949e) !important;
             padding: 0 4px 6px 4px !important;
             display: flex !important;
             align-items: center !important;
@@ -4861,7 +4895,15 @@
             transition: color 0.15s ease;
         }
 
+        html:not(.dark) .pub-category-label {
+            color: #57606a !important;
+        }
+
         .pub-category-label:hover {
+            color: var(--text-1) !important;
+        }
+
+        .pub-category-label.active-item {
             color: #3b82f6 !important;
         }
 
@@ -4875,8 +4917,9 @@
         }
 
         html:not(.dark) .pub-card-group {
-            background: rgba(0, 0, 0, 0.02);
-            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
         }
 
         .pub-card-row {
@@ -4886,8 +4929,8 @@
             width: 100%;
             padding-top: calc(10px * (var(--mob-line-height, var(--line-height, 1.5)) / 1.5) + var(--feed-row-padding, 0.25rem)) !important;
             padding-bottom: calc(10px * (var(--mob-line-height, var(--line-height, 1.5)) / 1.5) + var(--feed-row-padding, 0.25rem)) !important;
-            padding-left: 16px !important;
-            padding-right: 16px !important;
+            padding-left: 14px !important;
+            padding-right: 14px !important;
             line-height: var(--mob-line-height, var(--line-height, 1.5)) !important;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             background: transparent;
@@ -5142,7 +5185,7 @@
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            margin: 8px 0 12px !important;
+            margin: 14px 0 14px 0 !important;
             padding: 0 !important;
         }
 
@@ -9491,27 +9534,11 @@
         // The section-end Mark-read button; restored after Undo / settling.
         const BRIEF_MARK_ROW_HTML = '<button type="button" class="brief-mark-section-btn pill-btn inline-flex" onclick="window.markBriefSectionRead(this)" title="Mark the stories above as read" aria-label="Mark the stories above as read"><svg aria-hidden="true"><use href="#icon-check"/></svg><span class="brief-mark-section-label">Mark read</span></button>';
 
-        // Today's heading is the long date ("Wednesday, September 30") where it fits and the short one
-        // ("Wed, Sep 30") where it doesn't: the phone's header row leaves it about 227px, and the Font
-        // setting can widen the text past that. A ResizeObserver on the heading and on the date redoes it
-        // when either changes size: a rotation, a font arriving, or a Today drawn while hidden coming into
-        // view. Headings no longer in the page are let go.
+        // Today's heading displays the full date ("Saturday, October 31").
         function fitBriefDate(container) {
-            const head = container.querySelector('.brief-header-title');
-            const date = head?.querySelector('.brief-date');
-            if (!date) return;
-            const st = window._briefDateFit ??= {
-                seen: new Set(),
-                ro: new ResizeObserver(entries => entries.forEach(e => {
-                    const h = e.target.closest('.brief-header-title');
-                    const d = h?.querySelector('.brief-date');
-                    if (!d) return;
-                    h.classList.remove('date-short');
-                    if (d.getBoundingClientRect().width > h.getBoundingClientRect().width + 0.5) h.classList.add('date-short');
-                }))
-            };
-            st.seen.forEach(el => { if (!el.isConnected) { st.ro.unobserve(el); st.seen.delete(el); } });
-            [head, date].forEach(el => { if (!st.seen.has(el)) { st.seen.add(el); st.ro.observe(el); } });
+            if (!container) return;
+            const head = container.querySelector?.('.brief-header-title');
+            if (head) head.classList.remove('date-short');
         }
 
         function normalizeBriefDOM(container) {
@@ -10898,7 +10925,7 @@
                 if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = true;
                 const isCollapsed = window.collapsedCategories[cat];
                 const rawCat = (cat || '').trim();
-                const formattedCat = (!rawCat || rawCat.toLowerCase() === 'uncategorized') ? 'Subscriptions' : rawCat;
+                const formattedCat = (!rawCat || rawCat.toLowerCase() === 'uncategorized') ? 'Uncategorized' : (rawCat.charAt(0).toUpperCase() + rawCat.slice(1));
 
                 // Roll feed health up to the folder header so a failing feed is visible
                 // even while the folder is collapsed. Error (>=3 fails) wins over stale.
@@ -13207,12 +13234,12 @@
             }
             const sw = window.getTodayViewSwitcherHtml ? window.getTodayViewSwitcherHtml(activeView) : '';
             return `
-                <div class="brief-header mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+                <div class="brief-header border-b border-gray-100 dark:border-gray-800">
                     <div class="app-header-row">
                         <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#icon-rss"/></svg></span>
                         <div class="app-header-text">
                             <div class="brief-header-status app-subtitle"><span data-today-status>${esc(statusText)}</span><span class="brief-header-new" data-today-new></span></div>
-                            <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">
+                            <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white leading-tight">
                                 <span class="brief-date">
                                     <span class="brief-date-long">${esc(headingLong)}</span>
                                     <span class="brief-date-short">${esc(headingDay)}</span>
@@ -18274,7 +18301,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 410;
+        window.APP_BUILD = 411;
 
         (async function initApp() {
             try {
@@ -19153,7 +19180,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v410';
+const CACHE_NAME = 'rss-reader-v411';
 const APP_SHELL = [
     '/',
     'index.html'
