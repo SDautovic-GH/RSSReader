@@ -2588,6 +2588,100 @@
             #reader-view {
                 padding-top: 16px;
             }
+
+            /* Desktop Today Workstation Layouts:
+               1. Briefing Mode: Centered editorial reading canvas (max-w-[760px])
+               2. Cards Mode: Wide responsive 2-column magazine grid when reader pane is idle */
+            body.desktop-today-briefing #timeline-pane,
+            body.desktop-today-briefing #resizer {
+                display: none !important;
+            }
+
+            body.desktop-today-briefing #viewer-pane {
+                display: flex !important;
+                flex: 1 1 0% !important;
+                width: 100% !important;
+            }
+
+            body.desktop-today-briefing #reader-view {
+                padding: 1.5rem 2rem 6rem 2rem !important;
+            }
+
+            body.desktop-today-briefing #reader-view > div {
+                max-width: 760px !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                width: 100% !important;
+            }
+
+            body.desktop-today-briefing #reader-view #article-body {
+                max-width: 760px !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+            }
+
+            body.desktop-today-cards-wide #timeline-pane {
+                display: flex !important;
+                flex: 1 1 0% !important;
+                width: 100% !important;
+                max-width: none !important;
+            }
+
+            body.desktop-today-cards-wide #viewer-pane,
+            body.desktop-today-cards-wide #resizer {
+                display: none !important;
+            }
+
+            body.desktop-today-cards-wide #today-column {
+                padding: 1.5rem 3rem 6rem 3rem !important;
+            }
+
+            body.desktop-today-cards-wide #today-column .brief-container {
+                max-width: 1320px !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                width: 100% !important;
+            }
+
+            body.desktop-today-cards-wide #today-column .brief-cat-section > div.space-y-3 {
+                display: grid !important;
+                grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
+                gap: 16px !important;
+            }
+
+            body.desktop-today-cards-wide #today-column .brief-cat-section > div.space-y-3 > :not([hidden]) ~ :not([hidden]) {
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+            }
+
+            body.desktop-today-cards-wide #today-column .brief-story-card {
+                border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                border-radius: 12px !important;
+                padding: 16px !important;
+                background: rgba(255, 255, 255, 0.02) !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                box-sizing: border-box !important;
+                margin: 0 !important;
+                transition: border-color 0.15s ease, background-color 0.15s ease !important;
+            }
+
+            :root:not(.dark) body.desktop-today-cards-wide #today-column .brief-story-card {
+                border-color: rgba(0, 0, 0, 0.08) !important;
+                background: rgba(0, 0, 0, 0.015) !important;
+            }
+
+            body.desktop-today-cards-wide #today-column .brief-story-card:hover {
+                border-color: rgba(68, 147, 248, 0.35) !important;
+                background: rgba(68, 147, 248, 0.04) !important;
+            }
+
+            @media (min-width: 1280px) {
+                body.desktop-today-cards-wide #today-column .brief-cat-section:first-of-type > div.space-y-3 > .brief-story-card:first-child {
+                    grid-column: span 2 !important;
+                }
+            }
         }
 
         /* Today images: each story's picture 16:9 across its card, after its text (on request: the source
@@ -6417,6 +6511,17 @@
                     </div>
                     <span id="timeline-today-title" class="hidden"></span>
                 </div>
+                <!-- Unified Desktop Today Switcher (Cards View) -->
+                <div id="desk-today-switcher" class="hidden flex items-center justify-center flex-1">
+                    <div class="segmented today-segmented" role="group" aria-label="Today View">
+                        <button type="button" data-active="false" onclick="window.switchTodayView('briefing')">
+                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Briefing
+                        </button>
+                        <button type="button" data-active="true" onclick="window.switchTodayView('cards')">
+                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
+                        </button>
+                    </div>
+                </div>
                 <button id="desk-search-trigger" onclick="toggleSearchSheet()"
                     class="p-1.5 rounded-lg text-gray-500 ml-2 flex-shrink-0"
                     title="Search Articles (/)">
@@ -6459,6 +6564,18 @@
                         </svg>
                         <span id="viewer-back-label">Today</span>
                     </button>
+                </div>
+
+                <!-- Unified Desktop Today Switcher (Briefing / Story View) -->
+                <div id="viewer-today-switcher" class="hidden flex items-center justify-center flex-1">
+                    <div class="segmented today-segmented" role="group" aria-label="Today View">
+                        <button type="button" data-active="true" onclick="window.switchTodayView('briefing')">
+                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Briefing
+                        </button>
+                        <button type="button" data-active="false" onclick="window.switchTodayView('cards')">
+                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex items-center space-x-3" ondblclick="event.stopPropagation()">
@@ -10659,6 +10776,11 @@
             } else if (e.key === 't' || e.key === 'T') {
                 e.preventDefault();
                 if (typeof openToday === 'function') openToday();
+            } else if (e.key === '1' || e.key === '2') {
+                if (window._todayInColumn || document.getElementById('feed-btn-today')?.classList.contains('active-item') || document.body.classList.contains('desktop-today-briefing') || document.body.classList.contains('desktop-today-cards-wide')) {
+                    e.preventDefault();
+                    window.switchTodayView(e.key === '1' ? 'briefing' : 'cards');
+                }
             } else if (e.key === 'b' || e.key === 'B') {
                 if (e.shiftKey) {
                     if (window.currentArticle && window.currentArticle.isBrief) {
@@ -10696,6 +10818,8 @@
                     window.returnToBrief();
                 } else if (typeof isMobile === 'function' && isMobile() && window._mobilePane === 'viewer') {
                     setMobilePane('timeline');
+                } else if (typeof isMobile === 'function' && !isMobile() && window._todayInColumn && window.currentArticle && !window.currentArticle.isBrief) {
+                    window.closeStoryToTodayColumn();
                 }
             }
         });
@@ -13420,8 +13544,14 @@
                 window._returnToBriefState = state.prevReturnToBriefState;
             }
             selectArticle(state.aiArticleId);
-            if (typeof isMobile === 'function' && isMobile()) {
-                setMobilePane('viewer');
+            if (typeof isMobile === 'function') {
+                if (isMobile()) {
+                    setMobilePane('viewer');
+                } else {
+                    document.body.classList.add('desktop-today-briefing');
+                    document.body.classList.remove('desktop-today-cards-wide');
+                    document.getElementById('viewer-today-switcher')?.classList.remove('hidden');
+                }
             }
             const restorePos = () => {
                 window.syncAiBriefingVisitedLinks(document.getElementById('article-body'));
@@ -13566,9 +13696,21 @@
                 window._openingFromAiBriefing = false;
                 window._returnToAiBriefingState = null;
                 window._hasSwitchedToCardsThisSession = true;
+                if (typeof isMobile === 'function' && !isMobile()) {
+                    document.body.classList.remove('desktop-today-briefing');
+                    const hasArticle = !!(window.currentArticle && !window.currentArticle.isBrief);
+                    if (!hasArticle) document.body.classList.add('desktop-today-cards-wide');
+                    document.getElementById('desk-today-switcher')?.classList.remove('hidden');
+                    document.getElementById('viewer-today-switcher')?.classList.toggle('hidden', !hasArticle);
+                }
                 await window.openToday({ forceCards: true });
             } else {
                 window._hasSwitchedToCardsThisSession = false;
+                if (typeof isMobile === 'function' && !isMobile()) {
+                    document.body.classList.add('desktop-today-briefing');
+                    document.body.classList.remove('desktop-today-cards-wide');
+                    document.getElementById('viewer-today-switcher')?.classList.remove('hidden');
+                }
                 const key = window.getGeminiApiKey();
                 if (!key) {
                     window.showToast('Enter your Gemini API key in Settings → AI & Briefings');
@@ -13821,6 +13963,12 @@
                     }
                     window.openArticleInReader(window._cachedTodayBriefingId);
                     window.updateTodayViewSwitcherState?.('briefing');
+                    if (typeof isMobile === 'function' && !isMobile()) {
+                        document.body.classList.add('desktop-today-briefing');
+                        document.body.classList.remove('desktop-today-cards-wide');
+                        document.getElementById('viewer-today-switcher')?.classList.remove('hidden');
+                        document.getElementById('desk-today-switcher')?.classList.remove('hidden');
+                    }
                     setTimeout(() => {
                         if (typeof window.syncAiBriefingVisitedLinks === 'function') window.syncAiBriefingVisitedLinks();
                     }, 30);
@@ -13889,6 +14037,12 @@ ${blocksText}`;
                         openInReader: true
                     });
                     window.updateTodayViewSwitcherState?.('briefing');
+                    if (typeof isMobile === 'function' && !isMobile()) {
+                        document.body.classList.add('desktop-today-briefing');
+                        document.body.classList.remove('desktop-today-cards-wide');
+                        document.getElementById('viewer-today-switcher')?.classList.remove('hidden');
+                        document.getElementById('desk-today-switcher')?.classList.remove('hidden');
+                    }
                 }
 
                 const syncModelBadge = () => {
@@ -14645,6 +14799,32 @@ ${sampleText}`;
             document.getElementById('article-list')?.classList.toggle('hidden', !!on);
             document.getElementById('timeline-count-group')?.classList.toggle('hidden', !!on);
             document.getElementById('timeline-today-title')?.classList.toggle('hidden', !on);
+
+            const deskSwitcher = document.getElementById('desk-today-switcher');
+            if (deskSwitcher) deskSwitcher.classList.toggle('hidden', !on);
+            const viewerSwitcher = document.getElementById('viewer-today-switcher');
+
+            if (!on) {
+                document.body.classList.remove('desktop-today-briefing');
+                document.body.classList.remove('desktop-today-cards-wide');
+                if (viewerSwitcher) viewerSwitcher.classList.add('hidden');
+            } else if (typeof isMobile === 'function' && !isMobile()) {
+                const targetView = window._currentTodayView || 'cards';
+                if (targetView === 'briefing') {
+                    document.body.classList.add('desktop-today-briefing');
+                    document.body.classList.remove('desktop-today-cards-wide');
+                    if (viewerSwitcher) viewerSwitcher.classList.remove('hidden');
+                } else {
+                    document.body.classList.remove('desktop-today-briefing');
+                    const hasArticle = !!(window.currentArticle && !window.currentArticle.isBrief);
+                    if (!hasArticle) {
+                        document.body.classList.add('desktop-today-cards-wide');
+                    } else {
+                        document.body.classList.remove('desktop-today-cards-wide');
+                    }
+                    if (viewerSwitcher) viewerSwitcher.classList.toggle('hidden', !hasArticle);
+                }
+            }
         };
 
         // One pass over Today wherever it is on screen, after anything changes read state (refreshUI(),
@@ -14935,6 +15115,12 @@ ${sampleText}`;
             window.currentArticle = null;
             window.updateActionButton?.();
             window.updateViewerBackBtn?.();
+            if (typeof isMobile === 'function' && !isMobile() && window._todayInColumn && window._currentTodayView === 'cards') {
+                document.body.classList.add('desktop-today-cards-wide');
+                document.body.classList.remove('desktop-today-briefing');
+                document.getElementById('viewer-today-switcher')?.classList.add('hidden');
+                document.getElementById('desk-today-switcher')?.classList.remove('hidden');
+            }
         };
 
         // Desktop Back / Escape / b with Today in the column: close the story and land on its card in the
@@ -15997,6 +16183,12 @@ ${sampleText}`;
         window.openArticleInReader = function (articleId) {
             const art = window.readerArticleById(articleId);
             if (art) {
+                if (typeof isMobile === 'function' && !isMobile()) {
+                    document.body.classList.remove('desktop-today-cards-wide');
+                    if (window._todayInColumn) {
+                        document.getElementById('viewer-today-switcher')?.classList.remove('hidden');
+                    }
+                }
                 if (window._todayInColumn && !art.isBrief) {
                     // DESKTOP TODAY COLUMN: the brief stays on screen beside the reader, so
                     // there is nothing to go back to - but prev/next (j/k, the chevrons)
@@ -18707,7 +18899,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 431;
+        window.APP_BUILD = 432;
 
         (async function initApp() {
             try {
@@ -19586,7 +19778,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v431';
+const CACHE_NAME = 'rss-reader-v432';
 const APP_SHELL = [
     '/',
     'index.html'
