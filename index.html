@@ -11697,28 +11697,105 @@
             return n ? `Today. ${n} ${n === 1 ? 'story' : 'stories'}. ${parts.join(' ')}` : '';
         }
 
-        // Spoken as a queue of short pieces: one long utterance can stop part-way in some browsers. Only
-        // the last piece ends the session.
+        // Spoken as a queue of short pieces (<= 175 chars each so both HTML5 <audio> TTS and Web Speech
+        // handle every piece cleanly without truncation or 400 errors).
         function ttsChunks(text) {
+            const MAX_LEN = 175;
             const out = [];
-            let cur = '';
-            // Sentences without a lookbehind, which older iOS Safari cannot parse.
-            for (const s of (text.replace(/\s+/g, ' ').match(/[^.!?]+[.!?]*/g) || []).map(x => x.trim()).filter(Boolean)) {
-                if ((cur + ' ' + s).length > 220 && cur) { out.push(cur); cur = s; }
-                else cur = cur ? `${cur} ${s}` : s;
+            const sentences = (String(text || '').replace(/\s+/g, ' ').match(/[^.!?]+[.!?]*/g) || []).map(x => x.trim()).filter(Boolean);
+            const clauses = [];
+            for (const s of sentences) {
+                if (s.length <= MAX_LEN) {
+                    clauses.push(s);
+                } else {
+                    const subParts = (s.match(/[^,;:—–-]+[,;:—–-]*/g) || [s]).map(x => x.trim()).filter(Boolean);
+                    for (const p of subParts) {
+                        if (p.length <= MAX_LEN) {
+                            clauses.push(p);
+                        } else {
+                            const words = p.split(/\s+/);
+                            let wcur = '';
+                            for (const w of words) {
+                                if ((wcur ? `${wcur} ${w}` : w).length > MAX_LEN && wcur) {
+                                    clauses.push(wcur);
+                                    wcur = w.slice(0, MAX_LEN);
+                                } else {
+                                    wcur = wcur ? `${wcur} ${w}` : w;
+                                }
+                            }
+                            if (wcur) clauses.push(wcur);
+                        }
+                    }
+                }
             }
-            if (cur.trim()) out.push(cur);
+            let cur = '';
+            for (const c of clauses) {
+                if ((cur ? `${cur} ${c}` : c).length > MAX_LEN && cur) {
+                    out.push(cur);
+                    cur = c;
+                } else {
+                    cur = cur ? `${cur} ${c}` : c;
+                }
+            }
+            if (cur.trim()) out.push(cur.trim());
             return out;
         }
 
-        // Listen: a queue of short pieces, _ttsIndex on the one being spoken, so Pause / Resume restart
-        // at that sentence (speechSynthesis.pause() is unreliable on iOS). _ttsActive = a session exists;
-        // _ttsPaused = paused. A run token makes a cancelled queue's late events ignored.
+        // Listen: plays through a real HTML5 <audio> element (AVPlayer / Playback category on iOS, which
+        // plays out loud through the iPhone speaker even when Silent Mode is on), with automatic fallback
+        // to Web Speech API (speechSynthesis) when offline.
         window._ttsPieces = null;
         window._ttsIndex = 0;
         window._ttsPaused = false;
         window._ttsRate = parseFloat(localStorage.getItem('newsreader_tts_rate') || '1');
+        window._ttsMode = 'audio'; // 'audio' | 'webspeech'
+        window._ttsCurrentUtterance = null;
         let _ttsRun = 0;
+        let _ttsAudioEl = null;
+        let _ttsPreloadEl = null;
+
+        function setTtsReferrerPolicy(noReferrer) {
+            try {
+                let meta = document.getElementById('tts-referrer-meta');
+                if (!meta) {
+                    meta = document.createElement('meta');
+                    meta.id = 'tts-referrer-meta';
+                    meta.name = 'referrer';
+                    document.head.appendChild(meta);
+                }
+                meta.content = noReferrer ? 'no-referrer' : 'strict-origin-when-cross-origin';
+            } catch (e) { }
+        }
+
+        function getTtsAudioEl() {
+            if (!_ttsAudioEl) {
+                _ttsAudioEl = document.createElement('audio');
+                _ttsAudioEl.id = 'tts-html-audio';
+                _ttsAudioEl.setAttribute('playsinline', '');
+                _ttsAudioEl.setAttribute('webkit-playsinline', '');
+                _ttsAudioEl.preload = 'auto';
+                _ttsAudioEl.style.display = 'none';
+                document.body.appendChild(_ttsAudioEl);
+            }
+            return _ttsAudioEl;
+        }
+
+        function buildTtsAudioUrl(piece) {
+            return `https://translate.googleapis.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(piece)}`;
+        }
+
+        function preloadNextTtsAudio(piece) {
+            if (!piece) return;
+            try {
+                setTtsReferrerPolicy(true);
+                if (!_ttsPreloadEl) {
+                    _ttsPreloadEl = new Audio();
+                    _ttsPreloadEl.preload = 'auto';
+                }
+                _ttsPreloadEl.src = buildTtsAudioUrl(piece);
+                _ttsPreloadEl.load();
+            } catch (e) { }
+        }
 
         window.cycleTTSSpeed = function () {
             const rates = [1, 1.25, 1.5, 2];
@@ -11728,7 +11805,12 @@
             try { localStorage.setItem('newsreader_tts_rate', String(window._ttsRate)); } catch (e) { }
             updateTTSButton();
             if (window._ttsActive && !window._ttsPaused) {
-                ttsSpeakFrom(window._ttsIndex);
+                if (window._ttsMode === 'audio' && _ttsAudioEl && !_ttsAudioEl.paused) {
+                    _ttsAudioEl.defaultPlaybackRate = window._ttsRate;
+                    _ttsAudioEl.playbackRate = window._ttsRate;
+                } else {
+                    ttsSpeakFrom(window._ttsIndex);
+                }
             }
         };
 
@@ -11757,21 +11839,11 @@
             stopTTS();
         };
 
-        let _iosSilentAudio = null;
-        function unlockIosPlaybackAudio() {
+        function activatePlaybackAudioSession() {
             try {
                 if (navigator.audioSession && navigator.audioSession.type !== 'playback') {
                     navigator.audioSession.type = 'playback';
                 }
-            } catch (e) { }
-            try {
-                if (!_iosSilentAudio) {
-                    _iosSilentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-                    _iosSilentAudio.setAttribute('playsinline', '');
-                    _iosSilentAudio.volume = 0.01;
-                }
-                const p = _iosSilentAudio.play();
-                if (p && typeof p.catch === 'function') p.catch(() => { });
             } catch (e) { }
         }
 
@@ -11793,42 +11865,44 @@
             return parts.join(' ');
         }
 
-        function ttsSpeakFrom(i) {
-            const run = ++_ttsRun;
-            unlockIosPlaybackAudio();
-            try { speechSynthesis.cancel(); } catch (e) { }
+        function onTtsQueueFinished(run) {
+            if (run !== _ttsRun) return;
+            if (window._ttsSource === 'story' && window.currentArticle && !window.currentArticle.isBrief && !window.currentArticle.isAiBriefing) {
+                if (window.currentArticle.unread) {
+                    toggleUnread(window.currentArticle);
+                    saveReadState();
+                    refreshUI();
+                    updateActionButton();
+                }
+                const timeline = window.currentTimeline || [];
+                const curId = window.currentArticle?.id;
+                const next = timeline.find(a => a.unread && a.id !== curId);
+                if (next) {
+                    window.showToast(`Up next: ${next.title}`);
+                    selectArticle(next.id);
+                    setTimeout(() => {
+                        if (run === _ttsRun) {
+                            window._ttsActive = false;
+                            window.toggleTTS('story');
+                        }
+                    }, 350);
+                    return;
+                }
+            }
+            endTTS();
+        }
+
+        function ttsSpeakFromWebSpeech(i, run) {
+            window._ttsMode = 'webspeech';
             const pieces = window._ttsPieces || [];
-            if (i >= pieces.length) { endTTS(); return; }
+            if (i >= pieces.length) { onTtsQueueFinished(run); return; }
 
             const speakPiece = (k) => {
                 if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
-                if (k >= pieces.length) {
-                    if (window._ttsSource === 'story' && window.currentArticle && !window.currentArticle.isBrief && !window.currentArticle.isAiBriefing) {
-                        if (window.currentArticle.unread) {
-                            toggleUnread(window.currentArticle);
-                            saveReadState();
-                            refreshUI();
-                            updateActionButton();
-                        }
-                        const timeline = window.currentTimeline || [];
-                        const curId = window.currentArticle?.id;
-                        const next = timeline.find(a => a.unread && a.id !== curId);
-                        if (next) {
-                            window.showToast(`Up next: ${next.title}`);
-                            selectArticle(next.id);
-                            setTimeout(() => {
-                                if (run === _ttsRun) {
-                                    window._ttsActive = false;
-                                    window.toggleTTS('story');
-                                }
-                            }, 350);
-                            return;
-                        }
-                    }
-                    endTTS();
-                    return;
-                }
+                if (k >= pieces.length) { onTtsQueueFinished(run); return; }
                 const u = new SpeechSynthesisUtterance(pieces[k]);
+                window._ttsCurrentUtterance = u;
+                u.lang = 'en-US';
                 u.rate = window._ttsRate || 1;
                 u.volume = 1;
                 u.onstart = () => { if (run === _ttsRun) window._ttsIndex = k; };
@@ -11836,9 +11910,16 @@
                     if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
                     speakPiece(k + 1);
                 };
-                u.onerror = (e) => {
-                    if (run !== _ttsRun) return;
-                    if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
+                u.onerror = () => {
+                    if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                    if (!u._retried) {
+                        u._retried = true;
+                        setTimeout(() => {
+                            if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                            try { speechSynthesis.speak(u); } catch (e) { endTTS(); }
+                        }, 70);
+                        return;
+                    }
                     endTTS();
                 };
                 try {
@@ -11849,14 +11930,91 @@
                 }
             };
 
-            // Speak synchronously inside the user gesture so iOS Safari unlocks speech audio.
-            speakPiece(i);
+            let wasBusy = false;
+            try {
+                if (speechSynthesis.speaking || speechSynthesis.pending) {
+                    wasBusy = true;
+                    speechSynthesis.cancel();
+                }
+            } catch (e) { }
+            if (wasBusy) {
+                setTimeout(() => speakPiece(i), 65);
+            } else {
+                speakPiece(i);
+            }
         }
+
+        function ttsSpeakFrom(i) {
+            const run = ++_ttsRun;
+            activatePlaybackAudioSession();
+            const pieces = window._ttsPieces || [];
+            if (i >= pieces.length) { endTTS(); return; }
+
+            window._ttsMode = 'audio';
+            setTtsReferrerPolicy(true);
+            const audio = getTtsAudioEl();
+
+            const playAudioPiece = (k) => {
+                if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                if (k >= pieces.length) { onTtsQueueFinished(run); return; }
+                window._ttsIndex = k;
+                setTtsReferrerPolicy(true);
+                const rate = window._ttsRate || 1;
+                audio.onplaying = () => {
+                    if (run !== _ttsRun) return;
+                    audio.defaultPlaybackRate = window._ttsRate || 1;
+                    audio.playbackRate = window._ttsRate || 1;
+                    if (k + 1 < pieces.length) preloadNextTtsAudio(pieces[k + 1]);
+                };
+                audio.onended = () => {
+                    if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                    playAudioPiece(k + 1);
+                };
+                audio.onerror = () => {
+                    if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                    // Fallback to Web Speech API if offline or stream blocked
+                    ttsSpeakFromWebSpeech(k, run);
+                };
+                try {
+                    audio.src = buildTtsAudioUrl(pieces[k]);
+                    audio.defaultPlaybackRate = rate;
+                    audio.playbackRate = rate;
+                    const playPromise = audio.play();
+                    if (playPromise && typeof playPromise.catch === 'function') {
+                        playPromise.catch(() => {
+                            if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                            ttsSpeakFromWebSpeech(k, run);
+                        });
+                    }
+                } catch (e) {
+                    ttsSpeakFromWebSpeech(k, run);
+                }
+            };
+
+            playAudioPiece(i);
+        }
+
+        function stopTtsAudioEl() {
+            if (_ttsAudioEl) {
+                try {
+                    _ttsAudioEl.onended = null;
+                    _ttsAudioEl.onerror = null;
+                    _ttsAudioEl.onplaying = null;
+                    _ttsAudioEl.pause();
+                    _ttsAudioEl.removeAttribute('src');
+                    _ttsAudioEl.load();
+                } catch (e) { }
+            }
+            setTtsReferrerPolicy(false);
+        }
+
         function endTTS() {
             _ttsRun++;
             window._ttsActive = false;
             window._ttsPaused = false;
             window._ttsPieces = null;
+            window._ttsCurrentUtterance = null;
+            stopTtsAudioEl();
             updateTTSButton();
         }
 
@@ -11881,18 +12039,44 @@
             ttsSpeakFrom(0);
             updateTTSButton();
         };
-        function stopTTS() { speechSynthesis.cancel(); endTTS(); }
+        function stopTTS() {
+            try { speechSynthesis.cancel(); } catch (e) { }
+            endTTS();
+        }
         window.pauseTTS = function () {
             if (!window._ttsActive || window._ttsPaused) return;
             _ttsRun++;                     // the cancelled queue's events no longer count
-            speechSynthesis.cancel();
+            if (window._ttsMode === 'audio' && _ttsAudioEl) {
+                try { _ttsAudioEl.pause(); } catch (e) { }
+            }
+            try { speechSynthesis.cancel(); } catch (e) { }
             window._ttsPaused = true;
             updateTTSButton();
         };
         window.resumeTTS = function () {
             if (!window._ttsActive || !window._ttsPaused) return;
             window._ttsPaused = false;
-            ttsSpeakFrom(window._ttsIndex);
+            activatePlaybackAudioSession();
+            if (window._ttsMode === 'audio' && _ttsAudioEl && _ttsAudioEl.getAttribute('src') && !_ttsAudioEl.ended && _ttsAudioEl.currentTime > 0) {
+                const run = ++_ttsRun;
+                const pieces = window._ttsPieces || [];
+                const k = window._ttsIndex;
+                _ttsAudioEl.onended = () => {
+                    if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                    ttsSpeakFrom(k + 1);
+                };
+                _ttsAudioEl.onerror = () => {
+                    if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                    ttsSpeakFrom(k);
+                };
+                _ttsAudioEl.playbackRate = window._ttsRate || 1;
+                const p = _ttsAudioEl.play();
+                if (p && typeof p.catch === 'function') {
+                    p.catch(() => ttsSpeakFrom(k));
+                }
+            } else {
+                ttsSpeakFrom(window._ttsIndex);
+            }
             updateTTSButton();
         };
         window.togglePauseTTS = () => (window._ttsPaused ? window.resumeTTS() : window.pauseTTS());
@@ -17591,7 +17775,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 398;
+        window.APP_BUILD = 399;
 
         (async function initApp() {
             try {
@@ -18462,7 +18646,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v398';
+const CACHE_NAME = 'rss-reader-v399';
 const APP_SHELL = [
     '/',
     'index.html'
