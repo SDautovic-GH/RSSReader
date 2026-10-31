@@ -12771,17 +12771,6 @@
             const isAutoMorning = !!opts.isAutoMorning;
             const forceRegenerate = !!opts.forceRegenerate;
 
-            // #1 Instant Re-Open Cache: if a Today Briefing was already generated, open it in 0.0s unless regenerating
-            if (!forceRegenerate && !isAutoMorning && window._cachedTodayBriefingId && window._aiBriefingArticles?.has(window._cachedTodayBriefingId)) {
-                window._todayAiBriefingBarHtml = '';
-                getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
-                window.openArticleInReader(window._cachedTodayBriefingId);
-                setTimeout(() => {
-                    if (typeof window.syncAiBriefingVisitedLinks === 'function') window.syncAiBriefingVisitedLinks();
-                }, 30);
-                return true;
-            }
-
             const key = window.getGeminiApiKey();
             if (!key) {
                 if (!isAutoMorning) {
@@ -12797,19 +12786,6 @@
             }
             window._isGeneratingBriefing = true;
             const shouldOpenInReader = !isAutoMorning || (!isMobile() && (!window.currentArticle || window.currentArticle.isBrief));
-            if (!shouldOpenInReader) {
-                slots.forEach(slot => {
-                    slot.classList.remove('hidden');
-                    slot.innerHTML = `
-                        <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="padding:11px 14px;margin-bottom:14px">
-                            <span class="inline-flex items-center gap-2 font-medium">
-                                <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
-                                ${isAutoMorning ? 'Preparing your Morning Briefing…' : 'Synthesizing Briefing across all sections…'}
-                            </span>
-                        </div>
-                    `;
-                });
-            }
 
             try {
                 const byId = new Map((window.articles || []).map(a => [String(a.id), a]));
@@ -12862,6 +12838,32 @@
                     if (!isAutoMorning) window.showToast('No unread stories to synthesize');
                     getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
                     return false;
+                }
+
+                // #1 Smart Instant Re-Open Cache: only reuse cached Briefing if the unread stories in Today haven't changed at all
+                const currentBriefingFingerprint = categoryGroups.flatMap(cg => cg.stories.slice(0, 35).map(a => String(a.id))).join(',');
+                if (!forceRegenerate && !isAutoMorning && currentBriefingFingerprint && currentBriefingFingerprint === window._cachedTodayBriefingFingerprint && window._cachedTodayBriefingId && window._aiBriefingArticles?.has(window._cachedTodayBriefingId)) {
+                    window._todayAiBriefingBarHtml = '';
+                    getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
+                    window.openArticleInReader(window._cachedTodayBriefingId);
+                    setTimeout(() => {
+                        if (typeof window.syncAiBriefingVisitedLinks === 'function') window.syncAiBriefingVisitedLinks();
+                    }, 30);
+                    return true;
+                }
+
+                if (!shouldOpenInReader) {
+                    slots.forEach(slot => {
+                        slot.classList.remove('hidden');
+                        slot.innerHTML = `
+                            <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="padding:11px 14px;margin-bottom:14px">
+                                <span class="inline-flex items-center gap-2 font-medium">
+                                    <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+                                    ${isAutoMorning ? 'Preparing your Morning Briefing…' : 'Synthesizing Briefing across all sections…'}
+                                </span>
+                            </div>
+                        `;
+                    });
                 }
 
                 window._briefingSectionStoryIds = new Map();
@@ -12946,6 +12948,7 @@ ${groupedText}`;
                     art.excerpt = plainExcerpt.slice(0, 220) + (plainExcerpt.length > 220 ? '…' : '');
                     art.snippet = art.excerpt;
                     window._cachedTodayBriefingId = art.id;
+                    window._cachedTodayBriefingFingerprint = currentBriefingFingerprint;
                     window._readLinks.add(art.link);
                     archiveReadArticle(art);
                     saveReadState();
@@ -12964,6 +12967,7 @@ ${groupedText}`;
                         openInReader: false
                     });
                     window._cachedTodayBriefingId = art.id;
+                    window._cachedTodayBriefingFingerprint = currentBriefingFingerprint;
                     const isSaved = window.savedBucket?.has(art.link);
                     const barMarkup = `
                         <div class="ai-briefing-card flex items-center justify-between gap-2" style="padding:10px 14px;margin-bottom:14px">
@@ -17587,7 +17591,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 397;
+        window.APP_BUILD = 398;
 
         (async function initApp() {
             try {
@@ -18458,7 +18462,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v397';
+const CACHE_NAME = 'rss-reader-v398';
 const APP_SHELL = [
     '/',
     'index.html'
