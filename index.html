@@ -4060,6 +4060,10 @@
             box-sizing: border-box;
         }
 
+        .brief-jump-bar + .brief-cat-section,
+        .brief-jump-bar + * > .brief-cat-section:first-child,
+        .ai-reader-briefing > .brief-cat-section:first-of-type,
+        .ai-reader-briefing > .brief-cat-section:first-child,
         .brief-cat-section:first-of-type {
             margin-top: 0.5rem !important;
         }
@@ -13045,7 +13049,7 @@
                     } catch (e) { }
                 }
             };
-            const normCat = catName ? catName.trim().toLowerCase() : '';
+            const normCat = catName ? catName.trim().toLowerCase().replace(/\s*\(\d+\s+stories\)\s*$/i, '') : '';
             if (normCat && window._briefingSectionStoryIds?.has(normCat)) {
                 window._briefingSectionStoryIds.get(normCat).forEach(takeId);
             } else if (!normCat && window._briefingSectionStoryIds) {
@@ -13055,10 +13059,11 @@
             }
             const root = container || document.getElementById('article-body') || document;
             if (normCat) {
-                const secRow = Array.from(root.querySelectorAll('.ai-briefing-theme-row')).find(r => (r.getAttribute('data-ai-sec-cat') || '').trim().toLowerCase() === normCat);
-                const ul = secRow?.nextElementSibling;
-                if (ul && ul.tagName === 'UL') {
-                    ul.querySelectorAll('a.ai-briefing-cite-link[data-ai-story-id]').forEach(a => takeId(a.getAttribute('data-ai-story-id')));
+                const secEl = root.querySelector(`#brief-cat-${normCat.replace(/[^a-z0-9]+/g, '_')}`)
+                    || Array.from(root.querySelectorAll('.brief-cat-section')).find(s => (s.querySelector('.brief-cat-heading')?.textContent || '').trim().toLowerCase() === normCat)
+                    || Array.from(root.querySelectorAll('.ai-briefing-theme-row')).find(r => (r.getAttribute('data-ai-sec-cat') || '').trim().toLowerCase() === normCat);
+                if (secEl) {
+                    secEl.querySelectorAll('a.ai-briefing-cite-link[data-ai-story-id]').forEach(a => takeId(a.getAttribute('data-ai-story-id')));
                 }
             } else {
                 root.querySelectorAll('a.ai-briefing-cite-link[data-ai-story-id]').forEach(a => takeId(a.getAttribute('data-ai-story-id')));
@@ -13073,10 +13078,12 @@
             marked.forEach(a => { a.unread = false; applyReadState(a); });
             applyBriefReadChange();
             window.syncAiBriefingVisitedLinks();
+            if (btn) btn.disabled = true;
             window.showBriefUndo?.(`Marked ${marked.size} read in ${cat || 'section'}`, () => {
                 marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
                 applyBriefReadChange();
                 window.syncAiBriefingVisitedLinks();
+                if (btn) btn.disabled = false;
             });
         };
 
@@ -13099,11 +13106,56 @@
             const isBriefingArticle = !!opts.isBriefingArticle;
             const isStreaming = !!opts.isStreaming;
             const lines = (text || '').split('\n');
+
+            // Resolve category sections for the jump bar and section headers
+            const catGroups = (opts.categoryGroups && opts.categoryGroups.length)
+                ? opts.categoryGroups
+                : (window._lastBriefingCategoryGroups && window._lastBriefingCategoryGroups.length)
+                    ? window._lastBriefingCategoryGroups
+                    : [];
+
+            let categorySectionsList = catGroups.slice();
+            if (!categorySectionsList.length) {
+                const seenHeadings = new Set();
+                for (const rawLine of lines) {
+                    const l = rawLine.trim();
+                    if (l.startsWith('###') || l.startsWith('##')) {
+                        let heading = l.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/\s*\(\d+\s+stories\)\s*$/i, '').trim();
+                        if (heading && heading === heading.toUpperCase() && heading.length > 3) {
+                            heading = heading.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+                        }
+                        const normH = heading.toLowerCase();
+                        if (heading && !seenHeadings.has(normH)) {
+                            seenHeadings.add(normH);
+                            categorySectionsList.push({
+                                name: heading,
+                                slug: heading.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase(),
+                                icon: normH.includes('top stories') ? 'icon-newspaper' : 'icon-rss',
+                                stories: []
+                            });
+                        }
+                    }
+                }
+            }
+
             let out = '<div class="ai-reader-briefing">';
+
+            // 1. Jump Bar at the top of Briefing (matches Cards view exactly)
+            if (isBriefingArticle && categorySectionsList.length > 0) {
+                out += `<div class="brief-jump-bar">`;
+                categorySectionsList.forEach((cs, idx) => {
+                    out += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill${idx === 0 ? ' is-active' : ''}" onclick="event.preventDefault(); window.briefJumpTo(this);">${esc(cs.name)}</a>`;
+                });
+                out += `</div>`;
+            }
+
             if (isBriefingArticle && isStreaming && !text) {
                 out += `<div class="ai-briefing-topbar"><span class="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium"><svg class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>Streaming Briefing live…</span></div>`;
             }
+
             let bulletIdx = 0;
+            let inSection = false;
+
             for (let rawLine of lines) {
                 const line = rawLine.trim();
                 if (!line) continue;
@@ -13112,11 +13164,40 @@
                     if (heading && heading === heading.toUpperCase() && heading.length > 3) {
                         heading = heading.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
                     }
-                    if (linkCategories) {
-                        const markBtn = isBriefingArticle
-                            ? `<button type="button" data-ai-sec-cat="${esc(heading)}" onclick="window.markAiBriefingSectionRead(this)" class="brief-cat-mark-read-btn ai-sec-mark-read-btn" title="Mark '${esc(heading)}' stories as read" aria-label="Mark '${esc(heading)}' stories as read"><svg><use href="#icon-check"/></svg></button>`
-                            : '';
-                        out += `<div class="ai-briefing-theme-row" data-ai-sec-cat="${esc(heading)}"><div class="ai-briefing-theme"><a href="#" class="ai-briefing-theme-link" data-ai-cat-name="${esc(heading)}" onclick="return window.jumpToBriefCategoryFromAi(this.getAttribute('data-ai-cat-name'))">${esc(heading)} <span class="ai-theme-arrow" aria-hidden="true">›</span></a></div>${markBtn}</div>`;
+                    if (isBriefingArticle) {
+                        if (inSection) {
+                            out += `</div></div>`; // close previous space-y-3 and brief-cat-section
+                            inSection = false;
+                        }
+                        const normH = heading.toLowerCase();
+                        const matchedCg = categorySectionsList.find(cg => {
+                            const cNorm = (cg.name || '').toLowerCase();
+                            return cNorm === normH || cNorm.includes(normH) || normH.includes(cNorm);
+                        });
+                        const slug = matchedCg?.slug || heading.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                        const icon = matchedCg?.icon || (normH.includes('top stories') ? 'icon-newspaper' : 'icon-rss');
+                        const storyCount = matchedCg?.stories?.length || 0;
+                        const countText = storyCount > 0 ? `${storyCount} stories` : '';
+
+                        out += `
+                            <div id="brief-cat-${slug}" class="brief-cat-section mb-5 scroll-mt-20">
+                                <div class="brief-cat-header flex items-center justify-between pb-1 mb-2.5 flex-nowrap gap-2">
+                                    <h3 class="brief-cat-heading font-bold text-blue-400 flex items-center gap-2 m-0 leading-snug min-w-0">
+                                        <svg class="w-4 h-4 flex-shrink-0"><use href="#${icon}"/></svg>
+                                        <span class="truncate">${esc(heading)}</span>
+                                    </h3>
+                                    <div class="brief-cat-controls flex items-center gap-1 flex-shrink-0 leading-none">
+                                        ${countText ? `<span class="brief-cat-count text-gray-500 font-medium whitespace-nowrap">${countText}</span>` : ''}
+                                        <button type="button" data-ai-sec-cat="${esc(heading)}" onclick="window.markAiBriefingSectionRead(this)" class="brief-cat-mark-read-btn ai-sec-mark-read-btn" title="Mark '${esc(heading)}' stories as read" aria-label="Mark '${esc(heading)}' stories as read">
+                                            <svg><use href="#icon-check"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="space-y-3">
+                        `;
+                        inSection = true;
+                    } else if (linkCategories) {
+                        out += `<div class="ai-briefing-theme-row" data-ai-sec-cat="${esc(heading)}"><div class="ai-briefing-theme">${esc(heading)}</div></div>`;
                     } else {
                         out += `<div class="ai-briefing-theme">${esc(heading)}</div>`;
                     }
@@ -13131,10 +13212,16 @@
                     out += `<div class="ai-briefing-story mb-2">${withCites}</div>`;
                 }
             }
+
+            if (inSection) {
+                out += `</div></div>`; // close last space-y-3 and brief-cat-section
+                inSection = false;
+            }
+
             if (isBriefingArticle && isStreaming && text) {
                 out += `<div class="ai-briefing-topbar mt-4" style="border-bottom:none"><span class="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium"><svg class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>Synthesizing remaining sections…</span></div>`;
             } else if (isBriefingArticle && !isStreaming && text) {
-                out += `<div class="brief-footer mt-6"><button type="button" onclick="window.markAiBriefingAllRead(this)" class="brief-mark-all-btn ai-briefing-mark-all-btn pill-btn pill-primary inline-flex items-center gap-1.5" title="Mark all covered stories as read"><svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg><span>Mark Covered Stories Read</span></button></div>`;
+                out += `<div class="brief-footer text-sm text-gray-500 dark:text-gray-400 mt-6"><button type="button" onclick="window.markAiBriefingAllRead(this)" class="brief-mark-all-btn ai-briefing-mark-all-btn pill-btn pill-primary inline-flex" title="Mark all covered stories as read"><svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg><span>Mark All Read in Folders</span></button></div>`;
             }
             out += '</div>';
             return out;
@@ -13542,9 +13629,13 @@
 
             try {
                 const byId = new Map((window.articles || []).map(a => [String(a.id), a]));
-                const root = document.getElementById('today-column')?.querySelector('.brief-cat-section')
+                const root = document.getElementById('today-column')?.querySelector('.brief-story-card')
                     ? document.getElementById('today-column')
-                    : document.getElementById('article-body');
+                    : document.getElementById('article-body')?.querySelector('.brief-story-card')
+                        ? document.getElementById('article-body')
+                        : window._todayKept?.frag?.querySelector('.brief-story-card')
+                            ? window._todayKept.frag
+                            : null;
 
                 const categoryGroups = [];
                 let totalStories = 0;
@@ -13552,6 +13643,9 @@
                 if (root) {
                     root.querySelectorAll('.brief-cat-section:not(.brief-section-empty)').forEach(sec => {
                         const catName = sec.querySelector('.brief-cat-heading')?.textContent?.trim() || 'News';
+                        const icon = sec.querySelector('.brief-cat-heading svg use')?.getAttribute('href')?.replace('#', '') || (catName.toLowerCase().includes('top stories') ? 'icon-newspaper' : 'icon-rss');
+                        const slug = sec.id ? sec.id.replace(/^brief-cat-/, '') : catName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                        const noMarkRead = sec.hasAttribute('data-no-mark-read');
                         const items = [];
                         sec.querySelectorAll('.brief-story-card[data-sa-id]:not(.brief-card-read)').forEach(card => {
                             const id = card.getAttribute('data-sa-id');
@@ -13559,7 +13653,7 @@
                             if (art) items.push(art);
                         });
                         if (items.length) {
-                            categoryGroups.push({ name: catName, stories: items });
+                            categoryGroups.push({ name: catName, slug, icon, noMarkRead, stories: items });
                             totalStories += items.length;
                         }
                     });
@@ -13579,9 +13673,18 @@
                         totalStories++;
                     }
                     for (const [name, stories] of byCat.entries()) {
-                        categoryGroups.push({ name, stories });
+                        const slug = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                        const icon = name.toLowerCase().includes('top stories') ? 'icon-newspaper' : 'icon-rss';
+                        categoryGroups.push({ name, slug, icon, stories });
+                    }
+                    if (categoryGroups.length > 1 && totalStories > (window.TODAY_TOP_N || 5) * 2) {
+                        const all = categoryGroups.flatMap(cg => cg.stories);
+                        all.sort((x, y) => ((x._ts || 0) - (y._ts || 0)));
+                        const top = all.slice(0, window.TODAY_TOP_N || 5);
+                        categoryGroups.unshift({ name: 'Top Stories', slug: 'top_stories', icon: 'icon-newspaper', noMarkRead: true, stories: top });
                     }
                 }
+                window._lastBriefingCategoryGroups = categoryGroups;
 
                 if (!totalStories) {
                     if (!isAutoMorning) window.showToast('No unread stories to synthesize');
@@ -13626,19 +13729,19 @@
                     getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
                     const cachedArt = window._aiBriefingArticles.get(window._cachedTodayBriefingId);
                     if (cachedArt && sharedHeaderHtml) {
-                        let contentOnly = '';
-                        const idx = (cachedArt.body || '').indexOf('<div class="ai-reader-briefing">');
-                        if (idx !== -1) {
-                            contentOnly = cachedArt.body.slice(idx).replace(/<\/div>\s*$/, '');
-                        } else if (cachedArt._briefingContentHtml) {
-                            contentOnly = cachedArt._briefingContentHtml;
-                        } else {
-                            try {
-                                const parser = new DOMParser();
-                                const doc = parser.parseFromString(cachedArt.body, 'text/html');
-                                const briefingEl = doc.querySelector('.ai-reader-briefing');
-                                if (briefingEl) contentOnly = briefingEl.outerHTML;
-                            } catch (e) { }
+                        let contentOnly = cachedArt._briefingContentHtml || '';
+                        if (!contentOnly) {
+                            const idx = (cachedArt.body || '').indexOf('<div class="ai-reader-briefing">');
+                            if (idx !== -1) {
+                                contentOnly = cachedArt.body.slice(idx).replace(/<\/div>\s*$/, '');
+                            } else {
+                                try {
+                                    const parser = new DOMParser();
+                                    const doc = parser.parseFromString(cachedArt.body, 'text/html');
+                                    const briefingEl = doc.querySelector('.ai-reader-briefing');
+                                    if (briefingEl) contentOnly = briefingEl.outerHTML;
+                                } catch (e) { }
+                            }
                         }
                         if (contentOnly) {
                             cachedArt.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${contentOnly}</div>`;
@@ -13704,7 +13807,7 @@ ${blocksText}`;
                         slot.classList.add('hidden');
                         slot.innerHTML = '';
                     });
-                    const initialStreamHtml = formatGeminiBriefing('', allBriefingStories, { isBriefingArticle: true, isStreaming: true });
+                    const initialStreamHtml = formatGeminiBriefing('', allBriefingStories, { isBriefingArticle: true, isStreaming: true, categoryGroups });
                     art = window.registerAndOpenAiArticle({
                         slug: 'briefing',
                         title: headingLong,
@@ -13735,7 +13838,7 @@ ${blocksText}`;
                         firstPartText = (res || '').trim();
                         if (firstPartText && art) {
                             syncModelBadge();
-                            const partialHtml = formatGeminiBriefing(firstPartText, allBriefingStories, { isBriefingArticle: true, isStreaming: true });
+                            const partialHtml = formatGeminiBriefing(firstPartText, allBriefingStories, { isBriefingArticle: true, isStreaming: true, categoryGroups });
                             art.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${partialHtml}</div>`;
                             if (window.currentArticle && window.currentArticle.id === art.id) {
                                 const bodyEl = document.getElementById('article-body');
@@ -13756,7 +13859,7 @@ ${blocksText}`;
                         if (nowTs - lastStreamRender < 100) return;
                         lastStreamRender = nowTs;
                         const combined = `${firstPartText}\n\n${partialRest}`;
-                        const partialHtml = formatGeminiBriefing(combined, allBriefingStories, { isBriefingArticle: true, isStreaming: true });
+                        const partialHtml = formatGeminiBriefing(combined, allBriefingStories, { isBriefingArticle: true, isStreaming: true, categoryGroups });
                         art.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${partialHtml}</div>`;
                         if (window.currentArticle && window.currentArticle.id === art.id) {
                             const bodyEl = document.getElementById('article-body');
@@ -13778,7 +13881,7 @@ ${blocksText}`;
                         if (nowTs - lastStreamRender < 90) return;
                         lastStreamRender = nowTs;
                         syncModelBadge();
-                        const partialHtml = formatGeminiBriefing(partialText, allBriefingStories, { isBriefingArticle: true, isStreaming: true });
+                        const partialHtml = formatGeminiBriefing(partialText, allBriefingStories, { isBriefingArticle: true, isStreaming: true, categoryGroups });
                         art.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${partialHtml}</div>`;
                         if (window.currentArticle && window.currentArticle.id === art.id) {
                             const bodyEl = document.getElementById('article-body');
@@ -13799,7 +13902,7 @@ ${blocksText}`;
 
                 const cleanText = cleanBriefingCitationText(rawText);
                 window._lastAiBriefingText = cleanText;
-                const formattedHtml = formatGeminiBriefing(rawText, allBriefingStories, { isBriefingArticle: true, isStreaming: false });
+                const formattedHtml = formatGeminiBriefing(rawText, allBriefingStories, { isBriefingArticle: true, isStreaming: false, categoryGroups });
 
                 if (shouldOpenInReader && art) {
                     const plainExcerpt = String(cleanText || '').replace(/\s+/g, ' ').trim();
@@ -18457,7 +18560,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 419;
+        window.APP_BUILD = 420;
 
         (async function initApp() {
             try {
@@ -19336,7 +19439,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v419';
+const CACHE_NAME = 'rss-reader-v420';
 const APP_SHELL = [
     '/',
     'index.html'
