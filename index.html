@@ -11668,51 +11668,100 @@
             stopTTS();
         };
 
+        let _iosSilentAudio = null;
+        function unlockIosPlaybackAudio() {
+            try {
+                if (navigator.audioSession && navigator.audioSession.type !== 'playback') {
+                    navigator.audioSession.type = 'playback';
+                }
+            } catch (e) { }
+            try {
+                if (!_iosSilentAudio) {
+                    _iosSilentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+                    _iosSilentAudio.setAttribute('playsinline', '');
+                    _iosSilentAudio.volume = 0.01;
+                }
+                const p = _iosSilentAudio.play();
+                if (p && typeof p.catch === 'function') p.catch(() => { });
+            } catch (e) { }
+        }
+
+        function aiBriefingSpokenText() {
+            const box = document.querySelector('#article-body .ai-reader-briefing');
+            if (!box) return (document.getElementById('article-body')?.innerText || '').replace(/[›✓•]/g, ' ');
+            const parts = [];
+            const titleEl = document.getElementById('article-title');
+            if (titleEl?.textContent?.trim()) parts.push(`${titleEl.textContent.trim()}.`);
+            box.querySelectorAll('.ai-briefing-theme, li, p').forEach(el => {
+                const raw = (el.textContent || '').replace(/[›✓•]/g, ' ').replace(/\s+/g, ' ').trim();
+                if (!raw) return;
+                if (el.classList.contains('ai-briefing-theme')) {
+                    parts.push(`Section: ${raw.replace(/[.!?]+$/, '')}.`);
+                } else {
+                    parts.push(/[.!?]$/.test(raw) ? raw : `${raw}.`);
+                }
+            });
+            return parts.join(' ');
+        }
+
         function ttsSpeakFrom(i) {
             const run = ++_ttsRun;
-            speechSynthesis.cancel();
-            // A beat after cancel(): some engines drop an utterance queued in the same tick.
-            setTimeout(() => {
-                if (run !== _ttsRun) return;
-                const pieces = window._ttsPieces || [];
-                for (let k = i; k < pieces.length; k++) {
-                    const u = new SpeechSynthesisUtterance(pieces[k]);
-                    u.rate = window._ttsRate || 1;
-                    u.onstart = () => { if (run === _ttsRun) window._ttsIndex = k; };
-                    if (k === pieces.length - 1) u.onend = () => {
-                        if (run !== _ttsRun) return;
-                        if (window._ttsSource === 'story' && window.currentArticle && !window.currentArticle.isBrief) {
-                            if (window.currentArticle.unread) {
-                                toggleUnread(window.currentArticle);
-                                saveReadState();
-                                refreshUI();
-                                updateActionButton();
-                            }
-                            const timeline = window.currentTimeline || [];
-                            const curId = window.currentArticle?.id;
-                            const next = timeline.find(a => a.unread && a.id !== curId);
-                            if (next) {
-                                window.showToast(`Up next: ${next.title}`);
-                                selectArticle(next.id);
-                                setTimeout(() => {
-                                    if (run === _ttsRun) {
-                                        window._ttsActive = false;
-                                        window.toggleTTS('story');
-                                    }
-                                }, 350);
-                                return;
-                            }
+            unlockIosPlaybackAudio();
+            try { speechSynthesis.cancel(); } catch (e) { }
+            const pieces = window._ttsPieces || [];
+            if (i >= pieces.length) { endTTS(); return; }
+
+            const speakPiece = (k) => {
+                if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                if (k >= pieces.length) {
+                    if (window._ttsSource === 'story' && window.currentArticle && !window.currentArticle.isBrief && !window.currentArticle.isAiBriefing) {
+                        if (window.currentArticle.unread) {
+                            toggleUnread(window.currentArticle);
+                            saveReadState();
+                            refreshUI();
+                            updateActionButton();
                         }
-                        endTTS();
-                    };
-                    u.onerror = (e) => {
-                        if (run !== _ttsRun) return;
-                        if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
-                        endTTS();
-                    };
-                    speechSynthesis.speak(u);
+                        const timeline = window.currentTimeline || [];
+                        const curId = window.currentArticle?.id;
+                        const next = timeline.find(a => a.unread && a.id !== curId);
+                        if (next) {
+                            window.showToast(`Up next: ${next.title}`);
+                            selectArticle(next.id);
+                            setTimeout(() => {
+                                if (run === _ttsRun) {
+                                    window._ttsActive = false;
+                                    window.toggleTTS('story');
+                                }
+                            }, 350);
+                            return;
+                        }
+                    }
+                    endTTS();
+                    return;
                 }
-            }, 60);
+                const u = new SpeechSynthesisUtterance(pieces[k]);
+                u.rate = window._ttsRate || 1;
+                u.volume = 1;
+                u.onstart = () => { if (run === _ttsRun) window._ttsIndex = k; };
+                u.onend = () => {
+                    if (run !== _ttsRun || !window._ttsActive || window._ttsPaused) return;
+                    speakPiece(k + 1);
+                };
+                u.onerror = (e) => {
+                    if (run !== _ttsRun) return;
+                    if (e && (e.error === 'interrupted' || e.error === 'canceled')) return;   // our own stop
+                    endTTS();
+                };
+                try {
+                    speechSynthesis.speak(u);
+                    if (speechSynthesis.paused) speechSynthesis.resume();
+                } catch (e) {
+                    endTTS();
+                }
+            };
+
+            // Speak synchronously inside the user gesture so iOS Safari unlocks speech audio.
+            speakPiece(i);
         }
         function endTTS() {
             _ttsRun++;
@@ -11729,6 +11778,8 @@
             if (source === 'today' || window.currentArticle?.isBrief) {
                 source = 'today';
                 text = todaySpokenText();
+            } else if (window.currentArticle?.isAiBriefing || document.querySelector('#article-body .ai-reader-briefing')) {
+                text = aiBriefingSpokenText();
             } else if (window.currentArticle) {
                 text = document.getElementById('article-body')?.innerText || '';
             }
@@ -17070,7 +17121,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 395;
+        window.APP_BUILD = 396;
 
         (async function initApp() {
             try {
@@ -17941,7 +17992,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v395';
+const CACHE_NAME = 'rss-reader-v396';
 const APP_SHELL = [
     '/',
     'index.html'
