@@ -9645,6 +9645,17 @@
                     bodyEl.textContent = '';
                     bodyEl.appendChild(kept.frag);
                     window._todayRestored = true;
+                    if (!window._isGeneratingBriefing) {
+                        bodyEl.querySelectorAll('.today-ai-briefing-slot').forEach(slot => {
+                            if (window._todayAiBriefingBarHtml) {
+                                slot.classList.remove('hidden');
+                                slot.innerHTML = window._todayAiBriefingBarHtml;
+                            } else {
+                                slot.classList.add('hidden');
+                                slot.innerHTML = '';
+                            }
+                        });
+                    }
                     // Back at its own scroll first, then brought up to date (read stories leave, Later / Save
                     // states, folder checks), so what leaves above your place is made up for exactly.
                     const rvKept = document.getElementById('reader-view');
@@ -12305,6 +12316,14 @@
             if (typeof window.updateActionButton === 'function') window.updateActionButton();
         };
 
+        function getTodayBriefingSlots() {
+            const list = [...document.querySelectorAll('.today-ai-briefing-slot')];
+            if (window._todayKept?.frag) {
+                list.push(...window._todayKept.frag.querySelectorAll('.today-ai-briefing-slot'));
+            }
+            return list;
+        }
+
         window.generateTodayBriefing = async function (opts = {}) {
             const isAutoMorning = !!opts.isAutoMorning;
             const key = window.getGeminiApiKey();
@@ -12315,11 +12334,12 @@
                 }
                 return false;
             }
-            const slots = document.querySelectorAll('.today-ai-briefing-slot');
+            const slots = getTodayBriefingSlots();
             if (!slots.length && !isAutoMorning) {
                 window.showToast('Open Today Brief first to generate briefing');
                 return false;
             }
+            window._isGeneratingBriefing = true;
             slots.forEach(slot => {
                 slot.classList.remove('hidden');
                 slot.innerHTML = `
@@ -12381,7 +12401,7 @@
 
                 if (!totalStories) {
                     if (!isAutoMorning) window.showToast('No unread stories to synthesize');
-                    slots.forEach(s => s.classList.add('hidden'));
+                    getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
                     return false;
                 }
 
@@ -12411,7 +12431,10 @@ Coverage by Section:
 ${groupedText}`;
 
                 const rawText = await window.callGeminiApi(prompt);
-                if (!rawText) return false;
+                if (!rawText) {
+                    getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
+                    return false;
+                }
 
                 const cleanText = cleanBriefingCitationText(rawText);
                 window._lastAiBriefingText = cleanText;
@@ -12420,6 +12443,13 @@ ${groupedText}`;
                 const subtitle = `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
                 // For automatic morning briefings: open in the desktop reading pane only if no other story is open; on phone keep Today on screen and show the bar
                 const shouldOpenInReader = !isAutoMorning || (!isMobile() && (!window.currentArticle || window.currentArticle.isBrief));
+                if (shouldOpenInReader) {
+                    window._todayAiBriefingBarHtml = '';
+                    getTodayBriefingSlots().forEach(slot => {
+                        slot.classList.add('hidden');
+                        slot.innerHTML = '';
+                    });
+                }
                 const art = window.registerAndOpenAiArticle({
                     slug: 'briefing',
                     title: `${isAutoMorning ? 'Morning ' : ''}Briefing — ${dateLabel}`,
@@ -12429,37 +12459,38 @@ ${groupedText}`;
                     openInReader: shouldOpenInReader
                 });
 
-                const isSaved = window.savedBucket?.has(art.link);
-                const barMarkup = `
-                    <div class="ai-briefing-card flex items-center justify-between gap-2" style="padding:10px 14px;margin-bottom:14px">
-                        <div class="flex items-center gap-2 min-w-0 cursor-pointer" onclick="window.openArticleInReader('${escJs(art.id)}')">
-                            <span class="text-blue-600 dark:text-blue-400 flex-shrink-0">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-                            </span>
-                            <div class="min-w-0">
-                                <div class="ai-briefing-title truncate">${isAutoMorning ? 'Morning Briefing' : 'Briefing'}</div>
-                                <div class="ai-briefing-sub truncate">${esc(subtitle)} · Saved in History</div>
+                if (!shouldOpenInReader) {
+                    const isSaved = window.savedBucket?.has(art.link);
+                    const barMarkup = `
+                        <div class="ai-briefing-card flex items-center justify-between gap-2" style="padding:10px 14px;margin-bottom:14px">
+                            <div class="flex items-center gap-2 min-w-0 cursor-pointer" onclick="window.openArticleInReader('${escJs(art.id)}')">
+                                <span class="text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="ai-briefing-title truncate">${isAutoMorning ? 'Morning Briefing' : 'Briefing'}</div>
+                                    <div class="ai-briefing-sub truncate">${esc(subtitle)} · Saved in History</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <button type="button" onclick="window.openArticleInReader('${escJs(art.id)}')" class="pill-btn text-xs">Open</button>
+                                <button type="button" onclick="window.toggleSaveAiArticle('${escJs(art.id)}', this)" class="pill-btn text-xs">${isSaved ? 'Saved ★' : 'Save ★'}</button>
+                                <button type="button" onclick="window.copyTodayBriefing()" class="pill-btn text-xs" title="Copy briefing text">Copy</button>
+                                <button type="button" onclick="window.dismissTodayBriefing()" class="p-1 text-gray-400 hover:text-gray-600" title="Dismiss">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1.5 flex-shrink-0">
-                            <button type="button" onclick="window.openArticleInReader('${escJs(art.id)}')" class="pill-btn text-xs">Open</button>
-                            <button type="button" onclick="window.toggleSaveAiArticle('${escJs(art.id)}', this)" class="pill-btn text-xs">${isSaved ? 'Saved ★' : 'Save ★'}</button>
-                            <button type="button" onclick="window.copyTodayBriefing()" class="pill-btn text-xs" title="Copy briefing text">Copy</button>
-                            <button type="button" onclick="window.dismissTodayBriefing()" class="p-1 text-gray-400 hover:text-gray-600" title="Dismiss">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                `;
-
-                window._todayAiBriefingBarHtml = barMarkup;
-                document.querySelectorAll('.today-ai-briefing-slot').forEach(slot => {
-                    slot.classList.remove('hidden');
-                    slot.innerHTML = barMarkup;
-                });
+                    `;
+                    window._todayAiBriefingBarHtml = barMarkup;
+                    getTodayBriefingSlots().forEach(slot => {
+                        slot.classList.remove('hidden');
+                        slot.innerHTML = barMarkup;
+                    });
+                }
                 return true;
             } catch (err) {
-                document.querySelectorAll('.today-ai-briefing-slot').forEach(slot => {
+                getTodayBriefingSlots().forEach(slot => {
                     slot.innerHTML = `
                         <div class="ai-briefing-card flex items-start justify-between text-xs text-red-500" style="gap:12px">
                             <span style="min-width:0;overflow-wrap:anywhere">${esc(err.message || 'Failed to generate briefing')}</span>
@@ -12468,6 +12499,8 @@ ${groupedText}`;
                     `;
                 });
                 return false;
+            } finally {
+                window._isGeneratingBriefing = false;
             }
         };
 
@@ -12480,7 +12513,7 @@ ${groupedText}`;
 
         window.dismissTodayBriefing = function () {
             window._todayAiBriefingBarHtml = '';
-            document.querySelectorAll('.today-ai-briefing-slot').forEach(s => {
+            getTodayBriefingSlots().forEach(s => {
                 s.classList.add('hidden');
                 s.innerHTML = '';
             });
@@ -17037,7 +17070,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 394;
+        window.APP_BUILD = 395;
 
         (async function initApp() {
             try {
@@ -17908,7 +17941,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v394';
+const CACHE_NAME = 'rss-reader-v395';
 const APP_SHELL = [
     '/',
     'index.html'
