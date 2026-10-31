@@ -13472,6 +13472,7 @@
 
         window.updateTodayViewSwitcherState = function (activeView) {
             const isBriefing = activeView === 'briefing';
+            window._currentTodayView = isBriefing ? 'briefing' : 'cards';
             document.querySelectorAll('.today-segmented').forEach(seg => {
                 const btns = seg.querySelectorAll('button');
                 if (btns.length >= 2) {
@@ -15069,7 +15070,8 @@ ${sampleText}`;
 
         window.openToday = async function (opts = {}) {
             window._returnToBriefState = null;
-            if (!opts.forceCards && window.getTodayDefaultView && window.getTodayDefaultView() === 'briefing' && !window._hasSwitchedToCardsThisSession) {
+            const targetView = opts.forceCards ? 'cards' : (window._currentTodayView || (window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing'));
+            if (targetView === 'briefing' && !window._hasSwitchedToCardsThisSession) {
                 const key = window.getGeminiApiKey ? window.getGeminiApiKey() : null;
                 if (key) {
                     const hasUnread = (window.articles || []).some(a => a.unread && !a.isBrief && !window.isMuted(a));
@@ -18173,27 +18175,71 @@ ${sampleText}`;
         };
 
         // Tab click handlers. The tabs do Back's job on the phone: Today, from a story opened in Today,
-        // returns to that story's place; again (or from elsewhere), Today is rebuilt at the top.
+        // returns to that story's place; tapping Today while already on Today scrolls to the top of the screen.
         window.onTodayTabClick = async () => {
             const cur = window.currentArticle;
-            if (window._mobilePane === 'viewer' && cur && !cur.isBrief && window._returnToAiBriefingState) {
+            const isToday = cur && (cur.id === window.TODAY_BRIEF_ID || (cur.isAiBriefing && (cur.slug === 'briefing' || cur.id?.startsWith('ai-briefing'))));
+
+            // 1. Returning from a story opened from AI Briefing
+            if (window._mobilePane === 'viewer' && cur && !cur.isBrief && !isToday && window._returnToAiBriefingState) {
                 setMobileTab('today');
                 window._todayReturnedAt = Date.now();
                 window.stillReader(() => window.returnToAiBriefing());
                 return;
             }
+
+            // 2. Returning from a story opened from Cards brief
             const s = window._returnToBriefState;
-            if (window._mobilePane === 'viewer' && cur && !cur.isBrief && s && s.briefId === window.TODAY_BRIEF_ID) {
+            if (window._mobilePane === 'viewer' && cur && !cur.isBrief && !isToday && s && s.briefId === window.TODAY_BRIEF_ID) {
                 setMobileTab('today');
                 window._todayReturnedAt = Date.now();
                 window.stillReader(() => window.returnToBrief());
                 return;
             }
-            // A second tap within a second of that return is the same tap repeated, not "Today again, from
-            // the top", which would throw your place away.
-            if ((cur?.id === window.TODAY_BRIEF_ID || cur?.isAiBriefing) && Date.now() - (window._todayReturnedAt || 0) < 1000) return;
+
+            // 3. Already viewing Today on mobile (in either Briefing or Cards view)
+            if (window._mobilePane === 'viewer' && isToday) {
+                setMobileTab('today');
+                const rv = document.getElementById('reader-view');
+                if (rv) rv.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                const bar = document.querySelector('.brief-jump-bar');
+                if (bar) {
+                    const firstPill = bar.querySelector('.brief-jump-pill');
+                    if (firstPill && typeof window.centerBriefPill === 'function') window.centerBriefPill(firstPill);
+                }
+                return;
+            }
+
+            // 4. Desktop today in column
+            if (window._todayInColumn) {
+                const tc = document.getElementById('today-column');
+                if (tc) tc.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+
+            // 5. If Today is already loaded in viewer but user is on another pane (e.g. sidebar or timeline)
+            if (isToday) {
+                setMobilePane('viewer');
+                setMobileTab('today');
+                const rv = document.getElementById('reader-view');
+                if (rv) rv.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+
+            // 6. Otherwise navigate to Today using current active view without switching
             setMobileTab('today');
-            await window.openToday();
+            const targetView = window._currentTodayView || (window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing');
+            if (targetView === 'cards') {
+                await window.openToday({ forceCards: true });
+            } else {
+                const ok = await window.generateTodayBriefing({ forceRegenerate: false });
+                if (!ok) {
+                    await window.openToday({ forceCards: true });
+                }
+            }
+            const rv = document.getElementById('reader-view');
+            if (rv) rv.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
         // Following, one level per tap: a story opened from a list -> that list, at the
@@ -18299,7 +18345,9 @@ ${sampleText}`;
             } else if (pane === 'timeline') {
                 setMobileTab('following');
             } else if (pane === 'viewer') {
-                if (!window.currentArticle || window.currentArticle.id === window.TODAY_BRIEF_ID || window._returnToBriefState) {
+                const cur = window.currentArticle;
+                const isTodayArt = cur && (cur.id === window.TODAY_BRIEF_ID || (cur.isAiBriefing && (cur.slug === 'briefing' || cur.id?.startsWith('ai-briefing'))));
+                if (!cur || isTodayArt || window._returnToBriefState || window._returnToAiBriefingState) {
                     setMobileTab('today');
                 }
             }
@@ -18631,7 +18679,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 425;
+        window.APP_BUILD = 426;
 
         (async function initApp() {
             try {
@@ -19510,7 +19558,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v425';
+const CACHE_NAME = 'rss-reader-v426';
 const APP_SHELL = [
     '/',
     'index.html'
