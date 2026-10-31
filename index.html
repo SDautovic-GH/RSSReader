@@ -4982,6 +4982,61 @@
             color: #fff;
         }
 
+        /* Ultra-compact 1-line segmented switch for Today / Briefing */
+        .today-view-switcher {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 2px 0 8px !important;
+            padding: 0 !important;
+        }
+
+        .today-segmented {
+            display: inline-flex !important;
+            padding: 2px !important;
+            background: rgba(120, 120, 128, 0.14) !important;
+            border-radius: 999px !important;
+            height: 24px !important;
+            max-height: 24px !important;
+            box-sizing: border-box !important;
+            white-space: nowrap !important;
+        }
+
+        .today-segmented button {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 2px 9px !important;
+            height: 20px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+            border-radius: 999px !important;
+            white-space: nowrap !important;
+            gap: 3px !important;
+            color: var(--text-3) !important;
+            background: transparent !important;
+            cursor: pointer !important;
+        }
+
+        .today-segmented button svg {
+            width: 11px !important;
+            height: 11px !important;
+            flex-shrink: 0 !important;
+        }
+
+        .today-segmented button[data-active="true"] {
+            background: #fff !important;
+            color: #111827 !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+        }
+
+        .dark .today-segmented button[data-active="true"] {
+            background: #4a4a52 !important;
+            color: #fff !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+        }
+
         /* Settings menus: the buttons' capsule shape, and an inline-SVG chevron, since the native one is
            near-black and vanishes in dark mode (white for dark, slate for light). */
         #settings-modal select.settings-input {
@@ -5908,6 +5963,8 @@
             </div>
 
             <div class="flex-1 overflow-y-auto p-3 no-scrollbar space-y-3">
+                <!-- Collections section -->
+                <div class="px-2 pt-1 pb-0.5 text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Collections</div>
                 <!-- Smart Feeds card -->
                 <div id="smart-feeds-card"
                     class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
@@ -5967,7 +6024,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 9l-7 7-7-7" />
                             </svg>
-                            <span>Folders</span>
+                            <span class="uppercase tracking-wider text-[11px] font-bold">Subscriptions</span>
                             <span id="folders-section-count"
                                 class="text-gray-400/80 font-normal tracking-normal"></span>
                         </div>
@@ -11103,11 +11160,7 @@
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
             // Unread stories older than Today's 24 hours: Today never shows them.
             const olderNote = document.getElementById('unread-older-note');
-            if (olderNote) {
-                const cutoff = Date.now() - window.TODAY_WINDOW_HOURS * 3600000;
-                const older = window.articles.filter(a => a.unread && !a.isBrief && (a._ts || 0) < cutoff && !window.isMuted(a)).length;
-                olderNote.textContent = older ? `${older} older than today` : '';
-            }
+            if (olderNote) olderNote.textContent = '';
             if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
 
             // Dim empty Read Later / Saved smart feeds (always-visible, unlike category
@@ -12958,13 +13011,13 @@
         window.getTodayViewSwitcherHtml = function (activeView = 'briefing') {
             const isBriefing = activeView === 'briefing';
             return `
-                <div class="today-view-switcher flex items-center justify-center my-3.5">
+                <div class="today-view-switcher">
                     <div class="segmented today-segmented" role="group" aria-label="Today View">
                         <button type="button" data-active="${isBriefing ? 'true' : 'false'}" onclick="window.switchTodayView('briefing')">
-                            <svg class="w-3.5 h-3.5 mr-1.5 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Executive Brief
+                            <svg class="w-3 h-3 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Briefing
                         </button>
                         <button type="button" data-active="${isBriefing ? 'false' : 'true'}" onclick="window.switchTodayView('cards')">
-                            <svg class="w-3.5 h-3.5 mr-1.5 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Story Cards
+                            <svg class="w-3 h-3 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
                         </button>
                     </div>
                 </div>
@@ -13137,14 +13190,10 @@
 
                 // Fallback if Today DOM sections aren't populated yet (or when regenerating from inside Reader)
                 if (!categoryGroups.length) {
-                    const now = Date.now();
-                    const windowStart = now - (window.TODAY_WINDOW_HOURS || 24) * 3600000;
                     const excluded = window._todayExcluded;
                     const byCat = new Map();
                     for (const a of (window.articles || [])) {
                         if (!a.unread || a.isBrief) continue;
-                        const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-                        if (ts < windowStart) continue;
                         const cat = getCategoryForArticle(a) || 'Uncategorized';
                         if (excluded && excluded.size && excluded.has(cat)) continue;
                         if (window.isMuted(a) && !window._showMuted) continue;
@@ -13485,15 +13534,11 @@ ${blocksText}`;
                     }
                 });
 
-                // 2. Include any additional unread stories in this category from the 24h window (up to 45 total)
+                // 2. Include any additional unread stories in this category (up to 45 total)
                 if (normCat !== 'top stories') {
-                    const now = Date.now();
-                    const windowStart = now - (window.TODAY_WINDOW_HOURS || 24) * 3600000;
                     for (const a of (window.articles || [])) {
                         if (stories.length >= 45) break;
                         if (!a.unread || a.isBrief || seenIds.has(a.id)) continue;
-                        const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-                        if (ts < windowStart) continue;
                         if (window.isMuted?.(a) && !window._showMuted) continue;
                         if ((getCategoryForArticle(a) || '').trim().toLowerCase() === normCat) {
                             seenIds.add(a.id);
@@ -13882,13 +13927,10 @@ ${sampleText}`;
 
         window.buildTodayBrief = function () {
             const now = Date.now();
-            const windowStart = now - window.TODAY_WINDOW_HOURS * 3600000;
             const excluded = window._todayExcluded;   // folders left out of Today (build 310)
             let mutedCount = 0;                        // muted stories it would show (build 311)
             const pool = (window.articles || []).filter(a => {
                 if (!a.unread || a.isBrief) return false;
-                const ts = a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-                if (ts < windowStart) return false;
                 if (excluded && excluded.size && excluded.has(getCategoryForArticle(a))) return false;
                 if (window.isMuted(a)) { mutedCount++; return window._showMuted; }
                 return true;
@@ -13930,10 +13972,10 @@ ${sampleText}`;
                 id: window.TODAY_BRIEF_ID,
                 slot: 'today',
                 name: 'Today',
-                windowLabel: `Unread · last ${window.TODAY_WINDOW_HOURS} hours`,
+                windowLabel: 'All unread stories',
                 dateStr,
                 triggerTs: now,
-                windowStart,
+                windowStart: 0,
                 windowEnd: now,
                 // Listen to Today, then "3 muted - Show" / "Hide 3 muted". On the phone Listen is a header button
                 // like Following's; both copies are .brief-listen-btn, so updateTTSButton keeps them in step.
@@ -13947,8 +13989,7 @@ ${sampleText}`;
             if (totalStories === 0) {
                 body = body
                     .replace('No new articles were captured in this delivery window.', "You're all caught up.")
-                    // The phone: no "last 24 hours" - a hint to pull for more instead.
-                    .replace(/Feeds may not have updated between [^<]*\./, `<span class="desk-only">No unread stories from the last ${window.TODAY_WINDOW_HOURS} hours.</span><span class="phone-only">Pull down to refresh.</span>`);
+                    .replace(/Feeds may not have updated between [^<]*\./, `<span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span>`);
             }
 
             return {
@@ -17983,7 +18024,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 406;
+        window.APP_BUILD = 407;
 
         (async function initApp() {
             try {
@@ -18862,7 +18903,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v406';
+const CACHE_NAME = 'rss-reader-v407';
 const APP_SHELL = [
     '/',
     'index.html'
