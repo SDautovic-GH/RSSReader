@@ -3016,6 +3016,95 @@
             opacity: 0.88;
         }
 
+        #article-body .ai-briefing-cite-link.is-saved-cite::before,
+        .ai-briefing-cite-link.is-saved-cite::before {
+            content: '★\00a0';
+            color: #f59e0b !important;
+            opacity: 1;
+        }
+
+        #article-body .ai-briefing-cite-link.is-read-later:not(.is-saved-cite)::before,
+        .ai-briefing-cite-link.is-read-later:not(.is-saved-cite)::before {
+            content: '🔖\00a0';
+            font-size: 0.82em;
+            opacity: 0.95;
+        }
+
+        .ai-cite-more-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 18px;
+            margin-left: 3px;
+            padding: 0;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-3);
+            vertical-align: middle;
+            cursor: pointer;
+            opacity: 0.75;
+            transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+        }
+
+        .ai-cite-more-btn:hover {
+            opacity: 1;
+            color: var(--text-1);
+            background: rgba(139, 148, 158, 0.16);
+        }
+
+        .ai-cite-more-btn::after {
+            content: '';
+            position: absolute;
+            inset: -8px -6px;
+        }
+
+        .ai-cite-more-btn svg {
+            width: 15px;
+            height: 15px;
+            transform: rotate(90deg);
+        }
+
+        .ai-briefing-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 0 0 0.65rem;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid var(--divider);
+            font-size: var(--list-source-size, 0.82em);
+            color: var(--text-3) !important;
+        }
+
+        @media (max-width: 900px) {
+            .ai-briefing-topbar {
+                font-size: var(--mob-feed-name-size, 0.82em);
+            }
+        }
+
+        #article-body .ai-briefing-theme-row,
+        .ai-briefing-theme-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-top: 1.4em;
+            margin-bottom: 0.45em;
+        }
+
+        #article-body .ai-reader-briefing > .ai-briefing-theme-row:first-child,
+        .ai-briefing-body > .ai-briefing-theme-row:first-child {
+            margin-top: 0.2em;
+        }
+
+        #article-body .ai-briefing-theme-row .ai-briefing-theme,
+        .ai-briefing-theme-row .ai-briefing-theme {
+            margin: 0 !important;
+        }
+
         /* Clean, borderless inline Category Recap inside Today sections (no blue box or badge) */
         .ai-inline-recap {
             padding: 0.35rem 0 0.85rem;
@@ -11881,6 +11970,7 @@
             const val = (key || '').trim().replace(/^["'`\s]+|["'`\s]+$/g, '');
             window._geminiResolvedModels = null;
             try {
+                localStorage.removeItem('newsreader_gemini_models_v2');
                 if (val) localStorage.setItem('newsreader_gemini_api_key', val);
                 else localStorage.removeItem('newsreader_gemini_api_key');
             } catch (e) { }
@@ -11891,11 +11981,18 @@
 
         window.resolveGeminiModels = async function (key) {
             if (window._geminiResolvedModels?.length) return window._geminiResolvedModels;
+            try {
+                const cached = JSON.parse(localStorage.getItem('newsreader_gemini_models_v2') || 'null');
+                if (cached && Array.isArray(cached.models) && cached.models.length && (Date.now() - (cached.ts || 0) < 7 * 86400000)) {
+                    window._geminiResolvedModels = cached.models;
+                    return window._geminiResolvedModels;
+                }
+            } catch (e) { }
             const preferred = [
-                'gemini-2.5-flash',
                 'gemini-2.5-flash-lite',
-                'gemini-2.0-flash',
+                'gemini-2.5-flash',
                 'gemini-2.0-flash-lite',
+                'gemini-2.0-flash',
                 'gemini-1.5-flash',
                 'gemini-1.5-flash-latest'
             ];
@@ -11921,6 +12018,9 @@
 
                 const result = [...ordered, ...extraFlash];
                 window._geminiResolvedModels = result.length ? result : [available[0]];
+                try {
+                    localStorage.setItem('newsreader_gemini_models_v2', JSON.stringify({ ts: Date.now(), models: window._geminiResolvedModels }));
+                } catch (e) { }
                 console.log('Gemini: Resolved candidate models', window._geminiResolvedModels);
                 return window._geminiResolvedModels;
             } catch (err) {
@@ -11965,6 +12065,7 @@
                             // Promote the working model to the front so subsequent calls skip busy models
                             if (window._geminiResolvedModels?.[0] !== model) {
                                 window._geminiResolvedModels = [model, ...models.filter(m => m !== model)];
+                                try { localStorage.setItem('newsreader_gemini_models_v2', JSON.stringify({ ts: Date.now(), models: window._geminiResolvedModels })); } catch (e) { }
                             }
                             return text;
                         }
@@ -11991,7 +12092,92 @@
                 }
             }
             window._geminiResolvedModels = null;
+            try { localStorage.removeItem('newsreader_gemini_models_v2'); } catch (e) { }
             throw new Error(lastErr || 'Gemini API request failed');
+        };
+
+        window.streamGeminiApi = async function (prompt, onChunk) {
+            const key = (window.getGeminiApiKey() || '').trim().replace(/^["'`\s]+|["'`\s]+$/g, '');
+            if (!key) {
+                window.showToast('Enter your Gemini API Key in Settings → AI & Briefings');
+                window.toggleSettings('prefs');
+                return null;
+            }
+            const models = await window.resolveGeminiModels(key);
+            let lastErr = '';
+            for (const model of models) {
+                try {
+                    const genConfig = {
+                        temperature: 0.2,
+                        maxOutputTokens: 8192
+                    };
+                    if (model.includes('2.5')) {
+                        genConfig.thinkingConfig = { thinkingBudget: 0 };
+                    }
+                    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: genConfig
+                        })
+                    });
+                    if (!resp.ok) {
+                        const errJson = await resp.json().catch(() => ({}));
+                        const msg = errJson?.error?.message || `HTTP ${resp.status} (${resp.statusText || 'Error'})`;
+                        lastErr = msg;
+                        const lmsg = msg.toLowerCase();
+                        if ((resp.status === 400 || resp.status === 403) && (lmsg.includes('api key') || lmsg.includes('api_key') || lmsg.includes('permission'))) {
+                            throw new Error(msg);
+                        }
+                        continue;
+                    }
+                    if (!resp.body || typeof resp.body.getReader !== 'function') {
+                        return await window.callGeminiApi(prompt);
+                    }
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buf = '';
+                    let fullText = '';
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        buf += decoder.decode(value, { stream: true });
+                        const lines = buf.split(/\r?\n/);
+                        buf = lines.pop() || '';
+                        for (const line of lines) {
+                            const trimmed = line.trim();
+                            if (!trimmed.startsWith('data:')) continue;
+                            const jsonStr = trimmed.slice(5).trim();
+                            if (!jsonStr || jsonStr === '[DONE]') continue;
+                            try {
+                                const data = JSON.parse(jsonStr);
+                                const parts = data?.candidates?.[0]?.content?.parts || [];
+                                const chunk = parts.filter(p => !p.thought && p.text).map(p => p.text).join('') || '';
+                                if (chunk) {
+                                    fullText += chunk;
+                                    if (typeof onChunk === 'function') onChunk(fullText);
+                                }
+                            } catch (e) { }
+                        }
+                    }
+                    if (fullText.trim()) {
+                        if (window._geminiResolvedModels?.[0] !== model) {
+                            window._geminiResolvedModels = [model, ...models.filter(m => m !== model)];
+                            try { localStorage.setItem('newsreader_gemini_models_v2', JSON.stringify({ ts: Date.now(), models: window._geminiResolvedModels })); } catch (e) { }
+                        }
+                        return fullText;
+                    }
+                    lastErr = 'Gemini returned an empty stream';
+                } catch (err) {
+                    lastErr = err.message || String(err);
+                    const lmsg = lastErr.toLowerCase();
+                    if (lmsg.includes('api key') || lmsg.includes('api_key') || lmsg.includes('permission')) {
+                        throw err;
+                    }
+                }
+            }
+            return await window.callGeminiApi(prompt);
         };
 
         function cleanBriefingCitationText(rawText) {
@@ -12056,13 +12242,44 @@
         };
 
         window.syncAiBriefingVisitedLinks = function (root) {
-            (root || document).querySelectorAll('a.ai-briefing-cite-link').forEach(a => {
+            const scope = root || document;
+            scope.querySelectorAll('a.ai-briefing-cite-link').forEach(a => {
                 const sid = a.getAttribute('data-ai-story-id') || '';
                 const slink = a.getAttribute('data-ai-story-link') || '';
-                if (window.isAiCiteStoryVisited(sid, slink)) {
-                    a.classList.add('is-visited');
-                }
+                const art = (sid && findArticleAnywhere(sid)) || (slink && (window.articles || []).find(x => x.link === slink)) || null;
+                const isVisited = window.isAiCiteStoryVisited(sid, slink);
+                const isLater = !!(art?.readLater || (slink && window._readLaterLinks?.has?.(slink)));
+                const isSaved = !!(slink && window.savedBucket?.has?.(slink));
+                a.classList.toggle('is-visited', isVisited);
+                a.classList.toggle('is-read-later', isLater);
+                a.classList.toggle('is-saved-cite', isSaved);
             });
+            // Sync per-section ✓ buttons and bottom Mark Covered Stories Read button inside Briefing
+            scope.querySelectorAll('.ai-sec-mark-read-btn').forEach(btn => {
+                const cat = btn.getAttribute('data-ai-sec-cat') || '';
+                const unread = getAiBriefingUnreadStories(cat, btn.closest('.ai-reader-briefing') || scope);
+                const done = unread.size === 0;
+                btn.classList.toggle('is-read', done);
+                btn.disabled = done;
+            });
+            scope.querySelectorAll('.ai-briefing-mark-all-btn').forEach(btn => {
+                const unread = getAiBriefingUnreadStories(null, btn.closest('.ai-reader-briefing') || scope);
+                const done = unread.size === 0;
+                btn.disabled = done;
+                btn.classList.toggle('pill-primary', !done);
+                const lbl = btn.querySelector('span');
+                if (lbl) lbl.textContent = done ? 'All Covered Stories Read' : `Mark ${unread.size} Covered ${unread.size === 1 ? 'Story' : 'Stories'} Read`;
+            });
+            // Persist updated classes on current Briefing article
+            if (window.currentArticle?.isAiBriefing) {
+                const ab = document.getElementById('article-body');
+                if (ab && ab.querySelector('.ai-reader-briefing')) {
+                    const clone = ab.cloneNode(true);
+                    clone.querySelector('#ai-briefing-return-bar')?.remove();
+                    window.currentArticle.body = clone.innerHTML;
+                    window._aiBriefingArticles?.set(window.currentArticle.id, window.currentArticle);
+                }
+            }
         };
 
         function renderBriefingCitations(escapedLine, rawLine, storiesList) {
@@ -12071,26 +12288,195 @@
                     .replace(/&amp;/g, '&')
                     .replace(/&lt;/g, '<')
                     .replace(/&gt;/g, '>')
-                    .replace(/&quot;/g, '"')
-                    .replace(/&#39;/g, "'");
+                    .replace(/&#39;/g, "'")
+                    .replace(/&quot;/g, '"');
                 const parts = rawInner.split(/\s*,\s*/).filter(Boolean);
+                const matchedIds = [];
                 const renderedParts = parts.map(part => {
                     const { story, label } = resolveCitationStory(part, rawLine, storiesList);
                     if (story && (story.id || story.link)) {
+                        if (story.id && !matchedIds.includes(String(story.id))) matchedIds.push(String(story.id));
                         const visitedCls = window.isAiCiteStoryVisited(story.id, story.link) ? ' is-visited' : '';
-                        return `<a href="#" class="ai-briefing-cite-link${visitedCls}" data-ai-story-id="${esc(story.id || '')}" data-ai-story-link="${esc(story.link || '')}" onclick="event.preventDefault(); event.stopPropagation(); return window.openStoryFromAiBriefing(this);" title="${esc(story.title || label)}">${esc(label)}</a>`;
+                        const laterCls = (story.readLater || (story.link && window._readLaterLinks?.has?.(story.link))) ? ' is-read-later' : '';
+                        const savedCls = (story.link && window.savedBucket?.has?.(story.link)) ? ' is-saved-cite' : '';
+                        return `<a href="#" class="ai-briefing-cite-link${visitedCls}${laterCls}${savedCls}" data-ai-story-id="${esc(story.id || '')}" data-ai-story-link="${esc(story.link || '')}" oncontextmenu="event.preventDefault(); event.stopPropagation(); window.showAiBulletStoryMenu(this); return false;" onclick="event.preventDefault(); event.stopPropagation(); return window.openStoryFromAiBriefing(this);" title="${esc(story.title || label)}">${esc(label)}</a>`;
                     }
                     return esc(label);
                 });
-                return `<span class="ai-briefing-cite">${renderedParts.join(', ')}</span>`;
+                const moreBtn = matchedIds.length
+                    ? `<button type="button" class="ai-cite-more-btn" data-ai-story-ids="${esc(matchedIds.join(','))}" onclick="event.preventDefault(); event.stopPropagation(); window.showAiBulletStoryMenu(this)" title="Read Later, Save, or More" aria-label="More actions for story"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>`
+                    : '';
+                return `<span class="ai-briefing-cite">${renderedParts.join(', ')}${moreBtn}</span>`;
             });
         }
 
+        window.showAiBulletStoryMenu = function (fromEl) {
+            if (!fromEl) return;
+            const idsAttr = fromEl.getAttribute('data-ai-story-ids') || fromEl.getAttribute('data-ai-story-id') || '';
+            const ids = idsAttr.split(',').map(s => s.trim()).filter(Boolean);
+            const stories = ids.map(id => findArticleAnywhere(id)).filter(Boolean);
+            if (!stories.length) return;
+            const menu = document.getElementById('article-context-menu');
+            if (!menu) return;
+            const cls = 'w-full text-left px-4 py-2';
+            const div = '<div class="my-1 border-t border-gray-200 dark:border-gray-700"></div>';
+            let html = '';
+            if (stories.length === 1) {
+                const a = stories[0];
+                const sid = escJs(a.id);
+                const isLater = !!a.readLater;
+                const isSaved = !!(window.savedBucket && a.link && window.savedBucket.has(a.link));
+                const isUnread = !!a.unread;
+                html += `<button type="button" class="${cls}" onclick="window.aiCiteStoryAct('later', '${sid}')">${isLater ? 'Remove from Read Later' : 'Read Later'}</button>`;
+                html += `<button type="button" class="${cls}" onclick="window.aiCiteStoryAct('save', '${sid}')">${isSaved ? 'Unsave' : 'Save'}</button>`;
+                html += `<button type="button" class="${cls}" onclick="window.aiCiteStoryAct('open', '${sid}')">Open in Reader</button>`;
+                html += div;
+                html += `<button type="button" class="${cls}" onclick="window.aiCiteStoryAct('read', '${sid}')">${isUnread ? 'Mark Read' : 'Mark Unread'}</button>`;
+                html += `<button type="button" class="${cls}" onclick="window.aiCiteStoryAct('share', '${sid}')">Share…</button>`;
+                if (a.link) html += `<button type="button" class="${cls}" onclick="window.aiCiteStoryAct('ext', '${sid}')">Open Original</button>`;
+            } else {
+                stories.forEach((a, idx) => {
+                    const sid = escJs(a.id);
+                    const src = esc(a.source || 'Source');
+                    const isLater = !!a.readLater;
+                    const isSaved = !!(window.savedBucket && a.link && window.savedBucket.has(a.link));
+                    if (idx > 0) html += div;
+                    html += `<div class="px-4 py-1 text-xs font-semibold text-gray-400 truncate">${src}</div>`;
+                    html += `<button type="button" class="${cls}" onclick="window.aiCiteStoryAct('later', '${sid}')">${isLater ? 'Remove from Read Later' : 'Read Later'}</button>`;
+                    html += `<button type="button" class="${cls}" onclick="window.aiCiteStoryAct('save', '${sid}')">${isSaved ? 'Unsave' : 'Save'}</button>`;
+                    html += `<button type="button" class="${cls}" onclick="window.aiCiteStoryAct('open', '${sid}')">Open in Reader</button>`;
+                });
+            }
+            menu.innerHTML = html;
+            menu.classList.remove('hidden');
+            const r = fromEl.getBoundingClientRect();
+            const w = menu.offsetWidth, h = menu.offsetHeight;
+            const left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+            let top = r.bottom + 6;
+            const bottomLimit = window.innerHeight - (typeof isMobile === 'function' && isMobile() ? 96 : 16);
+            if (top + h > bottomLimit) top = Math.max(8, r.top - h - 6);
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
+        };
+
+        window.aiCiteStoryAct = async function (act, id) {
+            hideContextMenu();
+            const a = findArticleAnywhere(id);
+            if (!a) return;
+            if (act === 'later') {
+                toggleReadLater(a);
+                saveReadLaterState();
+                refreshUI();
+                window.showToast(a.readLater ? 'Added to Read Later' : 'Removed from Read Later');
+            } else if (act === 'save') {
+                if (!a.link || !window.savedBucket) return;
+                const wasSaved = window.savedBucket.has(a.link);
+                if (wasSaved) await window.savedBucket.remove(a.link);
+                else await window.savedBucket.add(a);
+                refreshUI();
+                window.showToast(!wasSaved ? 'Saved to Following → Saved' : 'Removed from Saved');
+            } else if (act === 'read') {
+                toggleUnread(a);
+                saveReadState();
+                refreshUI();
+                window.syncBriefCards?.(null, { now: true });
+            } else if (act === 'open') {
+                const linkEl = document.querySelector(`#article-body a.ai-briefing-cite-link[data-ai-story-id="${CSS.escape(String(id))}"]`);
+                if (linkEl) {
+                    window.openStoryFromAiBriefing(linkEl);
+                    return;
+                }
+                window.openArticleInReader(id);
+                return;
+            } else if (act === 'share') {
+                window.briefStoryAct?.('share', id);
+            } else if (act === 'ext') {
+                if (a.link) window.open(a.link, '_blank', 'noopener,noreferrer');
+            }
+            window.syncAiBriefingVisitedLinks();
+        };
+
+        function getAiBriefingUnreadStories(catName, container) {
+            const live = new Map((window.articles || []).map(a => [String(a.id), a]));
+            const found = new Set();
+            const takeId = id => {
+                if (!id) return;
+                const a = live.get(String(id));
+                if (a && a.unread && !a.isBrief) found.add(a);
+                // Also include any clustered coverage copies from Today cards
+                const cardSel = `.brief-story-card[data-sa-id="${CSS.escape(String(id))}"]`;
+                const card = document.querySelector(cardSel) || window._todayKept?.frag?.querySelector?.(cardSel);
+                if (card) {
+                    try {
+                        JSON.parse(card.getAttribute('data-cov') || '[]').forEach(cid => {
+                            const ca = live.get(String(cid));
+                            if (ca && ca.unread && !ca.isBrief) found.add(ca);
+                        });
+                    } catch (e) { }
+                }
+            };
+            const normCat = catName ? catName.trim().toLowerCase() : '';
+            if (normCat && window._briefingSectionStoryIds?.has(normCat)) {
+                window._briefingSectionStoryIds.get(normCat).forEach(takeId);
+            } else if (!normCat && window._briefingSectionStoryIds) {
+                for (const set of window._briefingSectionStoryIds.values()) {
+                    set.forEach(takeId);
+                }
+            }
+            const root = container || document.getElementById('article-body') || document;
+            if (normCat) {
+                const secRow = Array.from(root.querySelectorAll('.ai-briefing-theme-row')).find(r => (r.getAttribute('data-ai-sec-cat') || '').trim().toLowerCase() === normCat);
+                const ul = secRow?.nextElementSibling;
+                if (ul && ul.tagName === 'UL') {
+                    ul.querySelectorAll('a.ai-briefing-cite-link[data-ai-story-id]').forEach(a => takeId(a.getAttribute('data-ai-story-id')));
+                }
+            } else {
+                root.querySelectorAll('a.ai-briefing-cite-link[data-ai-story-id]').forEach(a => takeId(a.getAttribute('data-ai-story-id')));
+            }
+            return found;
+        }
+
+        window.markAiBriefingSectionRead = function (btn) {
+            const cat = btn?.getAttribute('data-ai-sec-cat') || '';
+            const marked = getAiBriefingUnreadStories(cat);
+            if (!marked.size) return;
+            marked.forEach(a => { a.unread = false; applyReadState(a); });
+            applyBriefReadChange();
+            window.syncAiBriefingVisitedLinks();
+            window.showBriefUndo?.(`Marked ${marked.size} read in ${cat || 'section'}`, () => {
+                marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
+                applyBriefReadChange();
+                window.syncAiBriefingVisitedLinks();
+            });
+        };
+
+        window.markAiBriefingAllRead = function () {
+            const marked = getAiBriefingUnreadStories(null);
+            if (!marked.size) return;
+            marked.forEach(a => { a.unread = false; applyReadState(a); });
+            applyBriefReadChange();
+            window.syncAiBriefingVisitedLinks();
+            window.showBriefUndo?.(`Marked ${marked.size} read`, () => {
+                marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
+                applyBriefReadChange();
+                window.syncAiBriefingVisitedLinks();
+            });
+        };
+
         function formatGeminiBriefing(text, storiesList = [], opts = {}) {
-            if (!text) return '';
+            if (!text && !opts.isStreaming) return '';
             const linkCategories = opts.linkCategories !== false;
-            const lines = text.split('\n');
+            const isBriefingArticle = !!opts.isBriefingArticle;
+            const isStreaming = !!opts.isStreaming;
+            const lines = (text || '').split('\n');
             let out = '<div class="ai-reader-briefing">';
+            if (isBriefingArticle) {
+                if (isStreaming) {
+                    out += `<div class="ai-briefing-topbar"><span class="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium"><svg class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>Streaming Briefing live…</span></div>`;
+                } else {
+                    out += `<div class="ai-briefing-topbar"><span>Tap source to read · ⋯ for Read Later / Save</span><button type="button" class="pill-btn text-xs" onclick="window.generateTodayBriefing({ forceRegenerate: true })" title="Generate a fresh Briefing">↻ Regenerate</button></div>`;
+                }
+            }
             let inList = false;
             let bulletIdx = 0;
             for (let rawLine of lines) {
@@ -12103,7 +12489,10 @@
                     if (inList) { out += '</ul>'; inList = false; }
                     const heading = line.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/\s*\(\d+\s+stories\)\s*$/i, '').trim();
                     if (linkCategories) {
-                        out += `<div class="ai-briefing-theme"><a href="#" class="ai-briefing-theme-link" data-ai-cat-name="${esc(heading)}" onclick="return window.jumpToBriefCategoryFromAi(this.getAttribute('data-ai-cat-name'))">${esc(heading)} <span class="ai-theme-arrow" aria-hidden="true">›</span></a></div>`;
+                        const markBtn = (!isStreaming && isBriefingArticle)
+                            ? `<button type="button" data-ai-sec-cat="${esc(heading)}" onclick="window.markAiBriefingSectionRead(this)" class="brief-cat-mark-read-btn ai-sec-mark-read-btn" title="Mark '${esc(heading)}' stories as read" aria-label="Mark '${esc(heading)}' stories as read"><svg><use href="#icon-check"/></svg></button>`
+                            : '';
+                        out += `<div class="ai-briefing-theme-row" data-ai-sec-cat="${esc(heading)}"><div class="ai-briefing-theme"><a href="#" class="ai-briefing-theme-link" data-ai-cat-name="${esc(heading)}" onclick="return window.jumpToBriefCategoryFromAi(this.getAttribute('data-ai-cat-name'))">${esc(heading)} <span class="ai-theme-arrow" aria-hidden="true">›</span></a></div>${markBtn}</div>`;
                     } else {
                         out += `<div class="ai-briefing-theme">${esc(heading)}</div>`;
                     }
@@ -12121,6 +12510,9 @@
                 }
             }
             if (inList) out += '</ul>';
+            if (isBriefingArticle && !isStreaming && text) {
+                out += `<div class="brief-footer mt-6"><button type="button" onclick="window.markAiBriefingAllRead(this)" class="brief-mark-all-btn ai-briefing-mark-all-btn pill-btn pill-primary inline-flex items-center gap-1.5" title="Mark all covered stories as read"><svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg><span>Mark Covered Stories Read</span></button></div>`;
+            }
             out += '</div>';
             return out;
         }
@@ -12377,6 +12769,19 @@
 
         window.generateTodayBriefing = async function (opts = {}) {
             const isAutoMorning = !!opts.isAutoMorning;
+            const forceRegenerate = !!opts.forceRegenerate;
+
+            // #1 Instant Re-Open Cache: if a Today Briefing was already generated, open it in 0.0s unless regenerating
+            if (!forceRegenerate && !isAutoMorning && window._cachedTodayBriefingId && window._aiBriefingArticles?.has(window._cachedTodayBriefingId)) {
+                window._todayAiBriefingBarHtml = '';
+                getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
+                window.openArticleInReader(window._cachedTodayBriefingId);
+                setTimeout(() => {
+                    if (typeof window.syncAiBriefingVisitedLinks === 'function') window.syncAiBriefingVisitedLinks();
+                }, 30);
+                return true;
+            }
+
             const key = window.getGeminiApiKey();
             if (!key) {
                 if (!isAutoMorning) {
@@ -12386,22 +12791,25 @@
                 return false;
             }
             const slots = getTodayBriefingSlots();
-            if (!slots.length && !isAutoMorning) {
+            if (!slots.length && !isAutoMorning && !forceRegenerate) {
                 window.showToast('Open Today Brief first to generate briefing');
                 return false;
             }
             window._isGeneratingBriefing = true;
-            slots.forEach(slot => {
-                slot.classList.remove('hidden');
-                slot.innerHTML = `
-                    <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="padding:11px 14px;margin-bottom:14px">
-                        <span class="inline-flex items-center gap-2 font-medium">
-                            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
-                            ${isAutoMorning ? 'Preparing your Morning Briefing…' : 'Synthesizing Briefing across all sections…'}
-                        </span>
-                    </div>
-                `;
-            });
+            const shouldOpenInReader = !isAutoMorning || (!isMobile() && (!window.currentArticle || window.currentArticle.isBrief));
+            if (!shouldOpenInReader) {
+                slots.forEach(slot => {
+                    slot.classList.remove('hidden');
+                    slot.innerHTML = `
+                        <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="padding:11px 14px;margin-bottom:14px">
+                            <span class="inline-flex items-center gap-2 font-medium">
+                                <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+                                ${isAutoMorning ? 'Preparing your Morning Briefing…' : 'Synthesizing Briefing across all sections…'}
+                            </span>
+                        </div>
+                    `;
+                });
+            }
 
             try {
                 const byId = new Map((window.articles || []).map(a => [String(a.id), a]));
@@ -12428,7 +12836,7 @@
                     });
                 }
 
-                // Fallback if Today DOM sections aren't populated yet
+                // Fallback if Today DOM sections aren't populated yet (or when regenerating from inside Reader)
                 if (!categoryGroups.length) {
                     const now = Date.now();
                     const windowStart = now - (window.TODAY_WINDOW_HOURS || 24) * 3600000;
@@ -12456,9 +12864,15 @@
                     return false;
                 }
 
+                window._briefingSectionStoryIds = new Map();
                 const allBriefingStories = [];
                 const groupedText = categoryGroups.map(cg => {
-                    const lines = cg.stories.slice(0, 35).map(a => {
+                    const slice = cg.stories.slice(0, 35);
+                    window._briefingSectionStoryIds.set(
+                        String(cg.name || '').trim().toLowerCase(),
+                        new Set(slice.map(s => String(s.id)))
+                    );
+                    const lines = slice.map(a => {
                         allBriefingStories.push(a);
                         const refNum = allBriefingStories.length;
                         const title = (a.title || '').replace(/\s+/g, ' ').trim();
@@ -12481,7 +12895,42 @@ Instructions:
 Coverage by Section:
 ${groupedText}`;
 
-                const rawText = await window.callGeminiApi(prompt);
+                const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                const subtitle = `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
+                const briefingTitle = `${isAutoMorning ? 'Morning ' : ''}Briefing — ${dateLabel}`;
+
+                let art = null;
+                if (shouldOpenInReader) {
+                    window._todayAiBriefingBarHtml = '';
+                    getTodayBriefingSlots().forEach(slot => {
+                        slot.classList.add('hidden');
+                        slot.innerHTML = '';
+                    });
+                    const initialStreamHtml = formatGeminiBriefing('', allBriefingStories, { isBriefingArticle: true, isStreaming: true });
+                    art = window.registerAndOpenAiArticle({
+                        slug: 'briefing',
+                        title: briefingTitle,
+                        subtitle,
+                        rawText: 'Synthesizing Briefing…',
+                        formattedHtml: initialStreamHtml,
+                        openInReader: true
+                    });
+                }
+
+                let lastStreamRender = 0;
+                const rawText = await window.streamGeminiApi(prompt, (partialText) => {
+                    if (!shouldOpenInReader || !art) return;
+                    const nowTs = Date.now();
+                    if (nowTs - lastStreamRender < 90) return;
+                    lastStreamRender = nowTs;
+                    const partialHtml = formatGeminiBriefing(partialText, allBriefingStories, { isBriefingArticle: true, isStreaming: true });
+                    art.body = `<div class="ai-reader-article">${partialHtml}</div>`;
+                    if (window.currentArticle && window.currentArticle.id === art.id) {
+                        const bodyEl = document.getElementById('article-body');
+                        if (bodyEl) bodyEl.innerHTML = art.body;
+                    }
+                });
+
                 if (!rawText) {
                     getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
                     return false;
@@ -12489,28 +12938,32 @@ ${groupedText}`;
 
                 const cleanText = cleanBriefingCitationText(rawText);
                 window._lastAiBriefingText = cleanText;
-                const formattedHtml = formatGeminiBriefing(rawText, allBriefingStories);
-                const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                const subtitle = `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
-                // For automatic morning briefings: open in the desktop reading pane only if no other story is open; on phone keep Today on screen and show the bar
-                const shouldOpenInReader = !isAutoMorning || (!isMobile() && (!window.currentArticle || window.currentArticle.isBrief));
-                if (shouldOpenInReader) {
-                    window._todayAiBriefingBarHtml = '';
-                    getTodayBriefingSlots().forEach(slot => {
-                        slot.classList.add('hidden');
-                        slot.innerHTML = '';
-                    });
-                }
-                const art = window.registerAndOpenAiArticle({
-                    slug: 'briefing',
-                    title: `${isAutoMorning ? 'Morning ' : ''}Briefing — ${dateLabel}`,
-                    subtitle,
-                    rawText: cleanText,
-                    formattedHtml,
-                    openInReader: shouldOpenInReader
-                });
+                const formattedHtml = formatGeminiBriefing(rawText, allBriefingStories, { isBriefingArticle: true, isStreaming: false });
 
-                if (!shouldOpenInReader) {
+                if (shouldOpenInReader && art) {
+                    const plainExcerpt = String(cleanText || '').replace(/\s+/g, ' ').trim();
+                    art.body = `<div class="ai-reader-article">${formattedHtml}</div>`;
+                    art.excerpt = plainExcerpt.slice(0, 220) + (plainExcerpt.length > 220 ? '…' : '');
+                    art.snippet = art.excerpt;
+                    window._cachedTodayBriefingId = art.id;
+                    window._readLinks.add(art.link);
+                    archiveReadArticle(art);
+                    saveReadState();
+                    if (window.currentArticle && window.currentArticle.id === art.id) {
+                        const bodyEl = document.getElementById('article-body');
+                        if (bodyEl) bodyEl.innerHTML = art.body;
+                        window.syncAiBriefingVisitedLinks();
+                    }
+                } else {
+                    art = window.registerAndOpenAiArticle({
+                        slug: 'briefing',
+                        title: briefingTitle,
+                        subtitle,
+                        rawText: cleanText,
+                        formattedHtml,
+                        openInReader: false
+                    });
+                    window._cachedTodayBriefingId = art.id;
                     const isSaved = window.savedBucket?.has(art.link);
                     const barMarkup = `
                         <div class="ai-briefing-card flex items-center justify-between gap-2" style="padding:10px 14px;margin-bottom:14px">
@@ -12541,14 +12994,27 @@ ${groupedText}`;
                 }
                 return true;
             } catch (err) {
-                getTodayBriefingSlots().forEach(slot => {
-                    slot.innerHTML = `
-                        <div class="ai-briefing-card flex items-start justify-between text-xs text-red-500" style="gap:12px">
-                            <span style="min-width:0;overflow-wrap:anywhere">${esc(err.message || 'Failed to generate briefing')}</span>
-                            <button type="button" onclick="window.dismissTodayBriefing()" class="pill-btn text-xs" style="flex-shrink:0">Dismiss</button>
-                        </div>
-                    `;
-                });
+                if (shouldOpenInReader && window.currentArticle?.isAiBriefing) {
+                    const bodyEl = document.getElementById('article-body');
+                    if (bodyEl) {
+                        bodyEl.innerHTML = `
+                            <div class="ai-briefing-card flex items-start justify-between text-xs text-red-500" style="gap:12px;margin-top:16px">
+                                <span style="min-width:0;overflow-wrap:anywhere">${esc(err.message || 'Failed to generate briefing')}</span>
+                                <button type="button" onclick="window.generateTodayBriefing({ forceRegenerate: true })" class="pill-btn text-xs" style="flex-shrink:0">Retry</button>
+                            </div>
+                        `;
+                    }
+                } else {
+                    getTodayBriefingSlots().forEach(slot => {
+                        slot.classList.remove('hidden');
+                        slot.innerHTML = `
+                            <div class="ai-briefing-card flex items-start justify-between text-xs text-red-500" style="gap:12px">
+                                <span style="min-width:0;overflow-wrap:anywhere">${esc(err.message || 'Failed to generate briefing')}</span>
+                                <button type="button" onclick="window.dismissTodayBriefing()" class="pill-btn text-xs" style="flex-shrink:0">Dismiss</button>
+                            </div>
+                        `;
+                    });
+                }
                 return false;
             } finally {
                 window._isGeneratingBriefing = false;
@@ -17121,7 +17587,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 396;
+        window.APP_BUILD = 397;
 
         (async function initApp() {
             try {
@@ -17992,7 +18458,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v396';
+const CACHE_NAME = 'rss-reader-v397';
 const APP_SHELL = [
     '/',
     'index.html'
