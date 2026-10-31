@@ -12902,6 +12902,10 @@
                     const clone = ab.cloneNode(true);
                     clone.querySelector('#ai-briefing-return-bar')?.remove();
                     window.currentArticle.body = clone.innerHTML;
+                    const innerBriefing = clone.querySelector('.ai-reader-briefing');
+                    if (innerBriefing) {
+                        window.currentArticle._briefingContentHtml = innerBriefing.outerHTML;
+                    }
                     window._aiBriefingArticles?.set(window.currentArticle.id, window.currentArticle);
                 }
             }
@@ -13475,6 +13479,7 @@
                 isAiBriefing: true
             };
             if (slug === 'briefing') {
+                art._briefingContentHtml = formattedHtml;
                 if (!art.body.includes('brief-header')) {
                     const header = window.buildTodaySharedHeaderHtml ? window.buildTodaySharedHeaderHtml({
                         activeView: 'briefing',
@@ -13621,12 +13626,23 @@
                     getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
                     const cachedArt = window._aiBriefingArticles.get(window._cachedTodayBriefingId);
                     if (cachedArt && sharedHeaderHtml) {
-                        const contentOnly = cachedArt.body
-                            .replace(/<div class="brief-header[\s\S]*?<\/div>\s*<\/div>/, '')
-                            .replace(/<div class="brief-header[\s\S]*?<\/div>/, '')
-                            .replace(/^<div class="brief-container[^>]*>/, '')
-                            .replace(/<\/div>$/, '');
-                        cachedArt.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${contentOnly}</div>`;
+                        let contentOnly = '';
+                        const idx = (cachedArt.body || '').indexOf('<div class="ai-reader-briefing">');
+                        if (idx !== -1) {
+                            contentOnly = cachedArt.body.slice(idx).replace(/<\/div>\s*$/, '');
+                        } else if (cachedArt._briefingContentHtml) {
+                            contentOnly = cachedArt._briefingContentHtml;
+                        } else {
+                            try {
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(cachedArt.body, 'text/html');
+                                const briefingEl = doc.querySelector('.ai-reader-briefing');
+                                if (briefingEl) contentOnly = briefingEl.outerHTML;
+                            } catch (e) { }
+                        }
+                        if (contentOnly) {
+                            cachedArt.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${contentOnly}</div>`;
+                        }
                     }
                     window.openArticleInReader(window._cachedTodayBriefingId);
                     window.updateTodayViewSwitcherState?.('briefing');
@@ -13787,6 +13803,7 @@ ${blocksText}`;
 
                 if (shouldOpenInReader && art) {
                     const plainExcerpt = String(cleanText || '').replace(/\s+/g, ' ').trim();
+                    art._briefingContentHtml = formattedHtml;
                     art.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${formattedHtml}</div>`;
                     art.excerpt = plainExcerpt.slice(0, 220) + (plainExcerpt.length > 220 ? '…' : '');
                     art.snippet = art.excerpt;
@@ -13813,6 +13830,7 @@ ${blocksText}`;
                         formattedHtml: `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${formattedHtml}</div>`,
                         openInReader: false
                     });
+                    art._briefingContentHtml = formattedHtml;
                     window._cachedTodayBriefingId = art.id;
                     window._cachedTodayBriefingFingerprint = currentBriefingFingerprint;
                     const isSaved = window.savedBucket?.has(art.link);
@@ -18439,7 +18457,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 418;
+        window.APP_BUILD = 419;
 
         (async function initApp() {
             try {
@@ -19318,7 +19336,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v418';
+const CACHE_NAME = 'rss-reader-v419';
 const APP_SHELL = [
     '/',
     'index.html'
