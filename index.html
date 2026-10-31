@@ -7349,10 +7349,10 @@
             const countEl = document.getElementById('folders-section-count');
             const chevron = document.getElementById('folders-section-chevron');
 
-            const feeds = (window.feeds && window.feeds.length > 0) ? window.feeds : (window.accountStates?.local || []);
+            const allUnread = window.articles ? window.articles.filter(a => a.unread && !window.isMuted(a)).length : 0;
             if (countEl) {
-                countEl.textContent = feeds.length > 0 ? String(feeds.length) : '';
-                countEl.classList.toggle('hidden', !feeds.length);
+                countEl.textContent = allUnread > 0 ? String(allUnread) : '';
+                countEl.classList.toggle('hidden', allUnread === 0);
             }
 
             const isCollapsed = !!window.foldersSectionCollapsed;
@@ -11553,6 +11553,7 @@
 
             document.title = allUnread > 0 ? `(${allUnread}) Today` : 'Today';
             updateHeaderStatus();
+            window.updateFoldersSectionState?.();
         }
 
         // --- HEADER LIVE STATUS LINE ---
@@ -18630,7 +18631,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 423;
+        window.APP_BUILD = 424;
 
         (async function initApp() {
             try {
@@ -19509,7 +19510,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v423';
+const CACHE_NAME = 'rss-reader-v424';
 const APP_SHELL = [
     '/',
     'index.html'
