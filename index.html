@@ -9676,8 +9676,13 @@
             const metaEl = document.getElementById('article-meta');
             if (sourceLabelEl) sourceLabelEl.textContent = article.isBrief ? 'Brief' : article.source;
             if (metaEl) {
-                metaEl.onclick = article.isBrief ? null : (isBskyArticle ? (() => window.open(article.link, '_blank', 'noopener,noreferrer')) : filterByCurrentSource);
-                metaEl.title = isBskyArticle ? 'Open post on Bluesky' : '';
+                if (article.isAiBriefing) {
+                    metaEl.classList.add('hidden');
+                } else {
+                    metaEl.classList.remove('hidden');
+                    metaEl.onclick = article.isBrief ? null : (isBskyArticle ? (() => window.open(article.link, '_blank', 'noopener,noreferrer')) : filterByCurrentSource);
+                    metaEl.title = isBskyArticle ? 'Open post on Bluesky' : '';
+                }
             }
             const headerCard = document.getElementById('article-header-card');
             if (article.isBrief) {
@@ -9692,6 +9697,13 @@
                 titleEl.style.display = 'none';
             } else {
                 titleEl.style.display = '';
+                if (article.isAiBriefing && !/[:\d]\s*[AP]M/i.test(article.title || '') && article.timestamp) {
+                    const _bd = new Date(article.timestamp);
+                    if (!isNaN(_bd.getTime())) {
+                        const timeStr = _bd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                        article.title = `${article.title} — ${timeStr}`;
+                    }
+                }
                 titleEl.textContent = article.title;
             }
             titleEl.style.fontSize = window._savedArticleTitleSize || '1.5em';
@@ -9701,7 +9713,7 @@
             // 5:00 AM"); the byline shows only an author who isn't the source.
             const _author = (article.author || '').trim().toLowerCase();
             document.getElementById('article-byline')?.classList.toggle('byline-dup',
-                !article.isBrief && (!_author || _author === (article.source || '').trim().toLowerCase()));
+                !article.isBrief && !article.isAiBriefing && (!_author || _author === (article.source || '').trim().toLowerCase()));
             const _d = new Date(article.timestamp);
             const metaTimeEl = document.getElementById('article-meta-time');
             if (metaTimeEl) {
@@ -13084,9 +13096,11 @@ Instructions:
 Coverage by Section:
 ${blocksText}`;
 
-                const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                const now = new Date();
+                const dateLabel = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                const timeLabel = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                 const subtitle = `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
-                const briefingTitle = `${isAutoMorning ? 'Morning ' : ''}Briefing — ${dateLabel}`;
+                const briefingTitle = `${isAutoMorning ? 'Morning ' : ''}Briefing — ${dateLabel} — ${timeLabel}`;
 
                 let art = null;
                 if (shouldOpenInReader) {
@@ -17832,7 +17846,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 401;
+        window.APP_BUILD = 402;
 
         (async function initApp() {
             try {
@@ -18703,7 +18717,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v401';
+const CACHE_NAME = 'rss-reader-v402';
 const APP_SHELL = [
     '/',
     'index.html'
