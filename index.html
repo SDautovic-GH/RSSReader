@@ -3867,18 +3867,18 @@
 
         /* Jump Bar */
         .brief-jump-bar {
+            position: relative;
             display: flex;
             gap: 6px;
             overflow-x: auto;
             padding: 4px 0 10px 0;
             margin-bottom: 1rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            position: sticky;
-            top: 0;
             background: #000000;
             z-index: 10;
             scrollbar-width: none;
             -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
             width: 100%;
             box-sizing: border-box;
         }
@@ -3887,16 +3887,16 @@
             display: none;
         }
 
-        /* Jump Bar category pills — Styled after MHS Away / Final badges (Title Case, crisp 800 weight) */
+        /* Jump Bar category pills — Regular weight with comfortable pill padding */
         .brief-jump-pill {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 0.22rem 0.65rem !important;
+            padding: 0.28rem 0.85rem !important;
             border-radius: 9999px !important;
             font-size: calc(var(--btn-text) * var(--zoom)) !important;
-            font-weight: 800 !important;
-            letter-spacing: 0.035em !important;
+            font-weight: 500 !important;
+            letter-spacing: normal !important;
             text-transform: none !important;
             white-space: nowrap !important;
             text-decoration: none !important;
@@ -4039,7 +4039,7 @@
             background: #0d1117;
         }
 
-        /* The category pill last tapped (AWAY style): vibrant light blue text & subtle border, translucent background */
+        /* The category pill last tapped: vibrant light blue text & subtle border, translucent background */
         #article-body a.brief-jump-pill.is-active,
         #article-body .brief-jump-pill.is-active,
         .brief-jump-pill.is-active,
@@ -4054,8 +4054,8 @@
             background: rgba(37, 99, 235, 0.08) !important;
             border: 1px solid rgba(37, 99, 235, 0.35) !important;
             color: #2563eb !important;
-            font-weight: 800 !important;
-            letter-spacing: 0.035em !important;
+            font-weight: 600 !important;
+            letter-spacing: normal !important;
             box-shadow: none !important;
         }
 
@@ -4068,14 +4068,14 @@
             background: rgba(96, 165, 250, 0.12) !important;
             border: 1px solid rgba(96, 165, 250, 0.35) !important;
             color: #60a5fa !important;
-            font-weight: 800 !important;
-            letter-spacing: 0.035em !important;
+            font-weight: 600 !important;
+            letter-spacing: normal !important;
             box-shadow: none !important;
         }
 
         @media (max-width: 900px) {
             .brief-jump-bar {
-                position: static !important;
+                position: relative !important;
                 background: transparent !important;
                 padding: 4px 0 10px 0 !important;
                 margin-bottom: 0.65rem !important;
@@ -4083,19 +4083,26 @@
             }
 
             .brief-jump-pill {
-                padding: 0.22rem 0.65rem !important;
+                padding: 0.28rem 0.85rem !important;
                 font-size: calc(var(--btn-text) * var(--zoom)) !important;
-                font-weight: 800 !important;
-                letter-spacing: 0.035em !important;
+                font-weight: 500 !important;
+                letter-spacing: normal !important;
             }
         }
 
-        /* Category sections — Editorial Memo Flow */
+        /* Category sections — Editorial Memo Flow with scroll-margin-top clearing top dimming */
         .brief-cat-section {
             margin-top: 1.25rem !important;
             margin-bottom: 1.75rem !important;
             width: 100%;
             box-sizing: border-box;
+            scroll-margin-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 24px) !important;
+        }
+
+        @media (min-width: 901px) {
+            .brief-cat-section {
+                scroll-margin-top: 24px !important;
+            }
         }
 
         .brief-jump-bar + .brief-cat-section,
@@ -14958,23 +14965,52 @@ ${sampleText}`;
         };
 
         // Category pills: jump to the section and slide the bar so the tapped pill is in the middle.
-        // getBoundingClientRect, not offsetLeft (on the phone the bar is not the pill's offsetParent).
-        // Scoped to the pill's own brief: one can be in the Today column and the reader at once.
         window.briefJumpTo = function (pill) {
             if (!pill) return;
             const slug = (pill.getAttribute('href') || '').replace(/^#brief-cat-/, '');
-            const root = pill.closest('.brief-container') || document;
-            if (slug) root.querySelector('#brief-cat-' + slug)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (!slug) return;
+
+            // 1. Center the tapped pill in the jump bar immediately
             window.centerBriefPill(pill);
+
+            // 2. Scroll the category section into view with clear visibility below top dimming
+            const targetEl = document.getElementById('brief-cat-' + slug);
+            if (!targetEl) return;
+
+            const scroller = targetEl.closest('#today-column') || targetEl.closest('#reader-view') || document.getElementById('reader-view');
+            if (scroller) {
+                const scrollerRect = scroller.getBoundingClientRect();
+                const targetRect = targetEl.getBoundingClientRect();
+                const isMob = typeof isMobile === 'function' ? isMobile() : (window.innerWidth <= 900);
+                const topClearance = isMob ? 76 : 24;
+                const targetScrollTop = scroller.scrollTop + (targetRect.top - scrollerRect.top) - topClearance;
+                scroller.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+            } else {
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // Ensure pill remains centered after scroll settles
+            setTimeout(() => {
+                window.centerBriefPill(pill);
+            }, 300);
         };
+
         window.centerBriefPill = function (pill) {
-            const bar = pill && pill.closest('.brief-jump-bar');
+            if (!pill) return;
+            const bar = pill.closest('.brief-jump-bar');
             if (!bar) return;
             bar.querySelectorAll('.brief-jump-pill.is-active').forEach(p => p.classList.remove('is-active'));
             pill.classList.add('is-active');
-            const b = bar.getBoundingClientRect();
-            const p = pill.getBoundingClientRect();
-            bar.scrollBy({ left: (p.left + p.width / 2) - (b.left + b.width / 2), behavior: 'smooth' });
+
+            // Compute exact target scrollLeft to center the tapped pill inside the bar
+            let pillLeft = pill.offsetLeft;
+            if (pill.offsetParent !== bar) {
+                const bRect = bar.getBoundingClientRect();
+                const pRect = pill.getBoundingClientRect();
+                pillLeft = (pRect.left - bRect.left) + bar.scrollLeft;
+            }
+            const targetLeft = pillLeft - (bar.clientWidth / 2) + (pill.offsetWidth / 2);
+            bar.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
         };
 
         // ===== TODAY KNOWS HOW CURRENT IT IS =====
@@ -18680,7 +18716,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 427;
+        window.APP_BUILD = 428;
 
         (async function initApp() {
             try {
@@ -19559,7 +19595,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v427';
+const CACHE_NAME = 'rss-reader-v428';
 const APP_SHELL = [
     '/',
     'index.html'
