@@ -4982,22 +4982,20 @@
             color: #fff;
         }
 
-        /* Ultra-compact 1-line segmented switch for Today / Briefing */
+        /* Unified pill segmented switch for Today / Briefing */
         .today-view-switcher {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            margin: 2px 0 8px !important;
+            margin: 8px 0 12px !important;
             padding: 0 !important;
         }
 
         .today-segmented {
             display: inline-flex !important;
-            padding: 2px !important;
-            background: rgba(120, 120, 128, 0.14) !important;
+            padding: 3px !important;
+            background: rgba(120, 120, 128, 0.18) !important;
             border-radius: 999px !important;
-            height: 24px !important;
-            max-height: 24px !important;
             box-sizing: border-box !important;
             white-space: nowrap !important;
         }
@@ -5006,35 +5004,36 @@
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
-            padding: 2px 9px !important;
-            height: 20px !important;
-            font-size: 11px !important;
+            gap: 6px !important;
+            padding: 5px 15px !important;
+            border-radius: 999px !important;
+            font-size: calc(var(--btn-text) * var(--zoom)) !important;
             font-weight: 600 !important;
             line-height: 1 !important;
-            border-radius: 999px !important;
-            white-space: nowrap !important;
-            gap: 3px !important;
             color: var(--text-3) !important;
             background: transparent !important;
             cursor: pointer !important;
+            border: none !important;
+            white-space: nowrap !important;
+            transition: background-color .15s ease, color .15s ease, box-shadow .15s ease !important;
         }
 
         .today-segmented button svg {
-            width: 11px !important;
-            height: 11px !important;
+            width: 14px !important;
+            height: 14px !important;
             flex-shrink: 0 !important;
         }
 
         .today-segmented button[data-active="true"] {
             background: #fff !important;
             color: #111827 !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
         }
 
         .dark .today-segmented button[data-active="true"] {
             background: #4a4a52 !important;
             color: #fff !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
         }
 
         /* Settings menus: the buttons' capsule shape, and an inline-SVG chevron, since the native one is
@@ -5964,7 +5963,7 @@
 
             <div class="flex-1 overflow-y-auto p-3 no-scrollbar space-y-3">
                 <!-- Collections section -->
-                <div class="px-2 pt-1 pb-0.5 text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Collections</div>
+                <h3 class="settings-section-label px-2 mb-2">Collections</h3>
                 <!-- Smart Feeds card -->
                 <div id="smart-feeds-card"
                     class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
@@ -6013,22 +6012,12 @@
                             </svg> History</span>
                     </button>
                 </div>
-                <!-- Category folders card with Section Collapse/Expand toggle -->
+                <!-- Subscriptions Directory -->
                 <div class="space-y-1.5" id="folders-section-wrap">
-                    <button id="toggle-folders-section-btn" onclick="toggleFoldersSection()"
-                        class="dynamic-category-text flex items-center justify-between w-full px-2 py-1 text-gray-400 font-medium select-none rounded-lg transition-colors cursor-pointer group"
-                        title="Collapse or expand all category folders">
-                        <div class="flex items-center gap-1.5">
-                            <svg id="folders-section-chevron" class="w-3.5 h-3.5 transition-transform duration-200"
-                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 9l-7 7-7-7" />
-                            </svg>
-                            <span class="uppercase tracking-wider text-[11px] font-bold">Subscriptions</span>
-                            <span id="folders-section-count"
-                                class="text-gray-400/80 font-normal tracking-normal"></span>
-                        </div>
-                    </button>
+                    <h3 class="settings-section-label px-2 mt-4 mb-2">
+                        <span>Subscriptions</span>
+                        <span id="folders-section-count" class="text-xs font-normal opacity-60"></span>
+                    </h3>
                     <div id="feed-list"
                         class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
                     </div>
@@ -6993,25 +6982,15 @@
         };
         window.updateFoldersSectionState = function () {
             const feedList = document.getElementById('feed-list');
-            const chevron = document.getElementById('folders-section-chevron');
-            const btn = document.getElementById('toggle-folders-section-btn');
             const countEl = document.getElementById('folders-section-count');
 
             const feeds = (window.feeds && window.feeds.length > 0) ? window.feeds : (window.accountStates?.local || []);
-            const catCount = new Set(feeds.map(f => f.category || 'Uncategorized')).size;
             if (countEl) {
-                countEl.textContent = catCount > 0 ? `(${catCount})` : '';
+                countEl.textContent = feeds.length > 0 ? `(${feeds.length})` : '';
             }
 
-            const isCollapsed = !!window.foldersSectionCollapsed;
             if (feedList) {
-                feedList.classList.toggle('hidden', isCollapsed);
-            }
-            if (chevron) {
-                chevron.classList.toggle('-rotate-90', isCollapsed);
-            }
-            if (btn) {
-                btn.title = isCollapsed ? 'Expand folder categories' : 'Collapse folder categories';
+                feedList.classList.remove('hidden');
             }
         };
         window.currentTimeline = [];
@@ -9778,8 +9757,9 @@
                     metaEl.title = isBskyArticle ? 'Open post on Bluesky' : '';
                 }
             }
+            const isTodayBriefing = article.isAiBriefing && (article.slug === 'briefing' || article.id?.startsWith('ai-briefing'));
             const headerCard = document.getElementById('article-header-card');
-            if (article.isBrief) {
+            if (article.isBrief || isTodayBriefing) {
                 if (headerCard) headerCard.classList.add('hidden');
             } else {
                 if (headerCard) headerCard.classList.remove('hidden');
@@ -9865,6 +9845,11 @@
                     bodyEl.innerHTML = article.body;
                     normalizeBriefDOM(bodyEl);
                 }
+            } else if (article.isAiBriefing) {
+                bodyEl.classList.toggle('is-brief-body', isTodayBriefing);
+                bodyEl.innerHTML = article.body;
+                if (typeof fitBriefDate === 'function') fitBriefDate(bodyEl);
+                if (typeof window.syncAiBriefingVisitedLinks === 'function') window.syncAiBriefingVisitedLinks();
             } else {
                 bodyEl.classList.remove('is-brief-body');
                 bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type', 'preload'] });
@@ -10772,6 +10757,57 @@
 
                 // Security: ensure 'cat' is safe for use in event handlers (e.g. escaping single quotes)
                 const sCat = escJs(cat);
+                const isCatActive = window.currentCategoryFilter === sCat && !window.currentSourceFilter && window.currentSmartFeed === 'all';
+
+                // Category Header (clean directory category divider, tap to filter by category)
+                const catHeaderHtml = `
+                    <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')"
+                         onclick="setCategoryFilter('${sCat}')"
+                         class="pub-category-header w-full px-4 py-2 text-xs font-semibold tracking-wider uppercase text-gray-400 dark:text-gray-400/80 bg-white/[0.04] dark:bg-black/20 border-b border-white/5 flex items-center justify-between cursor-pointer hover:text-white transition-colors dynamic-category-text${isCatActive ? ' active-item' : ''}"
+                         title="Filter by ${esc(formattedCat)}">
+                        <span class="truncate">${esc(formattedCat)}</span>
+                        <div class="flex items-center space-x-2 flex-shrink-0">
+                            ${healthDot}
+                            ${total > 0 ? `<span class="mob-unread-count text-gray-400">${total}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+
+                // Feed Cards (clean publication cards directory)
+                const feedCardsHtml = feeds.map(f => {
+                    const health = window._feedHealth[f.url];
+                    const isError = health && health.errorCount >= 3;
+                    const isStale = health && health.lastSuccess && (Date.now() - health.lastSuccess > 7 * 86400000);
+                    const healthClass = isError ? 'feed-error' : (isStale ? 'feed-stale' : '');
+                    const fav = f.favicon ? escJs(f.favicon) : '';
+                    const favInvert = faviconNeedsInvert(f) ? ' favicon-invert' : '';
+                    const favClass = `source-favicon-sidebar ${getFaviconSlug(f.name)}${favInvert} inline-block w-4 h-4 rounded-sm mr-2.5 flex-shrink-0`;
+                    const favStyle = `display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;`;
+                    const favicon = f.favicon
+                        ? `<span class="${favClass}" style="${favStyle}"></span>`
+                        : '<span class="source-favicon-sidebar w-4 h-4 mr-2.5 flex-shrink-0"></span>';
+
+                    const sfName = escJs(f.name);
+                    const sfId = escJs(f.id);
+                    const sfUrl = escJs(f.url);
+                    const isFeedActive = window.currentSourceFilter === f.name;
+
+                    return `
+                        <button draggable="true"
+                            ondragstart="handleFeedDragStart(event, '${sfId}')"
+                            ondragend="event.target && event.target.classList && event.target.classList.remove('opacity-40')"
+                            onclick="setSourceFilter('${sfName}')"
+                            oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')"
+                            class="pub-card w-full flex items-center justify-between px-4 py-2.5 border-b border-white/5 text-gray-300 dark:text-gray-300 hover:bg-white/5 outline-none cursor-pointer dynamic-category-text${isFeedActive ? ' active-item' : ''}">
+                            <span class="flex items-center truncate pr-2 min-w-0">
+                                ${favicon}<span class="truncate font-medium text-sm leading-tight ${healthClass}">${esc(f.name)}</span>
+                            </span>
+                            <div class="flex items-center space-x-2 flex-shrink-0">
+                                ${isError ? '<span class="cat-health-dot is-error" title="Failing feed"></span>' : (isStale ? '<span class="cat-health-dot is-stale" title="Stale feed"></span>' : '')}
+                                ${(f.unread || 0) > 0 ? `<span class="feed-badge mob-unread-count">${f.unread}</span>` : ''}
+                            </div>
+                        </button>`;
+                }).join('');
 
                 return `
                     <div data-category="${esc(cat)}"
@@ -10781,49 +10817,8 @@
                          ondragover="handleCategoryDragOver(event, '${sCat}')"
                          ondragleave="handleCategoryDragLeave(event)"
                          ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
-                        <div oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')" class="w-full px-4 text-gray-400 flex items-center justify-between dynamic-category-text${window.currentCategoryFilter === sCat && !window.currentSourceFilter && window.currentSmartFeed === 'all' ? ' active-item' : ''}">
-                            <button onclick="toggleCategory('${sCat}')" class="flex items-center gap-2 outline-none flex-shrink-0 mr-2 opacity-60 hover:opacity-100 transition-opacity" title="${isCollapsed ? 'Expand folder' : 'Collapse folder'}">
-                                ${isCollapsed ?
-                        `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>` :
-                        `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`
-                    }
-                            </button>
-                            <button onclick="setCategoryFilter('${sCat}')" ondblclick="toggleCategory('${sCat}')" class="flex-1 text-left outline-none truncate" title="${esc(formattedCat)} (Double-click to toggle)">
-                                <span>${esc(formattedCat)}</span>
-                            </button>
-                            <div class="flex items-center space-x-2 flex-shrink-0">
-                                ${healthDot}
-                                ${total > 0 ? `<span class="mob-unread-count text-gray-400">${total}</span>` : ''}
-                            </div>
-                        </div>
-                        ${!isCollapsed ? feeds.map(f => {
-                        const health = window._feedHealth[f.url];
-                        const isError = health && health.errorCount >= 3;
-                        const isStale = health && health.lastSuccess && (Date.now() - health.lastSuccess > 7 * 86400000);
-                        const healthClass = isError ? 'feed-error' : (isStale ? 'feed-stale' : '');
-                        const fav = f.favicon ? escJs(f.favicon) : '';
-                        const favInvert = faviconNeedsInvert(f) ? ' favicon-invert' : '';
-                        const favClass = `source-favicon-sidebar ${getFaviconSlug(f.name)}${favInvert} inline-block w-3.5 h-3.5 rounded-sm mr-2 flex-shrink-0`;
-                        const favStyle = `display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;`;
-                        const favicon = f.favicon
-                            ? `<span class="${favClass}" style="${favStyle}"></span>`
-                            : '<span class="source-favicon-sidebar w-3.5 h-3.5 mr-2 flex-shrink-0"></span>';
-
-                        const sfName = escJs(f.name);
-                        const sfId = escJs(f.id);
-                        const sfUrl = escJs(f.url);
-
-                        return `
-                            <button draggable="true"
-                                ondragstart="handleFeedDragStart(event, '${sfId}')"
-                                ondragend="event.target && event.target.classList && event.target.classList.remove('opacity-40')"
-                                onclick="setSourceFilter('${sfName}')" oncontextmenu="showFeedContextMenu(event, '${sfUrl}', '${sfName}')" class="w-full flex items-center justify-between pl-9 pr-3 rounded-lg text-gray-400 outline-none cursor-grab active:cursor-grabbing dynamic-category-text${window.currentSourceFilter === f.name ? ' active-item' : ''}">
-                                <span class="flex items-center truncate pr-2">
-                                    ${favicon}<span class="truncate ${healthClass}">${esc(f.name)}</span>
-                                </span>
-                                <span class="text-[10px] text-gray-400 flex-shrink-0">${f.unread || 0}</span>
-                            </button>`;
-                    }).join('') : ''}
+                        ${catHeaderHtml}
+                        ${feedCardsHtml}
                     </div>
                 `;
             }).join('');
@@ -13014,12 +13009,67 @@
                 <div class="today-view-switcher">
                     <div class="segmented today-segmented" role="group" aria-label="Today View">
                         <button type="button" data-active="${isBriefing ? 'true' : 'false'}" onclick="window.switchTodayView('briefing')">
-                            <svg class="w-3 h-3 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Briefing
+                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Briefing
                         </button>
                         <button type="button" data-active="${isBriefing ? 'false' : 'true'}" onclick="window.switchTodayView('cards')">
-                            <svg class="w-3 h-3 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
+                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
                         </button>
                     </div>
+                </div>
+            `;
+        };
+
+        window.buildTodaySharedHeaderHtml = function ({
+            activeView = 'briefing',
+            statusText = '',
+            headingLong = '',
+            headingDay = '',
+            headerAction = '',
+            metaExtra = '',
+            sectionCount = 0,
+            totalStories = 0,
+            readTimeEst = 1
+        } = {}) {
+            if (!headingLong || !headingDay) {
+                const triggerDate = new Date();
+                headingDay = triggerDate.toLocaleDateString('en-US', {
+                    timeZone: 'America/New_York',
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                headingLong = triggerDate.toLocaleDateString('en-US', {
+                    timeZone: 'America/New_York',
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+            const sw = window.getTodayViewSwitcherHtml ? window.getTodayViewSwitcherHtml(activeView) : '';
+            return `
+                <div class="brief-header mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+                    <div class="app-header-row">
+                        <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#icon-rss"/></svg></span>
+                        <div class="app-header-text">
+                            <div class="brief-header-status app-subtitle"><span data-today-status>${esc(statusText)}</span><span class="brief-header-new" data-today-new></span></div>
+                            <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white mb-2 leading-tight">
+                                <span class="brief-date">
+                                    <span class="brief-date-long">${esc(headingLong)}</span>
+                                    <span class="brief-date-short">${esc(headingDay)}</span>
+                                </span>
+                            </h2>
+                        </div>
+                        ${headerAction || ''}
+                    </div>
+                    <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
+                        <span class="brief-meta-item whitespace-nowrap desk-only">${sectionCount} sections</span>
+                        <span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>
+                        <span class="brief-meta-item whitespace-nowrap desk-only">${totalStories} stories</span>
+                        <span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>
+                        <span class="brief-meta-item whitespace-nowrap desk-only">~${readTimeEst} min read</span>
+                        ${metaExtra || ''}
+                    </div>
+                    ${sw}
                 </div>
             `;
         };
@@ -13107,9 +13157,12 @@
                 isAiBriefing: true
             };
             if (slug === 'briefing') {
-                const sw = window.getTodayViewSwitcherHtml ? window.getTodayViewSwitcherHtml('briefing') : '';
-                if (sw && !art.body.includes('today-view-switcher')) {
-                    art.body = sw + art.body;
+                if (!art.body.includes('brief-header')) {
+                    const header = window.buildTodaySharedHeaderHtml ? window.buildTodaySharedHeaderHtml({
+                        activeView: 'briefing',
+                        statusText: subtitle || ''
+                    }) : '';
+                    art.body = `<div class="brief-container ai-reader-article">${header}${art.body}</div>`;
                 }
             }
             window._aiBriefingArticles.set(id, art);
@@ -13270,9 +13323,34 @@ Coverage by Section:
 ${blocksText}`;
 
                 const now = new Date();
-                const dateLabel = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-                const subtitle = `${isAutoMorning ? 'Morning Briefing' : 'Briefing'} · ${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
-                const briefingTitle = dateLabel;
+                const headingDay = now.toLocaleDateString('en-US', {
+                    timeZone: 'America/New_York',
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                const headingLong = now.toLocaleDateString('en-US', {
+                    timeZone: 'America/New_York',
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                const readTimeEst = Math.max(1, Math.ceil(totalStories * 0.35));
+                const subtitle = `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'} across ${categoryGroups.length} ${categoryGroups.length === 1 ? 'section' : 'sections'}`;
+                const ttsToday = window._ttsActive && window._ttsSource === 'today';
+                const todayListenBtn = cls => `<button type="button" class="${cls}" onclick="window.toggleTTS('today')" ${ttsToday ? 'title="Stop listening" aria-label="Stop listening to Today"' : 'title="Listen to Today" aria-label="Listen to Today"'}><svg aria-hidden="true"><use href="#${ttsToday ? 'icon-stop' : 'icon-headphones'}"/></svg></button>`;
+
+                const sharedHeaderHtml = window.buildTodaySharedHeaderHtml ? window.buildTodaySharedHeaderHtml({
+                    activeView: 'briefing',
+                    statusText: subtitle,
+                    headingLong,
+                    headingDay,
+                    headerAction: todayListenBtn('brief-listen-btn app-header-btn phone-only'),
+                    metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>${todayListenBtn('brief-listen-btn desk-only')}`,
+                    sectionCount: categoryGroups.length,
+                    totalStories,
+                    readTimeEst
+                }) : '';
 
                 let art = null;
                 if (shouldOpenInReader) {
@@ -13284,10 +13362,10 @@ ${blocksText}`;
                     const initialStreamHtml = formatGeminiBriefing('', allBriefingStories, { isBriefingArticle: true, isStreaming: true });
                     art = window.registerAndOpenAiArticle({
                         slug: 'briefing',
-                        title: briefingTitle,
+                        title: headingLong,
                         subtitle,
                         rawText: 'Synthesizing Briefing…',
-                        formattedHtml: initialStreamHtml,
+                        formattedHtml: `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${initialStreamHtml}</div>`,
                         openInReader: true
                     });
                 }
@@ -13301,7 +13379,6 @@ ${blocksText}`;
                     }
                 };
 
-                const swHtml = window.getTodayViewSwitcherHtml ? window.getTodayViewSwitcherHtml('briefing') : '';
                 let rawText = '';
                 if (shouldOpenInReader && sectionPromptBlocks.length > 1) {
                     // Fire Section 1 by itself (~1s total) in parallel with Sections 2..N so the first section renders almost immediately on iOS
@@ -13313,10 +13390,13 @@ ${blocksText}`;
                         if (firstPartText && art) {
                             syncModelBadge();
                             const partialHtml = formatGeminiBriefing(firstPartText, allBriefingStories, { isBriefingArticle: true, isStreaming: true });
-                            art.body = `<div class="ai-reader-article">${swHtml}${partialHtml}</div>`;
+                            art.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${partialHtml}</div>`;
                             if (window.currentArticle && window.currentArticle.id === art.id) {
                                 const bodyEl = document.getElementById('article-body');
-                                if (bodyEl) bodyEl.innerHTML = art.body;
+                                if (bodyEl) {
+                                    bodyEl.innerHTML = art.body;
+                                    if (typeof fitBriefDate === 'function') fitBriefDate(bodyEl);
+                                }
                                 window.syncAiBriefingVisitedLinks();
                             }
                         }
@@ -13330,10 +13410,13 @@ ${blocksText}`;
                         lastStreamRender = nowTs;
                         const combined = `${firstPartText}\n\n${partialRest}`;
                         const partialHtml = formatGeminiBriefing(combined, allBriefingStories, { isBriefingArticle: true, isStreaming: true });
-                        art.body = `<div class="ai-reader-article">${swHtml}${partialHtml}</div>`;
+                        art.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${partialHtml}</div>`;
                         if (window.currentArticle && window.currentArticle.id === art.id) {
                             const bodyEl = document.getElementById('article-body');
-                            if (bodyEl) bodyEl.innerHTML = art.body;
+                            if (bodyEl) {
+                                bodyEl.innerHTML = art.body;
+                                if (typeof fitBriefDate === 'function') fitBriefDate(bodyEl);
+                            }
                         }
                     });
                     const [part1, part2] = await Promise.all([firstPromise, restPromise]);
@@ -13348,10 +13431,13 @@ ${blocksText}`;
                         lastStreamRender = nowTs;
                         syncModelBadge();
                         const partialHtml = formatGeminiBriefing(partialText, allBriefingStories, { isBriefingArticle: true, isStreaming: true });
-                        art.body = `<div class="ai-reader-article">${swHtml}${partialHtml}</div>`;
+                        art.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${partialHtml}</div>`;
                         if (window.currentArticle && window.currentArticle.id === art.id) {
                             const bodyEl = document.getElementById('article-body');
-                            if (bodyEl) bodyEl.innerHTML = art.body;
+                            if (bodyEl) {
+                                bodyEl.innerHTML = art.body;
+                                if (typeof fitBriefDate === 'function') fitBriefDate(bodyEl);
+                            }
                         }
                     });
                 }
@@ -13368,7 +13454,7 @@ ${blocksText}`;
 
                 if (shouldOpenInReader && art) {
                     const plainExcerpt = String(cleanText || '').replace(/\s+/g, ' ').trim();
-                    art.body = `<div class="ai-reader-article">${swHtml}${formattedHtml}</div>`;
+                    art.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${formattedHtml}</div>`;
                     art.excerpt = plainExcerpt.slice(0, 220) + (plainExcerpt.length > 220 ? '…' : '');
                     art.snippet = art.excerpt;
                     window._cachedTodayBriefingId = art.id;
@@ -13378,16 +13464,19 @@ ${blocksText}`;
                     saveReadState();
                     if (window.currentArticle && window.currentArticle.id === art.id) {
                         const bodyEl = document.getElementById('article-body');
-                        if (bodyEl) bodyEl.innerHTML = art.body;
+                        if (bodyEl) {
+                            bodyEl.innerHTML = art.body;
+                            if (typeof fitBriefDate === 'function') fitBriefDate(bodyEl);
+                        }
                         window.syncAiBriefingVisitedLinks();
                     }
                 } else {
                     art = window.registerAndOpenAiArticle({
                         slug: 'briefing',
-                        title: briefingTitle,
+                        title: headingLong,
                         subtitle,
                         rawText: cleanText,
-                        formattedHtml,
+                        formattedHtml: `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${formattedHtml}</div>`,
                         openInReader: false
                     });
                     window._cachedTodayBriefingId = art.id;
@@ -14979,33 +15068,22 @@ ${sampleText}`;
             });
             const readTimeEst = Math.max(1, Math.ceil(totalStories * 0.35));
 
+            const briefHeaderHtml = window.buildTodaySharedHeaderHtml ? window.buildTodaySharedHeaderHtml({
+                activeView: 'cards',
+                statusText: '',
+                headingLong,
+                headingDay,
+                headerAction: slotDef.headerAction || '',
+                metaExtra: slotDef.metaExtra || '',
+                sectionCount: categorySections.length,
+                totalStories,
+                readTimeEst
+            }) : '';
+
             // Generate HTML Body
             let html = `
                 <div class="brief-container">
-                    <div class="brief-header mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
-                        <!-- No "LIVE BRIEF • Unread · last 24 hours" row above the status line any
-                             more (build 331, on request: "I don't need it at all"). -->
-                        <!-- On the phone, Following's header: logo, "Thu, Oct 8" over the status, Listen at
-                             the right (build 335). The desktop shows the status, "Saturday, October 10" and
-                             the details line; the logo and the button are the phone's. -->
-                        <div class="app-header-row">
-                            <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#icon-rss"/></svg></span>
-                            <div class="app-header-text">
-                                <div class="brief-header-status app-subtitle"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
-                                <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white mb-2 leading-tight"><span class="brief-date"><span class="brief-date-long">${esc(headingLong)}</span><span class="brief-date-short">${esc(headingDay)}</span></span></h2>
-                            </div>
-                            ${slotDef.headerAction || ''}
-                        </div>
-                        <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
-                            <span class="brief-meta-item whitespace-nowrap desk-only">${categorySections.length} sections</span>
-                            <span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>
-                            <span class="brief-meta-item whitespace-nowrap desk-only">${totalStories} stories</span>
-                            <span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>
-                            <span class="brief-meta-item whitespace-nowrap desk-only">~${readTimeEst} min read</span>
-                            ${slotDef.metaExtra || ''}
-                        </div>
-                        ${window.getTodayViewSwitcherHtml ? window.getTodayViewSwitcherHtml('cards') : ''}
-                    </div>
+                    ${briefHeaderHtml}
                     <div class="today-ai-briefing-slot ${window._todayAiBriefingBarHtml ? '' : 'hidden'}">${window._todayAiBriefingBarHtml || ''}</div>
             `;
 
@@ -18024,7 +18102,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 407;
+        window.APP_BUILD = 408;
 
         (async function initApp() {
             try {
@@ -18903,7 +18981,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v407';
+const CACHE_NAME = 'rss-reader-v408';
 const APP_SHELL = [
     '/',
     'index.html'
