@@ -2874,8 +2874,7 @@
             line-height: 1.55 !important;
         }
 
-        /* When opened as an article inside the Reading Pane (#article-body), follow the user's
-           exact Article Reader font size, line height, font family and App Zoom settings. */
+        /* Briefing view typography: aligned directly with Cards view & App Settings */
         #article-body .ai-reader-briefing,
         #article-body .ai-reader-briefing li,
         #article-body .ai-reader-briefing p,
@@ -2883,16 +2882,25 @@
         .ai-briefing-story {
             color: var(--text-2) !important;
             font-family: var(--view-font-family, inherit) !important;
-            font-size: 1em !important;
-            line-height: inherit !important;
+            font-size: var(--mob-list-preview-size, 1.0em) !important;
+            line-height: var(--mob-list-preview-line-height, 1.45) !important;
+        }
+
+        @media (min-width: 901px) {
+            #article-body .ai-reader-briefing,
+            #article-body .ai-reader-briefing li,
+            #article-body .ai-reader-briefing p,
+            #article-body .ai-briefing-story,
+            .ai-briefing-story {
+                font-size: var(--list-preview-font-size, 0.95em) !important;
+                line-height: var(--list-preview-line-height, 1.45) !important;
+            }
         }
 
         .ai-briefing-story {
             padding-left: 0 !important;
             margin-bottom: 0.85em !important;
             display: block !important;
-            font-size: 1em !important;
-            line-height: inherit !important;
         }
 
         #article-body .ai-reader-briefing ul {
@@ -2913,25 +2921,29 @@
         .ai-tldr-card strong,
         .ai-briefing-story strong {
             color: var(--text-1) !important;
-            font-weight: 600;
+            font-weight: 700 !important;
         }
 
+        /* Briefing category titles: matches .brief-cat-heading in Cards view exactly */
         #article-body .ai-briefing-theme,
         .ai-briefing-theme {
-            font-size: var(--mob-section-heading-size, 0.85em) !important;
+            font-size: var(--mob-section-heading-size, 1.4em) !important;
             font-weight: 700 !important;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            color: #2563eb !important;
+            letter-spacing: -0.015em !important;
+            text-transform: none !important;
+            color: var(--text-1) !important;
             margin-top: 1.4em;
             margin-bottom: 0.45em;
-            line-height: 1.3 !important;
+            line-height: 1.2 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
         }
 
         @media (min-width: 901px) {
             #article-body .ai-briefing-theme,
             .ai-briefing-theme {
-                font-size: var(--section-heading-size, 0.85em) !important;
+                font-size: var(--section-heading-size, 1.4em) !important;
             }
         }
 
@@ -2942,7 +2954,7 @@
 
         .dark #article-body .ai-briefing-theme,
         .dark .ai-briefing-theme {
-            color: #58a6ff !important;
+            color: var(--text-1) !important;
         }
 
         #article-body .ai-briefing-theme-link,
@@ -2963,9 +2975,10 @@
         }
 
         .ai-theme-arrow {
-            font-size: 1.1em;
+            font-size: 0.85em;
             line-height: 1;
-            opacity: 0.7;
+            color: #3b82f6 !important;
+            opacity: 0.9;
         }
 
         #article-body .ai-briefing-cite,
@@ -13020,7 +13033,10 @@
                 const line = rawLine.trim();
                 if (!line) continue;
                 if (line.startsWith('###') || line.startsWith('##')) {
-                    const heading = line.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/\s*\(\d+\s+stories\)\s*$/i, '').trim();
+                    let heading = line.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/\s*\(\d+\s+stories\)\s*$/i, '').trim();
+                    if (heading && heading === heading.toUpperCase() && heading.length > 3) {
+                        heading = heading.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+                    }
                     if (linkCategories) {
                         const markBtn = isBriefingArticle
                             ? `<button type="button" data-ai-sec-cat="${esc(heading)}" onclick="window.markAiBriefingSectionRead(this)" class="brief-cat-mark-read-btn ai-sec-mark-read-btn" title="Mark '${esc(heading)}' stories as read" aria-label="Mark '${esc(heading)}' stories as read"><svg><use href="#icon-check"/></svg></button>`
@@ -13391,7 +13407,7 @@
                     const header = window.buildTodaySharedHeaderHtml ? window.buildTodaySharedHeaderHtml({
                         activeView: 'briefing',
                         statusText: '',
-                        headerAction: `<button type="button" class="app-header-btn phone-only" onclick="window.generateTodayBriefing({ forceRegenerate: true })" title="Regenerate AI Briefing" aria-label="Regenerate AI Briefing"><svg aria-hidden="true"><use href="#icon-sparkle"/></svg></button>` + (typeof todayListenBtn === 'function' ? todayListenBtn('brief-listen-btn app-header-btn phone-only') : '')
+                        headerAction: (typeof todayListenBtn === 'function' ? todayListenBtn('brief-listen-btn app-header-btn phone-only') : '')
                     }) : '';
                     art.body = `<div class="brief-container ai-reader-article">${header}${art.body}</div>`;
                 }
@@ -13519,8 +13535,8 @@
                     statusText: '',
                     headingLong,
                     headingDay,
-                    headerAction: `<button type="button" class="app-header-btn phone-only" onclick="window.generateTodayBriefing({ forceRegenerate: true })" title="Regenerate AI Briefing" aria-label="Regenerate AI Briefing"><svg aria-hidden="true"><use href="#icon-sparkle"/></svg></button>` + todayListenBtn('brief-listen-btn app-header-btn phone-only'),
-                    metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>${todayListenBtn('brief-listen-btn desk-only')}<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span><button type="button" class="brief-briefing-btn desk-only" onclick="window.generateTodayBriefing({ forceRegenerate: true })" title="Regenerate Briefing"><svg style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-sparkle"/></svg>Briefing</button>`,
+                    headerAction: todayListenBtn('brief-listen-btn app-header-btn phone-only'),
+                    metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>${todayListenBtn('brief-listen-btn desk-only')}`,
                     sectionCount: categoryGroups.length,
                     totalStories,
                     readTimeEst
@@ -14310,10 +14326,10 @@ ${sampleText}`;
                 windowEnd: now,
                 // Listen to Today, then "3 muted - Show" / "Hide 3 muted". On the phone Listen is a header button
                 // like Following's; both copies are .brief-listen-btn, so updateTTSButton keeps them in step.
-                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>${todayListenBtn('brief-listen-btn desk-only')}<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-briefing-btn" onclick="window.generateTodayBriefing()" title="AI Briefing (B)"><svg style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-sparkle"/></svg>Briefing</button>` + (mutedCount
+                metaExtra: `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>${todayListenBtn('brief-listen-btn desk-only')}` + (mutedCount
                     ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span><button type="button" class="brief-muted-btn" onclick="window.toggleShowMuted()">${window._showMuted ? `Hide ${mutedCount} muted` : `${mutedCount} muted · Show`}</button>`
                     : ''),
-                headerAction: `<button type="button" class="app-header-btn phone-only" onclick="window.generateTodayBriefing()" title="AI Briefing" aria-label="AI Briefing"><svg aria-hidden="true"><use href="#icon-sparkle"/></svg></button>` + todayListenBtn('brief-listen-btn app-header-btn phone-only')
+                headerAction: todayListenBtn('brief-listen-btn app-header-btn phone-only')
             }, sections, totalStories);
 
             let body = composed.body;
@@ -18347,7 +18363,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 414;
+        window.APP_BUILD = 415;
 
         (async function initApp() {
             try {
@@ -19226,7 +19242,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v414';
+const CACHE_NAME = 'rss-reader-v415';
 const APP_SHELL = [
     '/',
     'index.html'
