@@ -12654,12 +12654,8 @@
             const isStreaming = !!opts.isStreaming;
             const lines = (text || '').split('\n');
             let out = '<div class="ai-reader-briefing">';
-            if (isBriefingArticle) {
-                if (isStreaming) {
-                    out += `<div class="ai-briefing-topbar"><span class="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium"><svg class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>Streaming Briefing live…</span></div>`;
-                } else {
-                    out += `<div class="ai-briefing-topbar"><span>Tap source to read · ⋯ for Read Later / Save</span><button type="button" class="pill-btn text-xs" onclick="window.generateTodayBriefing({ forceRegenerate: true })" title="Generate a fresh Briefing">↻ Regenerate</button></div>`;
-                }
+            if (isBriefingArticle && isStreaming) {
+                out += `<div class="ai-briefing-topbar"><span class="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium"><svg class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>Streaming Briefing live…</span></div>`;
             }
             let inList = false;
             let bulletIdx = 0;
@@ -13427,6 +13423,10 @@ ${articleList}`;
         window.generateArticleTLDR = async function () {
             const art = window.currentArticle;
             if (!art || art.isBrief) return;
+            if (art.isAiBriefing) {
+                window.generateTodayBriefing({ forceRegenerate: true });
+                return;
+            }
             const box = document.getElementById('ai-tldr-container');
             if (!box) return;
 
@@ -17775,7 +17775,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 399;
+        window.APP_BUILD = 400;
 
         (async function initApp() {
             try {
@@ -18646,7 +18646,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v399';
+const CACHE_NAME = 'rss-reader-v400';
 const APP_SHELL = [
     '/',
     'index.html'
