@@ -2633,11 +2633,11 @@
             }
 
             body.desktop-today-cards-wide #today-column {
-                padding: 1.5rem 3rem 6rem 3rem !important;
+                padding: 1.5rem 2.5rem 6rem 2.5rem !important;
             }
 
             body.desktop-today-cards-wide #today-column .brief-container {
-                max-width: 1320px !important;
+                max-width: 1240px !important;
                 margin-left: auto !important;
                 margin-right: auto !important;
                 width: 100% !important;
@@ -2645,8 +2645,36 @@
 
             body.desktop-today-cards-wide #today-column .brief-cat-section > div.space-y-3 {
                 display: grid !important;
-                grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
+                grid-template-columns: repeat(var(--today-cards-cols, 2), minmax(0, 1fr)) !important;
                 gap: 16px !important;
+            }
+
+            /* Container and grid sizing per column preference */
+            body.desktop-today-cards-wide[data-cards-cols="1"] #today-column .brief-container {
+                max-width: 760px !important;
+            }
+            body.desktop-today-cards-wide[data-cards-cols="1"] #today-column .brief-cat-section > div.space-y-3 {
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+
+            body.desktop-today-cards-wide[data-cards-cols="2"] #today-column .brief-container {
+                max-width: 1240px !important;
+            }
+            body.desktop-today-cards-wide[data-cards-cols="2"] #today-column .brief-cat-section > div.space-y-3 {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+
+            body.desktop-today-cards-wide[data-cards-cols="3"] #today-column .brief-container {
+                max-width: 1680px !important;
+            }
+            body.desktop-today-cards-wide[data-cards-cols="3"] #today-column .brief-cat-section > div.space-y-3 {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            }
+
+            @media (max-width: 1100px) {
+                body.desktop-today-cards-wide[data-cards-cols="3"] #today-column .brief-cat-section > div.space-y-3 {
+                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                }
             }
 
             body.desktop-today-cards-wide #today-column .brief-cat-section > div.space-y-3 > :not([hidden]) ~ :not([hidden]) {
@@ -2678,7 +2706,7 @@
             }
 
             @media (min-width: 1280px) {
-                body.desktop-today-cards-wide #today-column .brief-cat-section:first-of-type > div.space-y-3 > .brief-story-card:first-child {
+                body.desktop-today-cards-wide:not([data-cards-cols="1"]) #today-column .brief-cat-section:first-of-type > div.space-y-3 > .brief-story-card:first-child {
                     grid-column: span 2 !important;
                 }
             }
@@ -6965,6 +6993,17 @@
                             <label class="settings-item-label-sm">Show images</label>
                             <button id="today-images-toggle" onclick="toggleTodayImages()" class="toggle-switch"
                                 data-on="true" aria-label="Show images"></button>
+                        </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm" for="pref-today-cards-columns">Cards View Columns</label>
+                                <p class="settings-hint">Number of card columns on desktop</p>
+                            </div>
+                            <select id="pref-today-cards-columns" onchange="window.saveTodayCardsColumns(this.value)" class="settings-input is-inline">
+                                <option value="1">1 Column</option>
+                                <option value="2" selected>2 Columns</option>
+                                <option value="3">3 Columns</option>
+                            </select>
                         </div>
                         <div class="settings-row settings-row-stacked">
                             <div class="flex justify-between items-center">
@@ -13585,6 +13624,9 @@
             document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', window._autoMorningBriefing ? 'true' : 'false');
             const todayViewSel = document.getElementById('pref-today-default-view');
             if (todayViewSel) todayViewSel.value = window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing';
+            const cardsColsSel = document.getElementById('pref-today-cards-columns');
+            if (cardsColsSel) cardsColsSel.value = window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2';
+            if (typeof window.applyTodayCardsColumns === 'function') window.applyTodayCardsColumns(window.getTodayCardsColumns());
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             window.showToast(window._autoMorningBriefing ? 'Morning Briefing on first open enabled' : 'Morning Briefing on first open off');
             if (window._autoMorningBriefing) {
@@ -13602,6 +13644,30 @@
             window._todayDefaultView = v;
             const sel = document.getElementById('pref-today-default-view');
             if (sel) sel.value = v;
+            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+        };
+
+        window.getTodayCardsColumns = function () {
+            try { return localStorage.getItem('newsreader_today_cards_columns') || '2'; } catch (e) { return '2'; }
+        };
+
+        window.applyTodayCardsColumns = function (cols) {
+            const c = (cols === '1' || cols === '3') ? cols : '2';
+            document.documentElement.style.setProperty('--today-cards-cols', c);
+            document.body.setAttribute('data-cards-cols', c);
+            const sel = document.getElementById('pref-today-cards-columns');
+            if (sel) sel.value = c;
+            setTimeout(() => {
+                document.querySelectorAll('#today-column .brief-hero > img, #today-column .brief-thumb > img').forEach(img => {
+                    if (img.complete && img.naturalWidth && window.smoothPicture) window.smoothPicture(img);
+                });
+            }, 60);
+        };
+
+        window.saveTodayCardsColumns = function (val) {
+            const c = (val === '1' || val === '3') ? val : '2';
+            try { localStorage.setItem('newsreader_today_cards_columns', c); } catch (e) { }
+            window.applyTodayCardsColumns(c);
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
         };
 
@@ -16462,6 +16528,9 @@ ${sampleText}`;
             document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', window._autoMorningBriefing ? 'true' : 'false');
             const todayViewSel = document.getElementById('pref-today-default-view');
             if (todayViewSel) todayViewSel.value = window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing';
+            const cardsColsSel = document.getElementById('pref-today-cards-columns');
+            if (cardsColsSel) cardsColsSel.value = window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2';
+            if (typeof window.applyTodayCardsColumns === 'function') window.applyTodayCardsColumns(window.getTodayCardsColumns());
             const geminiInput = document.getElementById('gemini-api-key-input');
             if (geminiInput) geminiInput.value = window.getGeminiApiKey();
             window.renderMuteChips?.();
@@ -18897,7 +18966,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 433;
+        window.APP_BUILD = 434;
 
         (async function initApp() {
             try {
@@ -19039,6 +19108,9 @@ ${sampleText}`;
                     document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', window._autoMorningBriefing ? 'true' : 'false');
             const todayViewSel = document.getElementById('pref-today-default-view');
             if (todayViewSel) todayViewSel.value = window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing';
+            const cardsColsSel = document.getElementById('pref-today-cards-columns');
+            if (cardsColsSel) cardsColsSel.value = window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2';
+            if (typeof window.applyTodayCardsColumns === 'function') window.applyTodayCardsColumns(window.getTodayCardsColumns());
 
                     const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
                     if (prefs.autoRefresh) {
@@ -19508,6 +19580,10 @@ ${sampleText}`;
                         const todayViewSel = document.getElementById('pref-today-default-view');
                         if (todayViewSel) todayViewSel.value = data.todayDefaultView;
                     }
+                    if (data.cardsColumns) {
+                        try { localStorage.setItem('newsreader_today_cards_columns', data.cardsColumns); } catch (e) { }
+                        window.applyTodayCardsColumns?.(data.cardsColumns);
+                    }
                 }
             }).catch(e => console.warn('Could not load remote UI prefs:', e));
         }
@@ -19579,6 +19655,7 @@ ${sampleText}`;
                         autoRefresh,
                         autoMorningBriefing: !!window._autoMorningBriefing,
                         todayDefaultView: window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing',
+                        cardsColumns: window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2',
                         todayExcluded: [...(window._todayExcluded || [])],
                         muteWords: window._muteWords || [],
                         updatedAt: new Date().toISOString()
@@ -19776,7 +19853,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v433';
+const CACHE_NAME = 'rss-reader-v434';
 const APP_SHELL = [
     '/',
     'index.html'
