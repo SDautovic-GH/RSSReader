@@ -10893,7 +10893,7 @@
             const renderKey = window.feeds.map(f => {
                 const h = window._feedHealth[f.url];
                 const hk = h ? `${h.errorCount >= 3 ? 'e' : ''}${h.lastSuccess && (Date.now() - h.lastSuccess > 7 * 86400000) ? 's' : ''}` : '';
-                return `${f.name}:${f.unread}:${f.favicon || ''}:${window.collapsedCategories[f.category]}:${hk}`;
+                return `${f.name}:${f.unread}:${f.favicon || ''}:${window.collapsedCategories[f.category] !== false}:${hk}`;
             }).join('|')
                 + '||' + (window._categoryOrder || []).join(',')
                 // The selection belongs in the key: the markup embeds the highlight, so with only the selection
@@ -10918,8 +10918,8 @@
             list.innerHTML = sortedEntries.map(([cat, feeds]) => {
                 const total = feeds.reduce((sum, f) => sum + (f.unread || 0), 0);
                 if (total === 0 && !window._showEmptyCategories) return '';
-                if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = false;
-                const isCollapsed = !!window.collapsedCategories[cat];
+                if (window.collapsedCategories[cat] === undefined) window.collapsedCategories[cat] = true;
+                const isCollapsed = window.collapsedCategories[cat] !== false;
                 const rawCat = (cat || '').trim();
                 const formattedCat = (!rawCat || rawCat.toLowerCase() === 'uncategorized') ? 'Uncategorized' : (rawCat.charAt(0).toUpperCase() + rawCat.slice(1));
 
@@ -10991,8 +10991,9 @@
                          ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
                         <div class="pub-category-label${isCatActive ? ' text-blue-500 dark:text-blue-400' : ''}"
                              onclick="setCategoryFilter('${sCat}')"
+                             ondblclick="window.toggleCategory('${sCat}')"
                              oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')"
-                             title="Filter by ${esc(formattedCat)}">
+                             title="Filter by ${esc(formattedCat)} (Double-click to toggle)">
                             <div class="flex items-center gap-1.5 min-w-0">
                                 <button type="button" onclick="event.stopPropagation(); window.toggleCategory('${sCat}')"
                                         class="pub-cat-toggle p-0.5 rounded opacity-60 hover:opacity-100 transition-transform ${isCollapsed ? '' : 'rotate-90'}"
@@ -18307,7 +18308,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 412;
+        window.APP_BUILD = 413;
 
         (async function initApp() {
             try {
@@ -19186,7 +19187,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v412';
+const CACHE_NAME = 'rss-reader-v413';
 const APP_SHELL = [
     '/',
     'index.html'
