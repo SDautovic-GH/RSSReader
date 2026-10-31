@@ -4865,38 +4865,56 @@
             gap: 14px;
         }
 
-        /* Modern iOS-style publication directory in Library tab */
+        /* Modern publication directory in Library tab */
         .pub-category-section {
-            margin-bottom: 20px;
+            margin-bottom: 6px;
         }
 
         .pub-category-label {
-            font-size: calc(12px * var(--sheet-text, 1)) !important;
-            font-weight: 600 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.05em !important;
-            color: var(--text-3, #8b949e) !important;
-            padding: 0 4px 6px 4px !important;
+            font-size: var(--mob-folder-size, 1.05em) !important;
+            font-weight: 500 !important;
+            text-transform: none !important;
+            letter-spacing: normal !important;
+            color: var(--text-1, #e3e9f0) !important;
+            padding-top: var(--feed-row-padding, 0.25rem) !important;
+            padding-bottom: var(--feed-row-padding, 0.25rem) !important;
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+            line-height: var(--mob-feed-line-height, var(--feed-line-height, 1.4)) !important;
             display: flex !important;
             align-items: center !important;
             justify-content: space-between !important;
             cursor: pointer;
-            transition: color 0.15s ease;
+            border-radius: 10px;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+
+        @media (min-width: 901px) {
+            .pub-category-label {
+                font-size: var(--category-font-size, 1.05em) !important;
+                line-height: var(--feed-line-height, 1.4) !important;
+            }
         }
 
         html:not(.dark) .pub-category-label {
-            color: #57606a !important;
+            color: #1f2328 !important;
         }
 
         .pub-category-label:hover {
-            color: var(--text-1) !important;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        html:not(.dark) .pub-category-label:hover {
+            background: rgba(0, 0, 0, 0.04);
         }
 
         .pub-category-label.active-item {
             color: #3b82f6 !important;
+            background: rgba(59, 130, 246, 0.15) !important;
         }
 
         .pub-card-group {
+            margin-top: 4px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px;
@@ -5013,7 +5031,7 @@
                 font-size: var(--category-font-size, 1.05em) !important;
                 line-height: var(--feed-line-height, 1.4) !important;
             }
-            .today-view-switcher {
+            #reader-view .today-view-switcher {
                 display: none !important;
             }
             #reader-view .brief-header-logo {
@@ -5183,6 +5201,12 @@
             justify-content: center !important;
             margin: 14px 0 14px 0 !important;
             padding: 0 !important;
+        }
+
+        @media (min-width: 901px) {
+            #reader-view .today-view-switcher {
+                display: none !important;
+            }
         }
 
         .today-segmented {
@@ -10989,7 +11013,7 @@
                          ondragover="handleCategoryDragOver(event, '${sCat}')"
                          ondragleave="handleCategoryDragLeave(event)"
                          ondrop="handleCategoryOrFeedDrop(event, '${sCat}')">
-                        <div class="pub-category-label${isCatActive ? ' text-blue-500 dark:text-blue-400' : ''}"
+                        <div class="pub-category-label dynamic-category-text${isCatActive ? ' active-item text-blue-500 dark:text-blue-400' : ''}"
                              onclick="setCategoryFilter('${sCat}')"
                              ondblclick="window.toggleCategory('${sCat}')"
                              oncontextmenu="showFolderContextMenu(event, 'category', '${sCat}')"
@@ -11156,7 +11180,7 @@
             renderTimeline();
         };
         window.toggleCategory = (cat) => {
-            window.collapsedCategories[cat] = !window.collapsedCategories[cat];
+            window.collapsedCategories[cat] = (window.collapsedCategories[cat] === false);
             window.saveCollapsedCategories?.();
             renderFeeds();
         };
@@ -13197,6 +13221,17 @@
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
         };
 
+        window.updateTodayViewSwitcherState = function (activeView) {
+            const isBriefing = activeView === 'briefing';
+            document.querySelectorAll('.today-segmented').forEach(seg => {
+                const btns = seg.querySelectorAll('button');
+                if (btns.length >= 2) {
+                    btns[0].setAttribute('data-active', isBriefing ? 'true' : 'false');
+                    btns[1].setAttribute('data-active', isBriefing ? 'false' : 'true');
+                }
+            });
+        };
+
         window.getTodayViewSwitcherHtml = function (activeView = 'briefing') {
             const isBriefing = activeView === 'briefing';
             return `
@@ -13271,6 +13306,7 @@
         window.switchTodayView = async function (mode) {
             const m = mode === 'cards' ? 'cards' : 'briefing';
             window._currentTodayView = m;
+            window.updateTodayViewSwitcherState?.(m);
             if (m === 'cards') {
                 window._openingFromAiBriefing = false;
                 window._returnToAiBriefingState = null;
@@ -13505,6 +13541,7 @@
                         cachedArt.body = `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${contentOnly}</div>`;
                     }
                     window.openArticleInReader(window._cachedTodayBriefingId);
+                    window.updateTodayViewSwitcherState?.('briefing');
                     setTimeout(() => {
                         if (typeof window.syncAiBriefingVisitedLinks === 'function') window.syncAiBriefingVisitedLinks();
                     }, 30);
@@ -13572,6 +13609,7 @@ ${blocksText}`;
                         formattedHtml: `<div class="brief-container ai-reader-article">${sharedHeaderHtml}${initialStreamHtml}</div>`,
                         openInReader: true
                     });
+                    window.updateTodayViewSwitcherState?.('briefing');
                 }
 
                 const syncModelBadge = () => {
@@ -14766,6 +14804,7 @@ ${sampleText}`;
             }
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
             document.getElementById('feed-btn-today')?.classList.add('active-item');
+            window.updateTodayViewSwitcherState?.('cards');
             if (typeof isMobile === 'function' && !isMobile()) {
                 // DESKTOP: the brief takes the middle column; the reader stays for stories.
                 window.showTodayColumn(true);
@@ -18308,7 +18347,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 413;
+        window.APP_BUILD = 414;
 
         (async function initApp() {
             try {
@@ -19187,7 +19226,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v413';
+const CACHE_NAME = 'rss-reader-v414';
 const APP_SHELL = [
     '/',
     'index.html'
