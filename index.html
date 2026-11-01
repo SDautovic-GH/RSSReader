@@ -3,12 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Today">
     <meta name="theme-color" content="#2563eb">
+    <meta name="color-scheme" content="light dark">
     <meta name="description" content="Your personal RSS news reader">
     <title>Today</title>
 
@@ -303,6 +303,7 @@
            Sheets (Settings, Feeds, the phone's Search) are the app's own background: white, and in
            dark the desktop's panes (#0d1117) or the phone's black. */
         :root {
+            color-scheme: light;
             --text-1: #0f1923;
             --text-2: #374151;
             --text-3: #57606a;
@@ -310,7 +311,9 @@
             --divider: #e5e7eb;
         }
 
+        html.dark,
         .dark {
+            color-scheme: dark;
             --text-1: #f0f6fc;
             --text-2: #ccd2d8;
             --text-3: #8b949e;
@@ -434,13 +437,21 @@
             background: #3b82f6;
         }
 
-        /* Pane borders start below the 74px header, so the top reads as one toolbar. */
-        #sidebar-pane,
+        /* Pane borders start below the 74px header, so the top reads as one toolbar.
+           Sidebar pane has NO right border (seamless unified single-color background with right pane). */
+        #sidebar-pane {
+            border-right: none !important;
+            border-color: transparent !important;
+        }
+
         #timeline-pane {
             border-right: none !important;
         }
 
-        #sidebar-pane::after,
+        #sidebar-pane::after {
+            display: none !important;
+        }
+
         #timeline-pane::after {
             content: '';
             position: absolute;
@@ -453,7 +464,6 @@
             z-index: 5;
         }
 
-        :root:not(.dark) #sidebar-pane::after,
         :root:not(.dark) #timeline-pane::after {
             background: rgba(0, 0, 0, 0.1);
         }
@@ -2070,24 +2080,25 @@
         }
 
         /* ===== DEEP DARK THEME ===== */
-        /* Desktop: GitHub's dark theme as deployed (bluer and softer than the Primer tokens):
-           #0a1119 sidebar, #0d1117 surfaces, #21262d borders, #1c2128 list rows, #4493f8 accent. */
+        /* Desktop: Unified #0d1117 background across the entire workstation:
+           sidebar, timeline, viewer, and app container share the identical single background color. */
         .dark body {
-            background: #0a1119 !important;
+            background: #0d1117 !important;
         }
 
         .dark #app-container {
-            background: #0a1119;
+            background: #0d1117 !important;
         }
 
         .dark #sidebar-pane {
-            background: #0a1119 !important;
-            border-color: #21262d !important;
+            background: #0d1117 !important;
+            border-color: transparent !important;
+            border-right: none !important;
         }
 
         .dark #sidebar-pane .p-4 {
-            background: #0a1119 !important;
-            border-color: #21262d !important;
+            background: #0d1117 !important;
+            border-color: transparent !important;
         }
 
         .dark #timeline-pane {
@@ -2097,6 +2108,24 @@
 
         .dark #viewer-pane {
             background: #0d1117 !important;
+        }
+
+        /* Light mode: unified #ffffff background across sidebar and app container */
+        body {
+            background: #ffffff !important;
+        }
+
+        #app-container {
+            background: #ffffff !important;
+        }
+
+        #sidebar-pane {
+            background: #ffffff !important;
+            border-right: none !important;
+        }
+
+        #sidebar-pane .p-4 {
+            background: #ffffff !important;
         }
 
         .dark #viewer-pane .h-14.border-b {
@@ -4977,21 +5006,26 @@
             pointer-events: none;
         }
 
-        /* "Mark All Read in Folders" sits as close to the last section as a next section would. The
-           bottom padding is the room above the phone's tab bar. */
+        /* "Mark All Read" footer pill — generous breathing room above the button */
         .brief-footer {
-            margin-top: 0 !important;
+            margin-top: 36px !important;
             padding-top: 0 !important;
-            padding-bottom: 2.5rem !important;
+            padding-bottom: 3.5rem !important;
             display: flex;
             justify-content: center;
             width: 100%;
             box-sizing: border-box;
         }
 
+        body.desktop-today-cards-wide #today-column .brief-footer {
+            margin-top: 36px !important;
+            padding-bottom: 4rem !important;
+        }
+
         @media (max-width: 900px) {
             .brief-footer {
-                padding-bottom: 0 !important;   /* the tab bar's clearance is #reader-view's (335) */
+                margin-top: 24px !important;
+                padding-bottom: 1.5rem !important;
             }
         }
 
@@ -7000,7 +7034,7 @@
 
         <!-- PANE 1: Sidebar -->
         <aside id="sidebar-pane"
-            class="w-[328px] flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col"
+            class="w-[328px] flex-shrink-0 bg-white dark:bg-[#0d1117] flex flex-col"
             style="position:relative;">
             <div id="sidebar-header"
                 class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -17994,6 +18028,9 @@ ${sampleText}`;
         window.applyTheme = (mode) => {
             const isDark = mode === 'dark';
             document.documentElement.classList.toggle('dark', isDark);
+            document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+            const metaCs = document.querySelector('meta[name="color-scheme"]');
+            if (metaCs) metaCs.content = isDark ? 'dark' : 'light';
             const seg = document.getElementById('theme-segmented');
             if (seg) {
                 seg.querySelectorAll('button[data-theme]').forEach(b => {
@@ -20456,7 +20493,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 461;
+        window.APP_BUILD = 462;
 
         (async function initApp() {
             try {
@@ -21334,7 +21371,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v461';
+const CACHE_NAME = 'rss-reader-v462';
 const APP_SHELL = [
     '/',
     'index.html'
