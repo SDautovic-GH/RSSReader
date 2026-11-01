@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Product** | Today (formerly RSS Reader) |
 | **Live App** | [today.dautovic.com](https://today.dautovic.com) |
-| **Build Target** | Build 447+ |
+| **Build Target** | Build 448+ |
 | **Documentation Type** | Comprehensive User Manual |
 | **Last Updated** | November 1, 2026 |
 
@@ -99,11 +99,13 @@ Today features dedicated workstation layouts tailored for focus:
   * The top bar switcher and the body content below it remain **mathematically locked to the exact center** (`50%` of the pane width).
   * The header **never disappears or collapses**, and the mobile phone tab bar never intrudes on desktop.
 
-#### Ultrawide Display Centering
-* On wide or ultrawide monitors ($> 1720px$ width, such as 1440p, 4K, or 34-inch/49-inch ultrawides), Today neatly centers the entire app frame within a 1680px maximum width workstation.
-* This eliminates the neck-straining "tennis match" effect where the sidebar is pinned to the far-left screen bezel and content/controls are stranded thousands of pixels away in the center and right edges.
-* The workspace is flanked by subtle, elegant outer ambient letterboxing and depth shadows.
-* You can switch between **Centered Frame (Recommended)** and **Full Width Stretch** under **Settings → Appearance → Wide Screen Layout**.
+#### Wide Screen & Ultrawide Layout
+* On wide or ultrawide monitors ($> 1720px$ width, such as 1440p, 4K, or 34-inch/49-inch ultrawides), Today integrates seamlessly with the browser window at 100% full bleed—without artificial outer letterboxing bars or black margins.
+* Rather than scattering header controls across multiple thousands of pixels, Today centers the header controls directly above the content reading canvas:
+  * **Today Cards View:** `Mark Read` aligns with the left edge of card column 1, the `Briefing / Cards` switcher sits in the horizontal center, and `Search` aligns with the right edge of the card deck.
+  * **Today Briefing & Story View:** `< Today` back button aligns with the left margin of the reading text, the switcher sits in the center, and the article toolbar actions align with the right margin.
+* This eliminates the neck-straining "tennis match" effect where controls are stranded thousands of pixels away from the reading column.
+* You can switch between **Centered Content (Recommended)** and **Full Width Stretch** under **Settings → Appearance → Wide Screen Layout**.
 
 ### 3.2 Mobile Interface
 * **The Floating Bottom Tab Bar:** A detached floating glass capsule (YouTube-style, 42px compact height) with four pure-icon tabs:
@@ -188,7 +190,7 @@ All stale backlog stories are marked read immediately, leaving you with only tod
 ## 7. Customization & Settings
 
 Open **Settings** (gear icon) to tailor your experience:
-* **Wide Screen Layout (Desktop):** Toggle between **Centered Frame (Recommended)** (centers workstation at 1680px on monitors $> 1720px$) and **Full Width Stretch**.
+* **Wide Screen Layout (Desktop):** Toggle between **Centered Content (Recommended)** (centers header controls directly above the content reading column) and **Full Width Stretch**.
 * **Cards View Columns (Desktop):** Select between **1 Column** (focused reading), **2 Columns** (magazine layout), or **3 Columns** (ultra-wide monitor layout).
 * **AI & Briefings:** Configure your Gemini API key, customize briefing synthesis, and enable automatic 5:00 AM Morning Briefing preparation.
 * **Appearance & Theme:** Switch between Dark and Light mode, or choose your preferred font.

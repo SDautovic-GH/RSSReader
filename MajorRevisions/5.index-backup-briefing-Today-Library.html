@@ -2568,16 +2568,27 @@
         body.desktop-today-briefing #viewer-header,
         body.desktop-today-story #viewer-header {
             display: flex !important;
-            padding-left: 1.5rem !important;
-            padding-right: 1.5rem !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
             box-sizing: border-box !important;
         }
 
         body.desktop-today-cards-wide #timeline-header {
             display: flex !important;
-            padding-left: 1.5rem !important;
-            padding-right: 1.5rem !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
             box-sizing: border-box !important;
+        }
+
+        .timeline-header-inner,
+        .viewer-header-inner {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+            position: relative;
         }
 
         /* 2. Absolute Center Lock for Today Switcher (Mathematical Simultaneous Centering) */
@@ -2754,35 +2765,47 @@
             }
         }
 
-        /* 7. Ultrawide Display Centering (Approach 1: Centered App Frame) */
-        @media (min-width: 1720px) {
-            body.ultrawide-centered:not(.is-fullscreen) {
-                background: #05070a !important;
-            }
+        /* 7. Ultrawide / Wide Display Centered Header Controls */
+        body.ultrawide-centered.desktop-today-cards-wide #timeline-header .timeline-header-inner {
+            max-width: calc(1240px + 5rem) !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            padding-left: 2.5rem !important;
+            padding-right: 2.5rem !important;
+            box-sizing: border-box !important;
+        }
 
-            html:not(.dark) body.ultrawide-centered:not(.is-fullscreen) {
-                background: #e5e7eb !important;
-            }
+        body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="1"] #timeline-header .timeline-header-inner {
+            max-width: calc(760px + 5rem) !important;
+        }
 
-            body.ultrawide-centered:not(.is-fullscreen) #app-container {
-                max-width: 1680px !important;
-                margin-left: auto !important;
-                margin-right: auto !important;
-                border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
-                border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-                box-shadow: 0 0 60px rgba(0, 0, 0, 0.45) !important;
-            }
+        body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="2"] #timeline-header .timeline-header-inner {
+            max-width: calc(1240px + 5rem) !important;
+        }
 
-            html:not(.dark) body.ultrawide-centered:not(.is-fullscreen) #app-container {
-                border-left: 1px solid rgba(0, 0, 0, 0.09) !important;
-                border-right: 1px solid rgba(0, 0, 0, 0.09) !important;
-                box-shadow: 0 0 45px rgba(0, 0, 0, 0.08) !important;
-            }
+        body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="3"] #timeline-header .timeline-header-inner {
+            max-width: calc(1680px + 5rem) !important;
+        }
 
-            /* Responsive expansion if 3-column Today Cards is selected */
-            body.ultrawide-centered:not(.is-fullscreen)[data-cards-cols="3"] #app-container {
-                max-width: 2040px !important;
-            }
+        body.ultrawide-centered.desktop-today-briefing #viewer-header .viewer-header-inner,
+        body.ultrawide-centered.desktop-today-story #viewer-header .viewer-header-inner {
+            max-width: calc(760px + 4rem) !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+            box-sizing: border-box !important;
+        }
+
+        body:not(.ultrawide-centered).desktop-today-cards-wide #timeline-header .timeline-header-inner {
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
+        }
+
+        body:not(.ultrawide-centered).desktop-today-briefing #viewer-header .viewer-header-inner,
+        body:not(.ultrawide-centered).desktop-today-story #viewer-header .viewer-header-inner {
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
         }
 
         /* Today images: each story's picture 16:9 across its card, after its text (on request: the source
@@ -6523,35 +6546,37 @@
             class="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 pane-transition relative"
             style="width: 440px;">
             <div id="timeline-header"
-                class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-[17px] font-bold text-gray-400 uppercase tracking-tight">
-                <div class="flex items-center flex-1 min-w-0">
-                    <div id="timeline-count-group" class="flex items-center">
-                        <button id="timeline-count" onclick="markAllRead()" oncontextmenu="showTimelineMarkReadMenu(event); return false;" title="Mark All Read (Right-click or hold for older options)"
-                            class="pill-btn mr-2 tabular-nums">Mark Read · 0</button>
-                        <span id="dedup-badge"
-                            class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
+                class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center text-[17px] font-bold text-gray-400 uppercase tracking-tight relative">
+                <div class="timeline-header-inner flex items-center justify-between w-full h-full px-4">
+                    <div class="flex items-center flex-1 min-w-0">
+                        <div id="timeline-count-group" class="flex items-center">
+                            <button id="timeline-count" onclick="markAllRead()" oncontextmenu="showTimelineMarkReadMenu(event); return false;" title="Mark All Read (Right-click or hold for older options)"
+                                class="pill-btn mr-2 tabular-nums">Mark Read · 0</button>
+                            <span id="dedup-badge"
+                                class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
+                        </div>
                     </div>
-                </div>
-                <!-- Unified Desktop Today Switcher (Cards View) -->
-                <div id="desk-today-switcher" class="hidden flex items-center justify-center flex-1">
-                    <div class="segmented today-segmented" role="group" aria-label="Today View">
-                        <button type="button" data-active="false" onclick="window.switchTodayView('briefing')">
-                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Briefing
-                        </button>
-                        <button type="button" data-active="true" onclick="window.switchTodayView('cards')">
-                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
-                        </button>
+                    <!-- Unified Desktop Today Switcher (Cards View) -->
+                    <div id="desk-today-switcher" class="hidden flex items-center justify-center flex-1">
+                        <div class="segmented today-segmented" role="group" aria-label="Today View">
+                            <button type="button" data-active="false" onclick="window.switchTodayView('briefing')">
+                                <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Briefing
+                            </button>
+                            <button type="button" data-active="true" onclick="window.switchTodayView('cards')">
+                                <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
+                            </button>
+                        </div>
                     </div>
+                    <button id="desk-search-trigger" onclick="toggleSearchSheet()"
+                        class="p-1.5 rounded-lg text-gray-500 ml-2 flex-shrink-0"
+                        title="Search Articles (/)">
+                        <svg class="h-5 w-5" fill="none">
+                            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                        </svg>
+                    </button>
                 </div>
-                <button id="desk-search-trigger" onclick="toggleSearchSheet()"
-                    class="p-1.5 rounded-lg text-gray-500 ml-2 flex-shrink-0"
-                    title="Search Articles (/)">
-                    <svg class="h-5 w-5" fill="none">
-                        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" />
-                    </svg>
-                </button>
             </div>
 
             <!-- Mobile Sticky Personal Hub Switcher Bar (Read Later / Saved / History) -->
@@ -6590,54 +6615,56 @@
                 </div>
             </div>
             <div id="viewer-header"
-                class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10"
+                class="h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center z-10 relative"
                 ondblclick="toggleFullScreenManual(event)" title="Double-click the bar for full screen">
-                <div class="flex items-center">
-                    <button id="viewer-back-btn" onclick="onViewerBackClick()" type="button" aria-label="Back"
-                        class="hidden pill-btn inline-flex">
-                        <svg class="stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                        <span id="viewer-back-label">Today</span>
-                    </button>
-                </div>
-
-                <!-- Unified Desktop Today Switcher (Briefing / Story View) -->
-                <div id="viewer-today-switcher" class="hidden flex items-center justify-center flex-1">
-                    <div class="segmented today-segmented" role="group" aria-label="Today View">
-                        <button type="button" data-active="true" onclick="window.switchTodayView('briefing')">
-                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Briefing
-                        </button>
-                        <button type="button" data-active="false" onclick="window.switchTodayView('cards')">
-                            <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
+                <div class="viewer-header-inner flex items-center justify-between w-full h-full px-4">
+                    <div class="flex items-center">
+                        <button id="viewer-back-btn" onclick="onViewerBackClick()" type="button" aria-label="Back"
+                            class="hidden pill-btn inline-flex">
+                            <svg class="stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                            <span id="viewer-back-label">Today</span>
                         </button>
                     </div>
-                </div>
 
-                <div class="flex items-center space-x-3" ondblclick="event.stopPropagation()">
-                    <div class="flex space-x-2 mr-2 items-center" ondblclick="event.stopPropagation()">
-                        <!-- Desktop Article Navigation (Prev / Next) -->
-                        <div id="desk-nav-group" class="hidden inline-flex items-center" role="group" ondblclick="event.stopPropagation()">
-                            <button id="prev-article-btn" onclick="navigateArticle(-1)" ondblclick="event.stopPropagation()" type="button" title="Previous Article (↑ / k)" aria-label="Previous Article"
-                                class="icon-act">
-                                <svg class="w-4 h-4">
-                                    <use href="#icon-chevron-up" />
-                                </svg>
+                    <!-- Unified Desktop Today Switcher (Briefing / Story View) -->
+                    <div id="viewer-today-switcher" class="hidden flex items-center justify-center flex-1">
+                        <div class="segmented today-segmented" role="group" aria-label="Today View">
+                            <button type="button" data-active="true" onclick="window.switchTodayView('briefing')">
+                                <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-sparkle"/></svg>Briefing
                             </button>
-                            <button id="next-article-btn" onclick="navigateArticle(1)" ondblclick="event.stopPropagation()" type="button" title="Next Article (↓ / j)" aria-label="Next Article"
-                                class="icon-act">
+                            <button type="button" data-active="false" onclick="window.switchTodayView('cards')">
+                                <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-3" ondblclick="event.stopPropagation()">
+                        <div class="flex space-x-2 mr-2 items-center" ondblclick="event.stopPropagation()">
+                            <!-- Desktop Article Navigation (Prev / Next) -->
+                            <div id="desk-nav-group" class="hidden inline-flex items-center" role="group" ondblclick="event.stopPropagation()">
+                                <button id="prev-article-btn" onclick="navigateArticle(-1)" ondblclick="event.stopPropagation()" type="button" title="Previous Article (↑ / k)" aria-label="Previous Article"
+                                    class="icon-act">
+                                    <svg class="w-4 h-4">
+                                        <use href="#icon-chevron-up" />
+                                    </svg>
+                                </button>
+                                <button id="next-article-btn" onclick="navigateArticle(1)" ondblclick="event.stopPropagation()" type="button" title="Next Article (↓ / j)" aria-label="Next Article"
+                                    class="icon-act">
+                                    <svg class="w-4 h-4">
+                                        <use href="#icon-chevron-down" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- TTS Button -->
+                            <button id="tts-btn" onclick="toggleTTS()" title="Listen" aria-label="Listen"
+                                class="hidden icon-act">
                                 <svg class="w-4 h-4">
-                                    <use href="#icon-chevron-down" />
+                                    <use href="#icon-headphones" />
                                 </svg>
                             </button>
                         </div>
-                        <!-- TTS Button -->
-                        <button id="tts-btn" onclick="toggleTTS()" title="Listen" aria-label="Listen"
-                            class="hidden icon-act">
-                            <svg class="w-4 h-4">
-                                <use href="#icon-headphones" />
-                            </svg>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -6988,10 +7015,10 @@
                         <div class="settings-row desk-only">
                             <div class="min-w-0 flex-1">
                                 <label class="settings-item-label-sm" for="pref-ultrawide-layout">Wide Screen Layout</label>
-                                <p class="settings-hint">Center app frame on ultrawide monitors</p>
+                                <p class="settings-hint">Center controls above reading content</p>
                             </div>
                             <select id="pref-ultrawide-layout" onchange="window.saveUltrawideLayout(this.value)" class="settings-input is-inline">
-                                <option value="centered" selected>Centered Frame</option>
+                                <option value="centered" selected>Centered Content</option>
                                 <option value="stretch">Full Width Stretch</option>
                             </select>
                         </div>
@@ -13696,7 +13723,7 @@
             try { localStorage.setItem('newsreader_ultrawide_layout', mode); } catch (e) { }
             window.applyUltrawideLayout(mode);
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
-            window.showToast?.(mode === 'centered' ? 'Centered frame on wide screens enabled' : 'Full width stretch enabled');
+            window.showToast?.(mode === 'centered' ? 'Centered content layout enabled' : 'Full width stretch enabled');
         };
 
         window.updateTodayViewSwitcherState = function (activeView) {
@@ -16834,10 +16861,10 @@ ${sampleText}`;
         window.toggleFullScreenManual = (e) => {
             // Guard: Ignore if double-click originated on or inside any interactive element or toolbar controls!
             if (e && e.target) {
-                if (e.target.closest('button, a, input, select, textarea, [role="button"], [role="group"], svg, use, #desk-nav-group, #viewer-header > div')) {
+                if (e.target.closest('button, a, input, select, textarea, [role="button"], [role="group"], svg, use, #desk-nav-group, .today-segmented')) {
                     return;
                 }
-                if (e.target.id !== 'viewer-header') {
+                if (e.target.id !== 'viewer-header' && !e.target.classList.contains('viewer-header-inner')) {
                     return;
                 }
             }
@@ -18985,7 +19012,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 447;
+        window.APP_BUILD = 448;
 
         (async function initApp() {
             try {
@@ -19863,7 +19890,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v447';
+const CACHE_NAME = 'rss-reader-v448';
 const APP_SHELL = [
     '/',
     'index.html'
