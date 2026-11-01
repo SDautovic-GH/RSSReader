@@ -5,7 +5,7 @@
 | Project | RSS Reader Web Application (`today.dautovic.com`) |
 | Document | Redesign Plan & Implementation Record — Briefing & Today Library |
 | Target File | `/Users/samirdautovic/Developer/RSSReader/index.html` |
-| Current State | **Active — Build 448** deployed to production via Cloudflare Workers CI |
+| Current State | **Active — Build 456** deployed to production via Cloudflare Workers CI |
 | Date | 2026-11-01 |
 | Status | Complete & Deployed |
 
@@ -13,20 +13,27 @@
 
 ## 1. Executive Summary & Design Vision
 
-The **Briefing & Today Library Redesign** transforms the user's daily reading experience by establishing a clear distinction between **Today** (a focused, executive 2-column workspace for daily intelligence) and **Unread** (the traditional 3-column workstation for feed triage).
+The **Briefing & Today Library Redesign** transforms the user's reading experience by eliminating the cramped, legacy 3-pane layout entirely across desktop, unifying the entire application under a modern, focused **2-Pane Workstation Architecture**:
+**Sidebar (240px) + Centered Cards Grid/Canvas (`#today-column`)**.
 
 ### Core Principles
-1. **Today as a Focused 2-Column Workspace:**
-   Today is never split into three cramped columns. It offers two distinct views via a unified header switcher:
+1. **Total Elimination of the 3-Pane Design:**
+   The legacy 3-pane split (Sidebar + Timeline article list + Reader pane + resizer) is completely retired. Every folder, feed, personal hub, and unread view renders as a spacious, centered cards workstation canvas in `#today-column`.
+2. **Push-and-Return Story Flow Across All Views:**
+   Clicking any card in Today, Personal Hub, Unread, or Folders opens the story in the centered 760px reader canvas (`desktop-today-story`) with a dynamic back button (`< Today`, `< Unread`, `< Technology`, `< Ars Technica`, `< Saved`, etc.). Pressing Back, `b`, or `Escape` immediately returns to the cards grid, centers the read card, and pulses it into place.
+3. **Today as a Focused Intelligence Workspace:**
+   Today offers two distinct views via a mathematically centered header switcher:
    - **✦ Briefing View:** An editorial, AI-synthesized daily briefing rendered in a clean, centered 760px canvas.
-   - **▣ Cards View:** A responsive, multi-column magazine card deck (customizable in 1, 2, or 3 columns).
-2. **Push-and-Return Story Flow:**
-   Clicking any card in Today Cards slides in the reader pane in a full 2-column view (`desktop-today-story`), centered at 760px with a `< Today` back button in the header. Pressing `< Today`, `b`, or `Escape` immediately returns to Today Cards at the exact card scroll position.
-3. **Three-Column View Reserved for Unread:**
-   The classic 3-column triage layout (Sidebar + Timeline article list + Reader pane) is exclusively preserved for the **Unread** folder (`#feed-btn-all`) and feed lists, eliminating the visual clutter of having Today Cards squeeze into a 440px middle column.
-4. **Simultaneous Mathematical Centering:**
-   The active header switcher (`✦ Briefing   ▣ Cards`) and the body content below it share the exact same `50%` horizontal centerline at all times, moving synchronously during window resizing with zero drift.
-5. **Persistent Desktop Headers:**
+   - **▣ Cards View:** A responsive magazine card deck (customizable in 1, 2, or 3 columns) with sticky Category Jump Bars.
+4. **Personal Hub Cards Workstation (`Read Later`, `Saved`, `History`):**
+   Adopts Today's cards grid with Category and Date Jump Bars and an absolute-centered 3-way segmented switcher (`[Read Later | Saved | History]`) in `#timeline-header`. Stories in Personal Hub are durable collections and are never auto-hidden by unread sweeps.
+5. **Smart Partitioning in Folders & Feeds:**
+   - **Unread (`'all'`):** Grouped by category folder with Category Jump Bars (`[Top Stories] [Technology]...`).
+   - **Subscription Folders (`setCategoryFilter`):** Grouped by **Publication Source** with Outlet Jump Bars (`[Ars Technica] [The Verge]...`) allowing direct jumps to each news outlet in the folder.
+   - **Single Feeds (`setSourceFilter`):** Single unified story stream with *"Mark Feed Read"*.
+6. **Simultaneous Mathematical Centering:**
+   Active header switchers and the body content below them share the exact same `50%` horizontal centerline at all times, moving synchronously during window resizing with zero drift.
+7. **Persistent Desktop Headers:**
    Resizing the desktop browser window (e.g. split screen, window tiling) never causes the header to disappear or the mobile bottom tab bar to appear.
 
 ---
@@ -35,37 +42,38 @@ The **Briefing & Today Library Redesign** transforms the user's daily reading ex
 
 ```
 +---------------------------------------------------------------------------------------+
-|  TODAY MODE (2 Columns: Sidebar + Dedicated Reading Workspace)                        |
+|  UNIFIED 2-PANE WORKSTATION LAYOUT (All Folders, Feeds & Personal Hub)                |
 +-------------------+-------------------------------------------------------------------+
-|                   |  [Top Bar]               [✦ Briefing  ▣ Cards]             [Acts] |
+|                   |  [Action/Mark Read]      [Centered Switcher / Count]       [Acts] |
 |                   +-------------------------------------------------------------------+
-|  Sidebar          |                                                                   |
-|  - Today (Active) |                      Centered Editorial Content                   |
-|  - Unread         |                     (Briefing Canvas: max-w-760px                 |
-|  - Read Later     |                      Cards Deck: 1, 2, or 3 columns)              |
+|  Sidebar (240px)  |                                                                   |
+|  - Today          |                      Centered Cards Grid / Canvas                 |
+|  - Unread         |                     (Jump Bar: Categories or Feeds)               |
+|  - Read Later     |                     (Cards Deck: 1, 2, or 3 columns)              |
 |  - Saved          |                                                                   |
 |  - History        |                                                                   |
 |  > Subscriptions  |                                                                   |
 +-------------------+-------------------------------------------------------------------+
 
 +---------------------------------------------------------------------------------------+
-|  UNREAD MODE (3 Columns: Sidebar + Timeline List + Reader Pane)                       |
-+-------------------+-------------------------+-----------------------------------------+
-|  Sidebar          |  [Mark Read]     [Find] |  [< Back]               [Nav]  [Listen] |
-|  - Today          +-------------------------+-----------------------------------------+
-|  - Unread (Active)|  Story 1                |  Full Article Reader                    |
-|  - Read Later     |  Story 2 (Selected) --> |  Title, Byline, Hero Image, Content     |
-|  - Saved          |  Story 3                |                                         |
-|  > Subscriptions  |  Story 4                |                                         |
-+-------------------+-------------------------+-----------------------------------------+
+|  STORY READING MODE (2-Pane: Sidebar + Centered Reader Canvas)                       |
++-------------------+-------------------------------------------------------------------+
+|  Sidebar (240px)  |  [< Back to Source]                         [Nav]  [Share] [Star] |
+|  - Today          +-------------------------------------------------------------------+
+|  - Unread         |                                                                   |
+|  - Read Later     |                      Full Article Reader                          |
+|  - Saved          |                  (Centered Editorial Canvas: 760px)               |
+|  > Subscriptions  |                  Title, Byline, Hero Image, Clean Content         |
++-------------------+-------------------------------------------------------------------+
 ```
 
-| Mode | Active Body Class | Pane 1 (Sidebar) | Pane 2 (Timeline) | Pane 3 (Viewer) | Column Count |
+| Mode | Active Body Class | Pane 1 (Sidebar) | Pane 2 (`#today-column` Cards) | Pane 3 (`#viewer-pane` Reader) | Column Count |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Today: Briefing** | `desktop-today-briefing` | Visible (240px) | `display: none` | Full width (`flex: 1`) | **2 Columns** |
-| **Today: Cards** | `desktop-today-cards-wide` | Visible (240px) | Full width (`flex: 1`) | `display: none` | **2 Columns** |
-| **Today: Story** | `desktop-today-story` | Visible (240px) | `display: none` | Full width (`flex: 1`) | **2 Columns** |
-| **Unread / Feeds** | *(none)* | Visible (240px) | Visible (440px / resizable) | Visible (`flex: 1`) | **3 Columns** |
+| **Today: Briefing** | `desktop-today-briefing` | Visible (240px) | `display: none` | Full width (`flex: 1`), centered 760px | **2 Panes** |
+| **Today: Cards** | `desktop-today-cards-wide` | Visible (240px) | Full width (`flex: 1`), centered grid | `display: none` | **2 Panes** |
+| **Personal Hub** | `desktop-today-cards-wide` | Visible (240px) | Full width (`flex: 1`), centered grid | `display: none` | **2 Panes** |
+| **Unread / Folders** | `desktop-today-cards-wide` | Visible (240px) | Full width (`flex: 1`), centered grid | `display: none` | **2 Panes** |
+| **Story Reading** | `desktop-today-story` | Visible (240px) | `display: none` | Full width (`flex: 1`), centered 760px | **2 Panes** |
 
 ---
 
@@ -159,7 +167,14 @@ The **Briefing & Today Library Redesign** transforms the user's daily reading ex
 | **446** | `a808b23` | **Comprehensive Dead Code & Superseded Feature Removal:**<br>• Removed dead CSS selectors (`.brief-briefing-btn`, `.source-favicon-sidebar`, `.ai-bullet-dot`, etc.).<br>• Removed unused SVG symbols (`#icon-mark-unread`, `#icon-bookmark-x`, `#icon-rows-2`, etc.).<br>• Removed dormant `#timeline-today-title` span and `window.jumpToBriefCategoryFromAi()`.<br>• Removed legacy inline briefing slot (Feature 1: `.today-ai-briefing-slot`, `getTodayBriefingSlots`, `dismissTodayBriefing`).<br>• Removed Compact Wire density mode (Feature 3: `#view-density-toggle`, `window._viewMode`, `toggleViewMode()`).<br>• Preserved Category Recaps (Feature 2: `generateCategoryRecap`). Net reduction: **-326 lines**. |
 | **447** | `e3663c7` | **Ultrawide Centered App Frame (Experimental):**<br>• Initial test centering `#app-container` with outer framing on monitors $> 1720px$. Added settings toggle. Replaced by Build 448 after user preferred seamless full-bleed browser integration. |
 | **448** | `7d3aa2c` | **Seamless Full-Bleed Browser Integration & Centered Header Controls:**<br>• Replaced outer letterboxing with centered page elements: `#app-container` remains 100% full-bleed edge-to-edge chrome seamlessly merging into the browser window.<br>• Bound header controls (`Mark Read`, `Today Switcher`, `Search` in Cards; `Back to Today`, `Switcher`, actions in Briefing/Story) inside `.timeline-header-inner` and `.viewer-header-inner`.<br>• Controls mathematically align with the exact left and right margins of the content canvas (`max-w-[1240px]` cards, `max-w-[760px]` briefing/story) across all viewports.<br>• Updated Wide Screen Layout setting to `Centered Content (Recommended)` vs `Full Width Stretch`. |
-| **449** | Pending | **Category Cards Architecture & Immediate Unread-Only Triage:**<br>• Consolidated Today Cards so each folder/category is a single unified Category Card (`.brief-cat-section`) with its stories rendered as clean list rows separated by subtle dividers, eliminating the visual noise of dozens of isolated boxes.<br>• Equipped each story row with inline action controls on its source line: `Mark Read` (checkmark button with smooth 180ms collapse dismiss animation), `Save` (star button with active amber highlight), and `...` More options.<br>• Enforced strict unread-only card presentation: marking a story read immediately hides it (`display: none !important`).<br>• Opening a story in the reader automatically hides it upon return via `< Today`, `b`, or `Escape`, cleanly landing on the next unread story.<br>• Empty categories automatically collapse and hide (`.brief-section-empty`); when all stories are read, "You're all caught up" displays. |
+| **449** | `83f5e58` | **Category Cards Architecture & Immediate Unread-Only Triage:**<br>• Consolidated Today Cards so each folder/category is a single unified Category Card (`.brief-cat-section`) with its stories rendered as clean list rows separated by subtle dividers, eliminating the visual noise of dozens of isolated boxes.<br>• Equipped each story row with inline action controls on its source line: `Mark Read` (checkmark button with smooth 180ms collapse dismiss animation), `Save` (star button with active amber highlight), and `...` More options.<br>• Enforced strict unread-only card presentation: marking a story read immediately hides it (`display: none !important`).<br>• Opening a story in the reader automatically hides it upon return via `< Today`, `b`, or `Escape`, cleanly landing on the next unread story.<br>• Empty categories automatically collapse and hide (`.brief-section-empty`); when all stories are read, "You're all caught up" displays. |
+| **450** | `fcb57c6` | **Sidebar Active Item Color & Typography Harmonization:**<br>• Replaced high-contrast solid blue with WilmerHale house style accent blue (`#3d6bb0` in light mode, `#4d7cc7` in dark mode) for active navigation items.<br>• Refined typography hierarchy across desktop and mobile navigation. |
+| **451** | `741489e` | **Briefing AI Bullet Story Context Menu Styling:**<br>• Corrected popup context menu item styling and typography when right-clicking or long-pressing bullet citations. |
+| **452** | `f777787` | **Briefing Story Summaries Control:**<br>• Tuned length constraints and token slice thresholds for Gemini-generated executive briefings. |
+| **453** | `b66459d` | **Category Jump Bar Enablement in Cards View:**<br>• Removed `#today-column .brief-jump-bar { display: none; }`, enabling sticky Jump Bar navigation across both Briefing and Cards desktop views. |
+| **454** | `fdbcae6` | **Gemini AI Briefing Snippet Calibration:**<br>• Calibrated article snippet slice from 450 to 350 characters in `makeBriefingPrompt` for punchier, more concise summaries. |
+| **455** | `908b06e` | **Phase 1 of Unified Workstation Architecture — Personal Hub Cards:**<br>• Converted `Read Later`, `Saved`, and `History` from legacy 3-pane list into Today's cards grid in `#today-column`.<br>• Implemented centered `#desk-saved-switcher` (`[Read Later | Saved | History]`) with mathematical simultaneous centering in `#timeline-header`.<br>• Extended `readerArticleById` to locate articles across all personal buckets (`_savedArticles`, `_readLaterArticles`, `_recentlyReadArticles`). |
+| **456** | `664d7ff` | **Phase 2 Complete — Total 3-Pane Layout Retirement & Unified Workstation Architecture:**<br>• Converted `Unread` (`setSmartFeed('all')`), `Subscription Folders` (`setCategoryFilter(cat)`), and `Single Feeds` (`setSourceFilter(source)`) to Today's full-width cards layout in `#today-column`.<br>• Unread features Category Jump Bars (`[Top Stories] [Technology]...`).<br>• Subscription Folders partition stories by publication source with Outlet Jump Bars (`[Ars Technica] [The Verge]...`).<br>• Fixed Personal Hub blank body bug: prevented `syncBriefCards` from treating durable personal collections as unread inbox items.<br>• Updated reader Back button (`updateViewerBackBtn`) to dynamically reflect the originating view (`< Unread`, `< Technology`, `< Ars Technica`, `< Saved`, etc.).<br>• Styled `.ai-menu-item` and external source links to eliminate the bright white hover rectangle and preserve house style glass aesthetics. |
 
 ---
 
@@ -170,10 +185,10 @@ The **Briefing & Today Library Redesign** transforms the user's daily reading ex
 | `1` | Anywhere in Today | Switch immediately to **✦ Briefing View** |
 | `2` | Anywhere in Today | Switch immediately to **▣ Cards View** |
 | `t` / `T` | Anywhere in App | Jump to Today |
-| `j` / `↓` | Today Cards / Reader | Next article in queue |
-| `k` / `↑` | Today Cards / Reader | Previous article in queue |
-| `b` / `B` | While reading Today story | Return to Today Cards / Briefing |
-| `Escape` | While reading Today story | Close story and return to Today Cards / Briefing |
+| `j` / `↓` | Cards / Reader | Next article in queue |
+| `k` / `↑` | Cards / Reader | Previous article in queue |
+| `b` / `B` | While reading any story | Return to originating Cards view |
+| `Escape` | While reading any story | Close story and return to originating Cards view |
 | `r` / `R` | Story open | Toggle read / unread status |
 | `/` | Anywhere | Open full-text search palette |
 
@@ -186,19 +201,18 @@ The **Briefing & Today Library Redesign** transforms the user's daily reading ex
 | **Header Centering** | Toggle between Briefing and Cards mode. | Switcher sits exactly above the centerline of the body content. | PASS |
 | **Dynamic Resizing** | Drag desktop window border from 1600px down to 700px. | Header and body content shift simultaneously with zero horizontal drift. | PASS |
 | **Header Persistence** | Resize desktop window to `< 900px` (e.g. split screen). | Headers (`#viewer-header`, `#timeline-header`) remain visible (`display: flex`); mobile tab bar stays hidden. | PASS |
-| **Column Isolation** | Click an article card from Today Cards. | Opens in 2-column reader (`desktop-today-story`); `#timeline-pane` is hidden; never splits into 3 columns. | PASS |
-| **Return Flow** | Click `< Today` or press `Escape` / `b`. | Closes story, restores full-width Cards mode, and scrolls to the read card. | PASS |
-| **Unread 3-Column** | Click **Unread** in sidebar. | Cleanly displays all 3 columns (Sidebar, Timeline list, Reader pane). | PASS |
+| **Unified 2-Pane Workstation** | Switch across Today, Unread, Folders, Feeds, and Personal Hub. | All views render as spacious centered cards in `#today-column`; 3-pane layout never appears. | PASS |
+| **Return Flow** | Click `< Source` or press `Escape` / `b`. | Closes story, restores full-width Cards mode, and scrolls to the read card. | PASS |
+| **Personal Hub Preservation** | Open Read Later, Saved, or History in cards view. | Stories remain permanently visible; read stories are never hidden. | PASS |
+| **Folder Outlet Jump Bar** | Click a subscription folder (e.g. Technology). | Displays outlets as Jump Bar pills (`[Ars Technica] [The Verge]...`); clicking jumps directly to that publication. | PASS |
+| **AI Menu Hover** | Hover over items or external links in Briefing context menu. | Dark glass tint with white text in dark mode; no blinding white rectangles. | PASS |
 | **Column Preference** | Change Cards View Columns to 1, 2, or 3 in Settings. | Cards grid and `.brief-container` immediately resize to match selected setting. | PASS |
 | **Personal Hub 3-Way** | Tap Bookmarks tab on mobile. | Segmented switcher cleanly toggles between Read Later, Saved, and History. | PASS |
 | **Today Smart Tap** | Tap Today button while scrolled down; tap again at top. | First tap scrolls smoothly to top; second tap toggles between Cards and Briefing view. | PASS |
 | **Frosted Translucency** | Observe floating tab bar over scrolling images/text. | Content softly blurs beneath the pill with true YouTube glass translucency. | PASS |
-| **Dead Code Elimination** | Verify absence of legacy briefing slot and compact wire code. | Zero console errors, -326 lines removed, clean code execution. | PASS |
+| **Dead Code Elimination** | Verify absence of legacy resizer and dormant pane logic. | Zero console errors, clean code execution. | PASS |
 | **Ultrawide Seamless Full-Bleed** | Open app on display $> 1720px$ width. | App container fills browser edge-to-edge with zero letterboxing or dark bars; sidebar is anchored left; header controls align cleanly with the centered reading/cards content. | PASS |
-| **Ultrawide Toggle** | Switch Wide Screen Layout in Settings to "Full Width Stretch". | Header controls expand edge-to-edge; preference persists across reload. | PASS |
-| **Category Cards Layout** | Open Today in Cards view. | Each category displays as a single unified card container with its stories listed inside; no visual noise of isolated card boxes. | PASS |
-| **Story Mark Read Dismiss** | Click inline checkmark on any story row in Today Cards. | Row animates dismiss collapse (180ms) and vanishes completely from view; remaining stories stay interactive. | PASS |
-| **Return From Reader Dismiss** | Open a story from Today Cards and press `< Today`, `b`, or `Escape`. | Closes reader and returns to Today Cards; the opened story has vanished, landing on the next unread item. | PASS |
+| **Story Mark Read Dismiss** | Click inline checkmark on any story row in Today or Unread. | Row animates dismiss collapse (180ms) and vanishes completely from view; remaining stories stay interactive. | PASS |
 | **Line 37 Invariant** | Inspect line 37 of `index.html`. | `<style id="tailwind-static">/*! tailwindcss v4` remains intact. | PASS |
 | **Syntax Validation** | Execute Node VM syntax audit across all scripts. | 100% valid JavaScript with zero syntax errors. | PASS |
 

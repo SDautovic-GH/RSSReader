@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Product** | Today (formerly RSS Reader) |
 | **Live App** | [today.dautovic.com](https://today.dautovic.com) |
-| **Build Target** | Build 449+ |
+| **Build Target** | Build 456+ |
 | **Documentation Type** | Comprehensive User Manual |
 | **Last Updated** | November 1, 2026 |
 
@@ -43,35 +43,35 @@ To enable the **✦ Briefing** view:
 
 ## 3. Navigating Today
 
-### 3.1 The Desktop Workstation Experience
+### 3.1 The Unified 2-Pane Workstation Experience (Desktop)
 
-Today features dedicated workstation layouts tailored for focus:
+Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pane Workstation Architecture** across all folders, feeds, and smart views:
 
 ```
 +---------------------------------------------------------------------------------------+
-|  TODAY MODE (2 Columns: Focused Reading Workspace)                                    |
+|  UNIFIED 2-PANE WORKSTATION (Today, Unread, Personal Hub, Folders & Feeds)            |
 +-------------------+-------------------------------------------------------------------+
-|                   |  [Top Bar]               [✦ Briefing  ▣ Cards]             [Acts] |
+|                   |  [Action/Mark Read]      [Centered Switcher / Count]       [Acts] |
 |                   +-------------------------------------------------------------------+
-|  Sidebar          |                                                                   |
-|  - Today (Active) |                      Centered Editorial Content                   |
-|  - Unread         |                     (Briefing Canvas: max-w-760px                 |
-|  - Read Later     |                      Cards Deck: 1, 2, or 3 columns)              |
+|  Sidebar (240px)  |                                                                   |
+|  - Today (Active) |                      Centered Cards Grid / Canvas                 |
+|  - Unread         |                     (Jump Bar: Categories or Feeds)               |
+|  - Read Later     |                     (Cards Deck: 1, 2, or 3 columns)              |
 |  - Saved          |                                                                   |
 |  - History        |                                                                   |
 |  > Subscriptions  |                                                                   |
 +-------------------+-------------------------------------------------------------------+
 
 +---------------------------------------------------------------------------------------+
-|  UNREAD MODE (3 Columns: Triage Workstation)                                          |
-+-------------------+-------------------------+-----------------------------------------+
-|  Sidebar          |  [Mark Read]     [Find] |  [< Back]               [Nav]  [Listen] |
-|  - Today          +-------------------------+-----------------------------------------+
-|  - Unread (Active)|  Story 1                |  Full Article Reader                    |
-|  - Read Later     |  Story 2 (Selected) --> |  Title, Byline, Hero Image, Content     |
-|  - Saved          |  Story 3                |                                         |
-|  > Subscriptions  |  Story 4                |                                         |
-+-------------------+-------------------------+-----------------------------------------+
+|  FOCUSED STORY READING MODE (Sidebar + Centered Reading Canvas)                       |
++-------------------+-------------------------------------------------------------------+
+|  Sidebar (240px)  |  [< Back to Source]                         [Nav]  [Share] [Star] |
+|  - Today          +-------------------------------------------------------------------+
+|  - Unread         |                                                                   |
+|  - Read Later     |                      Full Article Reader                          |
+|  - Saved          |                  (Centered Editorial Canvas: 760px)               |
+|  > Subscriptions  |                  Title, Byline, Hero Image, Clean Content         |
++-------------------+-------------------------------------------------------------------+
 ```
 
 #### Dual Intelligence Views: Briefing vs. Cards
@@ -80,23 +80,25 @@ Today features dedicated workstation layouts tailored for focus:
 * **▣ Cards View (Category Cards):** 
   Presents your stories grouped into **unified Category Cards** (one clean card container per folder), eliminating the visual noise of dozens of fragmented boxes.
   - **Inline Story Controls:** Each story row features direct quick controls on its source line: **Mark Read** (checkmark icon with a smooth dismiss collapse animation), **Save** (star icon), and **More options** (`...`).
-  - **Immediate Unread-Only Triage:** As soon as you mark a story read, it animates and immediately vanishes from view so only unread stories are visible.
-  - **Auto-Disappear on Return:** When you open a story in the reader and return via `< Today`, `b`, or `Escape`, the story you just read disappears immediately from Cards view, automatically landing on the next unread item. Categories with zero unread stories cleanly hide.
+  - **Immediate Unread-Only Triage:** As soon as you mark a story read in Today or Unread, it animates and immediately vanishes from view so only unread stories are visible.
+  - **Auto-Disappear on Return:** When you open a story in the reader and return via Back, `b`, or `Escape`, the story you just read disappears immediately, automatically landing on the next unread item. Categories with zero unread stories cleanly hide.
   - **Columns:** Choose between 1, 2, or 3 columns in **Settings → Reading & Display**.
 * **Instant Switching:** 
   Use the segmented button in the top bar or press `1` for Briefing and `2` for Cards.
 
-#### Dedicated 2-Column Today Workspace
-* Unlike feed lists, **Today operates exclusively as a 2-column workspace** (Sidebar + Content). 
-* **Reading Stories:** When you click any card in Today Cards, the story opens in a full 2-column reader canvas (`desktop-today-story`) with a prominent `< Today` back button in the header.
-* **Returning to Cards:** Tap `< Today`, press `b`, or press `Escape` to immediately return to Today Cards. The story you just read disappears, and Today smoothly positions you at the next unread story.
-* Today never squeezes into three cramped columns.
+#### Personal Hub Cards Workstation (`Read Later`, `Saved`, `History`)
+* Clicking `Read Later`, `Saved`, or `History` in the sidebar opens into the full-width cards workstation in `#today-column`.
+* Features an absolute-centered 3-way segmented switcher in the timeline header: `[ 🔖 Read Later ] [ ⭐ Saved ] [ ⏱️ History ]`.
+* **Durable Story Preservation:** Unlike the unread inbox, stories in your Personal Hub are permanent reading lists and archives. Stories remain visible regardless of read state and are never auto-hidden by background sweeps.
 
-#### 3-Column Workstation in Unread
-* When you click **Unread** (`#feed-btn-all`) or any feed in your sidebar, Today switches to the classic **3-column triage workstation**:
-  1. **Left Sidebar:** Folders, feeds, and smart lists.
-  2. **Middle Timeline:** Article list with unread counters and fast mark-read actions.
-  3. **Right Reader Pane:** Full text of the selected article.
+#### Unread, Subscription Folders & Single Feeds
+* **Unread (`'all'`):** Renders all unread stories across subscriptions in the cards workstation, grouped by category folder with Category Jump Bar pills (`[Top Stories] [Technology]...`).
+* **Subscription Folders (`setCategoryFilter`):** Opening any folder (e.g., `Technology`) partitions the stories by **Publication Source** (`Ars Technica`, `The Verge`, `Wired`), complete with Outlet Jump Bars to hop directly between news sources.
+* **Single Feeds (`setSourceFilter`):** Displays a focused cards stream for that publication with *"Mark Feed Read"*.
+
+#### Push-and-Return Story Flow
+* When you click any card in any view, the story opens in a focused 2-pane reader canvas (`desktop-today-story`), centered at 760px with a prominent `< Source` back button in the header reflecting where you came from (`< Unread`, `< Technology`, `< Ars Technica`, `< Saved`, etc.).
+* Tap Back, press `b`, or press `Escape` to return to Cards view. The read card is centered smoothly and pulses gently into place.
 
 #### Persistent Simultaneous Centering
 * As you resize your desktop browser window (e.g. side-by-side split screen or tiling next to your code editor):
@@ -107,7 +109,7 @@ Today features dedicated workstation layouts tailored for focus:
 * On wide or ultrawide monitors ($> 1720px$ width, such as 1440p, 4K, or 34-inch/49-inch ultrawides), Today integrates seamlessly with the browser window at 100% full bleed—without artificial outer letterboxing bars or black margins.
 * Rather than scattering header controls across multiple thousands of pixels, Today centers the header controls directly above the content reading canvas:
   * **Today Cards View:** `Mark Read` aligns with the left edge of card column 1, the `Briefing / Cards` switcher sits in the horizontal center, and `Search` aligns with the right edge of the card deck.
-  * **Today Briefing & Story View:** `< Today` back button aligns with the left margin of the reading text, the switcher sits in the center, and the article toolbar actions align with the right margin.
+  * **Today Briefing & Story View:** Back button aligns with the left margin of the reading text, the switcher sits in the center, and the article toolbar actions align with the right margin.
 * This eliminates the neck-straining "tennis match" effect where controls are stranded thousands of pixels away from the reading column.
 * You can switch between **Centered Content (Recommended)** and **Full Width Stretch** under **Settings → Appearance → Wide Screen Layout**.
 

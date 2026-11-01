@@ -2,7 +2,7 @@
 
 | Metadata | Value |
 | :--- | :--- |
-| **Document Version** | v3.10 (Build 449) |
+| **Document Version** | v3.11 (Build 456) |
 | **Date** | November 1, 2026 |
 | **Status** | Live in Production (`today.dautovic.com`) |
 | **Primary Repository** | `SDautovic-GH/RSSReader` |
@@ -21,10 +21,13 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 - **Today First:** Opens immediately into Today on both mobile and desktop. Feed management and triage lists (Following, folders, feeds, unread) are one tap or click away.
 - **Dual Intelligence Presentation:** Today provides two complementary views via a unified header switcher:
   - **✦ Briefing View:** An executive, AI-synthesized daily briefing powered by Gemini Flash that summarizes unread coverage by section with bold lead-ins and direct `#N` source citations.
-  - **▣ Cards View:** A rich, responsive magazine card deck displaying clustered coverage with customizable column density (1, 2, or 3 columns).
-- **Workspace Separation (2-Column Today vs. 3-Column Unread):**
-  - **Today** is strictly a **2-column focused reading workspace** (Sidebar + Dedicated Content Canvas). Clicking a card in Cards mode opens the story in a full 2-column reader canvas (`desktop-today-story`) with a `< Today` back button that returns directly to Cards. Today is never split into three cramped columns.
-  - **Unread** (`#feed-btn-all`) and feed lists retain the classic **3-column triage workstation** (Sidebar + Timeline article list + Reader pane).
+  - **▣ Cards View:** A rich, responsive magazine card deck displaying clustered coverage with customizable column density (1, 2, or 3 columns) and sticky Category Jump Bars.
+- **Unified 2-Pane Workstation Architecture (All Views):**
+  - The legacy 3-pane layout (Sidebar + Timeline article list + Reader pane + resizer) is completely retired.
+  - Every view on desktop — **Today**, **Unread**, **Personal Hub** (`Read Later`, `Saved`, `History`), **Subscription Folders**, and **Single Feeds** — operates as a dedicated **2-pane workstation**: **Sidebar (240px) + Centered Cards Grid/Canvas (`#today-column`)**.
+  - Clicking any card in any view opens the story in a focused 2-pane reader canvas (`desktop-today-story`), centered at 760px with a dynamic back button (`< Unread`, `< Technology`, `< Ars Technica`, `< Saved`, etc.).
+  - Returning via Back, `b`, or `Escape` immediately restores the cards grid and smoothly centers and pulses the read card.
+- **Durable Personal Hub Preservation:** Stories in `Read Later`, `Saved`, and `History` are durable collections; read stories are never auto-hidden by inbox sweeps.
 - **Simultaneous Mathematical Centering:** The active header switcher and the body content below it share the exact same `50%` horizontal centerline at all times, moving synchronously during window resizing with zero drift.
 - **Calm Reading & Visual Stability:** Content on screen never shifts or jumps except in direct response to reader interaction. Background polling never reshuffles open views.
 - **Folders as Ground Truth:** Sections in Today mirror the user's Following folders; the app does not invent synthetic topics.
@@ -43,7 +46,7 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 
 ### Secondary: The Triage & Deep-Dive Reader
 - Focuses on deep triage of specific subject folders or newsletter digests.
-- Operates primarily in the 3-column **Unread** workspace to rapid-fire triage incoming articles (`j`/`k`, `r` for mark read).
+- Operates primarily in the **Unread** and **Folder** cards workstations to rapid-fire triage incoming articles (`j`/`k`, `r` for mark read) using Category and Outlet Jump Bars.
 - Actively triages backlogs using "Mark older than 24 hours" to prevent unread count anxiety.
 
 ---
@@ -57,10 +60,11 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 | **Mobile Tab Bar** | YouTube floating glass capsule | Detached floating capsule (42px compact height, 340px max-width, `-webkit-backdrop-filter: blur(20px) saturate(180%)`, fill `rgba(18, 18, 22, 0.25)` in dark mode) hovering just above the home indicator bar. Houses 4 icon tabs: **Today** (`#icon-sun` + live unread badge, smart tap to scroll to top then toggle Cards/Briefing), **Library** (pure Subscriptions & Folders manager), **Bookmarks** (`#icon-bookmark` with sticky 3-way segmented Personal Hub for `[ 🔖 Read Later ] [ ⭐ Saved ] [ ⏱️ History ]`), and **Search** (`#mob-tab-search`). Active tab displays an elevated inner translucent capsule highlight with pure bright white icon (`#ffffff`). Zero text labels. |
 | **Mobile Header** | Adaptive single-row header | Logo, title (Today: date, e.g. "Saturday, Oct 31"; Following: "Following"), status line ("Updated just now • 3 new"), and action buttons (Listen, Edit Feeds, Add Feed, Settings). |
 | **Mobile Reader** | Full-screen reading overlay | Opens cleanly over Today or active list. Tab bar slides away on downward scroll, returns on upward scroll. Horizontal swipes navigate adjacent stories. |
-| **Desktop: Today Briefing** | 2-column executive canvas | Sidebar (left) + Centered 760px editorial reading canvas (`desktop-today-briefing`). `#timeline-pane` is hidden. Header switcher mathematically centered at `50%`. |
-| **Desktop: Today Cards** | 2-column wide magazine deck | Sidebar (left) + Wide magazine grid (`desktop-today-cards-wide`). Configurable in 1, 2, or 3 columns via App Settings. `#viewer-pane` is hidden. Header switcher centered at `50%`. |
-| **Desktop: Today Story** | 2-column focused reader | Clicking a story from Today Cards opens in a 2-column reading canvas (`desktop-today-story`) with `< Today` back button in header. Pressing `< Today`, `b`, or `Escape` returns to Cards at the exact scroll position. |
-| **Desktop: Unread & Feeds** | 3-column triage workstation | Collapsible sidebar (left), resizable timeline article list (default 440px), and expansive reader pane (right). Active only when browsing Unread or feed lists. |
+| **Desktop: Today Briefing** | 2-pane executive canvas | Sidebar (left) + Centered 760px editorial reading canvas (`desktop-today-briefing`). `#timeline-pane` is hidden. Header switcher mathematically centered at `50%`. |
+| **Desktop: Today Cards** | 2-pane wide magazine deck | Sidebar (left) + Wide magazine grid (`desktop-today-cards-wide`). Configurable in 1, 2, or 3 columns via App Settings. `#viewer-pane` is hidden. Header switcher centered at `50%`. |
+| **Desktop: Personal Hub** | 2-pane durable cards workstation | Sidebar (left) + Wide magazine grid in `#today-column` for `Read Later`, `Saved`, and `History`. Anchored with centered 3-way segmented switcher in `#timeline-header`. Stories remain permanently visible and are never auto-hidden when read. |
+| **Desktop: Unread & Feeds** | 2-pane cards workstation | Sidebar (left) + Wide magazine grid in `#today-column`. Unread groups by folder with Category Jump Bars; Folders group by publication source with Outlet Jump Bars (`[Ars Technica] [The Verge]...`). Single feeds render as a clean story stream. Legacy 3-pane split retired. |
+| **Desktop: Story Reader** | 2-pane focused reader | Clicking any story opens in a 2-pane reading canvas (`desktop-today-story`), centered at 760px with dynamic back button (`< Source`) in header. Pressing Back, `b`, or `Escape` returns to Cards at the exact scroll position. |
 | **Persistent Headers** | Zero collapse on resize | Desktop headers (`#timeline-header`, `#viewer-header`) persist at all viewport widths via `@media (hover: hover) and (pointer: fine)` and JS `isDesktopDevice()`. Mobile tab bar stays hidden on desktop. Mobile personal hub bar stays hidden on desktop to avoid duplicate headers. |
 | **Wide Screen Layout & Centered Controls** | Ergonomic centered controls & full bleed | On wide/ultrawide displays, the app container remains 100% full-bleed edge-to-edge chrome seamlessly merging into the browser window (zero artificial outer letterboxing or flanking black borders). Header controls are bound inside `.timeline-header-inner` and `.viewer-header-inner` to mathematically align with the exact margins of the reading canvas (`1240px` cards, `760px` briefing/story). Eliminates disjointed multi-thousand-pixel chasms between controls while maintaining edge-to-edge chrome. Configurable via Settings $\rightarrow$ Appearance (`Centered Content (Recommended)` vs `Full Width Stretch`). |
 | **Desktop Full Screen** | Distraction-free reading | Double-clicking reader top bar isolates story. Arrow keys navigate and scroll; `Esc` exits. |
