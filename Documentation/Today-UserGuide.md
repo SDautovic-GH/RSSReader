@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Product** | Today (formerly RSS Reader) |
 | **Live App** | [today.dautovic.com](https://today.dautovic.com) |
-| **Build Target** | Build 458+ |
+| **Build Target** | Build 466+ |
 | **Documentation Type** | Comprehensive User Manual |
 | **Last Updated** | November 1, 2026 |
 
@@ -112,6 +112,15 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
   * **Today Briefing & Story View:** Back button aligns with the left margin of the reading text, the switcher sits in the center, and the article toolbar actions align with the right margin.
 * This eliminates the neck-straining "tennis match" effect where controls are stranded thousands of pixels away from the reading column.
 * You can switch between **Centered Content (Recommended)** and **Full Width Stretch** under **Settings → Appearance → Wide Screen Layout**.
+
+#### Unified Workstation Canvas & Visual Rhythm
+* **Single Surface Canvas:** The left sidebar and right cards/reading canvas share an uninterrupted single background color (`#0d1117` in dark mode, `#ffffff` in light mode). Vertical dividing lines between panes are eliminated, yielding a calm, unified digital workstation.
+* **Continuous Hairline Divider:** A subtle horizontal hairline divider spans edge-to-edge (0px to 100vw) across the full width of both the sidebar and content pane directly beneath the 73px header.
+* **Synchronous 24px Top Padding:** Both the sidebar list items and the main cards grid align with identical `1.5rem` (24px) top padding beneath the header hairline, delivering optical harmony across panes.
+* **Floating Centered Jump Bar:** Category navigation capsules float vertically centered between the header hairline and the category cards, with the bottom border divider removed for a lighter, distraction-free appearance.
+* **Native macOS Scrollbars:** Dark mode communicates native color schemes (`color-scheme: dark`) to the browser, rendering native macOS translucent gray floating scroll pills anchored to the far right screen edge.
+* **Socials Repost Attribution & Context:** Bluesky reposts feature a clear, subtle attribution line (`↻ Reposted from [Author]`) positioned on a separate line directly above the post author byline, formatted in regular-weight text with gentle contrast. Quoted posts and replies display parent context cards directly below the post.
+* **Triage Breathing Room:** Category cards feature generous vertical separation, and the "Mark All Read" action maintains a 36px top margin to prevent visual crowding against cards.
 
 ### 3.2 Mobile Interface
 * **The Floating Bottom Tab Bar:** A detached floating glass capsule (YouTube-style, 42px compact height) with four pure-icon tabs:

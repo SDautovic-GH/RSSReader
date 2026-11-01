@@ -5,7 +5,7 @@
 | Project | RSS Reader Web Application (`today.dautovic.com`) |
 | Document | Redesign Plan & Implementation Record — Unified Two-Pane Workstation |
 | Target File | `/Users/samirdautovic/Developer/RSSReader/index.html` |
-| Current State | **Active — Build 458** deployed to production via Cloudflare Workers CI |
+| Current State | **Active — Build 466** deployed to production via Cloudflare Workers CI |
 | Date | 2026-11-01 |
 | Status | Complete & Deployed |
 
@@ -175,6 +175,16 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 | **454** | `fdbcae6` | **Gemini AI Briefing Snippet Calibration:**<br>• Calibrated article snippet slice from 450 to 350 characters in `makeBriefingPrompt` for punchier, more concise summaries. |
 | **455** | `908b06e` | **Phase 1 of Unified Workstation Architecture — Personal Hub Cards:**<br>• Converted `Read Later`, `Saved`, and `History` from legacy 3-pane list into Today's cards grid in `#today-column`.<br>• Implemented centered `#desk-saved-switcher` (`[Read Later | Saved | History]`) with mathematical simultaneous centering in `#timeline-header`.<br>• Extended `readerArticleById` to locate articles across all personal buckets (`_savedArticles`, `_readLaterArticles`, `_recentlyReadArticles`). |
 | **456** | `664d7ff` | **Phase 2 Complete — Total 3-Pane Layout Retirement & Unified Workstation Architecture:**<br>• Converted `Unread` (`setSmartFeed('all')`), `Subscription Folders` (`setCategoryFilter(cat)`), and `Single Feeds` (`setSourceFilter(source)`) to Today's full-width cards layout in `#today-column`.<br>• Unread features Category Jump Bars (`[Top Stories] [Technology]...`).<br>• Subscription Folders partition stories by publication source with Outlet Jump Bars (`[Ars Technica] [The Verge]...`).<br>• Fixed Personal Hub blank body bug: prevented `syncBriefCards` from treating durable personal collections as unread inbox items.<br>• Updated reader Back button (`updateViewerBackBtn`) to dynamically reflect the originating view (`< Unread`, `< Technology`, `< Ars Technica`, `< Saved`, etc.).<br>• Styled `.ai-menu-item` and external source links to eliminate the bright white hover rectangle and preserve house style glass aesthetics. |
+| **457** | `3d8d693` | **Socials Embedded Parent Context & Repost Attribution:**<br>• Added embedded card (`brief-social-parent`, `list-social-parent`) rendering quoted/replied author, avatar, handle, and text directly beneath posts in Cards, Timeline, and Reader.<br>• Added initial Bluesky repost badge (`↻ Reposted from [Author]`) in Cards view.<br>• Extended `_persistSnapshot` schema to preserve `socialParent`. |
+| **458** | `4a00ae3` | **Socials Thread Self-Reply Suppression & Category Card First Story Spacing:**<br>• Omitted redundant parent context box when author replies to themselves in a thread.<br>• Calibrated first story optical spacing inside unified Category Cards. |
+| **459** | `fb2cd8b` | **Story Card Excerpt Clamping:**<br>• Tuned line-clamp and hero image container constraints for balanced card deck rhythm. |
+| **460** | `d7d8729` | **Optical Alignment Polish:**<br>• Category section header padding and icon alignments. |
+| **461** | `351a56c` | **Ultrawide Layout Centering Refinement:**<br>• Centered `[Sidebar + Deck]` together with zero gap (`margin-left: max(0px, calc((100vw - ...)/2))`), docking native vertical scrollbar natively at the screen edge. |
+| **462** | `bf208d0` | **Unified Workstation Canvas & Native Dark Scrollbars:**<br>• Unified left and right pane backgrounds to single `#0d1117` surface (dark) and `#ffffff` (light); removed sidebar dividing border (`border-r: none`).<br>• Added `<meta name="color-scheme" content="light dark">` and dynamic `color-scheme: dark/light` CSS rule on `html` for native macOS translucent floating pill scrollbar.<br>• Expanded `brief-footer` top margin to 36px so "Mark All Read" maintains generous breathing room. |
+| **463** | `97af9bb` | **Edge-to-Edge Hairline Border & 24px Top Padding Alignment:**<br>• Extended header divider border across full browser width (0px to 100vw) via `#app-container::before` and `#sidebar-header::before`.<br>• Aligned sidebar list items and right pane content at identical 24px (`1.5rem`) top padding below header.<br>• Styled repost badge in regular font weight with muted tertiary text color (`var(--text-3)`). |
+| **464** | `b5ffc3e` | **Repost Attribution Placement:**<br>• Moved `↻ Reposted from [Author]` from top of post to a dedicated line directly above the post author byline. |
+| **465** | `b2bf39d` | **Floating Centered Jump Bar:**<br>• Removed bottom border divider under jump bar buttons (`border-bottom: none !important;`).<br>• Centered jump bar vertically between header hairline and category story cards (`padding: 20px 0; margin: 0`). |
+| **466** | `6fb627d` | **Repost Attribution Typography Polish:**<br>• Increased repost badge font size slightly from `0.75rem` (12px) to `0.85rem` (~13.5px) with `line-height: 1.35` for optimal readability. |
 
 ---
 
@@ -219,6 +229,13 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 | **Socials Thread Self-Reply Suppression (Build 458)** | View multi-part posts/threads where author replies to themselves (e.g. Mohamed A. El-Erian). | Redundant parent box is omitted, showing context strictly for external replies/quotes. | PASS |
 | **Category Card First Story Spacing (Build 458)** | Inspect space above first story headline in Category Card vs subsequent stories. | Spacing above first story title (~22px) matches inter-story rhythm (~28px) with zero cramping. | PASS |
 | **Native Browser Scrollbar Edge (Build 458)** | View Cards and Briefing view on wide / ultrawide displays. | App spans edge-to-edge; vertical scrollbar rests natively at the far right edge of the browser window. | PASS |
+| **Unified Workstation Canvas (Build 462)** | Inspect sidebar and cards deck in dark and light modes. | Single background color (`#0d1117` / `#ffffff`) with zero vertical dividing border between panes. | PASS |
+| **Native macOS Floating Scrollbar (Build 462)** | Inspect browser scrollbar in dark mode. | Browser renders native translucent gray floating pill scrollbar instead of solid black track. | PASS |
+| **Card View Action Breathing Room (Build 462)** | Scroll to end of Cards view. | "Mark All Read" button maintains 36px separation from story card borders. | PASS |
+| **Continuous Edge-to-Edge Hairline Border (Build 463)** | Inspect header divider border on wide display. | Hairline divider spans continuously from 0px to 100vw across both left and right panes. | PASS |
+| **Equal 24px Top Padding Alignment (Build 463)** | Compare top offset of sidebar navigation items vs right pane cards. | Both panes start at identical 24px (`1.5rem`) vertical offset beneath the 73px header. | PASS |
+| **Repost Attribution Placement & Typography (Build 464-466)** | View reposted Bluesky story in Cards view. | Attribution rendered on new line above post author in regular 0.85rem font with muted tone (`var(--text-3)`). | PASS |
+| **Floating Centered Jump Bar (Build 465)** | View Jump Bar in Cards view. | Jump pills vertically centered between top hairline and category cards with bottom border removed. | PASS |
 | **Line 37 Invariant** | Inspect line 37 of `index.html`. | `<style id="tailwind-static">/*! tailwindcss v4` remains intact. | PASS |
 | **Syntax Validation** | Execute Node VM syntax audit across all scripts. | 100% valid JavaScript with zero syntax errors. | PASS |
 

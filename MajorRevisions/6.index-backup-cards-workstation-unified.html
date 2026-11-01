@@ -3,12 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Today">
     <meta name="theme-color" content="#2563eb">
+    <meta name="color-scheme" content="light dark">
     <meta name="description" content="Your personal RSS news reader">
     <title>Today</title>
 
@@ -303,6 +303,7 @@
            Sheets (Settings, Feeds, the phone's Search) are the app's own background: white, and in
            dark the desktop's panes (#0d1117) or the phone's black. */
         :root {
+            color-scheme: light;
             --text-1: #0f1923;
             --text-2: #374151;
             --text-3: #57606a;
@@ -310,7 +311,9 @@
             --divider: #e5e7eb;
         }
 
+        html.dark,
         .dark {
+            color-scheme: dark;
             --text-1: #f0f6fc;
             --text-2: #ccd2d8;
             --text-3: #8b949e;
@@ -434,13 +437,21 @@
             background: #3b82f6;
         }
 
-        /* Pane borders start below the 74px header, so the top reads as one toolbar. */
-        #sidebar-pane,
+        /* Pane borders start below the 74px header, so the top reads as one toolbar.
+           Sidebar pane has NO right border (seamless unified single-color background with right pane). */
+        #sidebar-pane {
+            border-right: none !important;
+            border-color: transparent !important;
+        }
+
         #timeline-pane {
             border-right: none !important;
         }
 
-        #sidebar-pane::after,
+        #sidebar-pane::after {
+            display: none !important;
+        }
+
         #timeline-pane::after {
             content: '';
             position: absolute;
@@ -453,32 +464,55 @@
             z-index: 5;
         }
 
-        :root:not(.dark) #sidebar-pane::after,
         :root:not(.dark) #timeline-pane::after {
             background: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Continuous header bottom border: spans edge-to-edge (0px to 100vw) on both left and right sides */
+        @media (min-width: 901px) {
+            #app-container {
+                position: relative;
+            }
+
+            #app-container::before {
+                content: '';
+                position: absolute;
+                top: 73px;
+                left: 0;
+                right: 0;
+                height: 1px;
+                background-color: var(--color-gray-200, #e5e7eb);
+                z-index: 20;
+                pointer-events: none;
+            }
+
+            .dark #app-container::before {
+                background-color: var(--color-gray-700, #374151);
+            }
+
+            #sidebar-header {
+                position: relative;
+            }
+
+            #sidebar-header::before {
+                content: '';
+                position: absolute;
+                top: 73px;
+                right: 100%;
+                width: 100vw;
+                height: 1px;
+                background-color: var(--color-gray-200, #e5e7eb);
+                pointer-events: none;
+            }
+
+            .dark #sidebar-header::before {
+                background-color: var(--color-gray-700, #374151);
+            }
         }
 
         .resizing {
             cursor: col-resize;
             user-select: none;
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 10px;
-        }
-
-        .dark ::-webkit-scrollbar-thumb {
-            background: #4b5563;
         }
 
         .modal-backdrop {
@@ -2088,24 +2122,25 @@
         }
 
         /* ===== DEEP DARK THEME ===== */
-        /* Desktop: GitHub's dark theme as deployed (bluer and softer than the Primer tokens):
-           #0a1119 sidebar, #0d1117 surfaces, #21262d borders, #1c2128 list rows, #4493f8 accent. */
+        /* Desktop: Unified #0d1117 background across the entire workstation:
+           sidebar, timeline, viewer, and app container share the identical single background color. */
         .dark body {
-            background: #0a1119 !important;
+            background: #0d1117 !important;
         }
 
         .dark #app-container {
-            background: #0a1119;
+            background: #0d1117 !important;
         }
 
         .dark #sidebar-pane {
-            background: #0a1119 !important;
-            border-color: #21262d !important;
+            background: #0d1117 !important;
+            border-color: transparent !important;
+            border-right: none !important;
         }
 
         .dark #sidebar-pane .p-4 {
-            background: #0a1119 !important;
-            border-color: #21262d !important;
+            background: #0d1117 !important;
+            border-color: transparent !important;
         }
 
         .dark #timeline-pane {
@@ -2115,6 +2150,24 @@
 
         .dark #viewer-pane {
             background: #0d1117 !important;
+        }
+
+        /* Light mode: unified #ffffff background across sidebar and app container */
+        body {
+            background: #ffffff !important;
+        }
+
+        #app-container {
+            background: #ffffff !important;
+        }
+
+        #sidebar-pane {
+            background: #ffffff !important;
+            border-right: none !important;
+        }
+
+        #sidebar-pane .p-4 {
+            background: #ffffff !important;
         }
 
         .dark #viewer-pane .h-14.border-b {
@@ -2360,6 +2413,127 @@
             font-size: 0.82em;
             color: #9198a1;
             font-style: italic;
+        }
+
+        html:not(.dark) .bsky-quote-embed {
+            border-color: rgba(0, 0, 0, 0.1) !important;
+            background: rgba(0, 0, 0, 0.02) !important;
+        }
+
+        html:not(.dark) .bsky-quote-name {
+            color: #111827 !important;
+        }
+
+        html:not(.dark) .bsky-quote-handle {
+            color: #6b7280 !important;
+        }
+
+        html:not(.dark) .bsky-quote-text {
+            color: #374151 !important;
+        }
+
+        /* Reply parent embed inside reader view */
+        .bsky-reply-header-label {
+            font-size: 0.8em !important;
+            font-weight: 600 !important;
+            color: #3d6bb0 !important;
+            margin-bottom: 6px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 5px !important;
+        }
+
+        .dark .bsky-reply-header-label {
+            color: #4d7cc7 !important;
+        }
+
+        /* Embedded parent post for social stories (replies, quotes, reposts) in Cards & Timeline */
+        .brief-social-parent {
+            margin-top: 0.45rem !important;
+            margin-bottom: 0.35rem !important;
+            padding: 8px 11px !important;
+            border-radius: 8px !important;
+            border: 1px solid rgba(0, 0, 0, 0.08) !important;
+            background: rgba(0, 0, 0, 0.025) !important;
+            font-size: 0.88em !important;
+            line-height: 1.4 !important;
+            box-sizing: border-box !important;
+            cursor: pointer !important;
+            flex-shrink: 0 !important;
+        }
+
+        .dark .brief-social-parent {
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            background: rgba(255, 255, 255, 0.035) !important;
+        }
+
+        .brief-social-parent-header {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            margin-bottom: 4px !important;
+            font-size: 0.85em !important;
+            flex-wrap: nowrap !important;
+            overflow: hidden !important;
+        }
+
+        .brief-social-parent-avatar {
+            width: 16px !important;
+            height: 16px !important;
+            border-radius: 50% !important;
+            flex-shrink: 0 !important;
+            object-fit: cover !important;
+        }
+
+        .brief-social-parent-name {
+            font-weight: 600 !important;
+            color: #1f2937 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        .dark .brief-social-parent-name {
+            color: #e5e7eb !important;
+        }
+
+        .brief-social-parent-handle {
+            color: #6b7280 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        .dark .brief-social-parent-handle {
+            color: #9ca3af !important;
+        }
+
+        .brief-social-parent-label {
+            color: #3d6bb0 !important;
+            margin-left: auto !important;
+            font-size: 0.85em !important;
+            font-weight: 600 !important;
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+        }
+
+        .dark .brief-social-parent-label {
+            color: #4d7cc7 !important;
+        }
+
+        .brief-social-parent-text {
+            color: #4b5563 !important;
+            margin: 0 !important;
+            line-height: 1.45 !important;
+            display: -webkit-box !important;
+            -webkit-line-clamp: 3 !important;
+            line-clamp: 3 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+        }
+
+        .dark .brief-social-parent-text {
+            color: #9ca3af !important;
         }
 
         .bsky-post-image {
@@ -2735,14 +2909,14 @@
 
         body.desktop-today-briefing #reader-view > div {
             max-width: 760px !important;
-            margin-left: auto !important;
+            margin-left: 0 !important;
             margin-right: auto !important;
             width: 100% !important;
         }
 
         body.desktop-today-briefing #reader-view #article-body {
             max-width: 760px !important;
-            margin-left: auto !important;
+            margin-left: 0 !important;
             margin-right: auto !important;
         }
 
@@ -2765,7 +2939,7 @@
 
         body.desktop-today-cards-wide #today-column .brief-container {
             max-width: 1240px !important;
-            margin-left: auto !important;
+            margin-left: 0 !important;
             margin-right: auto !important;
             width: 100% !important;
         }
@@ -2859,15 +3033,22 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
             border-radius: 0 !important;
             background: transparent !important;
-            padding: 14px 16px !important;
+            padding: 14px 18px !important;
             margin: 0 !important;
             display: flex !important;
             flex-direction: column !important;
             gap: 6px !important;
             box-sizing: border-box !important;
-            max-height: 500px !important;
-            overflow: hidden !important;
-            transition: background-color 0.15s ease, opacity 0.2s ease, max-height 0.25s ease, padding 0.18s ease !important;
+            max-height: none !important;
+            overflow: visible !important;
+            transition: background-color 0.15s ease, opacity 0.2s ease !important;
+        }
+
+        .brief-cat-section .brief-story-card:first-of-type,
+        .brief-cat-section .brief-story-card:first-child,
+        .brief-cat-section .brief-cat-stories > .brief-story-card:first-child,
+        .brief-cat-section .brief-cat-stories > .brief-story-card:first-of-type {
+            padding-top: 22px !important;
         }
 
         :root:not(.dark) .brief-cat-section .brief-story-card {
@@ -3153,6 +3334,14 @@
             background: rgba(0, 0, 0, 0.05);
         }
 
+        /* On mobile, keep story row meta clean by hiding quick action buttons (available in "..." menu) */
+        @media (max-width: 900px) {
+            .brief-story-ctrls .brief-act-read-inline,
+            .brief-story-ctrls .brief-act-later {
+                display: none !important;
+            }
+        }
+
         /* 5. Story Reading from Today Cards: 2-Column Workstation Layout (Sidebar + Centered Reading Canvas, Back to Cards) */
         body.desktop-today-story #timeline-pane,
         body.desktop-today-story #resizer {
@@ -3189,82 +3378,80 @@
             }
         }
 
-        /* 7. Ultrawide / Wide Display Centered Layout & Controls */
+        /* 7. Ultrawide / Wide Display Centered Layout & Edge Native Scrollbar */
         @media (min-width: 901px) {
+            #app-container,
             body.ultrawide-centered:not(.is-fullscreen) #app-container,
             body:not(.ultrawide-stretch):not(.is-fullscreen) #app-container {
-                margin-left: auto !important;
-                margin-right: auto !important;
+                margin: 0 !important;
                 border: none !important;
                 box-shadow: none !important;
                 width: 100% !important;
+                max-width: none !important;
             }
 
-            /* Today Cards Mode: Sidebar (328px) + Cards Deck (760px / 1240px / 1680px) */
-            body.ultrawide-centered.desktop-today-cards-wide:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-cards-wide:not(.is-fullscreen) #app-container {
-                max-width: calc(1240px + 328px + 5rem) !important;
+            /* Equal top spacing: both sidebar pane and right pane start at identical 1.5rem (24px) below header */
+            #sidebar-pane > .overflow-y-auto {
+                padding-top: 1.5rem !important;
             }
 
-            body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="1"]:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-cards-wide[data-cards-cols="1"]:not(.is-fullscreen) #app-container {
-                max-width: calc(760px + 328px + 5rem) !important;
+            .brief-header {
+                padding-top: 0 !important;
             }
 
-            body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="2"]:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-cards-wide[data-cards-cols="2"]:not(.is-fullscreen) #app-container {
-                max-width: calc(1240px + 328px + 5rem) !important;
+            /* Center [Sidebar + Deck] together with zero gap between them */
+            body.desktop-today-cards-wide #sidebar-pane {
+                margin-left: max(0px, calc((100vw - (328px + 1240px + 5rem)) / 2)) !important;
+            }
+            body.desktop-today-cards-wide[data-cards-cols="1"] #sidebar-pane {
+                margin-left: max(0px, calc((100vw - (328px + 760px + 5rem)) / 2)) !important;
+            }
+            body.desktop-today-cards-wide[data-cards-cols="2"] #sidebar-pane {
+                margin-left: max(0px, calc((100vw - (328px + 1240px + 5rem)) / 2)) !important;
+            }
+            body.desktop-today-cards-wide[data-cards-cols="3"] #sidebar-pane {
+                margin-left: max(0px, calc((100vw - (328px + 1680px + 5rem)) / 2)) !important;
             }
 
-            body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="3"]:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-cards-wide[data-cards-cols="3"]:not(.is-fullscreen) #app-container {
-                max-width: calc(1680px + 328px + 5rem) !important;
+            body.desktop-today-cards-wide #timeline-header .timeline-header-inner {
+                max-width: calc(1240px + 5rem) !important;
+                margin-left: 0 !important;
+                margin-right: auto !important;
+                padding-left: 2.5rem !important;
+                padding-right: 2.5rem !important;
+                box-sizing: border-box !important;
+            }
+            body.desktop-today-cards-wide[data-cards-cols="1"] #timeline-header .timeline-header-inner {
+                max-width: calc(760px + 5rem) !important;
+            }
+            body.desktop-today-cards-wide[data-cards-cols="2"] #timeline-header .timeline-header-inner {
+                max-width: calc(1240px + 5rem) !important;
+            }
+            body.desktop-today-cards-wide[data-cards-cols="3"] #timeline-header .timeline-header-inner {
+                max-width: calc(1680px + 5rem) !important;
             }
 
-            /* Today Briefing & Story Mode: Sidebar (328px) + Reading Canvas (760px) */
-            body.ultrawide-centered.desktop-today-briefing:not(.is-fullscreen) #app-container,
-            body.ultrawide-centered.desktop-today-story:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-briefing:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-story:not(.is-fullscreen) #app-container {
-                max-width: calc(760px + 328px + 5rem) !important;
+            /* Briefing & Story Mode: Sidebar (328px) + Reading Canvas (760px) centered together */
+            body.desktop-today-briefing #sidebar-pane,
+            body.desktop-today-story #sidebar-pane {
+                margin-left: max(0px, calc((100vw - (328px + 760px + 5rem)) / 2)) !important;
+            }
+            body.desktop-today-briefing #viewer-header .viewer-header-inner,
+            body.desktop-today-story #viewer-header .viewer-header-inner {
+                max-width: calc(760px + 5rem) !important;
+                margin-left: 0 !important;
+                margin-right: auto !important;
+                padding-left: 2.5rem !important;
+                padding-right: 2.5rem !important;
+                box-sizing: border-box !important;
             }
 
-            /* Unread / Feed 3-Column Workstation: Sidebar (328px) + Timeline (440px) + Reader */
-            body.ultrawide-centered:not(.desktop-today-cards-wide):not(.desktop-today-briefing):not(.desktop-today-story):not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch):not(.desktop-today-cards-wide):not(.desktop-today-briefing):not(.desktop-today-story):not(.is-fullscreen) #app-container {
-                max-width: 1720px !important;
+            /* Unread / Feed 3-Column Workstation: Sidebar + Timeline + Reader centered */
+            body.ultrawide-centered:not(.desktop-today-cards-wide):not(.desktop-today-briefing):not(.desktop-today-story):not(.is-fullscreen) #sidebar-pane,
+            body:not(.ultrawide-stretch):not(.desktop-today-cards-wide):not(.desktop-today-briefing):not(.desktop-today-story):not(.is-fullscreen) #sidebar-pane {
+                margin-left: max(0px, calc((100vw - 1720px) / 2)) !important;
             }
         }
-
-        body.desktop-today-cards-wide #timeline-header .timeline-header-inner {
-            max-width: calc(1240px + 5rem) !important;
-            margin-left: auto !important;
-            margin-right: auto !important;
-            padding-left: 2.5rem !important;
-            padding-right: 2.5rem !important;
-            box-sizing: border-box !important;
-        }
-
-        body.desktop-today-cards-wide[data-cards-cols="1"] #timeline-header .timeline-header-inner {
-            max-width: calc(760px + 5rem) !important;
-        }
-
-        body.desktop-today-cards-wide[data-cards-cols="2"] #timeline-header .timeline-header-inner {
-            max-width: calc(1240px + 5rem) !important;
-        }
-
-        body.desktop-today-cards-wide[data-cards-cols="3"] #timeline-header .timeline-header-inner {
-            max-width: calc(1680px + 5rem) !important;
-        }
-
-        body.desktop-today-briefing #viewer-header .viewer-header-inner,
-        body.desktop-today-story #viewer-header .viewer-header-inner {
-            max-width: calc(760px + 5rem) !important;
-            margin-left: auto !important;
-            margin-right: auto !important;
-            padding-left: 2.5rem !important;
-            padding-right: 2.5rem !important;
-            box-sizing: border-box !important;
         }
 
         /* Today images: each story's picture 16:9 across its card, after its text (on request: the source
@@ -4402,7 +4589,7 @@
                 padding-left: 14px !important;
                 padding-right: 14px !important;
                 padding-bottom: 10px !important;
-                margin-bottom: 14px !important;
+                margin-bottom: 0 !important;
             }
 
             html:not(.dark) .brief-header {
@@ -4489,15 +4676,18 @@
             }
         }
 
-        /* Jump Bar */
+        /* Jump Bar — vertically centered between the thin hairline border above and the stories box below */
         .brief-jump-bar {
             position: relative;
             display: flex;
             gap: 6px;
             overflow-x: auto;
-            padding: 4px 0 10px 0;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 20px !important;
+            padding-bottom: 20px !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            border: none !important;
+            border-bottom: none !important;
             background: #000000;
             z-index: 10;
             scrollbar-width: none;
@@ -4546,8 +4736,9 @@
         }
 
         html:not(.dark) .brief-jump-bar {
-            border-bottom-color: rgba(0, 0, 0, 0.08);
             background: #ffffff;
+            border: none !important;
+            border-bottom: none !important;
         }
 
         html:not(.dark) .brief-jump-pill {
@@ -4662,10 +4853,28 @@
             }
         }
 
+        .bsky-repost-pill,
+        .bsky-repost-byline {
+            color: var(--text-3, #8b949e) !important;
+            font-weight: 400 !important;
+            font-size: 0.85rem !important;
+            line-height: 1.35 !important;
+            margin-top: 5px !important;
+            margin-bottom: 3px !important;
+        }
+
         /* The jump bar takes the pane colour (it was black, a strip on desktop's #0d1117 panes):
            invisible at rest, and as a sticky bar it still masks the stories under it. */
         .dark .brief-jump-bar {
             background: #0d1117;
+            border: none !important;
+            border-bottom: none !important;
+        }
+
+        html:not(.dark) .brief-jump-bar {
+            background: #ffffff;
+            border: none !important;
+            border-bottom: none !important;
         }
 
         /* The category pill last tapped: vibrant light blue text & subtle border, translucent background */
@@ -4706,8 +4915,12 @@
             .brief-jump-bar {
                 position: relative !important;
                 background: transparent !important;
-                padding: 4px 0 10px 0 !important;
-                margin-bottom: 0.65rem !important;
+                padding-top: 14px !important;
+                padding-bottom: 14px !important;
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+                border: none !important;
+                border-bottom: none !important;
                 gap: 6px !important;
             }
 
@@ -4734,12 +4947,14 @@
             }
         }
 
+        .brief-jump-bar + .brief-cards-grid,
         .brief-jump-bar + .brief-cat-section,
         .brief-jump-bar + * > .brief-cat-section:first-child,
+        .brief-cards-grid > .brief-cat-section:first-child,
         .ai-reader-briefing > .brief-cat-section:first-of-type,
         .ai-reader-briefing > .brief-cat-section:first-child,
         .brief-cat-section:first-of-type {
-            margin-top: 0.5rem !important;
+            margin-top: 0 !important;
         }
 
         .brief-cat-header {
@@ -4749,8 +4964,9 @@
             width: 100% !important;
             flex-wrap: nowrap !important;
             border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;   /* the stories' divider */
-            padding-bottom: 0.45rem !important;
-            margin-bottom: 0.25rem !important;
+            padding: 12px 16px !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
         }
 
         .dark .brief-cat-header {
@@ -4869,21 +5085,26 @@
             pointer-events: none;
         }
 
-        /* "Mark All Read in Folders" sits as close to the last section as a next section would. The
-           bottom padding is the room above the phone's tab bar. */
+        /* "Mark All Read" footer pill — generous breathing room above the button */
         .brief-footer {
-            margin-top: 0 !important;
+            margin-top: 36px !important;
             padding-top: 0 !important;
-            padding-bottom: 2.5rem !important;
+            padding-bottom: 3.5rem !important;
             display: flex;
             justify-content: center;
             width: 100%;
             box-sizing: border-box;
         }
 
+        body.desktop-today-cards-wide #today-column .brief-footer {
+            margin-top: 36px !important;
+            padding-bottom: 4rem !important;
+        }
+
         @media (max-width: 900px) {
             .brief-footer {
-                padding-bottom: 0 !important;   /* the tab bar's clearance is #reader-view's (335) */
+                margin-top: 24px !important;
+                padding-bottom: 1.5rem !important;
             }
         }
 
@@ -4904,7 +5125,6 @@
         /* Space between two stories: 0.736rem each side of the divider (phone 0.64rem, below). The
            first story under a heading has 0 top padding to align flush with category header. */
         .brief-story-card:first-child,
-        .brief-cat-section .brief-story-card:first-of-type,
         .space-y-3 > .brief-story-card:first-child {
             padding-top: 0 !important;
         }
@@ -5067,11 +5287,12 @@
             /* override .article-content p margin-top */
             padding-top: 0 !important;
             margin-bottom: 0.45rem !important;
-            display: -webkit-box;
+            display: -webkit-box !important;
             -webkit-line-clamp: var(--list-preview-lines-brief, var(--list-preview-lines, 5)) !important;
             line-clamp: var(--list-preview-lines-brief, var(--list-preview-lines, 5)) !important;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+            flex-shrink: 0 !important;
             color: var(--text-2) !important;
         }
 
@@ -5235,7 +5456,6 @@
             }
 
             .brief-story-card:first-child,
-            .brief-cat-section .brief-story-card:first-of-type,
             .space-y-3 > .brief-story-card:first-child {
                 padding-top: 0 !important;
             }
@@ -5273,6 +5493,12 @@
 
             html:not(.dark) .brief-story-card:hover {
                 background: rgba(0, 0, 0, 0.02) !important;
+            }
+
+            /* Ensure Category Card first story retains its balanced 22px top breathing room */
+            .brief-cat-section .brief-cat-stories > .brief-story-card:first-child,
+            .brief-cat-section .brief-cat-stories > .brief-story-card:first-of-type {
+                padding-top: 22px !important;
             }
 
             .dark #article-body .brief-story-card .brief-story-meta,
@@ -6887,7 +7113,7 @@
 
         <!-- PANE 1: Sidebar -->
         <aside id="sidebar-pane"
-            class="w-[328px] flex-shrink-0 bg-gray-50 dark:bg-[#0f0f17] border-r border-gray-200 dark:border-white/5 flex flex-col"
+            class="w-[328px] flex-shrink-0 bg-white dark:bg-[#0d1117] flex flex-col"
             style="position:relative;">
             <div id="sidebar-header"
                 class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -9070,8 +9296,36 @@
             return `<div class="bsky-quote-embed"><div class="bsky-quote-header">${avatarHtml}<span class="bsky-quote-name">${bskyEsc(author.displayName || author.handle)}</span><span class="bsky-quote-handle">@${bskyEsc(author.handle)}</span></div>${value.text ? `<div class="bsky-quote-text">${applyBskyFacets(value.text, value.facets)}</div>` : ''}${imgEmbed ? renderBskyImages(imgEmbed.images, true) : ''}${extEmbed ? renderBskyExternalCard(extEmbed.external) : ''}</div>`;
         }
 
+        function renderBskyReplyParent(parent) {
+            if (!parent) return '';
+            if (parent.$type === 'app.bsky.feed.defs#notFoundPost') return '<div class="bsky-quote-embed bsky-quote-meta">Post not found</div>';
+            if (parent.$type === 'app.bsky.feed.defs#blockedPost') return '<div class="bsky-quote-embed bsky-quote-meta">Blocked post</div>';
+            const author = parent.author || {};
+            const record = parent.record || parent.value || {};
+            const embeds = parent.embeds || (parent.embed ? [parent.embed] : []);
+            const avatarHtml = author.avatar ? `<img src="${bskyEsc(author.avatar)}" class="bsky-quote-avatar" loading="lazy" alt="">` : '';
+            const imgEmbed = embeds.find(e => e.$type === 'app.bsky.embed.images#view');
+            const extEmbed = embeds.find(e => e.$type === 'app.bsky.embed.external#view');
+            return `
+                <div class="bsky-quote-embed bsky-reply-parent">
+                    <div class="bsky-reply-header-label">
+                        <svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v2.5"/></svg>
+                        <span>Replying to</span>
+                    </div>
+                    <div class="bsky-quote-header">
+                        ${avatarHtml}
+                        <span class="bsky-quote-name">${bskyEsc(author.displayName || author.handle)}</span>
+                        <span class="bsky-quote-handle">@${bskyEsc(author.handle)}</span>
+                    </div>
+                    ${record.text ? `<div class="bsky-quote-text">${applyBskyFacets(record.text, record.facets)}</div>` : ''}
+                    ${imgEmbed ? renderBskyImages(imgEmbed.images, true) : ''}
+                    ${extEmbed ? renderBskyExternalCard(extEmbed.external) : ''}
+                </div>
+            `;
+        }
+
         function buildBlueskyPostHtml(feedItem) {
-            const { post, reason } = feedItem;
+            const { post, reason, reply } = feedItem;
             const record = post?.record;
             const embed = post?.embed;
             if (!record) return '';
@@ -9095,6 +9349,17 @@
                 if (media?.$type === 'app.bsky.embed.images#view') html += renderBskyImages(media.images);
                 if (media?.$type === 'app.bsky.embed.external#view') html += renderBskyExternalCard(media.external);
                 if (embed.record?.record) html += renderBskyQuote(embed.record.record);
+            }
+            if (reply?.parent && reply.parent.$type !== 'app.bsky.feed.defs#notFoundPost' && reply.parent.$type !== 'app.bsky.feed.defs#blockedPost') {
+                const pAuthor = reply.parent.author || {};
+                const isSameAuthor = Boolean(
+                    (pAuthor.did && post.author?.did && pAuthor.did === post.author.did) ||
+                    (pAuthor.handle && post.author?.handle && pAuthor.handle.toLowerCase() === post.author.handle.toLowerCase()) ||
+                    (pAuthor.displayName && post.author?.displayName && pAuthor.displayName.trim().toLowerCase() === post.author.displayName.trim().toLowerCase())
+                );
+                if (!isSameAuthor) {
+                    html += renderBskyReplyParent(reply.parent);
+                }
             }
             return html;
         }
@@ -9168,7 +9433,7 @@
             let newCount = 0;
 
             for (const feedItem of data.feed) {
-                const { post, reason } = feedItem;
+                const { post, reason, reply } = feedItem;
                 if (!post) continue;
                 const rkey = post.uri?.split('/').pop();
                 const handle = post.author?.handle;
@@ -9188,6 +9453,51 @@
                         emb?.$type === 'app.bsky.embed.recordWithMedia#view' && emb.media?.$type === 'app.bsky.embed.images#view' ? emb.media.images : null;
                     return imgs?.[0]?.thumb || null;
                 })();
+
+                let socialParent = null;
+                if (reply?.parent && reply.parent.$type !== 'app.bsky.feed.defs#notFoundPost' && reply.parent.$type !== 'app.bsky.feed.defs#blockedPost') {
+                    const pAuthor = reply.parent.author || {};
+                    const isSameAuthor = Boolean(
+                        (pAuthor.did && post.author?.did && pAuthor.did === post.author.did) ||
+                        (pAuthor.handle && (post.author?.handle || handle) && (pAuthor.handle.toLowerCase() === (post.author?.handle || handle).toLowerCase())) ||
+                        (pAuthor.displayName && post.author?.displayName && (pAuthor.displayName.trim().toLowerCase() === post.author.displayName.trim().toLowerCase()))
+                    );
+                    const pRec = reply.parent.record || reply.parent.value || {};
+                    const pText = (pRec.text || '').trim();
+                    if (!isSameAuthor && (pText || pAuthor.handle)) {
+                        socialParent = {
+                            type: 'reply',
+                            label: 'Replying to',
+                            authorName: pAuthor.displayName || pAuthor.handle || '',
+                            authorHandle: pAuthor.handle || '',
+                            authorAvatar: pAuthor.avatar || '',
+                            text: pText || (reply.parent.embed ? '[Media post]' : '[Post]')
+                        };
+                    }
+                } else if (post.embed?.$type === 'app.bsky.embed.record#view' || post.embed?.$type === 'app.bsky.embed.recordWithMedia#view') {
+                    const qRec = post.embed?.record?.record || post.embed?.record;
+                    if (qRec && qRec.$type !== 'app.bsky.embed.record#viewNotFound' && qRec.$type !== 'app.bsky.embed.record#viewBlocked') {
+                        const qAuthor = qRec.author || {};
+                        const isSameQuoteAuthor = Boolean(
+                            (qAuthor.did && post.author?.did && qAuthor.did === post.author.did) ||
+                            (qAuthor.handle && (post.author?.handle || handle) && (qAuthor.handle.toLowerCase() === (post.author?.handle || handle).toLowerCase())) ||
+                            (qAuthor.displayName && post.author?.displayName && (qAuthor.displayName.trim().toLowerCase() === post.author.displayName.trim().toLowerCase()))
+                        );
+                        const qVal = qRec.value || qRec.record || {};
+                        const qText = (qVal.text || '').trim();
+                        if (!isSameQuoteAuthor && (qText || qAuthor.handle)) {
+                            socialParent = {
+                                type: 'quote',
+                                label: 'Quoting',
+                                authorName: qAuthor.displayName || qAuthor.handle || '',
+                                authorHandle: qAuthor.handle || '',
+                                authorAvatar: qAuthor.avatar || '',
+                                text: qText || (qRec.embeds?.length ? '[Media post]' : '[Post]')
+                            };
+                        }
+                    }
+                }
+
                 window.articles.push({
                     id: _existingBskyIds.get(link) || crypto.randomUUID(),
                     // When this device first fetched it: "new since your last visit"
@@ -9199,11 +9509,13 @@
                     author: post.author?.displayName || post.author?.handle || sourceName,
                     bskyIsRepost: isRepost,
                     bskyOriginalAuthor: isRepost ? (post.author?.displayName || post.author?.handle || '') : null,
+                    socialParent,
                     timestamp: new Date(record.createdAt || Date.now()).toISOString(),
                     _ts: new Date(record.createdAt || Date.now()).getTime(),
                     excerpt: text.substring(0, 3000),
                     _excerptHtml: null,
                     body,
+                    _fullBodyLoaded: true,
                     link,
                     unread: isNew,
                     readLater: window._readLaterLinks.has(link),
@@ -9888,7 +10200,7 @@
             // For Bluesky reposts, show the original author above the post text so the
             // person being read is visible without losing the feed name at the bottom.
             const repostLine = (isBsky && a.bskyIsRepost && a.bskyOriginalAuthor)
-                ? `<p class="bsky-repost-byline dynamic-list-preview text-blue-400 font-semibold mb-1">↻ ${esc(a.bskyOriginalAuthor)}</p>`
+                ? `<p class="bsky-repost-byline dynamic-list-preview text-gray-500 dark:text-gray-400 font-normal mb-1">↻ Reposted from ${esc(a.bskyOriginalAuthor)}</p>`
                 : '';
             const titleHtml = isBsky ? '' : `<h3 class="font-semibold text-gray-900 dark:text-white leading-snug mb-1 dynamic-list-title">${esc(a.title)}</h3>`;
             const previewCls = isBsky
@@ -9900,6 +10212,31 @@
             const img = a.image && !/avatar/i.test(a.image) ? window.pictureUrl(a.image, 400) : '';
             const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove(); else window.smoothPicture(this)" onerror="this.parentNode.remove()"></div>` : '';
 
+            let parentData = a.socialParent || null;
+            if (parentData) {
+                const pName = (parentData.authorName || '').trim().toLowerCase();
+                const pHandle = (parentData.authorHandle || '').trim().toLowerCase().replace(/^@/, '');
+                const aAuthor = (a.author || '').trim().toLowerCase();
+                const aHandle = (a.bskyHandle || '').trim().toLowerCase().replace(/^@/, '');
+                const aSource = (a.source || '').trim().toLowerCase();
+                if ((pName && (pName === aAuthor || pName === aSource)) ||
+                    (pHandle && (pHandle === aHandle || pHandle === aAuthor || pHandle === aSource)) ||
+                    (pName && aAuthor && (aAuthor.includes(pName) || pName.includes(aAuthor)))) {
+                    parentData = null;
+                }
+            }
+            const parentCardHtml = parentData ? `
+                <div class="brief-social-parent" onclick="event.stopPropagation(); selectArticle('${saId}')">
+                    <div class="brief-social-parent-header">
+                        ${parentData.authorAvatar ? `<img src="${esc(parentData.authorAvatar)}" class="brief-social-parent-avatar" loading="lazy" alt="">` : ''}
+                        <span class="brief-social-parent-name">${esc(parentData.authorName || parentData.authorHandle)}</span>
+                        ${parentData.authorHandle ? `<span class="brief-social-parent-handle">@${esc(parentData.authorHandle)}</span>` : ''}
+                        <span class="brief-social-parent-label">${esc(parentData.label || 'Replying to')}</span>
+                    </div>
+                    ${parentData.text ? `<p class="brief-social-parent-text">${esc(parentData.text)}</p>` : ''}
+                </div>
+            ` : '';
+
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 ${swipeHintsHtml()}
                 <div class="min-w-0 list-card-body">
@@ -9907,6 +10244,7 @@
                     ${repostLine}
                     ${titleHtml}
                     <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
+                    ${parentCardHtml}
                     <div class="list-card-meta flex items-center gap-1.5 min-w-0">
                         ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
                         <span class="list-source-label truncate min-w-0">${favicon}${esc(sourceLabel)}</span>
@@ -10595,9 +10933,9 @@
             // Every pill goes through briefJumpTo, so the bar slides to the tapped pill.
             container.querySelectorAll('.brief-jump-pill').forEach(p => p.setAttribute('onclick', 'event.preventDefault(); window.briefJumpTo(this);'));
 
-            // Ensure brief header has 3px top padding and 50% reduced gap between top line and title
+            // Ensure brief header has 0px top padding matching the sidebar pane top spacing
             const bHeader = container.querySelector('.brief-header');
-            if (bHeader) bHeader.style.paddingTop = '3px';
+            if (bHeader) bHeader.style.paddingTop = '0px';
             // The "LIVE BRIEF" row is gone; a brief stored with it drops it here.
             container.querySelectorAll('.brief-header-top').forEach(el => el.remove());
 
@@ -16624,11 +16962,43 @@ ${sampleText}`;
                     const postText = (st.excerpt || st.title || '').trim();
                     let storyBodyHtml = '';
 
+                    let parentData = st.socialParent || (window.articles ? window.articles.find(a => a.id === st.id || a.link === st.link)?.socialParent : null);
+                    if (parentData) {
+                        const pName = (parentData.authorName || '').trim().toLowerCase();
+                        const pHandle = (parentData.authorHandle || '').trim().toLowerCase().replace(/^@/, '');
+                        const aAuthor = (st.author || '').trim().toLowerCase();
+                        const aHandle = (st.bskyHandle || '').trim().toLowerCase().replace(/^@/, '');
+                        const aSource = (st.source || '').trim().toLowerCase();
+                        if ((pName && (pName === aAuthor || pName === aSource)) ||
+                            (pHandle && (pHandle === aHandle || pHandle === aAuthor || pHandle === aSource)) ||
+                            (pName && aAuthor && (aAuthor.includes(pName) || pName.includes(aAuthor)))) {
+                            parentData = null;
+                        }
+                    }
+                    const parentCardHtml = parentData ? `
+                        <div class="brief-social-parent cursor-pointer" onclick="window.openArticleInReader('${saId}')">
+                            <div class="brief-social-parent-header">
+                                ${parentData.authorAvatar ? `<img src="${esc(parentData.authorAvatar)}" class="brief-social-parent-avatar" loading="lazy" alt="">` : ''}
+                                <span class="brief-social-parent-name">${esc(parentData.authorName || parentData.authorHandle)}</span>
+                                ${parentData.authorHandle ? `<span class="brief-social-parent-handle">@${esc(parentData.authorHandle)}</span>` : ''}
+                                <span class="brief-social-parent-label">${esc(parentData.label || 'Replying to')}</span>
+                            </div>
+                            ${parentData.text ? `<p class="brief-social-parent-text">${esc(parentData.text)}</p>` : ''}
+                        </div>
+                    ` : '';
+
+                    const repostBadgeHtml = (st.bskyIsRepost && st.bskyOriginalAuthor) ? `
+                        <div class="bsky-repost-pill text-gray-500 dark:text-gray-400 text-[13.5px] font-normal mb-1 flex items-center gap-1">
+                            <span>↻ Reposted from ${esc(st.bskyOriginalAuthor)}</span>
+                        </div>
+                    ` : '';
+
                     if (isSocial) {
                         storyBodyHtml = `
                             <p class="brief-story-excerpt dynamic-list-preview line-clamp-social is-social-post text-gray-800 dark:text-gray-200 mt-0 mb-1.5 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
                                 ${esc(postText)}
                             </p>
+                            ${parentCardHtml}
                         `;
                     } else {
                         storyBodyHtml = `
@@ -16636,6 +17006,7 @@ ${sampleText}`;
                                 ${esc(st.title)}
                             </h4>
                             ${st.excerpt ? `<p class="brief-story-excerpt dynamic-list-preview text-gray-500 dark:text-gray-400 mt-0 mb-1.5 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">${esc(st.excerpt)}</p>` : ''}
+                            ${parentCardHtml}
                         `;
                     }
 
@@ -16645,6 +17016,7 @@ ${sampleText}`;
                             ${storyBodyHtml}
                             ${alsoReported}
                             ${heroHtml}
+                            ${repostBadgeHtml}
                             <div class="brief-story-meta flex items-center justify-between text-xs text-gray-400 pt-1 flex-nowrap min-w-0">
                                 <div class="flex items-center gap-1.5 min-w-0 truncate">
                                     <span class="brief-story-source list-source-label truncate font-medium text-gray-400">${favHtml}${esc(st.source)}</span>
@@ -17103,17 +17475,29 @@ ${sampleText}`;
         const _isOn = b => !!b && (b.classList.contains('is-on') || b.classList.contains('is-saved'));
 
         // A Today story's menu (its "..." or a long-press on the phone, a right-click on the desktop):
-        // Quick actions (Mark Read & Read Later) are directly on the story row, so
-        // the menu presents Save, Share, and Open Original.
+        // Quick actions (Mark Read & Read Later) are on the story row on desktop and in this menu everywhere.
         window.showBriefStoryMenu = function (from, x, y, pointer) {
             const card = from.closest('.brief-story-card');
             if (!card) return;
+            const saId = card.getAttribute('data-sa-id') || (card.id || '').replace(/^brief-card-/, '');
+            const art = (typeof window.briefStoryArticle === 'function' ? window.briefStoryArticle(saId) : null)
+                || (window.articles || []).find(a => a.id === saId);
+            const readBtn = card.querySelector('.brief-act-read-inline') || card.querySelector('.brief-act-read');
+            const laterBtn = card.querySelector('.brief-act-later');
             const btn = sel => card.querySelector('.brief-story-actions ' + sel);
-            const save = btn('.brief-save-btn');
+            const save = btn('.brief-save-btn') || card.querySelector('.brief-save-btn');
+            const share = btn('.brief-act-share') || card.querySelector('.brief-act-share');
+            const source = btn('.brief-source-link') || card.querySelector('.brief-source-link');
+
+            const isRead = art ? !art.unread : card.classList.contains('brief-card-read');
+            const isLater = art ? !!art.readLater : (laterBtn && laterBtn.classList.contains('is-on'));
+
             window.showActionMenu(from, [
+                readBtn && [isRead ? 'Mark Unread' : 'Mark Read', readBtn],
+                laterBtn && [isLater ? 'Remove from Read Later' : 'Read Later', laterBtn],
                 save && [_isOn(save) ? 'Unsave' : 'Save', save],
-                btn('.brief-act-share') && ['Share…', btn('.brief-act-share')],
-                btn('.brief-source-link') && ['Open Original', btn('.brief-source-link')],
+                share && ['Share…', share],
+                source && ['Open Original', source],
             ].filter(Boolean), x, y, pointer);
         };
 
@@ -17722,6 +18106,9 @@ ${sampleText}`;
         window.applyTheme = (mode) => {
             const isDark = mode === 'dark';
             document.documentElement.classList.toggle('dark', isDark);
+            document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+            const metaCs = document.querySelector('meta[name="color-scheme"]');
+            if (metaCs) metaCs.content = isDark ? 'dark' : 'light';
             const seg = document.getElementById('theme-segmented');
             if (seg) {
                 seg.querySelectorAll('button[data-theme]').forEach(b => {
@@ -19409,6 +19796,7 @@ ${sampleText}`;
                 .map(a => ({
                     id: a.id, source: a.source, feedUrl: a.feedUrl, title: a.title, author: a.author,
                     bskyHandle: a.bskyHandle, bskyIsRepost: a.bskyIsRepost, bskyOriginalAuthor: a.bskyOriginalAuthor,
+                    socialParent: a.socialParent || null,
                     timestamp: a.timestamp, _ts: a._ts, excerpt: a.excerpt, link: a.link,
                     unread: a.unread, readLater: a.readLater, image: a.image, _firstSeen: a._firstSeen,
                     body: a._fullBodyLoaded ? (a.body || '').slice(0, 100000) : '',
@@ -20183,7 +20571,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 456;
+        window.APP_BUILD = 466;
 
         (async function initApp() {
             try {
@@ -21061,7 +21449,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v456';
+const CACHE_NAME = 'rss-reader-v466';
 const APP_SHELL = [
     '/',
     'index.html'
