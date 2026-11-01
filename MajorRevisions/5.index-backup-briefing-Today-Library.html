@@ -340,7 +340,7 @@
             color: #e3e9f0 !important;
         }
 
-        .dark #article-body a:not(.brief-jump-pill):not(.ai-briefing-theme-link) {
+        .dark #article-body a:not(.brief-jump-pill) {
             color: #58a6ff !important;
         }
 
@@ -677,7 +677,6 @@
         }
 
         body.hide-source-icons .source-favicon,
-        body.hide-source-icons .source-favicon-sidebar,
         body.hide-source-icons #article-favicon {
             display: none !important;
         }
@@ -690,10 +689,6 @@
         #article-list .list-meta-dot {
             flex-shrink: 0;
             font-size: 0.8em;
-        }
-
-        #article-list.compact-wire .list-thumb {
-            display: none;
         }
 
         #article-list [data-id] .story-actions {
@@ -936,20 +931,6 @@
         }
 
 
-        /* Compact Wire Density View Mode */
-        #article-list.compact-wire .article-item-card {
-            padding: 8px 16px !important;
-        }
-
-        #article-list.compact-wire .dynamic-list-preview {
-            display: none !important;
-        }
-
-        #article-list.compact-wire .dynamic-list-title {
-            margin-bottom: 0 !important;
-            line-height: 1.35 !important;
-        }
-
         /* ===== MOBILE LAYOUT ===== */
         @media (max-width: 900px) {
 
@@ -1157,15 +1138,6 @@
                 background: transparent !important;
             }
 
-            #article-list.compact-wire [data-id],
-            #article-list.compact-wire .article-item-card {
-                padding: 7px 14px 7px 11px !important;
-            }
-
-            #article-list.compact-wire .dynamic-list-preview {
-                display: none !important;
-            }
-
             /* Today and a story: 14px in the reader itself. */
             #reader-view {
                 padding-left: 14px !important;
@@ -1277,10 +1249,10 @@
             }
         }
 
-        /* ===== APPLE MUSIC-STYLE MOBILE BOTTOM BAR ===== */
-        /* Absolute in the body, NOT fixed: under the user's 115% Safari Page Zoom, standalone
-           WebKit mis-anchors the fixed viewport after the lightbox closes (the bar floated ~79px
-           up, verified on device). The body never scrolls, so absolute acts like fixed. */
+        /* ===== YOUTUBE-STYLE FLOATING GLASS CAPSULE BOTTOM BAR ===== */
+        /* Absolute in the body, NOT fixed: under 115% Safari Page Zoom, standalone
+           WebKit mis-anchors the fixed viewport after the lightbox closes. The body
+           never scrolls, so absolute acts like fixed. */
         #mobile-tab-bar {
             display: none;
             position: absolute;
@@ -1288,63 +1260,62 @@
             right: 0;
             bottom: 0;
             z-index: 50;
-            /* -8px puts the pill nearer the home indicator; below about -15px, taps at its bottom
-               edge hit the iOS home gesture. */
-            padding: 8px 18px max(0px, calc(env(safe-area-inset-bottom, 0px) - 8px));
+            padding: 0 16px max(12px, calc(env(safe-area-inset-bottom, 0px) - 4px));
             background: transparent !important;
             border: none !important;
             pointer-events: none;
             align-items: center;
             justify-content: center;
-            gap: 10px;
             height: auto !important;
+            -webkit-transform: translate3d(0, 0, 0);
+            transform: translate3d(0, 0, 0);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
         }
 
         #mobile-tab-bar>* {
             pointer-events: auto;
         }
 
-        /* 56px tall: ~64pt under the 115% page zoom, with 46px tap targets. Offsets that clear the
-           bar follow it. */
+        /* YouTube floating glass capsule container: 42px tall, max 320px wide */
         #mobile-tab-bar .tab-pill {
             display: flex;
-            align-items: stretch;
-            gap: 2px;
-            height: 56px;
-            padding: 5px 4px;
-            border-radius: 999px;
-            /* Edge-lit glass: brighter ends, a top sheen and an inset rim over the translucent base. */
-            background:
-                linear-gradient(90deg, rgba(255, 255, 255, 0.10), transparent 22%, transparent 78%, rgba(255, 255, 255, 0.10)),
-                linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 45%),
-                rgba(30, 30, 34, 0.70);
-            /* 0.70 opacity: 55% read washed-out over article text. */
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 40px rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(40px) saturate(1.8);
-            -webkit-backdrop-filter: blur(40px) saturate(1.8);
-            flex: 1 1 auto;
-            max-width: 480px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            height: 42px;
+            padding: 3px 4px;
+            border-radius: 9999px;
+            /* Authentic YouTube frosted glass translucency */
+            background: rgba(18, 18, 22, 0.25);
+            border: 0.5px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40), inset 0 0.5px 0 0 rgba(255, 255, 255, 0.28);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-transform: translate3d(0, 0, 0);
+            transform: translate3d(0, 0, 0);
+            will-change: transform, backdrop-filter;
+            width: 100%;
+            max-width: 320px;
             min-width: 0;
-            transition: background-color 0.25s ease, border-color 0.25s ease;
+            box-sizing: border-box;
+            transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
         }
 
         #mobile-tab-bar .tab-btn {
             flex: 1 1 0;
             min-width: 0;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 3px;
             height: 100%;
-            padding: 0 4px;
-            border-radius: 999px;
+            padding: 0;
+            border-radius: 9999px;
             background: transparent;
-            color: rgba(255, 255, 255, 0.82);
+            color: rgba(255, 255, 255, 0.65);
             border: none;
             cursor: pointer;
-            transition: background-color 0.18s ease, color 0.18s ease;
+            position: relative;
+            transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.12s ease;
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -1352,9 +1323,6 @@
             font-family: inherit;
         }
 
-        /* iOS Safari fires its native Copy/Translate callout on long-press if any
-           descendant (SVG, label span) is touch-callout-eligible — these props
-           don't inherit, so re-apply them to the entire subtree. */
         #mobile-tab-bar .tab-btn,
         #mobile-tab-bar .tab-btn * {
             -webkit-touch-callout: none !important;
@@ -1368,83 +1336,37 @@
             display: block;
             stroke: currentColor;
             color: inherit;
+            transition: transform 0.15s ease;
         }
 
-        /* The selected tab shows a filled glyph (iOS 26 / Material 3), like the action buttons;
-           Search keeps its outline. CSS fill beats the svg's fill="none". */
+        /* YouTube Active Capsule Highlight: soft translucent inner pill + pure bright white icon */
+        #mobile-tab-bar .tab-btn.active,
+        body.search-active #mobile-tab-bar .tab-btn.tab-search {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            box-shadow: none;
+        }
+
+        /* Active icons fill */
         #mob-tab-today.active .tab-ico,
-        #mob-tab-following.active .tab-ico {
+        #mob-tab-following.active .tab-ico,
+        #mob-tab-saved.active .tab-ico {
             fill: currentColor;
         }
 
-        /* 13px labels (11px read as tiny): in this pill the word carries the tab. 22px icon + 3px gap
-           + 13px label = 38px, inside the tab's 50px. */
-        #mobile-tab-bar .tab-btn .tab-label {
-            font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            line-height: 1;
-            white-space: nowrap;
-            color: inherit;
-        }
-
-        /* Active tab: a recessed dark fill and a full-white icon and label (inactive are 0.82
-           white), not a blue glow. */
-        #mobile-tab-bar .tab-btn.active {
-            background: rgba(0, 0, 0, 0.58);
-            color: #ffffff;
-        }
-
+        /* Tap state */
         #mobile-tab-bar .tab-btn:active {
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.08);
+            transform: scale(0.95);
         }
 
-        #mobile-tab-bar .tab-btn.active:active {
-            background: rgba(0, 0, 0, 0.68);
+        #mobile-tab-bar .tab-btn.active:active,
+        body.search-active #mobile-tab-bar .tab-btn.tab-search:active {
+            background: rgba(255, 255, 255, 0.18);
+            transform: scale(0.95);
         }
 
-        #mobile-tab-bar .tab-search {
-            flex: 1 1 0;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            height: 100%;
-            padding: 0 4px;
-            border-radius: 999px;
-            background: transparent;
-            color: rgba(255, 255, 255, 0.82);
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.18s ease, color 0.18s ease;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-            font-family: inherit;
-        }
-
-        #mobile-tab-bar .tab-search:active {
-            background: rgba(255, 255, 255, 0.06);
-        }
-
-        body.search-active #mobile-tab-bar .tab-search {
-            background: rgba(0, 0, 0, 0.58);
-            color: #ffffff;
-        }
-
-        #mobile-tab-bar .tab-search svg {
-            width: 20px;
-            height: 20px;
-            display: block;
-            stroke: currentColor;
-            color: inherit;
-        }
-
-        /* Unread badge on the Today tab: an iOS-style pill on the icon's corner. The wrap positions it
-           relative to the icon, not the button. */
+        /* Wrap for icon & badge */
         .tab-ico-wrap {
             position: relative;
             display: inline-flex;
@@ -1452,57 +1374,100 @@
             justify-content: center;
         }
 
-        /* Light theme: the same glass in a light material, with dark glyphs and a soft pressed fill. */
-        html:not(.dark) #mobile-tab-bar .tab-pill {
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 45%),
-                rgba(246, 246, 248, 0.82);
-            border-color: rgba(0, 0, 0, 0.08);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 30px rgba(0, 0, 0, 0.16);
-        }
-
-        html:not(.dark) #mobile-tab-bar .tab-btn,
-        html:not(.dark) #mobile-tab-bar .tab-search {
-            color: rgba(31, 35, 40, 0.72);
-        }
-
-        html:not(.dark) #mobile-tab-bar .tab-btn.active,
-        html:not(.dark) body.search-active #mobile-tab-bar .tab-search {
-            background: rgba(0, 0, 0, 0.07);
-            color: #1f2328;
-        }
-
-        html:not(.dark) #mobile-tab-bar .tab-btn:active,
-        html:not(.dark) #mobile-tab-bar .tab-search:active {
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        html:not(.dark) #mobile-tab-bar .tab-btn.active:active {
-            background: rgba(0, 0, 0, 0.1);
-        }
-
-        html:not(.dark) .tab-icon-badge {
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
-        }
-
+        /* Today unread badge: positioned on corner of sun icon */
         .tab-icon-badge {
             position: absolute;
-            top: -6px;
-            right: -10px;
-            min-width: 18px;
-            height: 18px;
-            padding: 0 5px;
-            background: #3b82f6;
-            color: #fff;
+            top: -5px;
+            right: -8px;
+            min-width: 15px;
+            height: 15px;
+            padding: 0 4px;
             border-radius: 9999px;
-            font-size: 10px;
+            background: #ef4444;
+            color: #ffffff;
+            font-size: 9px;
             font-weight: 700;
-            line-height: 18px;
+            line-height: 15px;
             text-align: center;
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.9);
+            white-space: nowrap;
+            box-shadow: 0 0 0 1.5px rgba(18, 18, 20, 0.95);
+            box-sizing: border-box;
             pointer-events: none;
             font-variant-numeric: tabular-nums;
         }
+
+        /* Light theme: YouTube light floating pill */
+        html:not(.dark) #mobile-tab-bar .tab-pill {
+            background: rgba(255, 255, 255, 0.35);
+            border: 0.5px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0.5px 0 0 rgba(255, 255, 255, 0.9);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            backdrop-filter: blur(20px) saturate(180%);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn {
+            color: rgba(0, 0, 0, 0.55);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn.active,
+        html:not(.dark) body.search-active #mobile-tab-bar .tab-btn.tab-search {
+            background: rgba(0, 0, 0, 0.08);
+            color: #111827;
+            box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn:active {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn.active:active,
+        html:not(.dark) body.search-active #mobile-tab-bar .tab-btn.tab-search:active {
+            background: rgba(0, 0, 0, 0.12);
+        }
+
+        html:not(.dark) .tab-icon-badge {
+            box-shadow: 0 0 0 2px rgba(246, 246, 248, 0.95);
+        }
+
+        /* ===== READ LATER / SAVED SEGMENTED SWITCHERS ===== */
+        .saved-readlater-bar {
+            display: none;
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+            padding: calc(max(env(safe-area-inset-top, 0px), 50px) + 8px) 16px 10px;
+            background: rgba(18, 18, 20, 0.82);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            align-items: center;
+            justify-content: center;
+        }
+
+        html:not(.dark) .saved-readlater-bar {
+            background: rgba(255, 255, 255, 0.88);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        @media (max-width: 900px) {
+            #timeline-pane.is-saved-active .saved-readlater-bar {
+                display: flex !important;
+            }
+        }
+
+        @media (min-width: 901px) {
+            #saved-readlater-bar,
+            .saved-readlater-bar {
+                display: none !important;
+            }
+        }
+
+        #timeline-pane.mobile-active.is-saved-active #article-list {
+            padding-top: 12px !important;
+        }
+
 
         /* Menus (the "..." and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the
            tab bar's glass, light or dark, with 14px corners, the app's dividers and a soft shadow; the item
@@ -2970,29 +2935,6 @@
             }
         }
 
-        .brief-briefing-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 0;
-            border: none;
-            background: transparent;
-            color: #4493f8;
-            font: inherit;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: opacity 0.15s;
-        }
-
-        .brief-briefing-btn:hover {
-            opacity: 0.8;
-        }
-
-        .brief-briefing-btn svg {
-            width: 1.2em;
-            height: 1.2em;
-        }
-
         .brief-cat-recap-btn {
             display: inline-flex !important;
             align-items: center !important;
@@ -3174,11 +3116,9 @@
             }
         }
 
-        /* Crucial: Child link must inherit font size and weight so relative units do not multiply */
+        /* Child link inherits font size and weight */
         #article-body .ai-briefing-theme a,
-        #article-body a.ai-briefing-theme-link,
-        .ai-briefing-theme a,
-        .ai-briefing-theme-link {
+        .ai-briefing-theme a {
             font-size: 1em !important;
             font-weight: inherit !important;
             letter-spacing: inherit !important;
@@ -3192,39 +3132,12 @@
             transition: opacity 0.15s ease;
         }
 
-        #article-body .ai-briefing-theme-link:hover,
-        .ai-briefing-theme-link:hover {
-            opacity: 0.82;
-            text-decoration: underline !important;
-        }
-
         .dark #article-body .ai-briefing-theme,
         .dark #article-body .ai-briefing-theme a,
-        .dark #article-body a.ai-briefing-theme-link,
         .dark .ai-briefing-theme,
-        .dark .ai-briefing-theme a,
-        .dark .ai-briefing-theme-link {
+        .dark .ai-briefing-theme a {
             color: var(--text-1, #f0f6fc) !important;
             text-decoration: none !important;
-        }
-
-        .ai-theme-arrow {
-            color: #388bfd !important;
-            font-size: 1em !important;
-            font-weight: 600 !important;
-            margin-left: 0.15rem;
-            display: inline-block;
-        }
-
-        .dark .ai-theme-arrow {
-            color: #60a5fa !important;
-        }
-
-        .ai-theme-arrow {
-            font-size: 0.85em;
-            line-height: 1;
-            color: #3b82f6 !important;
-            opacity: 0.9;
         }
 
         #article-body .ai-briefing-cite,
@@ -3471,12 +3384,6 @@
             margin-bottom: 14px;
         }
 
-        #article-body .ai-bullet-dot {
-            color: #3b82f6 !important;
-            font-weight: 700;
-            user-select: none;
-            flex-shrink: 0;
-        }
 
         /* The headphones alone; the stop icon shows while Today plays. The padding, taken back by the
            margin, keeps a finger-sized target without moving the line. */
@@ -5548,7 +5455,8 @@
             }
         }
 
-        .today-segmented {
+        .today-segmented,
+        .saved-segmented {
             display: inline-flex !important;
             padding: 0 !important;
             background: transparent !important;
@@ -5560,7 +5468,12 @@
             gap: 16px !important;
         }
 
-        .today-segmented button {
+        .saved-segmented {
+            gap: 10px !important;
+        }
+
+        .today-segmented button,
+        .saved-segmented button {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -5579,27 +5492,37 @@
             transition: color .15s ease !important;
         }
 
-        .today-segmented button svg {
+        .saved-segmented button {
+            padding: 6px 8px !important;
+            gap: 5px !important;
+            font-size: calc(var(--btn-text) * var(--zoom) * 0.95) !important;
+        }
+
+        .today-segmented button svg,
+        .saved-segmented button svg {
             width: 14px !important;
             height: 14px !important;
             flex-shrink: 0 !important;
             color: inherit !important;
         }
 
-        .today-segmented button:hover {
+        .today-segmented button:hover,
+        .saved-segmented button:hover {
             color: var(--text-1) !important;
             background: transparent !important;
             box-shadow: none !important;
         }
 
-        .today-segmented button[data-active="true"] {
+        .today-segmented button[data-active="true"],
+        .saved-segmented button[data-active="true"] {
             background: transparent !important;
             color: #2563eb !important;
             font-weight: 600 !important;
             box-shadow: none !important;
         }
 
-        .dark .today-segmented button[data-active="true"] {
+        .dark .today-segmented button[data-active="true"],
+        .dark .saved-segmented button[data-active="true"] {
             background: transparent !important;
             color: #60a5fa !important;
             font-weight: 600 !important;
@@ -6354,18 +6277,9 @@
             <symbol id="icon-play" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                 <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" />
             </symbol>
-            <symbol id="icon-mark-unread" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9" />
-            </symbol>
             <symbol id="icon-bookmark-filled" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-            </symbol>
-            <symbol id="icon-bookmark-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                <path d="M9 8l6 6M15 8l-6 6" />
             </symbol>
             <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -6377,6 +6291,12 @@
                 <path
                     d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </symbol>
+            <symbol id="icon-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7" />
+                <path d="M3 4v5h5" />
+                <path d="M12 7v5l3 2" />
+            </symbol>
             <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <line x1="8" y1="6" x2="21" y2="6" />
@@ -6386,44 +6306,12 @@
                 <line x1="3" y1="12" x2="3.01" y2="12" />
                 <line x1="3" y1="18" x2="3.01" y2="18" />
             </symbol>
-            <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-            </symbol>
-            <!-- Read is a dot (filled = unread, as in Mail / Reeder / NetNewsWire); Standard Stream / Compact
-                 Wire are row-density glyphs. -->
+            <!-- Read is a dot (filled = unread, as in Mail / Reeder / NetNewsWire) -->
             <symbol id="icon-dot-filled" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="5.5" fill="currentColor" />
             </symbol>
             <symbol id="icon-dot-hollow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="5.5" />
-            </symbol>
-            <symbol id="icon-rows-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="16" rx="2" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-            </symbol>
-            <symbol id="icon-rows-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="16" rx="2" />
-                <line x1="3" y1="8" x2="21" y2="8" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="16" x2="21" y2="16" />
-            </symbol>
-            <symbol id="icon-compact-lines" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="5" x2="21" y2="5" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-                <line x1="3" y1="15" x2="21" y2="15" />
-                <line x1="3" y1="20" x2="21" y2="20" />
-            </symbol>
-            <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
             </symbol>
             <symbol id="icon-external-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -6532,9 +6420,9 @@
             </div>
 
             <div class="flex-1 overflow-y-auto p-3 no-scrollbar space-y-4">
-                <!-- Smart Feeds card -->
+                <!-- Smart Feeds card (Desktop only — on mobile, Bookmarks tab is the personal hub) -->
                 <div id="smart-feeds-card"
-                    class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
+                    class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm desk-only">
                     <button id="feed-btn-today" onclick="openToday()"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 desk-only"
                         title="Live brief of your unread stories">
@@ -6572,11 +6460,8 @@
                     <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')"
                         oncontextmenu="showFolderContextMenu(event,'smart','recently-read')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                                <path d="M3 12a9 9 0 1 0 3-6.7" />
-                                <path d="M3 4v5h5" />
-                                <path d="M12 7v5l3 2" />
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3">
+                                <use href="#icon-history" />
                             </svg> History</span>
                     </button>
                 </div>
@@ -6615,7 +6500,6 @@
                         <span id="dedup-badge"
                             class="hidden bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-1.5 py-0.5 rounded mr-2">DEDUPED</span>
                     </div>
-                    <span id="timeline-today-title" class="hidden"></span>
                 </div>
                 <!-- Unified Desktop Today Switcher (Cards View) -->
                 <div id="desk-today-switcher" class="hidden flex items-center justify-center flex-1">
@@ -6637,6 +6521,21 @@
                             stroke-linecap="round" />
                     </svg>
                 </button>
+            </div>
+
+            <!-- Mobile Sticky Personal Hub Switcher Bar (Read Later / Saved / History) -->
+            <div id="saved-readlater-bar" class="saved-readlater-bar hidden">
+                <div class="segmented today-segmented saved-segmented" role="group" aria-label="Read Later, Saved, or History">
+                    <button id="subtab-readlater" type="button" data-active="true" onclick="window.onSavedSegmentClick('read-later')">
+                        <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-bookmark"/></svg>Read Later
+                    </button>
+                    <button id="subtab-saved" type="button" data-active="false" onclick="window.onSavedSegmentClick('saved')">
+                        <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-star"/></svg>Saved
+                    </button>
+                    <button id="subtab-history" type="button" data-active="false" onclick="window.onSavedSegmentClick('recently-read')">
+                        <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-history"/></svg>History
+                    </button>
+                </div>
             </div>
 
             <div id="article-list" class="flex-1 overflow-y-auto"></div>
@@ -6709,14 +6608,6 @@
                             </svg>
                         </button>
                     </div>
-                    <!-- View mode toggle: Standard Stream / Compact Wire -->
-                    <button onclick="toggleViewMode()" id="view-density-toggle" title="Standard Stream (switch to Compact Wire)"
-                        aria-label="Standard Stream (switch to Compact Wire)"
-                        class="icon-act">
-                        <svg class="w-4 h-4">
-                            <use href="#icon-rows-2" />
-                        </svg>
-                    </button>
                 </div>
             </div>
 
@@ -6841,34 +6732,37 @@
         </button>
     </div>
 
-    <!-- MOBILE BOTTOM TAB BAR — Apple News / Google News style -->
+    <!-- MOBILE BOTTOM TAB BAR — YouTube Floating Glass Capsule -->
     <nav id="mobile-tab-bar">
         <div class="tab-pill">
-            <button id="mob-tab-today" type="button" class="tab-btn active" onclick="onTodayTabClick()">
+            <button id="mob-tab-today" type="button" class="tab-btn active" onclick="onTodayTabClick()" title="Today" aria-label="Today">
                 <span class="tab-ico-wrap">
-                    <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+                    <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                         stroke-linejoin="round" viewBox="0 0 24 24">
                         <use href="#icon-sun" />
                     </svg>
                     <span id="mob-tab-today-badge" class="tab-icon-badge hidden" aria-hidden="true">0</span>
                 </span>
-                <span class="tab-label">Today</span>
             </button>
-            <button id="mob-tab-following" type="button" class="tab-btn" onclick="onFollowingTabClick()">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            <button id="mob-tab-saved" type="button" class="tab-btn" onclick="onSavedTabClick()" title="Read Later & Saved" aria-label="Read Later and Saved">
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" viewBox="0 0 24 24">
+                    <use href="#icon-bookmark" />
+                </svg>
+            </button>
+            <button id="mob-tab-following" type="button" class="tab-btn" onclick="onFollowingTabClick()" title="Library" aria-label="Library">
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                     stroke-linejoin="round" viewBox="0 0 24 24">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                 </svg>
-                <span class="tab-label">Library</span>
             </button>
             <button id="mob-tab-search" type="button" class="tab-btn tab-search" onclick="toggleSearchSheet()"
-                aria-label="Search">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+                title="Search" aria-label="Search">
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                     stroke-linejoin="round" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="7" />
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-                <span class="tab-label">Search</span>
             </button>
         </div>
     </nav>
@@ -7814,7 +7708,6 @@
                 localStorage.setItem('newsreader_feed_health', JSON.stringify(out));
             } catch (e) { console.warn('persistFeedHealth:', e.message); }
         };
-        window._viewMode = 'standard';
         window._ttsActive = false;
         window._categoryOrder = [];
         window._showEmptyCategories = false;
@@ -9088,7 +8981,6 @@
 
         function renderTimelinePage(filtered) {
             const listEl = document.getElementById('article-list');
-            listEl.classList.toggle('compact-wire', window._viewMode === 'compact');
 
             if (filtered.length === 0) {
                 // While a refresh runs with nothing to show, show the in-progress view rather than "All caught
@@ -10423,17 +10315,6 @@
                     bodyEl.textContent = '';
                     bodyEl.appendChild(kept.frag);
                     window._todayRestored = true;
-                    if (!window._isGeneratingBriefing) {
-                        bodyEl.querySelectorAll('.today-ai-briefing-slot').forEach(slot => {
-                            if (window._todayAiBriefingBarHtml) {
-                                slot.classList.remove('hidden');
-                                slot.innerHTML = window._todayAiBriefingBarHtml;
-                            } else {
-                                slot.classList.add('hidden');
-                                slot.innerHTML = '';
-                            }
-                        });
-                    }
                     // Back at its own scroll first, then brought up to date (read stories leave, Later / Save
                     // states, folder checks), so what leaves above your place is made up for exactly.
                     const rvKept = document.getElementById('reader-view');
@@ -11553,6 +11434,30 @@
             return { bad: false, text: 'Not checked yet' };
         }
 
+        // --- SAVED, READ LATER & HISTORY SWITCHER STATE (Mobile Only) ---
+        window.updateSavedSwitcherState = () => {
+            const isPersonalHub = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
+            const cur = window.currentSmartFeed;
+            const timelinePane = document.getElementById('timeline-pane');
+            const savedBar = document.getElementById('saved-readlater-bar');
+            if (timelinePane) timelinePane.classList.toggle('is-saved-active', isPersonalHub);
+            if (savedBar) savedBar.classList.toggle('hidden', !isPersonalHub);
+            if (isPersonalHub) {
+                document.querySelectorAll('.saved-segmented').forEach(seg => {
+                    const btns = seg.querySelectorAll('button');
+                    if (btns.length >= 3) {
+                        btns[0].setAttribute('data-active', cur === 'read-later' ? 'true' : 'false');
+                        btns[1].setAttribute('data-active', cur === 'saved' ? 'true' : 'false');
+                        btns[2].setAttribute('data-active', cur === 'recently-read' ? 'true' : 'false');
+                    }
+                });
+            }
+        };
+
+        window.onSavedSegmentClick = (type) => {
+            window.setSmartFeed(type);
+        };
+
         window.setCategoryFilter = (cat) => {
             window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
             if (window._returnToBriefState) window._returnToBriefState = null;
@@ -11561,6 +11466,7 @@
             window.currentCategoryFilter = cat;
             window.currentSourceFilter = null;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
+            window.updateSavedSwitcherState?.();
             if (window.foldersSectionCollapsed) {
                 window.foldersSectionCollapsed = false;
                 window.saveFoldersSectionCollapsed?.();
@@ -11578,6 +11484,7 @@
             window.currentCategoryFilter = null;
             window.currentSourceFilter = source;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
+            window.updateSavedSwitcherState?.();
             if (window.foldersSectionCollapsed) {
                 window.foldersSectionCollapsed = false;
                 window.saveFoldersSectionCollapsed?.();
@@ -12094,8 +12001,14 @@
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
             const btn = document.getElementById('feed-btn-' + type);
             if (btn) btn.classList.add('active-item');
+            window.updateSavedSwitcherState?.();
             renderFeeds();
-            if (isMobile()) setMobilePane('timeline');
+            if (isMobile()) {
+                setMobilePane('timeline');
+                if (['read-later', 'saved', 'recently-read'].includes(type)) {
+                    setMobileTab('saved');
+                }
+            }
             if (type === 'recently-read') {
                 try {
                     const archived = (window.appDB && typeof window.appDB.getRecentlyRead === 'function')
@@ -13548,47 +13461,6 @@
             return out;
         }
 
-        window.jumpToBriefCategoryFromAi = function (catName) {
-            if (!catName) return false;
-            const norm = catName.trim().toLowerCase().replace(/\s*\(\d+\s+stories\)\s*$/i, '');
-            const findSec = (root) => {
-                if (!root) return null;
-                const secs = Array.from(root.querySelectorAll('.brief-cat-section'));
-                return secs.find(sec => {
-                    const h = (sec.querySelector('.brief-cat-heading')?.textContent || '').trim().toLowerCase();
-                    return h === norm || h.includes(norm) || norm.includes(h);
-                }) || null;
-            };
-            const highlightSec = (sec) => {
-                if (!sec) return;
-                sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                const head = sec.querySelector('.brief-cat-header') || sec;
-                head.classList.add('brief-card-return-pulse');
-                setTimeout(() => head.classList.remove('brief-card-return-pulse'), 2200);
-            };
-            if (typeof isMobile === 'function' && isMobile()) {
-                window._returnToAiBriefingState = null;
-                document.getElementById('ai-briefing-return-bar')?.remove();
-                selectArticle(window.TODAY_BRIEF_ID);
-                setMobilePane('viewer');
-                requestAnimationFrame(() => {
-                    setTimeout(() => {
-                        const sec = findSec(document.getElementById('article-body'));
-                        highlightSec(sec);
-                    }, 40);
-                });
-                return false;
-            }
-            const col = document.getElementById('today-column');
-            const sec = findSec(col) || findSec(document.getElementById('article-body'));
-            if (sec) {
-                highlightSec(sec);
-            } else {
-                window.showToast?.(`Section "${catName}" not found in Today`);
-            }
-            return false;
-        };
-
         window.openStoryFromAiBriefing = function (linkEl) {
             if (!linkEl) return false;
             const storyId = linkEl.getAttribute('data-ai-story-id') || '';
@@ -13717,16 +13589,27 @@
         };
 
         window.getTodayDefaultView = function () {
+            if (typeof isMobile === 'function' && isMobile()) {
+                try {
+                    const mobVal = localStorage.getItem('newsreader_today_default_view_mobile');
+                    if (mobVal) return mobVal;
+                } catch (e) { }
+                return 'cards'; // Mobile strictly defaults to Cards view on open
+            }
             try { return localStorage.getItem('newsreader_today_default_view') || 'briefing'; } catch (e) { return 'briefing'; }
         };
 
         window.saveTodayDefaultView = function (val) {
             const v = val === 'cards' ? 'cards' : 'briefing';
-            try { localStorage.setItem('newsreader_today_default_view', v); } catch (e) { }
+            if (typeof isMobile === 'function' && isMobile()) {
+                try { localStorage.setItem('newsreader_today_default_view_mobile', v); } catch (e) { }
+            } else {
+                try { localStorage.setItem('newsreader_today_default_view', v); } catch (e) { }
+            }
             window._todayDefaultView = v;
             const sel = document.getElementById('pref-today-default-view');
             if (sel) sel.value = v;
-            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+            if (typeof window.saveUiPrefsCloud === 'function' && (!window.isMobile || !window.isMobile())) window.saveUiPrefsCloud();
         };
 
         window.getTodayCardsColumns = function () {
@@ -13882,6 +13765,8 @@
 
         window.maybeRunAutoMorningBriefing = async function () {
             if (!window._autoMorningBriefing) return;
+            // On mobile, the app opens to Cards view; do not hijack the mobile screen with an automated briefing
+            if (typeof isMobile === 'function' && isMobile()) return;
             if (!window.getGeminiApiKey()) return;
             if (window._autoBriefingInFlight || window._refreshInFlight || window._refreshPending) return;
             const dayKey = getLocalMorningBriefingDayKey();
@@ -13968,14 +13853,6 @@
             if (typeof window.updateActionButton === 'function') window.updateActionButton();
         };
 
-        function getTodayBriefingSlots() {
-            const list = [...document.querySelectorAll('.today-ai-briefing-slot')];
-            if (window._todayKept?.frag) {
-                list.push(...window._todayKept.frag.querySelectorAll('.today-ai-briefing-slot'));
-            }
-            return list;
-        }
-
         window.generateTodayBriefing = async function (opts = {}) {
             const isAutoMorning = !!opts.isAutoMorning;
             const forceRegenerate = !!opts.forceRegenerate;
@@ -14052,7 +13929,6 @@
 
                 if (!totalStories) {
                     if (!isAutoMorning) window.showToast('No unread stories to synthesize');
-                    getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
                     return false;
                 }
 
@@ -14089,8 +13965,6 @@
                 // #1 Smart Instant Re-Open Cache: only reuse cached Briefing if the unread stories in Today haven't changed at all
                 const currentBriefingFingerprint = categoryGroups.flatMap(cg => cg.stories.slice(0, 35).map(a => String(a.id))).join(',');
                 if (!forceRegenerate && !isAutoMorning && currentBriefingFingerprint && currentBriefingFingerprint === window._cachedTodayBriefingFingerprint && window._cachedTodayBriefingId && window._aiBriefingArticles?.has(window._cachedTodayBriefingId)) {
-                    window._todayAiBriefingBarHtml = '';
-                    getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
                     const cachedArt = window._aiBriefingArticles.get(window._cachedTodayBriefingId);
                     if (cachedArt && sharedHeaderHtml) {
                         let contentOnly = cachedArt._briefingContentHtml || '';
@@ -14126,20 +14000,6 @@
                     return true;
                 }
 
-                if (!shouldOpenInReader) {
-                    slots.forEach(slot => {
-                        slot.classList.remove('hidden');
-                        slot.innerHTML = `
-                            <div class="ai-briefing-card flex items-center justify-between text-xs text-blue-600 dark:text-blue-400" style="padding:11px 14px;margin-bottom:14px">
-                                <span class="inline-flex items-center gap-2 font-medium">
-                                    <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
-                                    ${isAutoMorning ? 'Preparing your Morning Briefing…' : 'Synthesizing Briefing across all sections…'}
-                                </span>
-                            </div>
-                        `;
-                    });
-                }
-
                 window._briefingSectionStoryIds = new Map();
                 const allBriefingStories = [];
                 const sectionPromptBlocks = categoryGroups.map(cg => {
@@ -14173,11 +14033,6 @@ ${blocksText}`;
 
                 let art = null;
                 if (shouldOpenInReader) {
-                    window._todayAiBriefingBarHtml = '';
-                    getTodayBriefingSlots().forEach(slot => {
-                        slot.classList.add('hidden');
-                        slot.innerHTML = '';
-                    });
                     const initialStreamHtml = formatGeminiBriefing('', allBriefingStories, { isBriefingArticle: true, isStreaming: true, categoryGroups });
                     art = window.registerAndOpenAiArticle({
                         slug: 'briefing',
@@ -14273,10 +14128,7 @@ ${blocksText}`;
                 }
                 syncModelBadge();
 
-                if (!rawText) {
-                    getTodayBriefingSlots().forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
-                    return false;
-                }
+                if (!rawText) return false;
 
                 const cleanText = cleanBriefingCitationText(rawText);
                 window._lastAiBriefingText = cleanText;
@@ -14314,36 +14166,13 @@ ${blocksText}`;
                     art._briefingContentHtml = formattedHtml;
                     window._cachedTodayBriefingId = art.id;
                     window._cachedTodayBriefingFingerprint = currentBriefingFingerprint;
-                    const isSaved = window.savedBucket?.has(art.link);
-                    const barMarkup = `
-                        <div class="ai-briefing-card flex items-center justify-between gap-2" style="padding:10px 14px;margin-bottom:14px">
-                            <div class="flex items-center gap-2 min-w-0 cursor-pointer" onclick="window.openArticleInReader('${escJs(art.id)}')">
-                                <span class="text-blue-600 dark:text-blue-400 flex-shrink-0">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-                                </span>
-                                <div class="min-w-0">
-                                    <div class="ai-briefing-title truncate">${isAutoMorning ? 'Morning Briefing' : 'Briefing'}</div>
-                                    <div class="ai-briefing-sub truncate">${esc(subtitle)} · Saved in History</div>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-1.5 flex-shrink-0">
-                                <button type="button" onclick="window.openArticleInReader('${escJs(art.id)}')" class="pill-btn text-xs">Open</button>
-                                <button type="button" onclick="window.toggleSaveAiArticle('${escJs(art.id)}', this)" class="pill-btn text-xs">${isSaved ? 'Saved ★' : 'Save ★'}</button>
-                                <button type="button" onclick="window.copyTodayBriefing()" class="pill-btn text-xs" title="Copy briefing text">Copy</button>
-                                <button type="button" onclick="window.dismissTodayBriefing()" class="p-1 text-gray-400 hover:text-gray-600" title="Dismiss">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    window._todayAiBriefingBarHtml = barMarkup;
-                    getTodayBriefingSlots().forEach(slot => {
-                        slot.classList.remove('hidden');
-                        slot.innerHTML = barMarkup;
-                    });
+                    window._readLinks.add(art.link);
+                    archiveReadArticle(art);
+                    saveReadState();
                 }
                 return true;
             } catch (err) {
+                console.error('Failed to generate briefing:', err);
                 if (shouldOpenInReader && window.currentArticle?.isAiBriefing) {
                     const bodyEl = document.getElementById('article-body');
                     if (bodyEl) {
@@ -14354,36 +14183,13 @@ ${blocksText}`;
                             </div>
                         `;
                     }
-                } else {
-                    getTodayBriefingSlots().forEach(slot => {
-                        slot.classList.remove('hidden');
-                        slot.innerHTML = `
-                            <div class="ai-briefing-card flex items-start justify-between text-xs text-red-500" style="gap:12px">
-                                <span style="min-width:0;overflow-wrap:anywhere">${esc(err.message || 'Failed to generate briefing')}</span>
-                                <button type="button" onclick="window.dismissTodayBriefing()" class="pill-btn text-xs" style="flex-shrink:0">Dismiss</button>
-                            </div>
-                        `;
-                    });
+                } else if (!isAutoMorning) {
+                    window.showToast?.(err.message || 'Failed to generate briefing');
                 }
                 return false;
             } finally {
                 window._isGeneratingBriefing = false;
             }
-        };
-
-        window.copyTodayBriefing = function () {
-            if (!window._lastAiBriefingText) return;
-            navigator.clipboard?.writeText(window._lastAiBriefingText)
-                .then(() => window.showToast('Briefing copied to clipboard'))
-                .catch(() => window.showToast('Could not copy to clipboard'));
-        };
-
-        window.dismissTodayBriefing = function () {
-            window._todayAiBriefingBarHtml = '';
-            getTodayBriefingSlots().forEach(s => {
-                s.classList.add('hidden');
-                s.innerHTML = '';
-            });
         };
 
         window._catAiRecapTexts = window._catAiRecapTexts || new Map();
@@ -14663,26 +14469,6 @@ ${sampleText}`;
             }
         };
 
-        // --- VIEW MODE (Two-Way Density Toggle: Standard Stream vs Compact Wire) ---
-        window.toggleViewMode = () => {
-            window._viewMode = (window._viewMode === 'compact') ? 'standard' : 'compact';
-            const isCompact = window._viewMode === 'compact';
-            const btn = document.getElementById('view-density-toggle');
-            if (btn) {
-                const icon = isCompact ? 'icon-rows-4' : 'icon-rows-2';
-                const label = isCompact ? 'Compact Wire (click for Standard Stream)' : 'Standard Stream (click for Compact Wire)';
-                btn.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
-                btn.title = label;
-                btn.setAttribute('aria-label', label);
-            }
-            const listEl = document.getElementById('article-list');
-            if (listEl) {
-                listEl.classList.toggle('compact-wire', isCompact);
-            }
-            renderTimeline();
-            try { localStorage.setItem('newsreader_viewmode', window._viewMode); } catch (e) { console.warn('Storage error:', e.message); }
-        };
-
         window.toggleShowEmptyCategories = () => {
             window._showEmptyCategories = !window._showEmptyCategories;
             const btn = document.getElementById('show-empty-cats-toggle');
@@ -14950,7 +14736,6 @@ ${sampleText}`;
             }
             document.getElementById('article-list')?.classList.toggle('hidden', !!on);
             document.getElementById('timeline-count-group')?.classList.toggle('hidden', !!on);
-            document.getElementById('timeline-today-title')?.classList.toggle('hidden', !on);
 
             const deskSwitcher = document.getElementById('desk-today-switcher');
             if (deskSwitcher) deskSwitcher.classList.toggle('hidden', !on);
@@ -15443,8 +15228,10 @@ ${sampleText}`;
 
         window.openToday = async function (opts = {}) {
             window._returnToBriefState = null;
-            const targetView = opts.forceCards ? 'cards' : (window._currentTodayView || (window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing'));
-            if (targetView === 'briefing' && !window._hasSwitchedToCardsThisSession) {
+            const isMob = typeof isMobile === 'function' && isMobile();
+            const defaultView = window.getTodayDefaultView ? window.getTodayDefaultView() : (isMob ? 'cards' : 'briefing');
+            const targetView = opts.forceCards ? 'cards' : (opts.forceBriefing ? 'briefing' : (window._currentTodayView || defaultView));
+            if (targetView === 'briefing' && !window._hasSwitchedToCardsThisSession && (!isMob || opts.forceBriefing)) {
                 const key = window.getGeminiApiKey ? window.getGeminiApiKey() : null;
                 if (key) {
                     const hasUnread = (window.articles || []).some(a => a.unread && !a.isBrief && !window.isMuted(a));
@@ -15463,6 +15250,7 @@ ${sampleText}`;
             }
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
             document.getElementById('feed-btn-today')?.classList.add('active-item');
+            window.updateSavedSwitcherState?.();
             window.updateTodayViewSwitcherState?.('cards');
             if (typeof isMobile === 'function' && !isMobile()) {
                 // DESKTOP: the brief takes the middle column; the reader stays for stories.
@@ -15987,7 +15775,6 @@ ${sampleText}`;
             let html = `
                 <div class="brief-container">
                     ${briefHeaderHtml}
-                    <div class="today-ai-briefing-slot ${window._todayAiBriefingBarHtml ? '' : 'hidden'}">${window._todayAiBriefingBarHtml || ''}</div>
             `;
 
             // Sticky Jump Pills (Table of Contents)
@@ -18533,7 +18320,7 @@ ${sampleText}`;
         // Active tab pill indicator
         window.setMobileTab = (tab) => {
             window._activeTab = tab;
-            const tabs = ['today', 'following'];
+            const tabs = ['today', 'following', 'saved', 'search'];
             tabs.forEach(t => {
                 const el = document.getElementById('mob-tab-' + t);
                 if (el) el.classList.toggle('active', t === tab);
@@ -18583,12 +18370,23 @@ ${sampleText}`;
             if (window._mobilePane === 'viewer' && isToday) {
                 setMobileTab('today');
                 const rv = document.getElementById('reader-view');
-                if (rv) rv.scrollTo({ top: 0, behavior: 'smooth' });
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                const bar = document.querySelector('.brief-jump-bar');
-                if (bar) {
-                    const firstPill = bar.querySelector('.brief-jump-pill');
-                    if (firstPill && typeof window.centerBriefPill === 'function') window.centerBriefPill(firstPill);
+                const scrollPos = rv ? rv.scrollTop : 0;
+                if (scrollPos > 30) {
+                    // First tap: scroll smoothly to top
+                    rv.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    const bar = document.querySelector('.brief-jump-bar');
+                    if (bar) {
+                        const firstPill = bar.querySelector('.brief-jump-pill');
+                        if (firstPill && typeof window.centerBriefPill === 'function') window.centerBriefPill(firstPill);
+                    }
+                    return;
+                }
+                // Already at the top (or second tap): toggle between Cards and Briefing view
+                const curView = window._currentTodayView || (cur.isAiBriefing ? 'briefing' : 'cards');
+                const nextView = curView === 'cards' ? 'briefing' : 'cards';
+                if (typeof window.switchTodayView === 'function') {
+                    window.switchTodayView(nextView);
                 }
                 return;
             }
@@ -18611,7 +18409,7 @@ ${sampleText}`;
 
             // 6. Otherwise navigate to Today using current active view without switching
             setMobileTab('today');
-            const targetView = window._currentTodayView || (window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing');
+            const targetView = window._currentTodayView || (window.getTodayDefaultView ? window.getTodayDefaultView() : 'cards');
             if (targetView === 'cards') {
                 await window.openToday({ forceCards: true });
             } else {
@@ -18640,6 +18438,44 @@ ${sampleText}`;
                 return;
             }
             setMobilePane('sidebar');
+        };
+
+        // Personal Hub (Read Later, Saved, History): Bookmarks bottom bar button
+        // Tap from elsewhere -> opens Read Later (or preserved active personal feed)
+        // Tap while on personal hub -> scrolls to top if scrolled, or cycles between Read Later -> Saved -> History
+        // Tap while viewing a story from personal hub -> returns to that list
+        window.onSavedTabClick = () => {
+            const curFeed = window.currentSmartFeed;
+            const inViewer = window._mobilePane === 'viewer';
+            const curArt = window.currentArticle;
+            const isTodayArt = curArt && (curArt.id === window.TODAY_BRIEF_ID || (curArt.isAiBriefing && (curArt.slug === 'briefing' || curArt.id?.startsWith('ai-briefing'))));
+            const isPersonalFeed = ['read-later', 'saved', 'recently-read'].includes(curFeed);
+
+            // 1. In viewer reading an article from personal hub: return to list
+            if (inViewer && isPersonalFeed && !isTodayArt) {
+                setMobilePane('timeline');
+                setMobileTab('saved');
+                return;
+            }
+
+            // 2. Already on timeline pane viewing personal hub:
+            if (window._mobilePane === 'timeline' && isPersonalFeed) {
+                const list = document.getElementById('article-list');
+                if (list && list.scrollTop > 60) {
+                    list.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                }
+                // Scrolled near top: cycle between Read Later -> Saved -> History
+                const order = ['read-later', 'saved', 'recently-read'];
+                const nextIdx = (order.indexOf(curFeed) + 1) % order.length;
+                window.setSmartFeed(order[nextIdx]);
+                return;
+            }
+
+            // 3. Otherwise, open active personal feed (default to Read Later)
+            window.setSmartFeed(isPersonalFeed ? curFeed : 'read-later');
+            setMobilePane('timeline');
+            setMobileTab('saved');
         };
 
         // --- Viewer Header & Back Button Navigation ---
@@ -18694,6 +18530,12 @@ ${sampleText}`;
                     if (backLabel) backLabel.textContent = fromToday ? 'Today' : 'Brief';
                 } else if (window._activeTab === 'following') {
                     if (backLabel) backLabel.textContent = 'Following';
+                } else if (window._activeTab === 'saved') {
+                    if (backLabel) {
+                        if (window.currentSmartFeed === 'saved') backLabel.textContent = 'Saved';
+                        else if (window.currentSmartFeed === 'recently-read') backLabel.textContent = 'History';
+                        else backLabel.textContent = 'Read Later';
+                    }
                 } else {
                     if (backLabel) backLabel.textContent = 'Today';
                 }
@@ -18727,12 +18569,20 @@ ${sampleText}`;
             if (pane === 'sidebar') {
                 setMobileTab('following');
             } else if (pane === 'timeline') {
-                setMobileTab('following');
+                if (window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'saved') {
+                    setMobileTab('saved');
+                } else {
+                    setMobileTab('following');
+                }
             } else if (pane === 'viewer') {
                 const cur = window.currentArticle;
                 const isTodayArt = cur && (cur.id === window.TODAY_BRIEF_ID || (cur.isAiBriefing && (cur.slug === 'briefing' || cur.id?.startsWith('ai-briefing'))));
                 if (!cur || isTodayArt || window._returnToBriefState || window._returnToAiBriefingState) {
                     setMobileTab('today');
+                } else if (window._activeTab === 'saved' || window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'saved') {
+                    setMobileTab('saved');
+                } else {
+                    setMobileTab('following');
                 }
             }
 
@@ -19069,7 +18919,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 435;
+        window.APP_BUILD = 446;
 
         (async function initApp() {
             try {
@@ -19181,27 +19031,6 @@ ${sampleText}`;
 
                 // 5. Restore UI Modes
                 try {
-                    const vm = localStorage.getItem('newsreader_viewmode');
-                    if (vm === 'compact' || vm === 'card') {
-                        window._viewMode = 'compact';
-                        const btn = document.getElementById('view-density-toggle');
-                        if (btn) {
-                            btn.innerHTML = '<svg aria-hidden="true"><use href="#icon-rows-4"/></svg>';
-                            btn.title = 'Compact Wire (click for Standard Stream)';
-                            btn.setAttribute('aria-label', 'Compact Wire (click for Standard Stream)');
-                        }
-                        const listEl = document.getElementById('article-list');
-                        if (listEl) listEl.classList.add('compact-wire');
-                    } else {
-                        window._viewMode = 'standard';
-                        const btn = document.getElementById('view-density-toggle');
-                        if (btn) {
-                            btn.innerHTML = '<svg aria-hidden="true"><use href="#icon-rows-2"/></svg>';
-                            btn.title = 'Standard Stream (click for Compact Wire)';
-                            btn.setAttribute('aria-label', 'Standard Stream (click for Compact Wire)');
-                        }
-                    }
-
                     if (localStorage.getItem('newsreader_showemptycats') === '1') {
                         window._showEmptyCategories = true;
                         const btn = document.getElementById('show-empty-cats-toggle');
@@ -19679,9 +19508,13 @@ ${sampleText}`;
                         document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', data.autoMorningBriefing ? 'true' : 'false');
                     }
                     if (data.todayDefaultView) {
-                        try { localStorage.setItem('newsreader_today_default_view', data.todayDefaultView); } catch (e) { }
-                        const todayViewSel = document.getElementById('pref-today-default-view');
-                        if (todayViewSel) todayViewSel.value = data.todayDefaultView;
+                        if (typeof isMobile === 'function' && isMobile()) {
+                            // On mobile, keep mobile's cards default; do not let desktop's cloud sync overwrite it
+                        } else {
+                            try { localStorage.setItem('newsreader_today_default_view', data.todayDefaultView); } catch (e) { }
+                            const todayViewSel = document.getElementById('pref-today-default-view');
+                            if (todayViewSel) todayViewSel.value = data.todayDefaultView;
+                        }
                     }
                     if (data.cardsColumns) {
                         try { localStorage.setItem('newsreader_today_cards_columns', data.cardsColumns); } catch (e) { }
@@ -19956,7 +19789,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v435';
+const CACHE_NAME = 'rss-reader-v446';
 const APP_SHELL = [
     '/',
     'index.html'

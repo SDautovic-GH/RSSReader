@@ -5,7 +5,7 @@
 | Project | RSS Reader Web Application (`today.dautovic.com`) |
 | Document | Redesign Plan & Implementation Record — Briefing & Today Library |
 | Target File | `/Users/samirdautovic/Developer/RSSReader/index.html` |
-| Current State | **Active — Build 435** deployed to production via Cloudflare Workers CI |
+| Current State | **Active — Build 446** deployed to production via Cloudflare Workers CI |
 | Date | 2026-10-31 |
 | Status | Complete & Deployed |
 
@@ -148,7 +148,15 @@ The **Briefing & Today Library Redesign** transforms the user's daily reading ex
 | **434** | `4058596` | **Cards View Columns Preference:** Added App Settings option for 1, 2, and 3 columns with real-time responsive grid resizing (`760px`, `1240px`, `1680px`). |
 | **435** | `40b662c` | **Centering Alignment, Persistence & 3-Column Isolation:**<br>• Absolute center lock (`left: 50%; transform: translate(-50%, -50%)`) for simultaneous header/body centering.<br>• Header persistence across all browser resize widths (`@media (hover: hover) and (pointer: fine)` + `isDesktopDevice()`).<br>• Restricted 3-column view strictly to the **Unread** folder; Today is exclusively 2 columns with `desktop-today-story` push-and-return navigation. |
 | **436** | `b33c22e` | **YouTube Floating Glass Capsule Bottom Bar & Idea A Switcher:**<br>• Initial 4-tab floating capsule and Read Later / Saved segmented switcher. |
-| **437** | Pending | **YouTube Capsule Height & Bottom Offset Calibration + Today Switcher Styling:**<br>• Calibrated capsule height to compact `42px` (matching YouTube's slim proportion, down from 54px).<br>• Calibrated bottom offset to `max(8px, env(safe-area-inset-bottom) - 20px)` so the pill rests just above the home indicator line (lowered by ~28px to match YouTube).<br>• Applied the signature Today Briefing/Cards button styling (`.today-segmented`) to the Read Later / Saved switcher: transparent background, 16px gap, and active accent text (`#2563eb` / `#60a5fa`). |
+| **437** | `1517a7a` | **YouTube Capsule Height & Bottom Offset Calibration + Today Switcher Styling:**<br>• Calibrated capsule height to compact `42px` (matching YouTube's slim proportion, down from 54px).<br>• Calibrated bottom offset to `max(8px, env(safe-area-inset-bottom) - 20px)` so the pill rests just above the home indicator line.<br>• Applied the signature Today Briefing/Cards button styling (`.today-segmented`) to the Read Later / Saved switcher: transparent background, 16px gap, and active accent text (`#2563eb` / `#60a5fa`). |
+| **438** | `efaf410` | **Capsule Ergonomics & Padding:** Extended capsule max-width (`340px`) and adjusted vertical padding/icon scaling for thumb ergonomics. |
+| **439** | `aafa11a` | **Desktop Timeline Header Polish:** Aligned `#desk-search-trigger` and cleaned timeline header spacing. |
+| **440** | `f376eb4` | **Mobile Default Open View:** Explicitly ensured mobile sessions open into Cards view by default rather than Briefing view. |
+| **441** | `bd2193f` | **Desktop Duplication Fix:** Hid mobile `#saved-readlater-bar` on desktop (`@media (min-width: 901px)`), preventing duplicate switcher pills and overlap with deduplication badges. |
+| **442** | `9d0ea8e` | **Mobile Library Tab Architecture:** Added `desk-only` to `#smart-feeds-card`, establishing the mobile Library tab as a pure Subscriptions and Folders manager. |
+| **444** | `0c0e21f` | **Unified Personal Hub & Smart Today Tap:**<br>• Evolved Bookmarks tab into a 3-way personal hub: `[ 🔖 Read Later ] [ ⭐ Saved ] [ ⏱️ History ]`.<br>• Smart Today button tap: first tap scrolls smoothly to top; subsequent tap toggles between Cards and Briefing views. |
+| **445** | `5a34a83` | **YouTube Frosted Glass Translucency Tuning:**<br>• Reduced dark tint from `rgba(18, 18, 22, 0.72)` to `rgba(18, 18, 22, 0.25)`.<br>• Applied `-webkit-backdrop-filter: blur(20px) saturate(180%)` and GPU layer promotion (`translate3d(0, 0, 0)`, `will-change: transform, backdrop-filter`). |
+| **446** | `a808b23` | **Comprehensive Dead Code & Superseded Feature Removal:**<br>• Removed dead CSS selectors (`.brief-briefing-btn`, `.source-favicon-sidebar`, `.ai-bullet-dot`, etc.).<br>• Removed unused SVG symbols (`#icon-mark-unread`, `#icon-bookmark-x`, `#icon-rows-2`, etc.).<br>• Removed dormant `#timeline-today-title` span and `window.jumpToBriefCategoryFromAi()`.<br>• Removed legacy inline briefing slot (Feature 1: `.today-ai-briefing-slot`, `getTodayBriefingSlots`, `dismissTodayBriefing`).<br>• Removed Compact Wire density mode (Feature 3: `#view-density-toggle`, `window._viewMode`, `toggleViewMode()`).<br>• Preserved Category Recaps (Feature 2: `generateCategoryRecap`). Net reduction: **-326 lines**. |
 
 ---
 
@@ -179,6 +187,10 @@ The **Briefing & Today Library Redesign** transforms the user's daily reading ex
 | **Return Flow** | Click `< Today` or press `Escape` / `b`. | Closes story, restores full-width Cards mode, and scrolls to the read card. | PASS |
 | **Unread 3-Column** | Click **Unread** in sidebar. | Cleanly displays all 3 columns (Sidebar, Timeline list, Reader pane). | PASS |
 | **Column Preference** | Change Cards View Columns to 1, 2, or 3 in Settings. | Cards grid and `.brief-container` immediately resize to match selected setting. | PASS |
+| **Personal Hub 3-Way** | Tap Bookmarks tab on mobile. | Segmented switcher cleanly toggles between Read Later, Saved, and History. | PASS |
+| **Today Smart Tap** | Tap Today button while scrolled down; tap again at top. | First tap scrolls smoothly to top; second tap toggles between Cards and Briefing view. | PASS |
+| **Frosted Translucency** | Observe floating tab bar over scrolling images/text. | Content softly blurs beneath the pill with true YouTube glass translucency. | PASS |
+| **Dead Code Elimination** | Verify absence of legacy briefing slot and compact wire code. | Zero console errors, -326 lines removed, clean code execution. | PASS |
 | **Line 37 Invariant** | Inspect line 37 of `index.html`. | `<style id="tailwind-static">/*! tailwindcss v4` remains intact. | PASS |
 | **Syntax Validation** | Execute Node VM syntax audit across all scripts. | 100% valid JavaScript with zero syntax errors. | PASS |
 

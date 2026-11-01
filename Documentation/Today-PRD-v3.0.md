@@ -2,7 +2,7 @@
 
 | Metadata | Value |
 | :--- | :--- |
-| **Document Version** | v3.7 (Build 437) |
+| **Document Version** | v3.8 (Build 446) |
 | **Date** | October 31, 2026 |
 | **Status** | Live in Production (`today.dautovic.com`) |
 | **Primary Repository** | `SDautovic-GH/RSSReader` |
@@ -54,14 +54,14 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 
 | Surface | Requirement | Implementation Detail |
 | :--- | :--- | :--- |
-| **Mobile Tab Bar** | YouTube floating glass capsule | Detached floating capsule (42px compact height, 320px max-width, `blur(28px) saturate(190%)`) hovering just above the home indicator bar. Houses 4 icon tabs: **Today** (`#icon-sun` + live unread badge), **Library** (Folders), **Saved** (`#icon-bookmark` with Today-style segmented switcher for Read Later & Saved), and **Search** (`#mob-tab-search`). Active tab displays an elevated inner translucent capsule highlight with pure bright white icon (`#ffffff`). Zero text labels. |
+| **Mobile Tab Bar** | YouTube floating glass capsule | Detached floating capsule (42px compact height, 340px max-width, `-webkit-backdrop-filter: blur(20px) saturate(180%)`, fill `rgba(18, 18, 22, 0.25)` in dark mode) hovering just above the home indicator bar. Houses 4 icon tabs: **Today** (`#icon-sun` + live unread badge, smart tap to scroll to top then toggle Cards/Briefing), **Library** (pure Subscriptions & Folders manager), **Bookmarks** (`#icon-bookmark` with sticky 3-way segmented Personal Hub for `[ 🔖 Read Later ] [ ⭐ Saved ] [ ⏱️ History ]`), and **Search** (`#mob-tab-search`). Active tab displays an elevated inner translucent capsule highlight with pure bright white icon (`#ffffff`). Zero text labels. |
 | **Mobile Header** | Adaptive single-row header | Logo, title (Today: date, e.g. "Saturday, Oct 31"; Following: "Following"), status line ("Updated just now • 3 new"), and action buttons (Listen, Edit Feeds, Add Feed, Settings). |
 | **Mobile Reader** | Full-screen reading overlay | Opens cleanly over Today or active list. Tab bar slides away on downward scroll, returns on upward scroll. Horizontal swipes navigate adjacent stories. |
 | **Desktop: Today Briefing** | 2-column executive canvas | Sidebar (left) + Centered 760px editorial reading canvas (`desktop-today-briefing`). `#timeline-pane` is hidden. Header switcher mathematically centered at `50%`. |
 | **Desktop: Today Cards** | 2-column wide magazine deck | Sidebar (left) + Wide magazine grid (`desktop-today-cards-wide`). Configurable in 1, 2, or 3 columns via App Settings. `#viewer-pane` is hidden. Header switcher centered at `50%`. |
 | **Desktop: Today Story** | 2-column focused reader | Clicking a story from Today Cards opens in a 2-column reading canvas (`desktop-today-story`) with `< Today` back button in header. Pressing `< Today`, `b`, or `Escape` returns to Cards at the exact scroll position. |
 | **Desktop: Unread & Feeds** | 3-column triage workstation | Collapsible sidebar (left), resizable timeline article list (default 440px), and expansive reader pane (right). Active only when browsing Unread or feed lists. |
-| **Persistent Headers** | Zero collapse on resize | Desktop headers (`#timeline-header`, `#viewer-header`) persist at all viewport widths via `@media (hover: hover) and (pointer: fine)` and JS `isDesktopDevice()`. Mobile tab bar stays hidden on desktop. |
+| **Persistent Headers** | Zero collapse on resize | Desktop headers (`#timeline-header`, `#viewer-header`) persist at all viewport widths via `@media (hover: hover) and (pointer: fine)` and JS `isDesktopDevice()`. Mobile tab bar stays hidden on desktop. Mobile personal hub bar stays hidden on desktop to avoid duplicate headers. |
 | **Desktop Full Screen** | Distraction-free reading | Double-clicking reader top bar isolates story. Arrow keys navigate and scroll; `Esc` exits. |
 
 ### 3.2 Today Engine & Intelligence Modes
@@ -70,7 +70,8 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 | :--- | :--- | :--- |
 | **✦ AI Morning Briefing** | Executive synthesis | Powered by Gemini Flash (`gemini-2.5-flash`). Synthesizes unread coverage into an executive brief broken down by folder section with bold topic headlines and numbered citations (`#1`, `#2`) that link directly to full articles. Automatically prepped at 5:00 AM local time or generated on-demand. |
 | **▣ Cards View** | Multi-column magazine deck | Clustered cards categorized by Following folders. Supports 1, 2, or 3 columns (`--today-cards-cols`) configured via App Settings with responsive container scaling (`760px`, `1240px`, `1680px`). |
-| **View Switcher** | Instant seamless toggle | Unified segmented control (`✦ Briefing` and `▣ Cards`) anchored in the active desktop header bar. Keyboard shortcuts `1` (Briefing) and `2` (Cards). |
+| **View Switcher** | Instant seamless toggle | Unified segmented control (`✦ Briefing` and `▣ Cards`) anchored in the active desktop header bar. Keyboard shortcuts `1` (Briefing) and `2` (Cards). Obsolete inline briefing banner slots and compact wire toggle removed in favor of clean dedicated views. |
+| **Category Recaps** | Individual section drilldown | AI-powered section synthesis (`generateCategoryRecap`) available directly from each folder section heading in Today Cards view. |
 | **Top Stories** | Highlighted consensus | Up to 5 most significant stories across all folders (ranked by source authority, multi-outlet consensus, and recency). |
 | **Story Clustering** | Duplicate consolidation | Multi-outlet coverage of identical events is clustered into a single master card led by the most authoritative source, with an "Also from..." footer. |
 | **Calm Updates** | Zero jump guarantee | Background sync never repositions elements on screen. New incoming stories display a floating `"N new stories"` banner that only refreshes upon user tap. |

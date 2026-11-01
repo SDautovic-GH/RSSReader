@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Product** | Today (formerly RSS Reader) |
 | **Live App** | [today.dautovic.com](https://today.dautovic.com) |
-| **Build Target** | Build 435+ |
+| **Build Target** | Build 446+ |
 | **Documentation Type** | Comprehensive User Manual |
 | **Last Updated** | October 31, 2026 |
 
@@ -101,11 +101,11 @@ Today features dedicated workstation layouts tailored for focus:
 
 ### 3.2 Mobile Interface
 * **The Floating Bottom Tab Bar:** A detached floating glass capsule (YouTube-style, 42px compact height) with four pure-icon tabs:
-  * **Today:** Your curated 24-hour brief with a live unread badge counter.
-  * **Library:** Your complete hierarchy of folders, feeds, and subscriptions.
-  * **Saved / Read Later:** 1-tap access to your reading queue. Tapping it opens Read Later; tapping again smoothly toggles to Saved. A sticky segmented control (`[ 🔖 Read Later ]  [ ⭐️ Saved ]`) sits at the top of the timeline for effortless 1-tap switching.
+  * **Today:** Your curated 24-hour brief with a live unread badge counter. **Smart Tap:** When scrolled down into cards or briefing, tapping Today smoothly scrolls you to the top; tapping again toggles between Cards and Briefing view.
+  * **Library:** Dedicated exclusively to managing your Folders & Subscriptions (clutter-free, without redundant smart feed lists).
+  * **Bookmarks (Personal Hub):** 1-tap access to your reading queue with a sticky 3-way segmented control at the top of the timeline: `[ 🔖 Read Later ]  [ ⭐ Saved ]  [ ⏱️ History ]`. Tapping the Bookmarks tab cycles between these views or scrolls to the top.
   * **Search:** Instant full-text search across all saved, unread, and archived stories.
-  * **Visual Style:** Deep translucent dark glass with an elevated inner capsule highlight around the active tab and a pure bright white icon (`#ffffff`). Zero text clutter.
+  * **Visual Style:** YouTube-style ultra-translucent frosted glass capsule (`-webkit-backdrop-filter: blur(20px) saturate(180%)`) with GPU acceleration, a soft translucent tint (`rgba(18, 18, 22, 0.25)`), an elevated inner capsule highlight around the active tab, and a pure bright white icon (`#ffffff`). Zero text clutter.
 * **Header Controls:**
   * **Headphones Icon:** Tap to have Today read your brief aloud using text-to-speech.
   * **Status Line:** Displays synchronization status (e.g., "Updated just now • 4 new").
