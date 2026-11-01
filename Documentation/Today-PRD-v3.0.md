@@ -7,7 +7,7 @@
 | **Status** | Live in Production (`today.dautovic.com`) |
 | **Primary Repository** | `SDautovic-GH/RSSReader` |
 | **Desktop Companion** | `ScriptLibrary/PROJECTS/RSSReader` |
-| **Changelog Reference** | `Documentation/Redisign-Plan-Briefing-TodayLibrary.md` |
+| **Changelog Reference** | `Documentation/Redesign-Plan-Two-Pane.md` |
 
 ---
 

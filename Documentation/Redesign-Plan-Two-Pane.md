@@ -1,9 +1,9 @@
-# Redesign Plan: Briefing & Today Library (RSS Reader v2.5)
+# Redesign Plan: Unified Two-Pane Workstation (RSS Reader v2.5)
 
 | Key | Value |
 | :--- | :--- |
 | Project | RSS Reader Web Application (`today.dautovic.com`) |
-| Document | Redesign Plan & Implementation Record — Briefing & Today Library |
+| Document | Redesign Plan & Implementation Record — Unified Two-Pane Workstation |
 | Target File | `/Users/samirdautovic/Developer/RSSReader/index.html` |
 | Current State | **Active — Build 456** deployed to production via Cloudflare Workers CI |
 | Date | 2026-11-01 |
