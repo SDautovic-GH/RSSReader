@@ -5549,6 +5549,10 @@
             gap: 16px !important;
         }
 
+        .saved-segmented {
+            gap: 10px !important;
+        }
+
         .today-segmented button,
         .saved-segmented button {
             display: inline-flex !important;
@@ -5567,6 +5571,12 @@
             box-shadow: none !important;
             white-space: nowrap !important;
             transition: color .15s ease !important;
+        }
+
+        .saved-segmented button {
+            padding: 6px 8px !important;
+            gap: 5px !important;
+            font-size: calc(var(--btn-text) * var(--zoom) * 0.95) !important;
         }
 
         .today-segmented button svg,
@@ -6371,6 +6381,12 @@
                 <path
                     d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </symbol>
+            <symbol id="icon-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 3-6.7" />
+                <path d="M3 4v5h5" />
+                <path d="M12 7v5l3 2" />
+            </symbol>
             <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <line x1="8" y1="6" x2="21" y2="6" />
@@ -6526,9 +6542,9 @@
             </div>
 
             <div class="flex-1 overflow-y-auto p-3 no-scrollbar space-y-4">
-                <!-- Smart Feeds card -->
+                <!-- Smart Feeds card (Desktop only — on mobile, Bookmarks tab is the personal hub) -->
                 <div id="smart-feeds-card"
-                    class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm">
+                    class="rounded-2xl overflow-hidden bg-white/5 dark:bg-white/5 border border-white/10 backdrop-blur-sm desk-only">
                     <button id="feed-btn-today" onclick="openToday()"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400 desk-only"
                         title="Live brief of your unread stories">
@@ -6566,11 +6582,8 @@
                     <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')"
                         oncontextmenu="showFolderContextMenu(event,'smart','recently-read')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                                <path d="M3 12a9 9 0 1 0 3-6.7" />
-                                <path d="M3 4v5h5" />
-                                <path d="M12 7v5l3 2" />
+                        <span class="flex items-center"><svg class="w-4 h-4 mr-3">
+                                <use href="#icon-history" />
                             </svg> History</span>
                     </button>
                 </div>
@@ -6633,14 +6646,17 @@
                 </button>
             </div>
 
-            <!-- Mobile Sticky Saved / Read Later Switcher Bar -->
+            <!-- Mobile Sticky Personal Hub Switcher Bar (Read Later / Saved / History) -->
             <div id="saved-readlater-bar" class="saved-readlater-bar hidden">
-                <div class="segmented today-segmented saved-segmented" role="group" aria-label="Read Later or Saved">
+                <div class="segmented today-segmented saved-segmented" role="group" aria-label="Read Later, Saved, or History">
                     <button id="subtab-readlater" type="button" data-active="true" onclick="window.onSavedSegmentClick('read-later')">
                         <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-bookmark"/></svg>Read Later
                     </button>
                     <button id="subtab-saved" type="button" data-active="false" onclick="window.onSavedSegmentClick('saved')">
                         <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-star"/></svg>Saved
+                    </button>
+                    <button id="subtab-history" type="button" data-active="false" onclick="window.onSavedSegmentClick('recently-read')">
+                        <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-history"/></svg>History
                     </button>
                 </div>
             </div>
@@ -11562,20 +11578,21 @@
             return { bad: false, text: 'Not checked yet' };
         }
 
-        // --- SAVED & READ LATER SWITCHER STATE (Mobile Only) ---
+        // --- SAVED, READ LATER & HISTORY SWITCHER STATE (Mobile Only) ---
         window.updateSavedSwitcherState = () => {
-            const isSavedOrReadLater = window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'saved';
-            const isRl = window.currentSmartFeed === 'read-later';
+            const isPersonalHub = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
+            const cur = window.currentSmartFeed;
             const timelinePane = document.getElementById('timeline-pane');
             const savedBar = document.getElementById('saved-readlater-bar');
-            if (timelinePane) timelinePane.classList.toggle('is-saved-active', isSavedOrReadLater);
-            if (savedBar) savedBar.classList.toggle('hidden', !isSavedOrReadLater);
-            if (isSavedOrReadLater) {
+            if (timelinePane) timelinePane.classList.toggle('is-saved-active', isPersonalHub);
+            if (savedBar) savedBar.classList.toggle('hidden', !isPersonalHub);
+            if (isPersonalHub) {
                 document.querySelectorAll('.saved-segmented').forEach(seg => {
                     const btns = seg.querySelectorAll('button');
-                    if (btns.length >= 2) {
-                        btns[0].setAttribute('data-active', isRl ? 'true' : 'false');
-                        btns[1].setAttribute('data-active', isRl ? 'false' : 'true');
+                    if (btns.length >= 3) {
+                        btns[0].setAttribute('data-active', cur === 'read-later' ? 'true' : 'false');
+                        btns[1].setAttribute('data-active', cur === 'saved' ? 'true' : 'false');
+                        btns[2].setAttribute('data-active', cur === 'recently-read' ? 'true' : 'false');
                     }
                 });
             }
@@ -12132,7 +12149,7 @@
             renderFeeds();
             if (isMobile()) {
                 setMobilePane('timeline');
-                if (type === 'read-later' || type === 'saved') {
+                if (['read-later', 'saved', 'recently-read'].includes(type)) {
                     setMobileTab('saved');
                 }
             }
@@ -18639,12 +18656,23 @@ ${sampleText}`;
             if (window._mobilePane === 'viewer' && isToday) {
                 setMobileTab('today');
                 const rv = document.getElementById('reader-view');
-                if (rv) rv.scrollTo({ top: 0, behavior: 'smooth' });
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                const bar = document.querySelector('.brief-jump-bar');
-                if (bar) {
-                    const firstPill = bar.querySelector('.brief-jump-pill');
-                    if (firstPill && typeof window.centerBriefPill === 'function') window.centerBriefPill(firstPill);
+                const scrollPos = rv ? rv.scrollTop : 0;
+                if (scrollPos > 30) {
+                    // First tap: scroll smoothly to top
+                    rv.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    const bar = document.querySelector('.brief-jump-bar');
+                    if (bar) {
+                        const firstPill = bar.querySelector('.brief-jump-pill');
+                        if (firstPill && typeof window.centerBriefPill === 'function') window.centerBriefPill(firstPill);
+                    }
+                    return;
+                }
+                // Already at the top (or second tap): toggle between Cards and Briefing view
+                const curView = window._currentTodayView || (cur.isAiBriefing ? 'briefing' : 'cards');
+                const nextView = curView === 'cards' ? 'briefing' : 'cards';
+                if (typeof window.switchTodayView === 'function') {
+                    window.switchTodayView(nextView);
                 }
                 return;
             }
@@ -18698,38 +18726,40 @@ ${sampleText}`;
             setMobilePane('sidebar');
         };
 
-        // Saved & Read Later (Idea A): 4th bottom bar button
-        // Tap from elsewhere -> opens Read Later
-        // Tap while on Read Later or Saved -> scrolls to top if scrolled, or toggles between Read Later & Saved
-        // Tap while viewing a story from Read Later or Saved -> returns to that list
+        // Personal Hub (Read Later, Saved, History): Bookmarks bottom bar button
+        // Tap from elsewhere -> opens Read Later (or preserved active personal feed)
+        // Tap while on personal hub -> scrolls to top if scrolled, or cycles between Read Later -> Saved -> History
+        // Tap while viewing a story from personal hub -> returns to that list
         window.onSavedTabClick = () => {
             const curFeed = window.currentSmartFeed;
             const inViewer = window._mobilePane === 'viewer';
             const curArt = window.currentArticle;
             const isTodayArt = curArt && (curArt.id === window.TODAY_BRIEF_ID || (curArt.isAiBriefing && (curArt.slug === 'briefing' || curArt.id?.startsWith('ai-briefing'))));
+            const isPersonalFeed = ['read-later', 'saved', 'recently-read'].includes(curFeed);
 
-            // 1. In viewer reading an article from saved or read-later: return to list
-            if (inViewer && (curFeed === 'read-later' || curFeed === 'saved') && !isTodayArt) {
+            // 1. In viewer reading an article from personal hub: return to list
+            if (inViewer && isPersonalFeed && !isTodayArt) {
                 setMobilePane('timeline');
                 setMobileTab('saved');
                 return;
             }
 
-            // 2. Already on timeline pane viewing read-later or saved:
-            if (window._mobilePane === 'timeline' && (curFeed === 'read-later' || curFeed === 'saved')) {
+            // 2. Already on timeline pane viewing personal hub:
+            if (window._mobilePane === 'timeline' && isPersonalFeed) {
                 const list = document.getElementById('article-list');
                 if (list && list.scrollTop > 60) {
                     list.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                 }
-                // Scrolled near top: toggle between read-later and saved
-                const target = curFeed === 'read-later' ? 'saved' : 'read-later';
-                window.setSmartFeed(target);
+                // Scrolled near top: cycle between Read Later -> Saved -> History
+                const order = ['read-later', 'saved', 'recently-read'];
+                const nextIdx = (order.indexOf(curFeed) + 1) % order.length;
+                window.setSmartFeed(order[nextIdx]);
                 return;
             }
 
-            // 3. Otherwise, open Read Later
-            window.setSmartFeed('read-later');
+            // 3. Otherwise, open active personal feed (default to Read Later)
+            window.setSmartFeed(isPersonalFeed ? curFeed : 'read-later');
             setMobilePane('timeline');
             setMobileTab('saved');
         };
@@ -18787,7 +18817,11 @@ ${sampleText}`;
                 } else if (window._activeTab === 'following') {
                     if (backLabel) backLabel.textContent = 'Following';
                 } else if (window._activeTab === 'saved') {
-                    if (backLabel) backLabel.textContent = window.currentSmartFeed === 'saved' ? 'Saved' : 'Read Later';
+                    if (backLabel) {
+                        if (window.currentSmartFeed === 'saved') backLabel.textContent = 'Saved';
+                        else if (window.currentSmartFeed === 'recently-read') backLabel.textContent = 'History';
+                        else backLabel.textContent = 'Read Later';
+                    }
                 } else {
                     if (backLabel) backLabel.textContent = 'Today';
                 }
@@ -19171,7 +19205,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 443;
+        window.APP_BUILD = 444;
 
         (async function initApp() {
             try {
@@ -20062,7 +20096,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v443';
+const CACHE_NAME = 'rss-reader-v444';
 const APP_SHELL = [
     '/',
     'index.html'
