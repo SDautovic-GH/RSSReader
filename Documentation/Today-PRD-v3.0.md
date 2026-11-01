@@ -2,7 +2,7 @@
 
 | Metadata | Value |
 | :--- | :--- |
-| **Document Version** | v3.12 (Build 457) |
+| **Document Version** | v3.13 (Build 458) |
 | **Date** | November 1, 2026 |
 | **Status** | Live in Production (`today.dautovic.com`) |
 | **Primary Repository** | `SDautovic-GH/RSSReader` |

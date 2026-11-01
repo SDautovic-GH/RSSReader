@@ -2980,7 +2980,7 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
             border-radius: 0 !important;
             background: transparent !important;
-            padding: 13px 16px 14px !important;
+            padding: 14px 18px !important;
             margin: 0 !important;
             display: flex !important;
             flex-direction: column !important;
@@ -2992,8 +2992,10 @@
         }
 
         .brief-cat-section .brief-story-card:first-of-type,
-        .brief-cat-section .brief-story-card:first-child {
-            padding-top: 18px !important;
+        .brief-cat-section .brief-story-card:first-child,
+        .brief-cat-section .brief-cat-stories > .brief-story-card:first-child,
+        .brief-cat-section .brief-cat-stories > .brief-story-card:first-of-type {
+            padding-top: 22px !important;
         }
 
         :root:not(.dark) .brief-cat-section .brief-story-card {
@@ -3315,50 +3317,16 @@
             }
         }
 
-        /* 7. Ultrawide / Wide Display Centered Layout & Controls */
+        /* 7. Ultrawide / Wide Display Layout & Edge-to-Edge Browser Navigation */
         @media (min-width: 901px) {
             body.ultrawide-centered:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch):not(.is-fullscreen) #app-container {
-                margin-left: auto !important;
-                margin-right: auto !important;
+            body:not(.ultrawide-stretch):not(.is-fullscreen) #app-container,
+            #app-container {
+                margin: 0 !important;
                 border: none !important;
                 box-shadow: none !important;
                 width: 100% !important;
-            }
-
-            /* Today Cards Mode: Sidebar (328px) + Cards Deck (760px / 1240px / 1680px) */
-            body.ultrawide-centered.desktop-today-cards-wide:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-cards-wide:not(.is-fullscreen) #app-container {
-                max-width: calc(1240px + 328px + 5rem) !important;
-            }
-
-            body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="1"]:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-cards-wide[data-cards-cols="1"]:not(.is-fullscreen) #app-container {
-                max-width: calc(760px + 328px + 5rem) !important;
-            }
-
-            body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="2"]:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-cards-wide[data-cards-cols="2"]:not(.is-fullscreen) #app-container {
-                max-width: calc(1240px + 328px + 5rem) !important;
-            }
-
-            body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="3"]:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-cards-wide[data-cards-cols="3"]:not(.is-fullscreen) #app-container {
-                max-width: calc(1680px + 328px + 5rem) !important;
-            }
-
-            /* Today Briefing & Story Mode: Sidebar (328px) + Reading Canvas (760px) */
-            body.ultrawide-centered.desktop-today-briefing:not(.is-fullscreen) #app-container,
-            body.ultrawide-centered.desktop-today-story:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-briefing:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch).desktop-today-story:not(.is-fullscreen) #app-container {
-                max-width: calc(760px + 328px + 5rem) !important;
-            }
-
-            /* Unread / Feed 3-Column Workstation: Sidebar (328px) + Timeline (440px) + Reader */
-            body.ultrawide-centered:not(.desktop-today-cards-wide):not(.desktop-today-briefing):not(.desktop-today-story):not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch):not(.desktop-today-cards-wide):not(.desktop-today-briefing):not(.desktop-today-story):not(.is-fullscreen) #app-container {
-                max-width: 1720px !important;
+                max-width: none !important;
             }
         }
 
@@ -5031,7 +4999,6 @@
         /* Space between two stories: 0.736rem each side of the divider (phone 0.64rem, below). The
            first story under a heading has 0 top padding to align flush with category header. */
         .brief-story-card:first-child,
-        .brief-cat-section .brief-story-card:first-of-type,
         .space-y-3 > .brief-story-card:first-child {
             padding-top: 0 !important;
         }
@@ -5363,7 +5330,6 @@
             }
 
             .brief-story-card:first-child,
-            .brief-cat-section .brief-story-card:first-of-type,
             .space-y-3 > .brief-story-card:first-child {
                 padding-top: 0 !important;
             }
@@ -5401,6 +5367,12 @@
 
             html:not(.dark) .brief-story-card:hover {
                 background: rgba(0, 0, 0, 0.02) !important;
+            }
+
+            /* Ensure Category Card first story retains its balanced 22px top breathing room */
+            .brief-cat-section .brief-cat-stories > .brief-story-card:first-child,
+            .brief-cat-section .brief-cat-stories > .brief-story-card:first-of-type {
+                padding-top: 22px !important;
             }
 
             .dark #article-body .brief-story-card .brief-story-meta,
@@ -9253,7 +9225,15 @@
                 if (embed.record?.record) html += renderBskyQuote(embed.record.record);
             }
             if (reply?.parent && reply.parent.$type !== 'app.bsky.feed.defs#notFoundPost' && reply.parent.$type !== 'app.bsky.feed.defs#blockedPost') {
-                html += renderBskyReplyParent(reply.parent);
+                const pAuthor = reply.parent.author || {};
+                const isSameAuthor = Boolean(
+                    (pAuthor.did && post.author?.did && pAuthor.did === post.author.did) ||
+                    (pAuthor.handle && post.author?.handle && pAuthor.handle.toLowerCase() === post.author.handle.toLowerCase()) ||
+                    (pAuthor.displayName && post.author?.displayName && pAuthor.displayName.trim().toLowerCase() === post.author.displayName.trim().toLowerCase())
+                );
+                if (!isSameAuthor) {
+                    html += renderBskyReplyParent(reply.parent);
+                }
             }
             return html;
         }
@@ -9351,9 +9331,14 @@
                 let socialParent = null;
                 if (reply?.parent && reply.parent.$type !== 'app.bsky.feed.defs#notFoundPost' && reply.parent.$type !== 'app.bsky.feed.defs#blockedPost') {
                     const pAuthor = reply.parent.author || {};
+                    const isSameAuthor = Boolean(
+                        (pAuthor.did && post.author?.did && pAuthor.did === post.author.did) ||
+                        (pAuthor.handle && (post.author?.handle || handle) && (pAuthor.handle.toLowerCase() === (post.author?.handle || handle).toLowerCase())) ||
+                        (pAuthor.displayName && post.author?.displayName && (pAuthor.displayName.trim().toLowerCase() === post.author.displayName.trim().toLowerCase()))
+                    );
                     const pRec = reply.parent.record || reply.parent.value || {};
                     const pText = (pRec.text || '').trim();
-                    if (pText || pAuthor.handle) {
+                    if (!isSameAuthor && (pText || pAuthor.handle)) {
                         socialParent = {
                             type: 'reply',
                             label: 'Replying to',
@@ -9367,9 +9352,14 @@
                     const qRec = post.embed?.record?.record || post.embed?.record;
                     if (qRec && qRec.$type !== 'app.bsky.embed.record#viewNotFound' && qRec.$type !== 'app.bsky.embed.record#viewBlocked') {
                         const qAuthor = qRec.author || {};
+                        const isSameQuoteAuthor = Boolean(
+                            (qAuthor.did && post.author?.did && qAuthor.did === post.author.did) ||
+                            (qAuthor.handle && (post.author?.handle || handle) && (qAuthor.handle.toLowerCase() === (post.author?.handle || handle).toLowerCase())) ||
+                            (qAuthor.displayName && post.author?.displayName && (qAuthor.displayName.trim().toLowerCase() === post.author.displayName.trim().toLowerCase()))
+                        );
                         const qVal = qRec.value || qRec.record || {};
                         const qText = (qVal.text || '').trim();
-                        if (qText || qAuthor.handle) {
+                        if (!isSameQuoteAuthor && (qText || qAuthor.handle)) {
                             socialParent = {
                                 type: 'quote',
                                 label: 'Quoting',
@@ -10096,7 +10086,19 @@
             const img = a.image && !/avatar/i.test(a.image) ? window.pictureUrl(a.image, 400) : '';
             const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove(); else window.smoothPicture(this)" onerror="this.parentNode.remove()"></div>` : '';
 
-            const parentData = a.socialParent || null;
+            let parentData = a.socialParent || null;
+            if (parentData) {
+                const pName = (parentData.authorName || '').trim().toLowerCase();
+                const pHandle = (parentData.authorHandle || '').trim().toLowerCase().replace(/^@/, '');
+                const aAuthor = (a.author || '').trim().toLowerCase();
+                const aHandle = (a.bskyHandle || '').trim().toLowerCase().replace(/^@/, '');
+                const aSource = (a.source || '').trim().toLowerCase();
+                if ((pName && (pName === aAuthor || pName === aSource)) ||
+                    (pHandle && (pHandle === aHandle || pHandle === aAuthor || pHandle === aSource)) ||
+                    (pName && aAuthor && (aAuthor.includes(pName) || pName.includes(aAuthor)))) {
+                    parentData = null;
+                }
+            }
             const parentCardHtml = parentData ? `
                 <div class="brief-social-parent" onclick="event.stopPropagation(); selectArticle('${saId}')">
                     <div class="brief-social-parent-header">
@@ -16834,7 +16836,19 @@ ${sampleText}`;
                     const postText = (st.excerpt || st.title || '').trim();
                     let storyBodyHtml = '';
 
-                    const parentData = st.socialParent || (window.articles ? window.articles.find(a => a.id === st.id || a.link === st.link)?.socialParent : null);
+                    let parentData = st.socialParent || (window.articles ? window.articles.find(a => a.id === st.id || a.link === st.link)?.socialParent : null);
+                    if (parentData) {
+                        const pName = (parentData.authorName || '').trim().toLowerCase();
+                        const pHandle = (parentData.authorHandle || '').trim().toLowerCase().replace(/^@/, '');
+                        const aAuthor = (st.author || '').trim().toLowerCase();
+                        const aHandle = (st.bskyHandle || '').trim().toLowerCase().replace(/^@/, '');
+                        const aSource = (st.source || '').trim().toLowerCase();
+                        if ((pName && (pName === aAuthor || pName === aSource)) ||
+                            (pHandle && (pHandle === aHandle || pHandle === aAuthor || pHandle === aSource)) ||
+                            (pName && aAuthor && (aAuthor.includes(pName) || pName.includes(aAuthor)))) {
+                            parentData = null;
+                        }
+                    }
                     const parentCardHtml = parentData ? `
                         <div class="brief-social-parent cursor-pointer" onclick="window.openArticleInReader('${saId}')">
                             <div class="brief-social-parent-header">
@@ -20417,7 +20431,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 457;
+        window.APP_BUILD = 458;
 
         (async function initApp() {
             try {
@@ -21295,7 +21309,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v457';
+const CACHE_NAME = 'rss-reader-v458';
 const APP_SHELL = [
     '/',
     'index.html'

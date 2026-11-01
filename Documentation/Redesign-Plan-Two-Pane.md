@@ -5,7 +5,7 @@
 | Project | RSS Reader Web Application (`today.dautovic.com`) |
 | Document | Redesign Plan & Implementation Record — Unified Two-Pane Workstation |
 | Target File | `/Users/samirdautovic/Developer/RSSReader/index.html` |
-| Current State | **Active — Build 457** deployed to production via Cloudflare Workers CI |
+| Current State | **Active — Build 458** deployed to production via Cloudflare Workers CI |
 | Date | 2026-11-01 |
 | Status | Complete & Deployed |
 
@@ -216,6 +216,9 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 | **Socials Original Post Context** | View replies (e.g. Jay Rosen) or quote posts on Bluesky/Socials in Cards, Timeline, and Reader. | Renders original post author, avatar, handle, and text in an embedded card right below the response/repost. | PASS |
 | **First Story Optical Spacing** | Inspect space above first story headline under category header vs subsequent stories. | Spacing above first story title (~30px) matches inter-story rhythm (~28px) with zero cramping. | PASS |
 | **Hero Image Excerpt Integrity** | View stories containing large 16:9 hero images. | Story card height expands naturally without fixed 500px clamping; excerpt text is never sliced horizontally. | PASS |
+| **Socials Thread Self-Reply Suppression (Build 458)** | View multi-part posts/threads where author replies to themselves (e.g. Mohamed A. El-Erian). | Redundant parent box is omitted, showing context strictly for external replies/quotes. | PASS |
+| **Category Card First Story Spacing (Build 458)** | Inspect space above first story headline in Category Card vs subsequent stories. | Spacing above first story title (~22px) matches inter-story rhythm (~28px) with zero cramping. | PASS |
+| **Native Browser Scrollbar Edge (Build 458)** | View Cards and Briefing view on wide / ultrawide displays. | App spans edge-to-edge; vertical scrollbar rests natively at the far right edge of the browser window. | PASS |
 | **Line 37 Invariant** | Inspect line 37 of `index.html`. | `<style id="tailwind-static">/*! tailwindcss v4` remains intact. | PASS |
 | **Syntax Validation** | Execute Node VM syntax audit across all scripts. | 100% valid JavaScript with zero syntax errors. | PASS |
 

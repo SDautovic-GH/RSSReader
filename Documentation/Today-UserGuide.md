@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Product** | Today (formerly RSS Reader) |
 | **Live App** | [today.dautovic.com](https://today.dautovic.com) |
-| **Build Target** | Build 457+ |
+| **Build Target** | Build 458+ |
 | **Documentation Type** | Comprehensive User Manual |
 | **Last Updated** | November 1, 2026 |
 
