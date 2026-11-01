@@ -2656,9 +2656,10 @@
             position: relative;
         }
 
-        /* 2. Absolute Center Lock for Today Switcher (Mathematical Simultaneous Centering) */
+        /* 2. Absolute Center Lock for Today & Personal Hub Switchers (Mathematical Simultaneous Centering) */
         #viewer-today-switcher,
-        #desk-today-switcher {
+        #desk-today-switcher,
+        #desk-saved-switcher {
             position: absolute !important;
             left: 50% !important;
             top: 50% !important;
@@ -2669,7 +2670,8 @@
         }
 
         body.desktop-today-story #viewer-today-switcher,
-        body.desktop-today-story #desk-today-switcher {
+        body.desktop-today-story #desk-today-switcher,
+        body.desktop-today-story #desk-saved-switcher {
             display: none !important;
         }
 
@@ -6986,6 +6988,20 @@
                             </button>
                             <button type="button" data-active="true" onclick="window.switchTodayView('cards')">
                                 <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-newspaper"/></svg>Cards
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Unified Desktop Personal Hub Switcher (Read Later / Saved / History) -->
+                    <div id="desk-saved-switcher" class="hidden flex items-center justify-center flex-1">
+                        <div class="segmented today-segmented saved-segmented" role="group" aria-label="Personal Hub">
+                            <button id="desk-subtab-readlater" type="button" data-active="true" onclick="window.setSmartFeed('read-later')">
+                                <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-bookmark"/></svg>Read Later
+                            </button>
+                            <button id="desk-subtab-saved" type="button" data-active="false" onclick="window.setSmartFeed('saved')">
+                                <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-star"/></svg>Saved
+                            </button>
+                            <button id="desk-subtab-history" type="button" data-active="false" onclick="window.setSmartFeed('recently-read')">
+                                <svg class="w-3.5 h-3.5 inline" style="vertical-align:-1px"><use href="#icon-history"/></svg>History
                             </button>
                         </div>
                     </div>
@@ -11563,7 +11579,17 @@
                 }
             });
         }
-        function refreshUI() { _lastTimelineKey = ''; renderTimeline(true); renderFeeds(); if (window.currentArticle?.isBrief || window._todayInColumn) window.updateBriefMarkReadButtons?.(); window.syncBriefCards?.(); }
+        function refreshUI() {
+            _lastTimelineKey = '';
+            if (['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed) && typeof isMobile === 'function' && !isMobile()) {
+                window.renderPersonalHubColumn?.();
+            } else {
+                renderTimeline(true);
+            }
+            renderFeeds();
+            if (window.currentArticle?.isBrief || window._todayInColumn) window.updateBriefMarkReadButtons?.();
+            window.syncBriefCards?.();
+        }
         // After a user action empties the Articles list on mobile, jump to Feeds
         // instead of leaving the user staring at an empty pane.
         function maybeGoHomeIfTimelineEmpty() {
@@ -12484,7 +12510,10 @@
             if (window.currentSmartFeed === 'recently-read') setSmartFeed('recently-read');
         };
         window.setSmartFeed = async (type) => {
-            window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
+            const isPersonal = ['read-later', 'saved', 'recently-read'].includes(type);
+            if (!isPersonal) {
+                window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
+            }
             window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
@@ -12495,7 +12524,7 @@
             renderFeeds();
             if (isMobile()) {
                 setMobilePane('timeline');
-                if (['read-later', 'saved', 'recently-read'].includes(type)) {
+                if (isPersonal) {
                     setMobileTab('saved');
                 }
             }
@@ -12568,6 +12597,12 @@
             } else {
                 window._readLaterArticles = null;
             }
+            if (isPersonal && typeof isMobile === 'function' && !isMobile()) {
+                window.showTodayColumn?.(true);
+                window.renderPersonalHubColumn?.(type);
+                return;
+            }
+            window.showTodayColumn?.(false);
             renderTimeline();
         };
 
@@ -12778,6 +12813,9 @@
         // An article the reader can open by id: the live list, or the read archive.
         window.readerArticleById = function (id) {
             return (window.articles || []).find(a => a.id === id)
+                || (Array.isArray(window._savedArticles) ? window._savedArticles.find(a => a.id === id) : null)
+                || (Array.isArray(window._readLaterArticles) ? window._readLaterArticles.find(a => a.id === id) : null)
+                || (Array.isArray(window._recentlyReadArticles) ? window._recentlyReadArticles.find(a => a.id === id) : null)
                 || (window._aiBriefingArticles?.get(id))
                 || (Array.isArray(window._readArchiveCache) ? window._readArchiveCache.find(a => a.id === id || a.link === id) : null)
                 || null;
@@ -14316,7 +14354,9 @@
             metaExtra = '',
             sectionCount = 0,
             totalStories = 0,
-            readTimeEst = 1
+            readTimeEst = 1,
+            isPersonalHub = false,
+            headerIcon = 'icon-rss'
         } = {}) {
             if (!headingLong || !headingDay) {
                 const triggerDate = new Date();
@@ -14333,11 +14373,11 @@
                     day: 'numeric'
                 });
             }
-            const sw = window.getTodayViewSwitcherHtml ? window.getTodayViewSwitcherHtml(activeView) : '';
+            const sw = (!isPersonalHub && window.getTodayViewSwitcherHtml) ? window.getTodayViewSwitcherHtml(activeView) : '';
             return `
                 <div class="brief-header border-b border-gray-100 dark:border-gray-800">
                     <div class="app-header-row">
-                        <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#icon-rss"/></svg></span>
+                        <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#${headerIcon || 'icon-rss'}"/></svg></span>
                         <div class="app-header-text">
                             <div class="brief-header-status app-subtitle"><span data-today-status>${esc(statusText)}</span><span class="brief-header-new" data-today-new></span></div>
                             <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white leading-tight">
@@ -15362,7 +15402,175 @@ ${sampleText}`;
             };
         };
 
-        // ===== DESKTOP TODAY COLUMN =====
+        // ===== PERSONAL HUB BRIEF ENGINE (Read Later, Saved, History) =====
+        // Reuses Today's exact clustering and composeSlotBrief structure, rendering as unified cards.
+        window.buildPersonalHubBrief = function (hubType) {
+            let pool = [];
+            let title = '';
+            let emptyTitle = '';
+            let emptySubtext = '';
+            let icon = '';
+            if (hubType === 'read-later') {
+                pool = window._readLaterArticles || [];
+                title = 'Read Later';
+                emptyTitle = 'No articles saved for later';
+                emptySubtext = 'Add articles from any feed or Today using the bookmark button.';
+                icon = 'icon-bookmark';
+            } else if (hubType === 'saved') {
+                pool = window._savedArticles || [];
+                title = 'Saved';
+                emptyTitle = 'No starred articles';
+                emptySubtext = 'Star articles from any story to keep them permanently.';
+                icon = 'icon-star';
+            } else if (hubType === 'recently-read') {
+                pool = window._recentlyReadArticles || [];
+                title = 'History';
+                emptyTitle = 'No reading history';
+                emptySubtext = 'Articles you open will be remembered here.';
+                icon = 'icon-history';
+            }
+
+            const totalStories = pool.length;
+            let sections = [];
+
+            if (hubType === 'recently-read') {
+                const now = new Date();
+                const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                const startOfYesterday = startOfToday - 86400000;
+                const startOfWeek = startOfToday - 6 * 86400000;
+                const groups = {
+                    today: { name: 'Today', slug: 'today', icon: 'icon-sun', noMarkRead: true, stories: [] },
+                    yesterday: { name: 'Yesterday', slug: 'yesterday', icon: 'icon-history', noMarkRead: true, stories: [] },
+                    this_week: { name: 'Earlier This Week', slug: 'this_week', icon: 'icon-calendar', noMarkRead: true, stories: [] },
+                    older: { name: 'Older', slug: 'older', icon: 'icon-archive', noMarkRead: true, stories: [] },
+                };
+                pool.forEach(a => {
+                    const t = a.readAt || (a.timestamp ? new Date(a.timestamp).getTime() : 0);
+                    if (t >= startOfToday) groups.today.stories.push(a);
+                    else if (t >= startOfYesterday) groups.yesterday.stories.push(a);
+                    else if (t >= startOfWeek) groups.this_week.stories.push(a);
+                    else groups.older.stories.push(a);
+                });
+                sections = Object.values(groups).filter(g => g.stories.length > 0);
+            } else {
+                const catMap = new Map();
+                pool.forEach(a => {
+                    const cat = getCategoryForArticle(a) || 'Uncategorized';
+                    if (!catMap.has(cat)) {
+                        const slug = cat.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                        catMap.set(cat, {
+                            name: cat,
+                            slug: slug || 'uncategorized',
+                            icon: 'icon-folder',
+                            noMarkRead: (hubType === 'saved'),
+                            stories: []
+                        });
+                    }
+                    catMap.get(cat).stories.push(a);
+                });
+                const order = window._categoryOrder || [];
+                sections = Array.from(catMap.values()).sort((a, b) => {
+                    const ia = order.indexOf(a.name);
+                    const ib = order.indexOf(b.name);
+                    if (ia >= 0 && ib >= 0) return ia - ib;
+                    if (ia >= 0) return -1;
+                    if (ib >= 0) return 1;
+                    return b.stories.length - a.stories.length;
+                });
+            }
+
+            const now = Date.now();
+            const dateStr = typeof getETParts === 'function' ? getETParts(new Date(now)).dateStr : '';
+
+            const composed = composeSlotBrief({
+                id: `brief:${hubType}`,
+                slot: hubType,
+                name: title,
+                windowLabel: `${totalStories} ${totalStories === 1 ? 'story' : 'stories'}`,
+                dateStr,
+                triggerTs: now,
+                windowStart: 0,
+                windowEnd: now,
+                headerAction: '',
+                noFooterMarkRead: (hubType === 'saved' || hubType === 'recently-read'),
+                isPersonalHub: true,
+                headerIcon: icon
+            }, sections, totalStories);
+
+            let body = composed.body;
+            if (totalStories === 0) {
+                body = `
+                    <div class="brief-container">
+                        <div class="brief-header border-b border-gray-100 dark:border-gray-800">
+                            <div class="app-header-row">
+                                <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#${icon}"/></svg></span>
+                                <div class="app-header-text">
+                                    <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white leading-tight">
+                                        <span class="brief-date">${esc(title)}</span>
+                                    </h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center py-20 text-gray-400">
+                            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#${icon}"/></svg>
+                            </div>
+                            <p class="text-lg font-bold text-gray-900 dark:text-gray-100">${esc(emptyTitle)}</p>
+                            <p class="text-sm text-gray-500 mt-1">${esc(emptySubtext)}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return {
+                id: `brief:${hubType}`,
+                body,
+                sections,
+                totalStories
+            };
+        };
+
+        window.renderPersonalHubColumn = function (type) {
+            const col = document.getElementById('today-column');
+            if (!col) return;
+            const curType = type || window.currentSmartFeed || 'read-later';
+            const keepScroll = col.scrollTop;
+            window._personalHubBrief = window.buildPersonalHubBrief(curType);
+            col.innerHTML = window._personalHubBrief.body;
+            normalizeBriefDOM(col);
+            col.scrollTop = keepScroll;
+
+            const deskTodaySwitcher = document.getElementById('desk-today-switcher');
+            const deskSavedSwitcher = document.getElementById('desk-saved-switcher');
+            if (deskTodaySwitcher) deskTodaySwitcher.classList.add('hidden');
+            if (deskSavedSwitcher) {
+                deskSavedSwitcher.classList.remove('hidden');
+                deskSavedSwitcher.querySelectorAll('button').forEach((b, idx) => {
+                    const types = ['read-later', 'saved', 'recently-read'];
+                    b.setAttribute('data-active', types[idx] === curType ? 'true' : 'false');
+                });
+            }
+
+            const pool = curType === 'read-later' ? (window._readLaterArticles || [])
+                : (curType === 'saved' ? (window._savedArticles || []) : (window._recentlyReadArticles || []));
+            const countEl = document.getElementById('timeline-count');
+            if (countEl) {
+                if (curType === 'read-later') {
+                    const unread = pool.filter(a => a.unread).length;
+                    countEl.textContent = `Mark Read · ${unread}`;
+                } else if (curType === 'saved') {
+                    countEl.textContent = `${pool.length} Saved`;
+                } else {
+                    countEl.textContent = `History · ${pool.length}`;
+                }
+            }
+
+            window.updateViewerBackBtn?.();
+            window.updateBriefMarkReadButtons?.();
+            window.syncBriefCards?.(null, { now: true });
+        };
+
+        // ===== DESKTOP TODAY & PERSONAL HUB COLUMN =====
         // On the phone Today is a full-screen "article" in the viewer pane. On desktop it renders in the
         // middle column (#today-column, beside #article-list), so stories open beside it. The markup is
         // the same: buildTodayBrief() + normalizeBriefDOM(), which touches only its container. Story
@@ -15378,10 +15586,14 @@ ${sampleText}`;
                 if (!on) col.innerHTML = '';
             }
             document.getElementById('article-list')?.classList.toggle('hidden', !!on);
-            document.getElementById('timeline-count-group')?.classList.toggle('hidden', !!on);
+            
+            const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
+            document.getElementById('timeline-count-group')?.classList.toggle('hidden', !on && !isPersonal);
 
             const deskSwitcher = document.getElementById('desk-today-switcher');
-            if (deskSwitcher) deskSwitcher.classList.toggle('hidden', !on);
+            const deskSavedSwitcher = document.getElementById('desk-saved-switcher');
+            if (deskSwitcher) deskSwitcher.classList.toggle('hidden', !on || isPersonal);
+            if (deskSavedSwitcher) deskSavedSwitcher.classList.toggle('hidden', !on || !isPersonal);
             const viewerSwitcher = document.getElementById('viewer-today-switcher');
 
             if (!on) {
@@ -15390,20 +15602,28 @@ ${sampleText}`;
                 document.body.classList.remove('desktop-today-story');
                 if (viewerSwitcher) viewerSwitcher.classList.add('hidden');
                 if (deskSwitcher) deskSwitcher.classList.add('hidden');
+                if (deskSavedSwitcher) deskSavedSwitcher.classList.add('hidden');
             } else if (typeof isMobile === 'function' && !isMobile()) {
                 const targetView = window._currentTodayView || 'cards';
-                if (targetView === 'briefing') {
+                if (!isPersonal && targetView === 'briefing') {
                     document.body.classList.add('desktop-today-briefing');
                     document.body.classList.remove('desktop-today-cards-wide');
                     document.body.classList.remove('desktop-today-story');
                     if (viewerSwitcher) viewerSwitcher.classList.remove('hidden');
                     if (deskSwitcher) deskSwitcher.classList.add('hidden');
+                    if (deskSavedSwitcher) deskSavedSwitcher.classList.add('hidden');
                 } else {
                     document.body.classList.remove('desktop-today-briefing');
                     document.body.classList.remove('desktop-today-story');
                     document.body.classList.add('desktop-today-cards-wide');
                     if (viewerSwitcher) viewerSwitcher.classList.add('hidden');
-                    if (deskSwitcher) deskSwitcher.classList.remove('hidden');
+                    if (isPersonal) {
+                        if (deskSwitcher) deskSwitcher.classList.add('hidden');
+                        if (deskSavedSwitcher) deskSavedSwitcher.classList.remove('hidden');
+                    } else {
+                        if (deskSwitcher) deskSwitcher.classList.remove('hidden');
+                        if (deskSavedSwitcher) deskSavedSwitcher.classList.add('hidden');
+                    }
                 }
             }
         };
@@ -15714,15 +15934,24 @@ ${sampleText}`;
             window.updateActionButton?.();
             window.updateViewerBackBtn?.();
             document.body.classList.remove('desktop-today-story');
-            if (typeof isMobile === 'function' && !isMobile() && window._todayInColumn && window._currentTodayView === 'cards') {
-                document.body.classList.add('desktop-today-cards-wide');
-                document.body.classList.remove('desktop-today-briefing');
-                document.getElementById('viewer-today-switcher')?.classList.add('hidden');
-                document.getElementById('desk-today-switcher')?.classList.remove('hidden');
+            if (typeof isMobile === 'function' && !isMobile() && window._todayInColumn) {
+                const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
+                if (isPersonal || window._currentTodayView === 'cards') {
+                    document.body.classList.add('desktop-today-cards-wide');
+                    document.body.classList.remove('desktop-today-briefing');
+                    document.getElementById('viewer-today-switcher')?.classList.add('hidden');
+                    if (isPersonal) {
+                        document.getElementById('desk-saved-switcher')?.classList.remove('hidden');
+                        document.getElementById('desk-today-switcher')?.classList.add('hidden');
+                    } else {
+                        document.getElementById('desk-today-switcher')?.classList.remove('hidden');
+                        document.getElementById('desk-saved-switcher')?.classList.add('hidden');
+                    }
+                }
             }
         };
 
-        // Desktop Back / Escape / b with Today in the column: close the story and land on its card in the
+        // Desktop Back / Escape / b with Today or Personal Hub in the column: close the story and land on its card in the
         // brief, so reading picks up where it left off.
         window.closeStoryToTodayColumn = function () {
             const cur = window.currentArticle;
@@ -15731,6 +15960,14 @@ ${sampleText}`;
             document.body.classList.remove('desktop-today-story');
             if (typeof isMobile === 'function' && !isMobile()) {
                 document.body.classList.add('desktop-today-cards-wide');
+                const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
+                if (isPersonal) {
+                    document.getElementById('desk-saved-switcher')?.classList.remove('hidden');
+                    document.getElementById('desk-today-switcher')?.classList.add('hidden');
+                } else {
+                    document.getElementById('desk-today-switcher')?.classList.remove('hidden');
+                    document.getElementById('desk-saved-switcher')?.classList.add('hidden');
+                }
             }
             window.clearReaderPane();
             window.syncBriefCards(null, { now: true });   // Back: your tap (322)
@@ -16437,13 +16674,15 @@ ${sampleText}`;
             const briefHeaderHtml = window.buildTodaySharedHeaderHtml ? window.buildTodaySharedHeaderHtml({
                 activeView: 'cards',
                 statusText: '',
-                headingLong,
-                headingDay,
+                headingLong: slotDef.isPersonalHub ? slotDef.name : headingLong,
+                headingDay: slotDef.isPersonalHub ? slotDef.name : headingDay,
                 headerAction: slotDef.headerAction || '',
                 metaExtra: slotDef.metaExtra || '',
                 sectionCount: categorySections.length,
                 totalStories,
-                readTimeEst
+                readTimeEst,
+                isPersonalHub: !!slotDef.isPersonalHub,
+                headerIcon: slotDef.headerIcon || 'icon-rss'
             }) : '';
 
             // Generate HTML Body
@@ -16473,14 +16712,16 @@ ${sampleText}`;
                 html += `<div class="brief-cards-grid">`;
                 html += renderBriefSectionsHtml(categorySections);
                 html += `</div>`;
-                html += `
-                    <div class="brief-footer text-sm text-gray-500 dark:text-gray-400">
-                        <button type="button" onclick="window.markBriefCategoriesRead(this)" class="brief-mark-all-btn pill-btn pill-primary inline-flex" title="Mark all articles read in covered category folders">
-                            <svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg>
-                            <span>Mark All Read in Folders</span>
-                        </button>
-                    </div>
-                `;
+                if (!slotDef.noFooterMarkRead) {
+                    html += `
+                        <div class="brief-footer text-sm text-gray-500 dark:text-gray-400">
+                            <button type="button" onclick="window.markBriefCategoriesRead(this)" class="brief-mark-all-btn pill-btn pill-primary inline-flex" title="Mark all articles read in covered category folders">
+                                <svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg>
+                                <span>Mark All Read in Folders</span>
+                            </button>
+                        </div>
+                    `;
+                }
             }
             html += `</div>`;
 
@@ -19653,7 +19894,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 454;
+        window.APP_BUILD = 455;
 
         (async function initApp() {
             try {
@@ -20531,7 +20772,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v454';
+const CACHE_NAME = 'rss-reader-v455';
 const APP_SHELL = [
     '/',
     'index.html'
