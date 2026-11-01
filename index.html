@@ -1592,6 +1592,48 @@
             color: #000000 !important;
         }
 
+        /* Briefing AI Bullet Story Menu (.ai-menu-item) */
+        #article-context-menu .ai-menu-item,
+        #article-context-menu a.ai-menu-item {
+            padding: 7px 12px !important;
+            border-radius: 7px !important;
+            font-size: 13.5px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            background: transparent !important;
+            border: none !important;
+            cursor: pointer !important;
+            text-decoration: none !important;
+            transition: background 0.12s ease, color 0.12s ease !important;
+        }
+
+        .dark #article-context-menu .ai-menu-item,
+        .dark #article-context-menu a.ai-menu-item {
+            color: #e5e7eb !important;
+            background: transparent !important;
+        }
+
+        .dark #article-context-menu .ai-menu-item:hover,
+        .dark #article-context-menu a.ai-menu-item:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #ffffff !important;
+        }
+
+        html:not(.dark) #article-context-menu .ai-menu-item,
+        html:not(.dark) #article-context-menu a.ai-menu-item {
+            color: #1f2937 !important;
+            background: transparent !important;
+        }
+
+        html:not(.dark) #article-context-menu .ai-menu-item:hover,
+        html:not(.dark) #article-context-menu a.ai-menu-item:hover {
+            background: rgba(0, 0, 0, 0.06) !important;
+            color: #111827 !important;
+        }
+
         /* The menus and the messages follow App Zoom; a menu is as wide as its longest item. Its items
            stack in a column that stretches them, not at width 100%, which Chrome counts against the
            window when sizing the menu to its content. */
@@ -11581,8 +11623,20 @@
         }
         function refreshUI() {
             _lastTimelineKey = '';
-            if (['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed) && typeof isMobile === 'function' && !isMobile()) {
-                window.renderPersonalHubColumn?.();
+            if (typeof isMobile === 'function' && !isMobile()) {
+                if (['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed)) {
+                    window.renderPersonalHubColumn?.();
+                } else if (window.currentSmartFeed === 'all' && !document.getElementById('feed-btn-today')?.classList.contains('active-item')) {
+                    if (window.currentCategoryFilter) {
+                        window.renderFeedCardsWorkstation?.('category', window.currentCategoryFilter);
+                    } else if (window.currentSourceFilter) {
+                        window.renderFeedCardsWorkstation?.('source', window.currentSourceFilter);
+                    } else {
+                        window.renderFeedCardsWorkstation?.('all');
+                    }
+                } else {
+                    renderTimeline(true);
+                }
             } else {
                 renderTimeline(true);
             }
@@ -11975,7 +12029,6 @@
         };
 
         window.setCategoryFilter = (cat) => {
-            window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
             if (window._returnToBriefState) window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = 'all';
@@ -11989,11 +12042,16 @@
                 window.updateFoldersSectionState?.();
             }
             renderFeeds();
-            if (isMobile()) setMobilePane('timeline');
-            renderTimeline();
+            if (isMobile()) {
+                window.showTodayColumn?.(false);
+                setMobilePane('timeline');
+                renderTimeline();
+                return;
+            }
+            window.showTodayColumn?.(true);
+            window.renderFeedCardsWorkstation?.('category', cat);
         };
         window.setSourceFilter = (source) => {
-            window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
             if (window._returnToBriefState) window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = 'all';
@@ -12007,8 +12065,14 @@
                 window.updateFoldersSectionState?.();
             }
             renderFeeds();
-            if (isMobile()) setMobilePane('timeline');
-            renderTimeline();
+            if (isMobile()) {
+                window.showTodayColumn?.(false);
+                setMobilePane('timeline');
+                renderTimeline();
+                return;
+            }
+            window.showTodayColumn?.(true);
+            window.renderFeedCardsWorkstation?.('source', source);
         };
         window.toggleCategory = (cat) => {
             window.collapsedCategories[cat] = (window.collapsedCategories[cat] === false);
@@ -12511,9 +12575,6 @@
         };
         window.setSmartFeed = async (type) => {
             const isPersonal = ['read-later', 'saved', 'recently-read'].includes(type);
-            if (!isPersonal) {
-                window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
-            }
             window._returnToBriefState = null;
             window._pinnedArticleIds.clear();
             window.currentSmartFeed = type; window.currentCategoryFilter = null; window.currentSourceFilter = null;
@@ -12600,6 +12661,11 @@
             if (isPersonal && typeof isMobile === 'function' && !isMobile()) {
                 window.showTodayColumn?.(true);
                 window.renderPersonalHubColumn?.(type);
+                return;
+            }
+            if (type === 'all' && typeof isMobile === 'function' && !isMobile()) {
+                window.showTodayColumn?.(true);
+                window.renderFeedCardsWorkstation?.('all');
                 return;
             }
             window.showTodayColumn?.(false);
@@ -13808,7 +13874,7 @@
             if (!stories.length) return;
             const menu = document.getElementById('article-context-menu');
             if (!menu) return;
-            const cls = 'ai-menu-item w-full text-left cursor-pointer block';
+            const cls = 'ai-menu-item';
             const div = '<div class="my-1 border-t border-gray-200 dark:border-white/10"></div>';
             const lead = stories[0];
             const sid = escJs(lead.id);
@@ -13827,7 +13893,7 @@
                     const sName = esc(s.source || s.title || 'Source');
                     const sLink = esc(s.link || '');
                     if (sLink) {
-                        html += `<a href="${sLink}" target="_blank" rel="noopener noreferrer" class="${cls} flex items-center justify-between text-xs text-gray-300"><span>${sName}</span><svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0 ml-2"><use href="#icon-external-link"/></svg></a>`;
+                        html += `<a href="${sLink}" target="_blank" rel="noopener noreferrer" class="${cls}"><span>${sName}</span><svg class="w-3.5 h-3.5 opacity-60 flex-shrink-0 ml-2"><use href="#icon-external-link"/></svg></a>`;
                     }
                 });
             }
@@ -14356,6 +14422,7 @@
             totalStories = 0,
             readTimeEst = 1,
             isPersonalHub = false,
+            isFeedCards = false,
             headerIcon = 'icon-rss'
         } = {}) {
             if (!headingLong || !headingDay) {
@@ -14373,7 +14440,8 @@
                     day: 'numeric'
                 });
             }
-            const sw = (!isPersonalHub && window.getTodayViewSwitcherHtml) ? window.getTodayViewSwitcherHtml(activeView) : '';
+            const sw = (!isPersonalHub && !isFeedCards && window.getTodayViewSwitcherHtml) ? window.getTodayViewSwitcherHtml(activeView) : '';
+            const secLabel = sectionCount > 0 ? `<span class="brief-meta-item whitespace-nowrap desk-only">${sectionCount} ${sectionCount === 1 ? 'section' : 'sections'}</span><span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>` : '';
             return `
                 <div class="brief-header border-b border-gray-100 dark:border-gray-800">
                     <div class="app-header-row">
@@ -14390,9 +14458,8 @@
                         ${headerAction || ''}
                     </div>
                     <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
-                        <span class="brief-meta-item whitespace-nowrap desk-only">${sectionCount} sections</span>
-                        <span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>
-                        <span class="brief-meta-item whitespace-nowrap desk-only">${totalStories} stories</span>
+                        ${secLabel}
+                        <span class="brief-meta-item whitespace-nowrap desk-only">${totalStories} ${totalStories === 1 ? 'story' : 'stories'}</span>
                         <span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>
                         <span class="brief-meta-item whitespace-nowrap desk-only">~${readTimeEst} min read</span>
                         ${metaExtra || ''}
@@ -15462,7 +15529,7 @@ ${sampleText}`;
                             name: cat,
                             slug: slug || 'uncategorized',
                             icon: 'icon-folder',
-                            noMarkRead: (hubType === 'saved'),
+                            noMarkRead: true,
                             stories: []
                         });
                     }
@@ -15492,7 +15559,7 @@ ${sampleText}`;
                 windowStart: 0,
                 windowEnd: now,
                 headerAction: '',
-                noFooterMarkRead: (hubType === 'saved' || hubType === 'recently-read'),
+                noFooterMarkRead: true,
                 isPersonalHub: true,
                 headerIcon: icon
             }, sections, totalStories);
@@ -15500,7 +15567,7 @@ ${sampleText}`;
             let body = composed.body;
             if (totalStories === 0) {
                 body = `
-                    <div class="brief-container">
+                    <div class="brief-container" data-personal-hub="${hubType}">
                         <div class="brief-header border-b border-gray-100 dark:border-gray-800">
                             <div class="app-header-row">
                                 <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#${icon}"/></svg></span>
@@ -15570,6 +15637,171 @@ ${sampleText}`;
             window.syncBriefCards?.(null, { now: true });
         };
 
+        // ===== FEED CARDS BRIEF ENGINE (Unread, Folders, Feeds) =====
+        // Reuses Today's cards grid & jump bar for desktop workstations.
+        window.buildFeedCardsBrief = function (viewType, filterParam) {
+            let pool = [];
+            let title = '';
+            let icon = 'icon-newspaper';
+            let sections = [];
+            const now = Date.now();
+            const dateStr = typeof getETParts === 'function' ? getETParts(new Date(now)).dateStr : '';
+
+            if (viewType === 'all') {
+                title = 'Unread';
+                icon = 'icon-newspaper';
+                pool = (window.articles || []).filter(a => (a.unread && (window._showMuted || !window.isMuted(a))) || window._pinnedArticleIds.has(a.id));
+                const catMap = new Map();
+                pool.forEach(a => {
+                    const cat = getCategoryForArticle(a) || 'Uncategorized';
+                    if (!catMap.has(cat)) {
+                        const slug = cat.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                        catMap.set(cat, {
+                            name: cat,
+                            slug: slug || 'uncategorized',
+                            icon: cat.toLowerCase().includes('top stories') ? 'icon-newspaper' : 'icon-folder',
+                            stories: []
+                        });
+                    }
+                    catMap.get(cat).stories.push(a);
+                });
+                const order = window._categoryOrder || [];
+                sections = Array.from(catMap.values()).sort((a, b) => {
+                    const ia = order.indexOf(a.name);
+                    const ib = order.indexOf(b.name);
+                    if (ia >= 0 && ib >= 0) return ia - ib;
+                    if (ia >= 0) return -1;
+                    if (ib >= 0) return 1;
+                    return b.stories.length - a.stories.length;
+                });
+            } else if (viewType === 'category') {
+                title = filterParam || 'Folder';
+                icon = 'icon-folder';
+                const allFeeds = [...(window.feeds || [])];
+                if (Array.isArray(window.accountStates?.local)) {
+                    window.accountStates.local.forEach(f => {
+                        if (!allFeeds.some(af => af.url === f.url || af.name === f.name)) allFeeds.push(f);
+                    });
+                }
+                const catFeeds = allFeeds.filter(f => (f.category || '').trim().toLowerCase() === (title).trim().toLowerCase());
+                const catSources = new Set(catFeeds.map(f => f.name));
+                const catUrls = new Set(catFeeds.map(f => f.url));
+                pool = (window.articles || []).filter(a => {
+                    if (!a.unread || a.isBrief || window.isMuted(a)) return false;
+                    return catSources.has(a.source) ||
+                        (a.feedUrl && catUrls.has(a.feedUrl)) ||
+                        (typeof getCategoryForArticle === 'function' && getCategoryForArticle(a).trim().toLowerCase() === title.trim().toLowerCase());
+                });
+                const srcMap = new Map();
+                pool.forEach(a => {
+                    const src = a.source || 'News';
+                    if (!srcMap.has(src)) {
+                        const slug = src.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                        srcMap.set(src, {
+                            name: src,
+                            slug: slug || 'feed',
+                            icon: 'icon-rss',
+                            stories: []
+                        });
+                    }
+                    srcMap.get(src).stories.push(a);
+                });
+                sections = Array.from(srcMap.values()).sort((a, b) => b.stories.length - a.stories.length);
+            } else if (viewType === 'source') {
+                title = filterParam || 'Feed';
+                icon = 'icon-rss';
+                pool = (window.articles || []).filter(a => a.source === title && a.unread && !a.isBrief && !window.isMuted(a));
+                const slug = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                sections = pool.length ? [{
+                    name: title,
+                    slug: slug || 'feed',
+                    icon: 'icon-rss',
+                    stories: pool
+                }] : [];
+            }
+
+            const totalStories = pool.length;
+            const readTimeEst = Math.max(1, Math.round(totalStories * 0.4));
+            const subLabel = viewType === 'source'
+                ? `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'}`
+                : `${sections.length} ${sections.length === 1 ? (viewType === 'category' ? 'feed' : 'section') : (viewType === 'category' ? 'feeds' : 'sections')} · ${totalStories} unread stories`;
+
+            const composed = composeSlotBrief({
+                id: `brief:${viewType}:${filterParam || ''}`,
+                slot: viewType,
+                name: title,
+                windowLabel: subLabel,
+                dateStr,
+                triggerTs: now,
+                windowStart: 0,
+                windowEnd: now,
+                headerAction: '',
+                noFooterMarkRead: false,
+                isPersonalHub: false,
+                isFeedCards: true,
+                headerIcon: icon
+            }, sections, totalStories);
+
+            let body = composed.body;
+            if (totalStories === 0) {
+                body = `
+                    <div class="brief-container" data-feed-cards="${viewType}">
+                        <div class="brief-header border-b border-gray-100 dark:border-gray-800">
+                            <div class="app-header-row">
+                                <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#${icon}"/></svg></span>
+                                <div class="app-header-text">
+                                    <div class="brief-header-status app-subtitle"><span data-today-status></span><span class="brief-header-new" data-today-new></span></div>
+                                    <h2 class="brief-header-title app-title font-bold text-gray-900 dark:text-white leading-tight">
+                                        <span class="brief-date">${esc(title)}</span>
+                                    </h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center py-20 text-gray-400">
+                            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#${icon}"/></svg>
+                            </div>
+                            <p class="text-lg font-bold text-gray-900 dark:text-gray-100">All caught up</p>
+                            <p class="text-sm text-gray-500 mt-1">No unread stories in ${esc(title)}.</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return {
+                id: `brief:${viewType}:${filterParam || ''}`,
+                body,
+                sections,
+                totalStories
+            };
+        };
+
+        window.renderFeedCardsWorkstation = function (viewType, filterParam) {
+            const col = document.getElementById('today-column');
+            if (!col) return;
+            const curType = viewType || (window.currentCategoryFilter ? 'category' : (window.currentSourceFilter ? 'source' : 'all'));
+            const curParam = filterParam || (curType === 'category' ? window.currentCategoryFilter : (curType === 'source' ? window.currentSourceFilter : ''));
+            const keepScroll = col.scrollTop;
+            window._feedCardsBrief = window.buildFeedCardsBrief(curType, curParam);
+            col.innerHTML = window._feedCardsBrief.body;
+            normalizeBriefDOM(col);
+            col.scrollTop = keepScroll;
+
+            // Switchers: Today and Personal Hub switchers are hidden for feed cards
+            document.getElementById('desk-today-switcher')?.classList.add('hidden');
+            document.getElementById('desk-saved-switcher')?.classList.add('hidden');
+
+            const countEl = document.getElementById('timeline-count');
+            if (countEl) {
+                const total = window._feedCardsBrief.totalStories;
+                countEl.textContent = `Mark Read · ${total}`;
+            }
+
+            window.updateViewerBackBtn?.();
+            window.updateBriefMarkReadButtons?.();
+            window.syncBriefCards?.(null, { now: true });
+        };
+
         // ===== DESKTOP TODAY & PERSONAL HUB COLUMN =====
         // On the phone Today is a full-screen "article" in the viewer pane. On desktop it renders in the
         // middle column (#today-column, beside #article-list), so stories open beside it. The markup is
@@ -15588,12 +15820,14 @@ ${sampleText}`;
             document.getElementById('article-list')?.classList.toggle('hidden', !!on);
             
             const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
-            document.getElementById('timeline-count-group')?.classList.toggle('hidden', !on && !isPersonal);
+            const isToday = !isPersonal && !window.currentCategoryFilter && !window.currentSourceFilter && (document.getElementById('feed-btn-today')?.classList.contains('active-item') || window.currentSmartFeed === 'today');
 
             const deskSwitcher = document.getElementById('desk-today-switcher');
             const deskSavedSwitcher = document.getElementById('desk-saved-switcher');
-            if (deskSwitcher) deskSwitcher.classList.toggle('hidden', !on || isPersonal);
+            if (deskSwitcher) deskSwitcher.classList.toggle('hidden', !on || !isToday);
             if (deskSavedSwitcher) deskSavedSwitcher.classList.toggle('hidden', !on || !isPersonal);
+            document.getElementById('timeline-count-group')?.classList.toggle('hidden', !on || isToday || isPersonal);
+
             const viewerSwitcher = document.getElementById('viewer-today-switcher');
 
             if (!on) {
@@ -15605,7 +15839,7 @@ ${sampleText}`;
                 if (deskSavedSwitcher) deskSavedSwitcher.classList.add('hidden');
             } else if (typeof isMobile === 'function' && !isMobile()) {
                 const targetView = window._currentTodayView || 'cards';
-                if (!isPersonal && targetView === 'briefing') {
+                if (isToday && targetView === 'briefing') {
                     document.body.classList.add('desktop-today-briefing');
                     document.body.classList.remove('desktop-today-cards-wide');
                     document.body.classList.remove('desktop-today-story');
@@ -15617,11 +15851,14 @@ ${sampleText}`;
                     document.body.classList.remove('desktop-today-story');
                     document.body.classList.add('desktop-today-cards-wide');
                     if (viewerSwitcher) viewerSwitcher.classList.add('hidden');
-                    if (isPersonal) {
+                    if (isToday) {
+                        if (deskSwitcher) deskSwitcher.classList.remove('hidden');
+                        if (deskSavedSwitcher) deskSavedSwitcher.classList.add('hidden');
+                    } else if (isPersonal) {
                         if (deskSwitcher) deskSwitcher.classList.add('hidden');
                         if (deskSavedSwitcher) deskSavedSwitcher.classList.remove('hidden');
                     } else {
-                        if (deskSwitcher) deskSwitcher.classList.remove('hidden');
+                        if (deskSwitcher) deskSwitcher.classList.add('hidden');
                         if (deskSavedSwitcher) deskSavedSwitcher.classList.add('hidden');
                     }
                 }
@@ -15695,6 +15932,33 @@ ${sampleText}`;
             };
             window.keepTodayInPlace(() => roots.forEach(root => {
                 const inColumn = root.id === 'today-column';
+                const isPersonalHub = !!(root.querySelector('.brief-container[data-personal-hub]')
+                    || (inColumn && ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed)));
+
+                if (isPersonalHub) {
+                    root.querySelectorAll('.brief-cat-section').forEach(sec => {
+                        let secCount = 0;
+                        sec.querySelectorAll('.brief-story-card[data-sa-id]').forEach(card => {
+                            const id = card.getAttribute('data-sa-id');
+                            const active = inColumn && id === activeId;
+                            card.classList.toggle('brief-card-active', active);
+                            card.classList.remove('brief-card-read', 'brief-held');
+                            secCount++;
+                        });
+                        sec.classList.remove('brief-section-empty', 'brief-held');
+                        const countEl = sec.querySelector('.brief-cat-count');
+                        if (countEl) countEl.textContent = `${secCount} ${secCount === 1 ? 'story' : 'stories'}`;
+                        const pill = sec.id ? root.querySelector(`.brief-jump-pill[href="#${CSS.escape(sec.id)}"]`) : null;
+                        if (pill) pill.classList.remove('brief-gone');
+                    });
+                    const bar = root.querySelector('.brief-jump-bar');
+                    if (bar) bar.classList.remove('brief-gone');
+                    const note = root.querySelector('.brief-all-read-note');
+                    if (note) note.remove();
+                    root.querySelectorAll('[data-pending]').forEach(box => { if (now || !onTodayScreen(box)) applyBriefImgChange(box); });
+                    return;
+                }
+
                 let anySection = false, anyLeft = false;
                 let newShown = 0;
                 root.querySelectorAll('.brief-cat-section').forEach(sec => {
@@ -15936,17 +16200,17 @@ ${sampleText}`;
             document.body.classList.remove('desktop-today-story');
             if (typeof isMobile === 'function' && !isMobile() && window._todayInColumn) {
                 const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
-                if (isPersonal || window._currentTodayView === 'cards') {
+                const isToday = !isPersonal && !window.currentCategoryFilter && !window.currentSourceFilter && (document.getElementById('feed-btn-today')?.classList.contains('active-item') || window.currentSmartFeed === 'today');
+                if (isPersonal || !isToday || window._currentTodayView === 'cards') {
                     document.body.classList.add('desktop-today-cards-wide');
                     document.body.classList.remove('desktop-today-briefing');
                     document.getElementById('viewer-today-switcher')?.classList.add('hidden');
-                    if (isPersonal) {
-                        document.getElementById('desk-saved-switcher')?.classList.remove('hidden');
-                        document.getElementById('desk-today-switcher')?.classList.add('hidden');
-                    } else {
-                        document.getElementById('desk-today-switcher')?.classList.remove('hidden');
-                        document.getElementById('desk-saved-switcher')?.classList.add('hidden');
-                    }
+                    const deskSwitcher = document.getElementById('desk-today-switcher');
+                    const deskSavedSwitcher = document.getElementById('desk-saved-switcher');
+                    const timelineCountGroup = document.getElementById('timeline-count-group');
+                    if (deskSwitcher) deskSwitcher.classList.toggle('hidden', !isToday);
+                    if (deskSavedSwitcher) deskSavedSwitcher.classList.toggle('hidden', !isPersonal);
+                    if (timelineCountGroup) timelineCountGroup.classList.toggle('hidden', isToday || isPersonal);
                 }
             }
         };
@@ -15961,13 +16225,14 @@ ${sampleText}`;
             if (typeof isMobile === 'function' && !isMobile()) {
                 document.body.classList.add('desktop-today-cards-wide');
                 const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
-                if (isPersonal) {
-                    document.getElementById('desk-saved-switcher')?.classList.remove('hidden');
-                    document.getElementById('desk-today-switcher')?.classList.add('hidden');
-                } else {
-                    document.getElementById('desk-today-switcher')?.classList.remove('hidden');
-                    document.getElementById('desk-saved-switcher')?.classList.add('hidden');
-                }
+                const isToday = !isPersonal && !window.currentCategoryFilter && !window.currentSourceFilter && (document.getElementById('feed-btn-today')?.classList.contains('active-item') || window.currentSmartFeed === 'today');
+                const deskSwitcher = document.getElementById('desk-today-switcher');
+                const deskSavedSwitcher = document.getElementById('desk-saved-switcher');
+                const timelineCountGroup = document.getElementById('timeline-count-group');
+
+                if (deskSwitcher) deskSwitcher.classList.toggle('hidden', !isToday);
+                if (deskSavedSwitcher) deskSavedSwitcher.classList.toggle('hidden', !isPersonal);
+                if (timelineCountGroup) timelineCountGroup.classList.toggle('hidden', isToday || isPersonal);
             }
             window.clearReaderPane();
             window.syncBriefCards(null, { now: true });   // Back: your tap (322)
@@ -16670,24 +16935,26 @@ ${sampleText}`;
                 day: 'numeric'
             });
             const readTimeEst = Math.max(1, Math.ceil(totalStories * 0.35));
+            const isSpecialSlot = !!(slotDef.isPersonalHub || slotDef.isFeedCards);
 
             const briefHeaderHtml = window.buildTodaySharedHeaderHtml ? window.buildTodaySharedHeaderHtml({
                 activeView: 'cards',
                 statusText: '',
-                headingLong: slotDef.isPersonalHub ? slotDef.name : headingLong,
-                headingDay: slotDef.isPersonalHub ? slotDef.name : headingDay,
+                headingLong: isSpecialSlot ? slotDef.name : headingLong,
+                headingDay: isSpecialSlot ? slotDef.name : headingDay,
                 headerAction: slotDef.headerAction || '',
                 metaExtra: slotDef.metaExtra || '',
                 sectionCount: categorySections.length,
                 totalStories,
                 readTimeEst,
                 isPersonalHub: !!slotDef.isPersonalHub,
+                isFeedCards: !!slotDef.isFeedCards,
                 headerIcon: slotDef.headerIcon || 'icon-rss'
             }) : '';
 
             // Generate HTML Body
             let html = `
-                <div class="brief-container">
+                <div class="brief-container"${slotDef.isPersonalHub ? ` data-personal-hub="${slotDef.slot}"` : (slotDef.isFeedCards ? ` data-feed-cards="${slotDef.slot}"` : '')}>
                     ${briefHeaderHtml}
             `;
 
@@ -16713,11 +16980,13 @@ ${sampleText}`;
                 html += renderBriefSectionsHtml(categorySections);
                 html += `</div>`;
                 if (!slotDef.noFooterMarkRead) {
+                    const btnLabel = slotDef.slot === 'source' ? 'Mark Feed Read'
+                        : (slotDef.slot === 'category' ? 'Mark Folder Read' : 'Mark All Read in Folders');
                     html += `
                         <div class="brief-footer text-sm text-gray-500 dark:text-gray-400">
-                            <button type="button" onclick="window.markBriefCategoriesRead(this)" class="brief-mark-all-btn pill-btn pill-primary inline-flex" title="Mark all articles read in covered category folders">
+                            <button type="button" onclick="window.markBriefCategoriesRead(this)" class="brief-mark-all-btn pill-btn pill-primary inline-flex" title="${btnLabel}">
                                 <svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg>
-                                <span>Mark All Read in Folders</span>
+                                <span>${btnLabel}</span>
                             </button>
                         </div>
                     `;
@@ -18770,7 +19039,8 @@ ${sampleText}`;
                 if (!a.unread || a.isBrief) return;
                 const match = catSources.has(a.source) ||
                     (a.feedUrl && catUrls.has(a.feedUrl)) ||
-                    (typeof getCategoryForArticle === 'function' && getCategoryForArticle(a).trim().toLowerCase() === normCat);
+                    (typeof getCategoryForArticle === 'function' && getCategoryForArticle(a).trim().toLowerCase() === normCat) ||
+                    (a.source && a.source.trim().toLowerCase() === normCat);
                 if (match) {
                     a.unread = false;
                     if (a.link) window._readLinks.add(a.link);
@@ -18890,7 +19160,11 @@ ${sampleText}`;
                 const btn = sec.querySelector('.brief-cat-mark-read-btn');
                 if (!heading || !btn) return;
                 const catName = heading.textContent.trim();
-                const unreadCount = forceAllRead ? 0 : (counts.get(catName.toLowerCase()) || 0);
+                let unreadCount = forceAllRead ? 0 : (counts ? counts.get(catName.toLowerCase()) : 0);
+                if (unreadCount === undefined || unreadCount === null) {
+                    const normSrc = catName.toLowerCase();
+                    unreadCount = (window.articles || []).filter(a => a.unread && !a.isBrief && !window.isMuted(a) && (a.source || '').trim().toLowerCase() === normSrc).length;
+                }
                 if (unreadCount === 0 || forceAllRead) {
                     btn.disabled = true;
                     btn.classList.add('is-read');
@@ -18911,13 +19185,13 @@ ${sampleText}`;
                 if (!anyUnread || forceAllRead) {
                     btn.disabled = true;
                     btn.className = 'brief-mark-all-btn pill-btn inline-flex';
-                    btn.title = 'All covered category folders are read';
-                    btn.innerHTML = '<svg class="w-3.5 h-3.5 text-green-500"><use href="#icon-check"/></svg> <span>All Folders Read</span>';
+                    btn.title = 'All covered articles are read';
+                    btn.innerHTML = '<svg class="w-3.5 h-3.5 text-green-500"><use href="#icon-check"/></svg> <span>All Read</span>';
                 } else {
                     btn.disabled = false;
                     btn.className = 'brief-mark-all-btn pill-btn pill-primary inline-flex';
-                    btn.title = 'Mark all articles read in covered category folders';
-                    btn.innerHTML = '<svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg> <span>Mark All Read in Folders</span>';
+                    btn.title = 'Mark all articles read in covered sections';
+                    btn.innerHTML = '<svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg> <span>Mark All Read</span>';
                 }
             });
         };
@@ -19494,10 +19768,25 @@ ${sampleText}`;
                 const bTitle = window._returnToAiBriefingState.aiArticleTitle || 'Briefing';
                 if (backLabel) backLabel.textContent = bTitle.includes('Recap') ? 'Recap' : 'Briefing';
             } else if (backBtn && (window._todayInColumn || document.body.classList.contains('desktop-today-story')) && typeof isMobile === 'function' && !isMobile()) {
-                // Desktop Today: Back closes the story and returns to its card in
+                // Desktop Today, Personal Hub & Feed Cards: Back closes the story and returns to its card in
                 // the brief beside it (closeStoryToTodayColumn) - the same bar as mobile.
                 backBtn.classList.remove('hidden');
-                if (backLabel) backLabel.textContent = 'Today';
+                if (backLabel) {
+                    const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
+                    if (isPersonal) {
+                        if (window.currentSmartFeed === 'saved') backLabel.textContent = 'Saved';
+                        else if (window.currentSmartFeed === 'recently-read') backLabel.textContent = 'History';
+                        else backLabel.textContent = 'Read Later';
+                    } else if (window.currentCategoryFilter) {
+                        backLabel.textContent = window.currentCategoryFilter;
+                    } else if (window.currentSourceFilter) {
+                        backLabel.textContent = window.currentSourceFilter;
+                    } else if (document.getElementById('feed-btn-today')?.classList.contains('active-item')) {
+                        backLabel.textContent = 'Today';
+                    } else {
+                        backLabel.textContent = 'Unread';
+                    }
+                }
             } else if (backBtn) {
                 backBtn.classList.remove('hidden');
                 if (window._returnToBriefState) {
@@ -19894,7 +20183,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 455;
+        window.APP_BUILD = 456;
 
         (async function initApp() {
             try {
@@ -20772,7 +21061,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v455';
+const CACHE_NAME = 'rss-reader-v456';
 const APP_SHELL = [
     '/',
     'index.html'
