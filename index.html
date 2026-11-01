@@ -3263,6 +3263,14 @@
             background: rgba(0, 0, 0, 0.05);
         }
 
+        /* On mobile, keep story row meta clean by hiding quick action buttons (available in "..." menu) */
+        @media (max-width: 900px) {
+            .brief-story-ctrls .brief-act-read-inline,
+            .brief-story-ctrls .brief-act-later {
+                display: none !important;
+            }
+        }
+
         /* 5. Story Reading from Today Cards: 2-Column Workstation Layout (Sidebar + Centered Reading Canvas, Back to Cards) */
         body.desktop-today-story #timeline-pane,
         body.desktop-today-story #resizer {
@@ -17366,17 +17374,29 @@ ${sampleText}`;
         const _isOn = b => !!b && (b.classList.contains('is-on') || b.classList.contains('is-saved'));
 
         // A Today story's menu (its "..." or a long-press on the phone, a right-click on the desktop):
-        // Quick actions (Mark Read & Read Later) are directly on the story row, so
-        // the menu presents Save, Share, and Open Original.
+        // Quick actions (Mark Read & Read Later) are on the story row on desktop and in this menu everywhere.
         window.showBriefStoryMenu = function (from, x, y, pointer) {
             const card = from.closest('.brief-story-card');
             if (!card) return;
+            const saId = card.getAttribute('data-sa-id') || (card.id || '').replace(/^brief-card-/, '');
+            const art = (typeof window.briefStoryArticle === 'function' ? window.briefStoryArticle(saId) : null)
+                || (window.articles || []).find(a => a.id === saId);
+            const readBtn = card.querySelector('.brief-act-read-inline') || card.querySelector('.brief-act-read');
+            const laterBtn = card.querySelector('.brief-act-later');
             const btn = sel => card.querySelector('.brief-story-actions ' + sel);
-            const save = btn('.brief-save-btn');
+            const save = btn('.brief-save-btn') || card.querySelector('.brief-save-btn');
+            const share = btn('.brief-act-share') || card.querySelector('.brief-act-share');
+            const source = btn('.brief-source-link') || card.querySelector('.brief-source-link');
+
+            const isRead = art ? !art.unread : card.classList.contains('brief-card-read');
+            const isLater = art ? !!art.readLater : (laterBtn && laterBtn.classList.contains('is-on'));
+
             window.showActionMenu(from, [
+                readBtn && [isRead ? 'Mark Unread' : 'Mark Read', readBtn],
+                laterBtn && [isLater ? 'Remove from Read Later' : 'Read Later', laterBtn],
                 save && [_isOn(save) ? 'Unsave' : 'Save', save],
-                btn('.brief-act-share') && ['Share…', btn('.brief-act-share')],
-                btn('.brief-source-link') && ['Open Original', btn('.brief-source-link')],
+                share && ['Share…', share],
+                source && ['Open Original', source],
             ].filter(Boolean), x, y, pointer);
         };
 
@@ -20447,7 +20467,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 459;
+        window.APP_BUILD = 460;
 
         (async function initApp() {
             try {
@@ -21325,7 +21345,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v459';
+const CACHE_NAME = 'rss-reader-v460';
 const APP_SHELL = [
     '/',
     'index.html'
