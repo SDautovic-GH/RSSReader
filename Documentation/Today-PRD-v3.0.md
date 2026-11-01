@@ -2,7 +2,7 @@
 
 | Metadata | Value |
 | :--- | :--- |
-| **Document Version** | v3.9 (Build 448) |
+| **Document Version** | v3.10 (Build 449) |
 | **Date** | November 1, 2026 |
 | **Status** | Live in Production (`today.dautovic.com`) |
 | **Primary Repository** | `SDautovic-GH/RSSReader` |
@@ -70,7 +70,8 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 | Feature | Requirement | Implementation Detail |
 | :--- | :--- | :--- |
 | **✦ AI Morning Briefing** | Executive synthesis | Powered by Gemini Flash (`gemini-2.5-flash`). Synthesizes unread coverage into an executive brief broken down by folder section with bold topic headlines and numbered citations (`#1`, `#2`) that link directly to full articles. Automatically prepped at 5:00 AM local time or generated on-demand. |
-| **▣ Cards View** | Multi-column magazine deck | Clustered cards categorized by Following folders. Supports 1, 2, or 3 columns (`--today-cards-cols`) configured via App Settings with responsive container scaling (`760px`, `1240px`, `1680px`). |
+| **▣ Cards View (Category Cards)** | Unified category deck with immediate unread-only triage | Each folder/category renders as a **single unified Category Card** (`.brief-cat-section`) containing its stories in clean list rows with subtle dividers, eliminating the visual clutter of dozens of isolated boxes. Stories feature inline action controls: `Mark Read` (checkmark button with smooth collapse animation), `Save` (star button), and `...` More options. Supports 1, 2, or 3 columns (`--today-cards-cols`) configured via App Settings (`760px`, `1240px`, `1680px`). |
+| **Immediate Read Disappearance** | Strict unread-only presentation | Marking a story read immediately hides it (`display: none !important`), smoothly collapsing the row. Opening a story in the reader automatically hides it upon return via `< Today`, `b`, or `Escape`, ensuring only unread stories remain visible. Categories with zero unread stories cleanly disappear; when all stories are read, "You're all caught up" displays. |
 | **View Switcher** | Instant seamless toggle | Unified segmented control (`✦ Briefing` and `▣ Cards`) anchored in the active desktop header bar. Keyboard shortcuts `1` (Briefing) and `2` (Cards). Obsolete inline briefing banner slots and compact wire toggle removed in favor of clean dedicated views. |
 | **Category Recaps** | Individual section drilldown | AI-powered section synthesis (`generateCategoryRecap`) available directly from each folder section heading in Today Cards view. |
 | **Top Stories** | Highlighted consensus | Up to 5 most significant stories across all folders (ranked by source authority, multi-outlet consensus, and recency). |

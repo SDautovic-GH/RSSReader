@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Product** | Today (formerly RSS Reader) |
 | **Live App** | [today.dautovic.com](https://today.dautovic.com) |
-| **Build Target** | Build 448+ |
+| **Build Target** | Build 449+ |
 | **Documentation Type** | Comprehensive User Manual |
 | **Last Updated** | November 1, 2026 |
 
@@ -77,15 +77,19 @@ Today features dedicated workstation layouts tailored for focus:
 #### Dual Intelligence Views: Briefing vs. Cards
 * **✦ Briefing View:** 
   Presents a concise, executive memo generated from your unread stories. Each bullet point begins with a bold takeaway and concludes with a clickable `#N` reference tag linking directly to the full story.
-* **▣ Cards View:** 
-  Presents your stories as a magazine card deck. Choose between 1, 2, or 3 columns in **Settings → Reading & Display**.
+* **▣ Cards View (Category Cards):** 
+  Presents your stories grouped into **unified Category Cards** (one clean card container per folder), eliminating the visual noise of dozens of fragmented boxes.
+  - **Inline Story Controls:** Each story row features direct quick controls on its source line: **Mark Read** (checkmark icon with a smooth dismiss collapse animation), **Save** (star icon), and **More options** (`...`).
+  - **Immediate Unread-Only Triage:** As soon as you mark a story read, it animates and immediately vanishes from view so only unread stories are visible.
+  - **Auto-Disappear on Return:** When you open a story in the reader and return via `< Today`, `b`, or `Escape`, the story you just read disappears immediately from Cards view, automatically landing on the next unread item. Categories with zero unread stories cleanly hide.
+  - **Columns:** Choose between 1, 2, or 3 columns in **Settings → Reading & Display**.
 * **Instant Switching:** 
   Use the segmented button in the top bar or press `1` for Briefing and `2` for Cards.
 
 #### Dedicated 2-Column Today Workspace
 * Unlike feed lists, **Today operates exclusively as a 2-column workspace** (Sidebar + Content). 
 * **Reading Stories:** When you click any card in Today Cards, the story opens in a full 2-column reader canvas (`desktop-today-story`) with a prominent `< Today` back button in the header.
-* **Returning to Cards:** Tap `< Today`, press `b`, or press `Escape` to immediately return to Today Cards. Your scroll position is preserved so you pick up right where you left off.
+* **Returning to Cards:** Tap `< Today`, press `b`, or press `Escape` to immediately return to Today Cards. The story you just read disappears, and Today smoothly positions you at the next unread story.
 * Today never squeezes into three cramped columns.
 
 #### 3-Column Workstation in Unread
@@ -172,7 +176,10 @@ Keep your primary email inbox clean by sending newsletters straight to Today:
 * **Folder Sections:** Your folders follow in the exact order you set in Following.
 * **Story Clustering:** When multiple outlets cover the exact same event, Today groups them into one clean card with an "Also from..." footer.
 
-### 6.2 Progressive Mark Read
+### 6.2 Progressive Mark Read & Immediate Story Triage
+* **Inline Story Mark Read:** Click the checkmark icon directly on any story row to dismiss it immediately with a smooth collapse animation.
+* **Auto-Disappear on Return:** Reading any story in the reader automatically marks it read and dismisses it from Today Cards when you return, keeping your view focused strictly on remaining unread news.
+* **Category Mark Read:** Tap the checkmark in any Category Card header to mark the entire category read and dismiss the card.
 * **Mark N Read:** At the bottom of each folder section, tap **Mark N Read** to mark the visible cards read and smoothly reveal the next section.
 * **Mark All Read in Folders:** Tap the blue pill at the very bottom of Today when you've finished your briefing.
 * **5-Second Undo:** Accidental taps can be undone immediately using the floating Undo bar.
