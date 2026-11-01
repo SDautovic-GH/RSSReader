@@ -2,8 +2,8 @@
 
 | Metadata | Value |
 | :--- | :--- |
-| **Document Version** | v3.8 (Build 446) |
-| **Date** | October 31, 2026 |
+| **Document Version** | v3.9 (Build 447) |
+| **Date** | November 1, 2026 |
 | **Status** | Live in Production (`today.dautovic.com`) |
 | **Primary Repository** | `SDautovic-GH/RSSReader` |
 | **Desktop Companion** | `ScriptLibrary/PROJECTS/RSSReader` |
@@ -62,6 +62,7 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 | **Desktop: Today Story** | 2-column focused reader | Clicking a story from Today Cards opens in a 2-column reading canvas (`desktop-today-story`) with `< Today` back button in header. Pressing `< Today`, `b`, or `Escape` returns to Cards at the exact scroll position. |
 | **Desktop: Unread & Feeds** | 3-column triage workstation | Collapsible sidebar (left), resizable timeline article list (default 440px), and expansive reader pane (right). Active only when browsing Unread or feed lists. |
 | **Persistent Headers** | Zero collapse on resize | Desktop headers (`#timeline-header`, `#viewer-header`) persist at all viewport widths via `@media (hover: hover) and (pointer: fine)` and JS `isDesktopDevice()`. Mobile tab bar stays hidden on desktop. Mobile personal hub bar stays hidden on desktop to avoid duplicate headers. |
+| **Ultrawide Centered Frame** | Ergonomic workstation centering | On monitors $> 1720px$ (e.g. 1440p, 4K, 34-inch ultrawide), `#app-container` caps at 1680px (or 2040px for 3-column cards) centered with `margin: 0 auto;`, flanked by ambient outer letterboxing and subtle depth shadows. Eliminates disjointed multi-thousand-pixel chasms between the sidebar, content, and controls. Configurable via Settings $\rightarrow$ Appearance. |
 | **Desktop Full Screen** | Distraction-free reading | Double-clicking reader top bar isolates story. Arrow keys navigate and scroll; `Esc` exits. |
 
 ### 3.2 Today Engine & Intelligence Modes

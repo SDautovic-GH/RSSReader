@@ -5,8 +5,8 @@
 | Project | RSS Reader Web Application (`today.dautovic.com`) |
 | Document | Redesign Plan & Implementation Record — Briefing & Today Library |
 | Target File | `/Users/samirdautovic/Developer/RSSReader/index.html` |
-| Current State | **Active — Build 446** deployed to production via Cloudflare Workers CI |
-| Date | 2026-10-31 |
+| Current State | **Active — Build 447** deployed to production via Cloudflare Workers CI |
+| Date | 2026-11-01 |
 | Status | Complete & Deployed |
 
 ---
@@ -157,6 +157,7 @@ The **Briefing & Today Library Redesign** transforms the user's daily reading ex
 | **444** | `0c0e21f` | **Unified Personal Hub & Smart Today Tap:**<br>• Evolved Bookmarks tab into a 3-way personal hub: `[ 🔖 Read Later ] [ ⭐ Saved ] [ ⏱️ History ]`.<br>• Smart Today button tap: first tap scrolls smoothly to top; subsequent tap toggles between Cards and Briefing views. |
 | **445** | `5a34a83` | **YouTube Frosted Glass Translucency Tuning:**<br>• Reduced dark tint from `rgba(18, 18, 22, 0.72)` to `rgba(18, 18, 22, 0.25)`.<br>• Applied `-webkit-backdrop-filter: blur(20px) saturate(180%)` and GPU layer promotion (`translate3d(0, 0, 0)`, `will-change: transform, backdrop-filter`). |
 | **446** | `a808b23` | **Comprehensive Dead Code & Superseded Feature Removal:**<br>• Removed dead CSS selectors (`.brief-briefing-btn`, `.source-favicon-sidebar`, `.ai-bullet-dot`, etc.).<br>• Removed unused SVG symbols (`#icon-mark-unread`, `#icon-bookmark-x`, `#icon-rows-2`, etc.).<br>• Removed dormant `#timeline-today-title` span and `window.jumpToBriefCategoryFromAi()`.<br>• Removed legacy inline briefing slot (Feature 1: `.today-ai-briefing-slot`, `getTodayBriefingSlots`, `dismissTodayBriefing`).<br>• Removed Compact Wire density mode (Feature 3: `#view-density-toggle`, `window._viewMode`, `toggleViewMode()`).<br>• Preserved Category Recaps (Feature 2: `generateCategoryRecap`). Net reduction: **-326 lines**. |
+| **447** | Pending | **Ultrawide Centered App Frame & Setting Toggle (Approach 1):**<br>• Centered `#app-container` on viewports wider than `1720px` with `max-width: 1680px` (or `2040px` for 3-column cards) and `margin: 0 auto;`.<br>• Added ambient outer framing with deep dark / soft light backdrops, subtle side borders, and depth shadow.<br>• Added **Wide Screen Layout** preference under Settings $\rightarrow$ Appearance (`Centered Frame (Recommended)` vs `Full Width Stretch`).<br>• Full cloud sync support via Firestore `uiPrefs`. |
 
 ---
 
@@ -191,6 +192,8 @@ The **Briefing & Today Library Redesign** transforms the user's daily reading ex
 | **Today Smart Tap** | Tap Today button while scrolled down; tap again at top. | First tap scrolls smoothly to top; second tap toggles between Cards and Briefing view. | PASS |
 | **Frosted Translucency** | Observe floating tab bar over scrolling images/text. | Content softly blurs beneath the pill with true YouTube glass translucency. | PASS |
 | **Dead Code Elimination** | Verify absence of legacy briefing slot and compact wire code. | Zero console errors, -326 lines removed, clean code execution. | PASS |
+| **Ultrawide Centered Frame** | Open app on display $> 1720px$ width. | App container caps at 1680px centered; sidebar, timeline, and reading canvas stay in natural proximity. | PASS |
+| **Ultrawide Toggle** | Switch Wide Screen Layout in Settings to "Full Width Stretch". | Container immediately expands edge-to-edge; preference persists across reload. | PASS |
 | **Line 37 Invariant** | Inspect line 37 of `index.html`. | `<style id="tailwind-static">/*! tailwindcss v4` remains intact. | PASS |
 | **Syntax Validation** | Execute Node VM syntax audit across all scripts. | 100% valid JavaScript with zero syntax errors. | PASS |
 

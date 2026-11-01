@@ -4,9 +4,9 @@
 | :--- | :--- |
 | **Product** | Today (formerly RSS Reader) |
 | **Live App** | [today.dautovic.com](https://today.dautovic.com) |
-| **Build Target** | Build 446+ |
+| **Build Target** | Build 447+ |
 | **Documentation Type** | Comprehensive User Manual |
-| **Last Updated** | October 31, 2026 |
+| **Last Updated** | November 1, 2026 |
 
 ---
 
@@ -99,6 +99,12 @@ Today features dedicated workstation layouts tailored for focus:
   * The top bar switcher and the body content below it remain **mathematically locked to the exact center** (`50%` of the pane width).
   * The header **never disappears or collapses**, and the mobile phone tab bar never intrudes on desktop.
 
+#### Ultrawide Display Centering
+* On wide or ultrawide monitors ($> 1720px$ width, such as 1440p, 4K, or 34-inch/49-inch ultrawides), Today neatly centers the entire app frame within a 1680px maximum width workstation.
+* This eliminates the neck-straining "tennis match" effect where the sidebar is pinned to the far-left screen bezel and content/controls are stranded thousands of pixels away in the center and right edges.
+* The workspace is flanked by subtle, elegant outer ambient letterboxing and depth shadows.
+* You can switch between **Centered Frame (Recommended)** and **Full Width Stretch** under **Settings → Appearance → Wide Screen Layout**.
+
 ### 3.2 Mobile Interface
 * **The Floating Bottom Tab Bar:** A detached floating glass capsule (YouTube-style, 42px compact height) with four pure-icon tabs:
   * **Today:** Your curated 24-hour brief with a live unread badge counter. **Smart Tap:** When scrolled down into cards or briefing, tapping Today smoothly scrolls you to the top; tapping again toggles between Cards and Briefing view.
@@ -182,6 +188,7 @@ All stale backlog stories are marked read immediately, leaving you with only tod
 ## 7. Customization & Settings
 
 Open **Settings** (gear icon) to tailor your experience:
+* **Wide Screen Layout (Desktop):** Toggle between **Centered Frame (Recommended)** (centers workstation at 1680px on monitors $> 1720px$) and **Full Width Stretch**.
 * **Cards View Columns (Desktop):** Select between **1 Column** (focused reading), **2 Columns** (magazine layout), or **3 Columns** (ultra-wide monitor layout).
 * **AI & Briefings:** Configure your Gemini API key, customize briefing synthesis, and enable automatic 5:00 AM Morning Briefing preparation.
 * **Appearance & Theme:** Switch between Dark and Light mode, or choose your preferred font.

@@ -2754,6 +2754,37 @@
             }
         }
 
+        /* 7. Ultrawide Display Centering (Approach 1: Centered App Frame) */
+        @media (min-width: 1720px) {
+            body.ultrawide-centered:not(.is-fullscreen) {
+                background: #05070a !important;
+            }
+
+            html:not(.dark) body.ultrawide-centered:not(.is-fullscreen) {
+                background: #e5e7eb !important;
+            }
+
+            body.ultrawide-centered:not(.is-fullscreen) #app-container {
+                max-width: 1680px !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+                border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+                box-shadow: 0 0 60px rgba(0, 0, 0, 0.45) !important;
+            }
+
+            html:not(.dark) body.ultrawide-centered:not(.is-fullscreen) #app-container {
+                border-left: 1px solid rgba(0, 0, 0, 0.09) !important;
+                border-right: 1px solid rgba(0, 0, 0, 0.09) !important;
+                box-shadow: 0 0 45px rgba(0, 0, 0, 0.08) !important;
+            }
+
+            /* Responsive expansion if 3-column Today Cards is selected */
+            body.ultrawide-centered:not(.is-fullscreen)[data-cards-cols="3"] #app-container {
+                max-width: 2040px !important;
+            }
+        }
+
         /* Today images: each story's picture 16:9 across its card, after its text (on request: the source
            line, headline and preview first, so each story starts with its source); one under 600px wide
            stays a square thumbnail beside the story. Boxes are reserved, so nothing jumps. !important beats
@@ -6953,6 +6984,16 @@
                             <label class="settings-item-label-sm">Show source icons</label>
                             <button id="source-icons-toggle" onclick="toggleSourceIcons()" class="toggle-switch"
                                 data-on="true" aria-label="Show source icons"></button>
+                        </div>
+                        <div class="settings-row desk-only">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm" for="pref-ultrawide-layout">Wide Screen Layout</label>
+                                <p class="settings-hint">Center app frame on ultrawide monitors</p>
+                            </div>
+                            <select id="pref-ultrawide-layout" onchange="window.saveUltrawideLayout(this.value)" class="settings-input is-inline">
+                                <option value="centered" selected>Centered Frame</option>
+                                <option value="stretch">Full Width Stretch</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -13581,6 +13622,9 @@
             const cardsColsSel = document.getElementById('pref-today-cards-columns');
             if (cardsColsSel) cardsColsSel.value = window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2';
             if (typeof window.applyTodayCardsColumns === 'function') window.applyTodayCardsColumns(window.getTodayCardsColumns());
+            const ultrawideSel = document.getElementById('pref-ultrawide-layout');
+            if (ultrawideSel) ultrawideSel.value = window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered';
+            if (typeof window.applyUltrawideLayout === 'function') window.applyUltrawideLayout(window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered');
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             window.showToast(window._autoMorningBriefing ? 'Morning Briefing on first open enabled' : 'Morning Briefing on first open off');
             if (window._autoMorningBriefing) {
@@ -13634,6 +13678,25 @@
             try { localStorage.setItem('newsreader_today_cards_columns', c); } catch (e) { }
             window.applyTodayCardsColumns(c);
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+        };
+
+        window.getUltrawideLayout = function () {
+            try { return localStorage.getItem('newsreader_ultrawide_layout') || 'centered'; } catch (e) { return 'centered'; }
+        };
+
+        window.applyUltrawideLayout = function (layout) {
+            const mode = (layout === 'stretch') ? 'stretch' : 'centered';
+            document.body.classList.toggle('ultrawide-centered', mode === 'centered');
+            const sel = document.getElementById('pref-ultrawide-layout');
+            if (sel) sel.value = mode;
+        };
+
+        window.saveUltrawideLayout = function (val) {
+            const mode = (val === 'stretch') ? 'stretch' : 'centered';
+            try { localStorage.setItem('newsreader_ultrawide_layout', mode); } catch (e) { }
+            window.applyUltrawideLayout(mode);
+            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+            window.showToast?.(mode === 'centered' ? 'Centered frame on wide screens enabled' : 'Full width stretch enabled');
         };
 
         window.updateTodayViewSwitcherState = function (activeView) {
@@ -16413,6 +16476,9 @@ ${sampleText}`;
             const cardsColsSel = document.getElementById('pref-today-cards-columns');
             if (cardsColsSel) cardsColsSel.value = window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2';
             if (typeof window.applyTodayCardsColumns === 'function') window.applyTodayCardsColumns(window.getTodayCardsColumns());
+            const ultrawideSel = document.getElementById('pref-ultrawide-layout');
+            if (ultrawideSel) ultrawideSel.value = window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered';
+            if (typeof window.applyUltrawideLayout === 'function') window.applyUltrawideLayout(window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered');
             const geminiInput = document.getElementById('gemini-api-key-input');
             if (geminiInput) geminiInput.value = window.getGeminiApiKey();
             window.renderMuteChips?.();
@@ -18919,7 +18985,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 446;
+        window.APP_BUILD = 447;
 
         (async function initApp() {
             try {
@@ -19043,6 +19109,9 @@ ${sampleText}`;
             const cardsColsSel = document.getElementById('pref-today-cards-columns');
             if (cardsColsSel) cardsColsSel.value = window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2';
             if (typeof window.applyTodayCardsColumns === 'function') window.applyTodayCardsColumns(window.getTodayCardsColumns());
+            const ultrawideSel = document.getElementById('pref-ultrawide-layout');
+            if (ultrawideSel) ultrawideSel.value = window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered';
+            if (typeof window.applyUltrawideLayout === 'function') window.applyUltrawideLayout(window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered');
 
                     const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
                     if (prefs.autoRefresh) {
@@ -19520,6 +19589,10 @@ ${sampleText}`;
                         try { localStorage.setItem('newsreader_today_cards_columns', data.cardsColumns); } catch (e) { }
                         window.applyTodayCardsColumns?.(data.cardsColumns);
                     }
+                    if (data.ultrawideLayout) {
+                        try { localStorage.setItem('newsreader_ultrawide_layout', data.ultrawideLayout); } catch (e) { }
+                        window.applyUltrawideLayout?.(data.ultrawideLayout);
+                    }
                 }
             }).catch(e => console.warn('Could not load remote UI prefs:', e));
         }
@@ -19592,6 +19665,7 @@ ${sampleText}`;
                         autoMorningBriefing: !!window._autoMorningBriefing,
                         todayDefaultView: window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing',
                         cardsColumns: window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2',
+                        ultrawideLayout: window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered',
                         todayExcluded: [...(window._todayExcluded || [])],
                         muteWords: window._muteWords || [],
                         updatedAt: new Date().toISOString()
@@ -19789,7 +19863,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v446';
+const CACHE_NAME = 'rss-reader-v447';
 const APP_SHELL = [
     '/',
     'index.html'
