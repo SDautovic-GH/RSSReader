@@ -100,10 +100,12 @@ Today features dedicated workstation layouts tailored for focus:
   * The header **never disappears or collapses**, and the mobile phone tab bar never intrudes on desktop.
 
 ### 3.2 Mobile Interface
-* **The Bottom Tab Bar:** A frosted glass pill with two main tabs:
-  * **Today:** Your curated 24-hour brief with an unread badge counter.
-  * **Following:** Your complete library of folders, feeds, and smart lists.
-  * **Search:** Instant full-text search across all your saved and unread stories.
+* **The Floating Bottom Tab Bar:** A detached floating glass capsule (YouTube-style, 54px tall) with four pure-icon tabs:
+  * **Today:** Your curated 24-hour brief with a live unread badge counter.
+  * **Library:** Your complete hierarchy of folders, feeds, and subscriptions.
+  * **Saved / Read Later:** 1-tap access to your reading queue. Tapping it opens Read Later; tapping again smoothly toggles to Saved. A sticky segmented control (`[ 🔖 Read Later ]  [ ⭐️ Saved ]`) sits at the top of the timeline for effortless 1-tap switching.
+  * **Search:** Instant full-text search across all saved, unread, and archived stories.
+  * **Visual Style:** Deep translucent dark glass with an elevated inner capsule highlight around the active tab and a pure bright white icon (`#ffffff`). Zero text clutter.
 * **Header Controls:**
   * **Headphones Icon:** Tap to have Today read your brief aloud using text-to-speech.
   * **Status Line:** Displays synchronization status (e.g., "Updated just now • 4 new").

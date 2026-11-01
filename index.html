@@ -1277,10 +1277,10 @@
             }
         }
 
-        /* ===== APPLE MUSIC-STYLE MOBILE BOTTOM BAR ===== */
-        /* Absolute in the body, NOT fixed: under the user's 115% Safari Page Zoom, standalone
-           WebKit mis-anchors the fixed viewport after the lightbox closes (the bar floated ~79px
-           up, verified on device). The body never scrolls, so absolute acts like fixed. */
+        /* ===== YOUTUBE-STYLE FLOATING GLASS CAPSULE BOTTOM BAR ===== */
+        /* Absolute in the body, NOT fixed: under 115% Safari Page Zoom, standalone
+           WebKit mis-anchors the fixed viewport after the lightbox closes. The body
+           never scrolls, so absolute acts like fixed. */
         #mobile-tab-bar {
             display: none;
             position: absolute;
@@ -1288,63 +1288,57 @@
             right: 0;
             bottom: 0;
             z-index: 50;
-            /* -8px puts the pill nearer the home indicator; below about -15px, taps at its bottom
-               edge hit the iOS home gesture. */
-            padding: 8px 18px max(0px, calc(env(safe-area-inset-bottom, 0px) - 8px));
+            padding: 8px 16px max(14px, calc(env(safe-area-inset-bottom, 0px) + 8px));
             background: transparent !important;
             border: none !important;
             pointer-events: none;
             align-items: center;
             justify-content: center;
-            gap: 10px;
             height: auto !important;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
         }
 
         #mobile-tab-bar>* {
             pointer-events: auto;
         }
 
-        /* 56px tall: ~64pt under the 115% page zoom, with 46px tap targets. Offsets that clear the
-           bar follow it. */
+        /* YouTube floating glass capsule container: 54px tall, max 320px wide */
         #mobile-tab-bar .tab-pill {
             display: flex;
-            align-items: stretch;
-            gap: 2px;
-            height: 56px;
-            padding: 5px 4px;
-            border-radius: 999px;
-            /* Edge-lit glass: brighter ends, a top sheen and an inset rim over the translucent base. */
-            background:
-                linear-gradient(90deg, rgba(255, 255, 255, 0.10), transparent 22%, transparent 78%, rgba(255, 255, 255, 0.10)),
-                linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 45%),
-                rgba(30, 30, 34, 0.70);
-            /* 0.70 opacity: 55% read washed-out over article text. */
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 40px rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(40px) saturate(1.8);
-            -webkit-backdrop-filter: blur(40px) saturate(1.8);
-            flex: 1 1 auto;
-            max-width: 480px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            height: 54px;
+            padding: 4px 5px;
+            border-radius: 9999px;
+            /* Rich dark translucent glass */
+            background: rgba(28, 28, 32, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(28px) saturate(190%);
+            -webkit-backdrop-filter: blur(28px) saturate(190%);
+            width: 100%;
+            max-width: 320px;
             min-width: 0;
-            transition: background-color 0.25s ease, border-color 0.25s ease;
+            box-sizing: border-box;
+            transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
         }
 
         #mobile-tab-bar .tab-btn {
             flex: 1 1 0;
             min-width: 0;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 3px;
             height: 100%;
-            padding: 0 4px;
-            border-radius: 999px;
+            padding: 0;
+            border-radius: 9999px;
             background: transparent;
-            color: rgba(255, 255, 255, 0.82);
+            color: rgba(255, 255, 255, 0.65);
             border: none;
             cursor: pointer;
-            transition: background-color 0.18s ease, color 0.18s ease;
+            position: relative;
+            transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.12s ease;
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -1352,9 +1346,6 @@
             font-family: inherit;
         }
 
-        /* iOS Safari fires its native Copy/Translate callout on long-press if any
-           descendant (SVG, label span) is touch-callout-eligible — these props
-           don't inherit, so re-apply them to the entire subtree. */
         #mobile-tab-bar .tab-btn,
         #mobile-tab-bar .tab-btn * {
             -webkit-touch-callout: none !important;
@@ -1363,88 +1354,42 @@
         }
 
         #mobile-tab-bar .tab-btn .tab-ico {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             display: block;
             stroke: currentColor;
             color: inherit;
+            transition: transform 0.15s ease;
         }
 
-        /* The selected tab shows a filled glyph (iOS 26 / Material 3), like the action buttons;
-           Search keeps its outline. CSS fill beats the svg's fill="none". */
+        /* YouTube Active Capsule Highlight: elevated translucent inner pill + pure bright white icon */
+        #mobile-tab-bar .tab-btn.active,
+        body.search-active #mobile-tab-bar .tab-btn.tab-search {
+            background: rgba(255, 255, 255, 0.16);
+            color: #ffffff;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.22);
+        }
+
+        /* Active icons fill */
         #mob-tab-today.active .tab-ico,
-        #mob-tab-following.active .tab-ico {
+        #mob-tab-following.active .tab-ico,
+        #mob-tab-saved.active .tab-ico {
             fill: currentColor;
         }
 
-        /* 13px labels (11px read as tiny): in this pill the word carries the tab. 22px icon + 3px gap
-           + 13px label = 38px, inside the tab's 50px. */
-        #mobile-tab-bar .tab-btn .tab-label {
-            font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            line-height: 1;
-            white-space: nowrap;
-            color: inherit;
-        }
-
-        /* Active tab: a recessed dark fill and a full-white icon and label (inactive are 0.82
-           white), not a blue glow. */
-        #mobile-tab-bar .tab-btn.active {
-            background: rgba(0, 0, 0, 0.58);
-            color: #ffffff;
-        }
-
+        /* Tap state */
         #mobile-tab-bar .tab-btn:active {
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.08);
+            transform: scale(0.95);
         }
 
-        #mobile-tab-bar .tab-btn.active:active {
-            background: rgba(0, 0, 0, 0.68);
+        #mobile-tab-bar .tab-btn.active:active,
+        body.search-active #mobile-tab-bar .tab-btn.tab-search:active {
+            background: rgba(255, 255, 255, 0.22);
+            transform: scale(0.95);
         }
 
-        #mobile-tab-bar .tab-search {
-            flex: 1 1 0;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            height: 100%;
-            padding: 0 4px;
-            border-radius: 999px;
-            background: transparent;
-            color: rgba(255, 255, 255, 0.82);
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.18s ease, color 0.18s ease;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-            font-family: inherit;
-        }
-
-        #mobile-tab-bar .tab-search:active {
-            background: rgba(255, 255, 255, 0.06);
-        }
-
-        body.search-active #mobile-tab-bar .tab-search {
-            background: rgba(0, 0, 0, 0.58);
-            color: #ffffff;
-        }
-
-        #mobile-tab-bar .tab-search svg {
-            width: 20px;
-            height: 20px;
-            display: block;
-            stroke: currentColor;
-            color: inherit;
-        }
-
-        /* Unread badge on the Today tab: an iOS-style pill on the icon's corner. The wrap positions it
-           relative to the icon, not the button. */
+        /* Wrap for icon & badge */
         .tab-ico-wrap {
             position: relative;
             display: inline-flex;
@@ -1452,39 +1397,7 @@
             justify-content: center;
         }
 
-        /* Light theme: the same glass in a light material, with dark glyphs and a soft pressed fill. */
-        html:not(.dark) #mobile-tab-bar .tab-pill {
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 45%),
-                rgba(246, 246, 248, 0.82);
-            border-color: rgba(0, 0, 0, 0.08);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 30px rgba(0, 0, 0, 0.16);
-        }
-
-        html:not(.dark) #mobile-tab-bar .tab-btn,
-        html:not(.dark) #mobile-tab-bar .tab-search {
-            color: rgba(31, 35, 40, 0.72);
-        }
-
-        html:not(.dark) #mobile-tab-bar .tab-btn.active,
-        html:not(.dark) body.search-active #mobile-tab-bar .tab-search {
-            background: rgba(0, 0, 0, 0.07);
-            color: #1f2328;
-        }
-
-        html:not(.dark) #mobile-tab-bar .tab-btn:active,
-        html:not(.dark) #mobile-tab-bar .tab-search:active {
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        html:not(.dark) #mobile-tab-bar .tab-btn.active:active {
-            background: rgba(0, 0, 0, 0.1);
-        }
-
-        html:not(.dark) .tab-icon-badge {
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
-        }
-
+        /* Today unread badge: positioned on corner of sun icon */
         .tab-icon-badge {
             position: absolute;
             top: -6px;
@@ -1492,16 +1405,85 @@
             min-width: 18px;
             height: 18px;
             padding: 0 5px;
-            background: #3b82f6;
-            color: #fff;
             border-radius: 9999px;
+            background: #ef4444;
+            color: #ffffff;
             font-size: 10px;
             font-weight: 700;
             line-height: 18px;
             text-align: center;
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.9);
+            white-space: nowrap;
+            box-shadow: 0 0 0 2px rgba(28, 28, 32, 0.9);
+            box-sizing: border-box;
             pointer-events: none;
             font-variant-numeric: tabular-nums;
+        }
+
+        /* Light theme: YouTube light floating pill */
+        html:not(.dark) #mobile-tab-bar .tab-pill {
+            background: rgba(246, 246, 248, 0.85);
+            border-color: rgba(0, 0, 0, 0.08);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 30px rgba(0, 0, 0, 0.14);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn {
+            color: rgba(0, 0, 0, 0.55);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn.active,
+        html:not(.dark) body.search-active #mobile-tab-bar .tab-btn.tab-search {
+            background: rgba(0, 0, 0, 0.08);
+            color: #111827;
+            box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn:active {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        html:not(.dark) #mobile-tab-bar .tab-btn.active:active,
+        html:not(.dark) body.search-active #mobile-tab-bar .tab-btn.tab-search:active {
+            background: rgba(0, 0, 0, 0.12);
+        }
+
+        html:not(.dark) .tab-icon-badge {
+            box-shadow: 0 0 0 2px rgba(246, 246, 248, 0.95);
+        }
+
+        /* ===== READ LATER / SAVED SEGMENTED SWITCHERS ===== */
+        .saved-readlater-bar {
+            display: none;
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+            padding: calc(max(env(safe-area-inset-top, 0px), 50px) + 8px) 16px 10px;
+            background: rgba(18, 18, 20, 0.82);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            align-items: center;
+            justify-content: center;
+        }
+
+        html:not(.dark) .saved-readlater-bar {
+            background: rgba(255, 255, 255, 0.88);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        #timeline-pane.is-saved-active .saved-readlater-bar {
+            display: flex !important;
+        }
+
+        #timeline-pane.mobile-active.is-saved-active #article-list {
+            padding-top: 12px !important;
+        }
+
+        .saved-segmented button {
+            cursor: pointer;
+            border: none;
+            outline: none;
         }
 
         /* Menus (the "..." and long-press menu, the folder and feed menus, Feeds' OPML menu) float in the
@@ -2617,7 +2599,8 @@
 
         /* 2. Absolute Center Lock for Today Switcher (Mathematical Simultaneous Centering) */
         #viewer-today-switcher,
-        #desk-today-switcher {
+        #desk-today-switcher,
+        #desk-saved-switcher {
             position: absolute !important;
             left: 50% !important;
             top: 50% !important;
@@ -6628,6 +6611,17 @@
                         </button>
                     </div>
                 </div>
+                <!-- Unified Desktop Saved / Read Later Switcher -->
+                <div id="desk-saved-switcher" class="hidden flex items-center justify-center flex-1">
+                    <div class="segmented saved-segmented" role="group" aria-label="Read Later or Saved">
+                        <button id="desk-subtab-readlater" type="button" data-active="true" onclick="window.onSavedSegmentClick('read-later')">
+                            <svg class="w-3.5 h-3.5 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>Read Later
+                        </button>
+                        <button id="desk-subtab-saved" type="button" data-active="false" onclick="window.onSavedSegmentClick('saved')">
+                            <svg class="w-3.5 h-3.5 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Saved
+                        </button>
+                    </div>
+                </div>
                 <button id="desk-search-trigger" onclick="toggleSearchSheet()"
                     class="p-1.5 rounded-lg text-gray-500 ml-2 flex-shrink-0"
                     title="Search Articles (/)">
@@ -6637,6 +6631,18 @@
                             stroke-linecap="round" />
                     </svg>
                 </button>
+            </div>
+
+            <!-- Mobile Sticky Saved / Read Later Switcher Bar -->
+            <div id="saved-readlater-bar" class="saved-readlater-bar hidden">
+                <div class="segmented saved-segmented" role="group" aria-label="Read Later or Saved">
+                    <button id="subtab-readlater" type="button" data-active="true" onclick="window.onSavedSegmentClick('read-later')">
+                        <svg class="w-3.5 h-3.5 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>Read Later
+                    </button>
+                    <button id="subtab-saved" type="button" data-active="false" onclick="window.onSavedSegmentClick('saved')">
+                        <svg class="w-3.5 h-3.5 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Saved
+                    </button>
+                </div>
             </div>
 
             <div id="article-list" class="flex-1 overflow-y-auto"></div>
@@ -6841,34 +6847,37 @@
         </button>
     </div>
 
-    <!-- MOBILE BOTTOM TAB BAR — Apple News / Google News style -->
+    <!-- MOBILE BOTTOM TAB BAR — YouTube Floating Glass Capsule -->
     <nav id="mobile-tab-bar">
         <div class="tab-pill">
-            <button id="mob-tab-today" type="button" class="tab-btn active" onclick="onTodayTabClick()">
+            <button id="mob-tab-today" type="button" class="tab-btn active" onclick="onTodayTabClick()" title="Today" aria-label="Today">
                 <span class="tab-ico-wrap">
-                    <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+                    <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                         stroke-linejoin="round" viewBox="0 0 24 24">
                         <use href="#icon-sun" />
                     </svg>
                     <span id="mob-tab-today-badge" class="tab-icon-badge hidden" aria-hidden="true">0</span>
                 </span>
-                <span class="tab-label">Today</span>
             </button>
-            <button id="mob-tab-following" type="button" class="tab-btn" onclick="onFollowingTabClick()">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            <button id="mob-tab-following" type="button" class="tab-btn" onclick="onFollowingTabClick()" title="Library" aria-label="Library">
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                     stroke-linejoin="round" viewBox="0 0 24 24">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                 </svg>
-                <span class="tab-label">Library</span>
+            </button>
+            <button id="mob-tab-saved" type="button" class="tab-btn" onclick="onSavedTabClick()" title="Read Later & Saved" aria-label="Read Later and Saved">
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" viewBox="0 0 24 24">
+                    <use href="#icon-bookmark" />
+                </svg>
             </button>
             <button id="mob-tab-search" type="button" class="tab-btn tab-search" onclick="toggleSearchSheet()"
-                aria-label="Search">
-                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+                title="Search" aria-label="Search">
+                <svg class="tab-ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                     stroke-linejoin="round" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="7" />
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-                <span class="tab-label">Search</span>
             </button>
         </div>
     </nav>
@@ -11553,6 +11562,28 @@
             return { bad: false, text: 'Not checked yet' };
         }
 
+        // --- SAVED & READ LATER SWITCHER STATE ---
+        window.updateSavedSwitcherState = () => {
+            const isSavedOrReadLater = window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'saved';
+            const isRl = window.currentSmartFeed === 'read-later';
+            const timelinePane = document.getElementById('timeline-pane');
+            const savedBar = document.getElementById('saved-readlater-bar');
+            const deskSavedSwitcher = document.getElementById('desk-saved-switcher');
+            if (timelinePane) timelinePane.classList.toggle('is-saved-active', isSavedOrReadLater);
+            if (savedBar) savedBar.classList.toggle('hidden', !isSavedOrReadLater);
+            if (deskSavedSwitcher) deskSavedSwitcher.classList.toggle('hidden', !isSavedOrReadLater);
+            if (isSavedOrReadLater) {
+                document.getElementById('subtab-readlater')?.setAttribute('data-active', isRl ? 'true' : 'false');
+                document.getElementById('subtab-saved')?.setAttribute('data-active', isRl ? 'false' : 'true');
+                document.getElementById('desk-subtab-readlater')?.setAttribute('data-active', isRl ? 'true' : 'false');
+                document.getElementById('desk-subtab-saved')?.setAttribute('data-active', isRl ? 'false' : 'true');
+            }
+        };
+
+        window.onSavedSegmentClick = (type) => {
+            window.setSmartFeed(type);
+        };
+
         window.setCategoryFilter = (cat) => {
             window.showTodayColumn?.(false);   // a sidebar list view replaces the Today column
             if (window._returnToBriefState) window._returnToBriefState = null;
@@ -11561,6 +11592,7 @@
             window.currentCategoryFilter = cat;
             window.currentSourceFilter = null;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
+            window.updateSavedSwitcherState?.();
             if (window.foldersSectionCollapsed) {
                 window.foldersSectionCollapsed = false;
                 window.saveFoldersSectionCollapsed?.();
@@ -11578,6 +11610,7 @@
             window.currentCategoryFilter = null;
             window.currentSourceFilter = source;
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
+            window.updateSavedSwitcherState?.();
             if (window.foldersSectionCollapsed) {
                 window.foldersSectionCollapsed = false;
                 window.saveFoldersSectionCollapsed?.();
@@ -12094,8 +12127,14 @@
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
             const btn = document.getElementById('feed-btn-' + type);
             if (btn) btn.classList.add('active-item');
+            window.updateSavedSwitcherState?.();
             renderFeeds();
-            if (isMobile()) setMobilePane('timeline');
+            if (isMobile()) {
+                setMobilePane('timeline');
+                if (type === 'read-later' || type === 'saved') {
+                    setMobileTab('saved');
+                }
+            }
             if (type === 'recently-read') {
                 try {
                     const archived = (window.appDB && typeof window.appDB.getRecentlyRead === 'function')
@@ -15463,6 +15502,7 @@ ${sampleText}`;
             }
             document.querySelectorAll('.smart-feed-btn').forEach(b => b.classList.remove('active-item'));
             document.getElementById('feed-btn-today')?.classList.add('active-item');
+            window.updateSavedSwitcherState?.();
             window.updateTodayViewSwitcherState?.('cards');
             if (typeof isMobile === 'function' && !isMobile()) {
                 // DESKTOP: the brief takes the middle column; the reader stays for stories.
@@ -18533,7 +18573,7 @@ ${sampleText}`;
         // Active tab pill indicator
         window.setMobileTab = (tab) => {
             window._activeTab = tab;
-            const tabs = ['today', 'following'];
+            const tabs = ['today', 'following', 'saved', 'search'];
             tabs.forEach(t => {
                 const el = document.getElementById('mob-tab-' + t);
                 if (el) el.classList.toggle('active', t === tab);
@@ -18642,6 +18682,42 @@ ${sampleText}`;
             setMobilePane('sidebar');
         };
 
+        // Saved & Read Later (Idea A): 4th bottom bar button
+        // Tap from elsewhere -> opens Read Later
+        // Tap while on Read Later or Saved -> scrolls to top if scrolled, or toggles between Read Later & Saved
+        // Tap while viewing a story from Read Later or Saved -> returns to that list
+        window.onSavedTabClick = () => {
+            const curFeed = window.currentSmartFeed;
+            const inViewer = window._mobilePane === 'viewer';
+            const curArt = window.currentArticle;
+            const isTodayArt = curArt && (curArt.id === window.TODAY_BRIEF_ID || (curArt.isAiBriefing && (curArt.slug === 'briefing' || curArt.id?.startsWith('ai-briefing'))));
+
+            // 1. In viewer reading an article from saved or read-later: return to list
+            if (inViewer && (curFeed === 'read-later' || curFeed === 'saved') && !isTodayArt) {
+                setMobilePane('timeline');
+                setMobileTab('saved');
+                return;
+            }
+
+            // 2. Already on timeline pane viewing read-later or saved:
+            if (window._mobilePane === 'timeline' && (curFeed === 'read-later' || curFeed === 'saved')) {
+                const list = document.getElementById('article-list');
+                if (list && list.scrollTop > 60) {
+                    list.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                }
+                // Scrolled near top: toggle between read-later and saved
+                const target = curFeed === 'read-later' ? 'saved' : 'read-later';
+                window.setSmartFeed(target);
+                return;
+            }
+
+            // 3. Otherwise, open Read Later
+            window.setSmartFeed('read-later');
+            setMobilePane('timeline');
+            setMobileTab('saved');
+        };
+
         // --- Viewer Header & Back Button Navigation ---
         function updateViewerBackBtn() {
             const backBtn = document.getElementById('viewer-back-btn');
@@ -18694,6 +18770,8 @@ ${sampleText}`;
                     if (backLabel) backLabel.textContent = fromToday ? 'Today' : 'Brief';
                 } else if (window._activeTab === 'following') {
                     if (backLabel) backLabel.textContent = 'Following';
+                } else if (window._activeTab === 'saved') {
+                    if (backLabel) backLabel.textContent = window.currentSmartFeed === 'saved' ? 'Saved' : 'Read Later';
                 } else {
                     if (backLabel) backLabel.textContent = 'Today';
                 }
@@ -18727,12 +18805,20 @@ ${sampleText}`;
             if (pane === 'sidebar') {
                 setMobileTab('following');
             } else if (pane === 'timeline') {
-                setMobileTab('following');
+                if (window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'saved') {
+                    setMobileTab('saved');
+                } else {
+                    setMobileTab('following');
+                }
             } else if (pane === 'viewer') {
                 const cur = window.currentArticle;
                 const isTodayArt = cur && (cur.id === window.TODAY_BRIEF_ID || (cur.isAiBriefing && (cur.slug === 'briefing' || cur.id?.startsWith('ai-briefing'))));
                 if (!cur || isTodayArt || window._returnToBriefState || window._returnToAiBriefingState) {
                     setMobileTab('today');
+                } else if (window._activeTab === 'saved' || window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'saved') {
+                    setMobileTab('saved');
+                } else {
+                    setMobileTab('following');
                 }
             }
 
@@ -19069,7 +19155,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 435;
+        window.APP_BUILD = 436;
 
         (async function initApp() {
             try {
@@ -19956,7 +20042,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v435';
+const CACHE_NAME = 'rss-reader-v436';
 const APP_SHELL = [
     '/',
     'index.html'
