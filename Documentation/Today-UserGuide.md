@@ -100,7 +100,7 @@ Today features dedicated workstation layouts tailored for focus:
   * The header **never disappears or collapses**, and the mobile phone tab bar never intrudes on desktop.
 
 ### 3.2 Mobile Interface
-* **The Floating Bottom Tab Bar:** A detached floating glass capsule (YouTube-style, 54px tall) with four pure-icon tabs:
+* **The Floating Bottom Tab Bar:** A detached floating glass capsule (YouTube-style, 42px compact height) with four pure-icon tabs:
   * **Today:** Your curated 24-hour brief with a live unread badge counter.
   * **Library:** Your complete hierarchy of folders, feeds, and subscriptions.
   * **Saved / Read Later:** 1-tap access to your reading queue. Tapping it opens Read Later; tapping again smoothly toggles to Saved. A sticky segmented control (`[ 🔖 Read Later ]  [ ⭐️ Saved ]`) sits at the top of the timeline for effortless 1-tap switching.

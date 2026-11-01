@@ -2,7 +2,7 @@
 
 | Metadata | Value |
 | :--- | :--- |
-| **Document Version** | v3.6 (Build 436) |
+| **Document Version** | v3.7 (Build 437) |
 | **Date** | October 31, 2026 |
 | **Status** | Live in Production (`today.dautovic.com`) |
 | **Primary Repository** | `SDautovic-GH/RSSReader` |
@@ -54,7 +54,7 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 
 | Surface | Requirement | Implementation Detail |
 | :--- | :--- | :--- |
-| **Mobile Tab Bar** | YouTube floating glass capsule | Detached floating capsule (54px tall, 320px max-width, `blur(28px) saturate(190%)`) housing 4 icon tabs: **Today** (`#icon-sun` + live unread badge), **Library** (Folders), **Saved** (`#icon-bookmark` with sticky segmented switcher for Read Later & Saved), and **Search** (`#mob-tab-search`). Active tab displays an elevated inner translucent capsule highlight with pure bright white icon (`#ffffff`). Zero text labels. |
+| **Mobile Tab Bar** | YouTube floating glass capsule | Detached floating capsule (42px compact height, 320px max-width, `blur(28px) saturate(190%)`) hovering just above the home indicator bar. Houses 4 icon tabs: **Today** (`#icon-sun` + live unread badge), **Library** (Folders), **Saved** (`#icon-bookmark` with Today-style segmented switcher for Read Later & Saved), and **Search** (`#mob-tab-search`). Active tab displays an elevated inner translucent capsule highlight with pure bright white icon (`#ffffff`). Zero text labels. |
 | **Mobile Header** | Adaptive single-row header | Logo, title (Today: date, e.g. "Saturday, Oct 31"; Following: "Following"), status line ("Updated just now • 3 new"), and action buttons (Listen, Edit Feeds, Add Feed, Settings). |
 | **Mobile Reader** | Full-screen reading overlay | Opens cleanly over Today or active list. Tab bar slides away on downward scroll, returns on upward scroll. Horizontal swipes navigate adjacent stories. |
 | **Desktop: Today Briefing** | 2-column executive canvas | Sidebar (left) + Centered 760px editorial reading canvas (`desktop-today-briefing`). `#timeline-pane` is hidden. Header switcher mathematically centered at `50%`. |
