@@ -5,7 +5,7 @@
 | Project | RSS Reader Web Application (`today.dautovic.com`) |
 | Document | Redesign Plan & Implementation Record — Unified Two-Pane Workstation |
 | Target File | `/Users/samirdautovic/Developer/RSSReader/index.html` |
-| Current State | **Active — Build 456** deployed to production via Cloudflare Workers CI |
+| Current State | **Active — Build 457** deployed to production via Cloudflare Workers CI |
 | Date | 2026-11-01 |
 | Status | Complete & Deployed |
 
@@ -213,6 +213,9 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 | **Dead Code Elimination** | Verify absence of legacy resizer and dormant pane logic. | Zero console errors, clean code execution. | PASS |
 | **Ultrawide Seamless Full-Bleed** | Open app on display $> 1720px$ width. | App container fills browser edge-to-edge with zero letterboxing or dark bars; sidebar is anchored left; header controls align cleanly with the centered reading/cards content. | PASS |
 | **Story Mark Read Dismiss** | Click inline checkmark on any story row in Today or Unread. | Row animates dismiss collapse (180ms) and vanishes completely from view; remaining stories stay interactive. | PASS |
+| **Socials Original Post Context** | View replies (e.g. Jay Rosen) or quote posts on Bluesky/Socials in Cards, Timeline, and Reader. | Renders original post author, avatar, handle, and text in an embedded card right below the response/repost. | PASS |
+| **First Story Optical Spacing** | Inspect space above first story headline under category header vs subsequent stories. | Spacing above first story title (~30px) matches inter-story rhythm (~28px) with zero cramping. | PASS |
+| **Hero Image Excerpt Integrity** | View stories containing large 16:9 hero images. | Story card height expands naturally without fixed 500px clamping; excerpt text is never sliced horizontally. | PASS |
 | **Line 37 Invariant** | Inspect line 37 of `index.html`. | `<style id="tailwind-static">/*! tailwindcss v4` remains intact. | PASS |
 | **Syntax Validation** | Execute Node VM syntax audit across all scripts. | 100% valid JavaScript with zero syntax errors. | PASS |
 
