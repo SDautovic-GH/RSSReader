@@ -2795,6 +2795,27 @@
             display: none !important;
         }
 
+        /* Category Card Footer: Mark section read button inside card */
+        .brief-cat-section .brief-cat-end {
+            display: flex !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+            padding: 10px 16px !important;
+            margin: 0 !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.04) !important;
+            background: rgba(255, 255, 255, 0.012) !important;
+            box-sizing: border-box !important;
+        }
+
+        :root:not(.dark) .brief-cat-section .brief-cat-end {
+            border-top-color: rgba(0, 0, 0, 0.05) !important;
+            background: rgba(0, 0, 0, 0.01) !important;
+        }
+
+        .brief-cat-section .brief-cat-end .brief-mark-section-btn {
+            margin: 0 !important;
+        }
+
         .brief-item-act-btn {
             display: inline-flex;
             align-items: center;
@@ -2864,7 +2885,45 @@
             }
         }
 
-        /* 7. Ultrawide / Wide Display Centered Header Controls */
+        /* 7. Ultrawide / Wide Display Centered Layout & Controls */
+        @media (min-width: 901px) {
+            body.ultrawide-centered:not(.is-fullscreen) #app-container {
+                margin-left: auto !important;
+                margin-right: auto !important;
+                border: none !important;
+                box-shadow: none !important;
+                width: 100% !important;
+            }
+
+            /* Today Cards Mode: Sidebar (328px) + Cards Deck (760px / 1240px / 1680px) */
+            body.ultrawide-centered.desktop-today-cards-wide:not(.is-fullscreen) #app-container {
+                max-width: calc(1240px + 328px + 5rem) !important;
+            }
+
+            body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="1"]:not(.is-fullscreen) #app-container {
+                max-width: calc(760px + 328px + 5rem) !important;
+            }
+
+            body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="2"]:not(.is-fullscreen) #app-container {
+                max-width: calc(1240px + 328px + 5rem) !important;
+            }
+
+            body.ultrawide-centered.desktop-today-cards-wide[data-cards-cols="3"]:not(.is-fullscreen) #app-container {
+                max-width: calc(1680px + 328px + 5rem) !important;
+            }
+
+            /* Today Briefing & Story Mode: Sidebar (328px) + Reading Canvas (760px) */
+            body.ultrawide-centered.desktop-today-briefing:not(.is-fullscreen) #app-container,
+            body.ultrawide-centered.desktop-today-story:not(.is-fullscreen) #app-container {
+                max-width: calc(760px + 328px + 4rem) !important;
+            }
+
+            /* Unread / Feed 3-Column Workstation: Sidebar (328px) + Timeline (440px) + Reader */
+            body.ultrawide-centered:not(.desktop-today-cards-wide):not(.desktop-today-briefing):not(.desktop-today-story):not(.is-fullscreen) #app-container {
+                max-width: 1720px !important;
+            }
+        }
+
         body.ultrawide-centered.desktop-today-cards-wide #timeline-header .timeline-header-inner {
             max-width: calc(1240px + 5rem) !important;
             margin-left: auto !important;
@@ -3776,7 +3835,7 @@
             justify-content: flex-end;
             align-items: center;
             gap: 4px;
-            margin: 6px 0 -0.5rem 0;
+            margin: 10px 0 6px 0;
             font-size: 1em;
             font-weight: 600;
             color: var(--text-3);
@@ -16140,18 +16199,16 @@ ${sampleText}`;
 
         const _isOn = b => !!b && (b.classList.contains('is-on') || b.classList.contains('is-saved'));
 
-        // A Today story's menu (its "..." or a long-press on the phone, a right-click on the desktop): the
-        // card's own buttons, hidden on the phone.
+        // A Today story's menu (its "..." or a long-press on the phone, a right-click on the desktop):
+        // Quick actions (Mark Read & Save) are already directly on the story row next to "...", so
+        // the menu presents only the non-repeated secondary actions.
         window.showBriefStoryMenu = function (from, x, y, pointer) {
             const card = from.closest('.brief-story-card');
             if (!card) return;
             const btn = sel => card.querySelector('.brief-story-actions ' + sel);
-            const read = btn('.brief-act-read'), later = btn('.brief-act-later'), save = btn('.brief-save-btn');
+            const later = btn('.brief-act-later');
             window.showActionMenu(from, [
-                read && [_isOn(read) ? 'Mark Read' : 'Mark Unread', read],
                 later && [_isOn(later) ? 'Remove from Read Later' : 'Read Later', later],
-                save && [_isOn(save) ? 'Unsave' : 'Save', save],
-                '-',
                 ['Share…', btn('.brief-act-share')],
                 ['Open Original', btn('.brief-source-link')],
             ], x, y, pointer);
@@ -19191,7 +19248,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 449;
+        window.APP_BUILD = 450;
 
         (async function initApp() {
             try {
@@ -20069,7 +20126,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v449';
+const CACHE_NAME = 'rss-reader-v450';
 const APP_SHELL = [
     '/',
     'index.html'
