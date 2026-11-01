@@ -13757,16 +13757,27 @@
         };
 
         window.getTodayDefaultView = function () {
+            if (typeof isMobile === 'function' && isMobile()) {
+                try {
+                    const mobVal = localStorage.getItem('newsreader_today_default_view_mobile');
+                    if (mobVal) return mobVal;
+                } catch (e) { }
+                return 'cards'; // Mobile strictly defaults to Cards view on open
+            }
             try { return localStorage.getItem('newsreader_today_default_view') || 'briefing'; } catch (e) { return 'briefing'; }
         };
 
         window.saveTodayDefaultView = function (val) {
             const v = val === 'cards' ? 'cards' : 'briefing';
-            try { localStorage.setItem('newsreader_today_default_view', v); } catch (e) { }
+            if (typeof isMobile === 'function' && isMobile()) {
+                try { localStorage.setItem('newsreader_today_default_view_mobile', v); } catch (e) { }
+            } else {
+                try { localStorage.setItem('newsreader_today_default_view', v); } catch (e) { }
+            }
             window._todayDefaultView = v;
             const sel = document.getElementById('pref-today-default-view');
             if (sel) sel.value = v;
-            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+            if (typeof window.saveUiPrefsCloud === 'function' && (!window.isMobile || !window.isMobile())) window.saveUiPrefsCloud();
         };
 
         window.getTodayCardsColumns = function () {
@@ -13922,6 +13933,8 @@
 
         window.maybeRunAutoMorningBriefing = async function () {
             if (!window._autoMorningBriefing) return;
+            // On mobile, the app opens to Cards view; do not hijack the mobile screen with an automated briefing
+            if (typeof isMobile === 'function' && isMobile()) return;
             if (!window.getGeminiApiKey()) return;
             if (window._autoBriefingInFlight || window._refreshInFlight || window._refreshPending) return;
             const dayKey = getLocalMorningBriefingDayKey();
@@ -15483,8 +15496,10 @@ ${sampleText}`;
 
         window.openToday = async function (opts = {}) {
             window._returnToBriefState = null;
-            const targetView = opts.forceCards ? 'cards' : (window._currentTodayView || (window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing'));
-            if (targetView === 'briefing' && !window._hasSwitchedToCardsThisSession) {
+            const isMob = typeof isMobile === 'function' && isMobile();
+            const defaultView = window.getTodayDefaultView ? window.getTodayDefaultView() : (isMob ? 'cards' : 'briefing');
+            const targetView = opts.forceCards ? 'cards' : (opts.forceBriefing ? 'briefing' : (window._currentTodayView || defaultView));
+            if (targetView === 'briefing' && !window._hasSwitchedToCardsThisSession && (!isMob || opts.forceBriefing)) {
                 const key = window.getGeminiApiKey ? window.getGeminiApiKey() : null;
                 if (key) {
                     const hasUnread = (window.articles || []).some(a => a.unread && !a.isBrief && !window.isMuted(a));
@@ -18652,7 +18667,7 @@ ${sampleText}`;
 
             // 6. Otherwise navigate to Today using current active view without switching
             setMobileTab('today');
-            const targetView = window._currentTodayView || (window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing');
+            const targetView = window._currentTodayView || (window.getTodayDefaultView ? window.getTodayDefaultView() : 'cards');
             if (targetView === 'cards') {
                 await window.openToday({ forceCards: true });
             } else {
@@ -19156,7 +19171,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 442;
+        window.APP_BUILD = 443;
 
         (async function initApp() {
             try {
@@ -19766,9 +19781,13 @@ ${sampleText}`;
                         document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', data.autoMorningBriefing ? 'true' : 'false');
                     }
                     if (data.todayDefaultView) {
-                        try { localStorage.setItem('newsreader_today_default_view', data.todayDefaultView); } catch (e) { }
-                        const todayViewSel = document.getElementById('pref-today-default-view');
-                        if (todayViewSel) todayViewSel.value = data.todayDefaultView;
+                        if (typeof isMobile === 'function' && isMobile()) {
+                            // On mobile, keep mobile's cards default; do not let desktop's cloud sync overwrite it
+                        } else {
+                            try { localStorage.setItem('newsreader_today_default_view', data.todayDefaultView); } catch (e) { }
+                            const todayViewSel = document.getElementById('pref-today-default-view');
+                            if (todayViewSel) todayViewSel.value = data.todayDefaultView;
+                        }
                     }
                     if (data.cardsColumns) {
                         try { localStorage.setItem('newsreader_today_cards_columns', data.cardsColumns); } catch (e) { }
@@ -20043,7 +20062,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v442';
+const CACHE_NAME = 'rss-reader-v443';
 const APP_SHELL = [
     '/',
     'index.html'
