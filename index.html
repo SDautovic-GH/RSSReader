@@ -3431,6 +3431,21 @@
             min-width: 0;
         }
 
+        /* Keyboard triage in the card views: the highlighted card (j / k) while the keyboard is in use, and
+           focus on a story's headline. */
+        body.kbd-nav #today-column .brief-story-card.brief-card-cursor {
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+            background: rgba(var(--accent-rgb), 0.06) !important;
+        }
+
+        .brief-story-title:focus-visible,
+        .brief-story-excerpt:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
         /* The sidebar logo is its show / hide button on desktop; on hover it shows the panel icon. */
         .sidebar-toggle {
             border: 0;
@@ -3476,8 +3491,31 @@
             body.sidebar-collapsed #sidebar-header > div:first-child > :not(#sidebar-toggle),
             body.sidebar-collapsed #sidebar-header > div:last-child,
             body.sidebar-collapsed #folders-section-wrap,
-            body.sidebar-collapsed .smart-feed-btn > span + span {
+            body.sidebar-collapsed #unread-older-note {
                 display: none !important;
+            }
+
+            /* The counts stay, as small badges under their icons; every row is one height. */
+            body.sidebar-collapsed .smart-feed-btn {
+                flex-direction: column !important;
+                gap: 3px;
+                height: 48px !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+            }
+
+            body.sidebar-collapsed .smart-feed-btn > span + span {
+                gap: 0 !important;
+            }
+
+            body.sidebar-collapsed .smart-feed-btn .feed-badge {
+                min-width: 18px;
+                height: 14px;
+                padding: 0 4px !important;
+                border-radius: 999px !important;
+                font-size: 9px !important;
+                background: var(--accent) !important;
+                color: #fff !important;
             }
 
             body.sidebar-collapsed #sidebar-pane > .overflow-y-auto {
@@ -8379,12 +8417,15 @@
                 <button type="button" onclick="closeShortcuts()" aria-label="Close" class="shortcuts-close"><svg aria-hidden="true"><use href="#icon-close" /></svg></button>
             </div>
             <h3 class="settings-section-label">Navigation</h3>
-            <div class="shortcuts-row"><span>Next story</span><span class="shortcuts-keys"><kbd class="kbd">j</kbd><kbd class="kbd">↓</kbd></span></div>
-            <div class="shortcuts-row"><span>Previous story</span><span class="shortcuts-keys"><kbd class="kbd">k</kbd><kbd class="kbd">↑</kbd></span></div>
+            <div class="shortcuts-row"><span>Next story (in the cards: highlight the next one)</span><span class="shortcuts-keys"><kbd class="kbd">j</kbd><kbd class="kbd">↓</kbd></span></div>
+            <div class="shortcuts-row"><span>Previous story (in the cards: highlight the previous one)</span><span class="shortcuts-keys"><kbd class="kbd">k</kbd><kbd class="kbd">↑</kbd></span></div>
+            <div class="shortcuts-row"><span>Open the highlighted story</span><span class="shortcuts-keys"><kbd class="kbd">Enter</kbd></span></div>
             <div class="shortcuts-row"><span>Full screen: next / previous story</span><span class="shortcuts-keys"><kbd class="kbd">→</kbd><kbd class="kbd">←</kbd></span></div>
             <div class="shortcuts-row"><span>Full screen: scroll the story</span><span class="shortcuts-keys"><kbd class="kbd">↓</kbd><kbd class="kbd">↑</kbd></span></div>
             <h3 class="settings-section-label">Story</h3>
-            <div class="shortcuts-row"><span>Mark read / unread</span><span class="shortcuts-keys"><kbd class="kbd">r</kbd></span></div>
+            <div class="shortcuts-row"><span>Mark read / unread (in the cards: the highlighted one)</span><span class="shortcuts-keys"><kbd class="kbd">r</kbd></span></div>
+            <div class="shortcuts-row"><span>Save / unsave</span><span class="shortcuts-keys"><kbd class="kbd">s</kbd></span></div>
+            <div class="shortcuts-row"><span>Read Later</span><span class="shortcuts-keys"><kbd class="kbd">l</kbd></span></div>
             <div class="shortcuts-row"><span>Read Later (from a Today story: back to Today)</span><span class="shortcuts-keys"><kbd class="kbd">b</kbd></span></div>
             <div class="shortcuts-row"><span>AI TL;DR (from Today: Briefing)</span><span class="shortcuts-keys"><kbd class="kbd">Shift</kbd>+<kbd class="kbd">B</kbd></span></div>
             <div class="shortcuts-row"><span>Open the original</span><span class="shortcuts-keys"><kbd class="kbd">o</kbd></span></div>
@@ -11885,6 +11926,66 @@
             return false;
         }
 
+        // Keyboard triage in the desktop card views (no story open): j / k highlight the next or previous
+        // card, Enter opens it, r marks it read (the highlight moves on), s saves it, l adds it to Read Later,
+        // o opens the original, Esc lets go. A focused headline is the highlight too. Shown only while the
+        // keyboard is in use (kbd-nav), and the page scrolls only when the card isn't fully on screen.
+        window._cardCursorId = null;
+        function cardsOnScreen() {
+            const col = document.getElementById('today-column');
+            if (isMobile() || !document.body.classList.contains('desktop-today-cards-wide') || !col) return [];
+            return Array.from(col.querySelectorAll('.brief-story-card[data-sa-id]:not(.brief-card-read):not(.brief-story-dismissing)'))
+                .filter(c => c.getClientRects().length);
+        }
+        function setCardCursor(card, scroll) {
+            document.querySelectorAll('#today-column .brief-card-cursor').forEach(c => c.classList.remove('brief-card-cursor'));
+            window._cardCursorId = card ? card.getAttribute('data-sa-id') : null;
+            if (!card) return;
+            card.classList.add('brief-card-cursor');
+            if (!scroll) return;
+            const col = document.getElementById('today-column');
+            const r = card.getBoundingClientRect(), c = col.getBoundingClientRect();
+            if (r.top < c.top + 8 || r.bottom > c.bottom - 8) {
+                card.scrollIntoView({ block: r.height > c.height - 16 ? 'start' : 'nearest', behavior: 'smooth' });
+            }
+        }
+        // Returns whether the cards took the key.
+        function cardCursorKey(key) {
+            const cards = cardsOnScreen();
+            if (!cards.length) return false;
+            const i = cards.findIndex(c => c.getAttribute('data-sa-id') === window._cardCursorId);
+            const cur = i >= 0 ? cards[i] : null;
+            document.body.classList.add('kbd-nav');
+            if (key === 'next' || key === 'prev') {
+                if (!cur) {
+                    const top = document.getElementById('today-column').getBoundingClientRect().top;
+                    setCardCursor(cards.find(c => c.getBoundingClientRect().bottom > top) || cards[0], true);
+                } else {
+                    setCardCursor(cards[Math.min(Math.max(i + (key === 'next' ? 1 : -1), 0), cards.length - 1)], true);
+                }
+                return true;
+            }
+            if (!cur) return false;
+            const id = window._cardCursorId;
+            if (key === 'open') window.openArticleInReader(id);
+            else if (key === 'read') {
+                const next = cards[i + 1] || cards[i - 1] || null;
+                window.toggleStoryReadInline(id, cur.querySelector('.brief-act-read-inline'));
+                setCardCursor(next, false);
+            } else if (key === 'save') window.toggleBriefStorySaved(id, cur.querySelector('.brief-save-btn'));
+            else if (key === 'later') window.toggleStoryReadLaterInline(id, cur.querySelector('.brief-act-later'));
+            else if (key === 'original') {
+                const art = window.briefStoryArticle(id);
+                if (art && art.link) window.open(art.link, '_blank', 'noopener');
+            } else return false;
+            return true;
+        }
+        document.addEventListener('mousedown', () => document.body.classList.remove('kbd-nav'), { passive: true });
+        document.addEventListener('focusin', (e) => {
+            const card = e.target.closest && e.target.closest('#today-column .brief-story-card[data-sa-id]');
+            if (card) setCardCursor(card, false);
+        });
+
         // j / k (and the arrows) with Today on screen. From a story opened in it: Today's next or previous,
         // as the Next / Previous buttons. With none open: its first story on screen. Returns whether Today
         // took the key.
@@ -11927,8 +12028,18 @@
                 else if (window.readerNext().show) window.readerNextOrBack();
                 return;
             }
+            // A focused headline or button takes Enter and Space itself.
+            const onControl = document.activeElement && document.activeElement !== document.body
+                && document.activeElement.matches('a, button, [role="link"], [role="button"]');
+            if (e.key === 'Enter' && !onControl && cardCursorKey('open')) { e.preventDefault(); return; }
+            if (['r', 'R', 's', 'S', 'l', 'L', 'o', 'O'].includes(e.key)
+                && cardCursorKey({ r: 'read', s: 'save', l: 'later', o: 'original' }[e.key.toLowerCase()])) {
+                e.preventDefault();
+                return;
+            }
             const down = e.key === 'ArrowDown' || e.key === 'j';
             if (down || e.key === 'ArrowUp' || e.key === 'k') {
+                if (cardCursorKey(down ? 'next' : 'prev')) { e.preventDefault(); return; }
                 if (todayKeyStep(down ? 1 : -1)) { e.preventDefault(); return; }
                 const tl = window.currentTimeline || [];
                 if (!tl.length) return;
@@ -11940,6 +12051,10 @@
                 if (window.currentArticle) {
                     toggleUnread(window.currentArticle); saveReadState(); refreshUI();
                 }
+            } else if ((e.key === 's' || e.key === 'S') && window.currentArticle && !window.currentArticle.isBrief) {
+                handleSavedAction();
+            } else if ((e.key === 'l' || e.key === 'L') && window.currentArticle && !window.currentArticle.isBrief) {
+                handleReadLaterAction();
             } else if (e.key === '[') {
                 e.preventDefault();
                 window.toggleSidebar();
@@ -11990,6 +12105,9 @@
                     window.returnToBrief();
                 } else if (document.body.classList.contains('desktop-today-story')) {
                     window.closeStoryToTodayColumn();
+                } else if (window._cardCursorId && cardsOnScreen().length) {
+                    setCardCursor(null, false);
+                    document.activeElement?.blur?.();
                 } else if (isMobile() && window._mobilePane === 'viewer') {
                     setMobilePane('timeline');
                 } else if (!isMobile() && window._todayInColumn && window.currentArticle && !window.currentArticle.isBrief) {
@@ -13647,9 +13765,10 @@
             return out;
         }
 
-        // Listen: plays through a real HTML5 <audio> element (AVPlayer / Playback category on iOS, which
-        // plays out loud through the iPhone speaker even when Silent Mode is on), with automatic fallback
-        // to Web Speech API (speechSynthesis) when offline.
+        // Listen: on the phone through a real HTML5 <audio> element (AVPlayer / Playback category on iOS,
+        // which plays out loud through the iPhone speaker even when Silent Mode is on), falling back to the
+        // Web Speech API (speechSynthesis) when offline. On desktop with the computer's own voices, so the
+        // story text never goes to the translate service.
         window._ttsPieces = null;
         window._ttsIndex = 0;
         window._ttsPaused = false;
@@ -13858,6 +13977,7 @@
             activatePlaybackAudioSession();
             const pieces = window._ttsPieces || [];
             if (i >= pieces.length) { endTTS(); return; }
+            if (!isMobile()) { ttsSpeakFromWebSpeech(i, run); return; }
 
             window._ttsMode = 'audio';
             setTtsReferrerPolicy(true);
@@ -16887,6 +17007,7 @@ ${sampleText}`;
                 .find(c => c.getAttribute('data-sa-id') === id));
             if (card) {
                 card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (document.body.classList.contains('kbd-nav')) setCardCursor(card, false);
                 card.classList.add('brief-card-return-pulse');
                 setTimeout(() => card.classList.remove('brief-card-return-pulse'), 2500);
             }
@@ -17353,14 +17474,14 @@ ${sampleText}`;
 
                     if (isSocial) {
                         storyBodyHtml = `
-                            <p class="brief-story-excerpt dynamic-list-preview line-clamp-social is-social-post text-gray-800 dark:text-gray-200 mt-0 mb-1.5 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">
+                            <p class="brief-story-excerpt dynamic-list-preview line-clamp-social is-social-post text-gray-800 dark:text-gray-200 mt-0 mb-1.5 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')" tabindex="0" role="link" onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.openArticleInReader('${saId}'); }">
                                 ${esc(postText)}
                             </p>
                             ${parentCardHtml}
                         `;
                     } else {
                         storyBodyHtml = `
-                            <h4 class="brief-story-title dynamic-list-title text-gray-900 dark:text-white leading-snug mt-0 cursor-pointer" onclick="window.openArticleInReader('${saId}')">
+                            <h4 class="brief-story-title dynamic-list-title text-gray-900 dark:text-white leading-snug mt-0 cursor-pointer" onclick="window.openArticleInReader('${saId}')" tabindex="0" role="link" onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.openArticleInReader('${saId}'); }">
                                 ${esc(st.title)}
                             </h4>
                             ${st.excerpt ? `<p class="brief-story-excerpt dynamic-list-preview text-gray-500 dark:text-gray-400 mt-0 mb-1.5 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">${esc(st.excerpt)}</p>` : ''}
@@ -20942,7 +21063,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 470;
+        window.APP_BUILD = 471;
 
         (async function initApp() {
             try {
@@ -21813,7 +21934,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v470';
+const CACHE_NAME = 'rss-reader-v471';
 const APP_SHELL = [
     '/',
     'index.html'

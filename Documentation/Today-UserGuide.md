@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **Product** | Today (formerly RSS Reader) |
 | **Live App** | [today.dautovic.com](https://today.dautovic.com) |
-| **Build Target** | Build 470+ |
+| **Build Target** | Build 471+ |
 | **Documentation Type** | Comprehensive User Manual |
 | **Last Updated** | November 2, 2026 |
 
@@ -109,7 +109,14 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 
 #### Collapsing the Sidebar
 * Press `[`, or click the app logo at the top left (it shows a panel icon when you point at it), to fold the sidebar into a narrow rail. The rail keeps Today, Unread, Read Later, Saved and History as icons, plus Refresh and Settings at the bottom; press `[` or click the logo again to open it.
+* Unread and Read Later keep their counts on the rail, as small badges under the icons.
 * Today remembers the choice on each device.
+
+#### Triage from the Keyboard (Desktop)
+* In any card view (Today, Unread, a folder or feed, Read Later, Saved, History), press `j` / `k` to move a highlight from card to card; the page scrolls only when the card isn't fully on screen.
+* On the highlighted card: `Enter` opens it, `r` marks it read (the highlight moves to the next card), `s` saves it, `l` adds it to Read Later, `o` opens the original site. `Esc` lets go of the highlight.
+* `Tab` also reaches every headline; `Enter` on a focused headline opens it. The highlight shows only while you use the keyboard and goes when you use the mouse.
+* After a story, Back (`b` or `Esc`) returns the highlight to the card Today lands on.
 
 #### Cards: Top Stories and Balanced Columns
 * **Top Stories** runs across the full width of the deck, its stories flowing down the columns.
@@ -147,7 +154,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
   * **Search:** Instant full-text search across all saved, unread, and archived stories.
   * **Visual Style:** YouTube-style ultra-translucent frosted glass capsule (`-webkit-backdrop-filter: blur(20px) saturate(180%)`) with GPU acceleration, a soft translucent tint (`rgba(18, 18, 22, 0.25)`), an elevated inner capsule highlight around the active tab, and a pure bright white icon (`#ffffff`). Zero text clutter.
 * **Header Controls:**
-  * **Headphones Icon:** Tap to have Today read your brief aloud using text-to-speech.
+  * **Headphones Icon:** Tap to have Today read your brief aloud using text-to-speech. On the phone it plays through the speaker even in Silent Mode; on a computer it uses the computer's own voices, so the text stays on your device.
   * **Status Line:** Displays synchronization status (e.g., "Updated just now • 4 new").
   * **New Stories Pill:** When new stories arrive during reading, a blue pill appears ("3 new stories"). Tap it to refresh without interrupting your current scroll position.
 
@@ -161,12 +168,15 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 | `2` | Anywhere in Today | Switch to **▣ Cards View** |
 | `t` / `T` | Anywhere | Jump directly to Today |
 | `[` | Desktop | Show or hide the sidebar (rail) |
-| `j` / `↓` | Today Cards / Reader | Move to next story |
-| `k` / `↑` | Today Cards / Reader | Move to previous story |
+| `j` / `↓` | Cards / Reader | Cards: highlight the next card; Reader: next story |
+| `k` / `↑` | Cards / Reader | Cards: highlight the previous card; Reader: previous story |
+| `Enter` | Cards | Open the highlighted story |
 | `b` / `B` | While reading a story | Return to Today Cards / Briefing |
 | `Escape` | While reading a story | Close story and return to Today Cards / Briefing |
-| `r` / `R` | Story open | Toggle read / unread status |
-| `o` / `O` | Story open | Open original source article in new tab |
+| `r` / `R` | Cards / Story | Mark the highlighted card read, or toggle the open story's read status |
+| `s` / `S` | Cards / Story | Save or unsave |
+| `l` / `L` | Cards / Story | Add to or remove from Read Later |
+| `o` / `O` | Cards / Story | Open the original article in a new tab |
 | `/` | Anywhere | Open search palette |
 | `?` | Anywhere | View all keyboard shortcuts modal |
 
