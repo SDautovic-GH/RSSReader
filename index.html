@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Today">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#3d6bb0">
     <meta name="color-scheme" content="light dark">
     <meta name="description" content="Your personal RSS news reader">
     <title>Today</title>
@@ -78,24 +78,24 @@
         #feed-list .smart-feed-btn.active-item,
         .smart-feed-btn.active-item,
         .active-item {
-            background-color: rgba(59, 130, 246, 0.16) !important;
-            color: #60a5fa !important;
+            background-color: rgba(var(--accent-rgb), 0.16) !important;
+            color: var(--accent) !important;
         }
 
         .active-item svg {
-            color: #60a5fa !important;
+            color: var(--accent) !important;
         }
 
         :root:not(.dark) #smart-feeds-card .smart-feed-btn.active-item,
         :root:not(.dark) #feed-list .smart-feed-btn.active-item,
         :root:not(.dark) .smart-feed-btn.active-item,
         :root:not(.dark) .active-item {
-            background-color: rgba(37, 99, 235, 0.12) !important;
-            color: #1d4ed8 !important;
+            background-color: rgba(var(--accent-rgb), 0.12) !important;
+            color: var(--accent) !important;
         }
 
         :root:not(.dark) .active-item svg {
-            color: #1d4ed8 !important;
+            color: var(--accent) !important;
         }
 
         /* Count badge inside the active feed row reads in matching accent tint */
@@ -103,14 +103,14 @@
         .smart-feed-btn.active-item .mob-unread-count,
         .active-item .mob-unread-count,
         .active-item .text-gray-400 {
-            color: #93c5fd !important;
+            color: var(--accent) !important;
         }
 
         :root:not(.dark) .smart-feed-btn.active-item .feed-badge,
         :root:not(.dark) .smart-feed-btn.active-item .mob-unread-count,
         :root:not(.dark) .active-item .mob-unread-count,
         :root:not(.dark) .active-item .text-gray-400 {
-            color: #1d4ed8 !important;
+            color: var(--accent) !important;
         }
 
         .article-content img {
@@ -226,23 +226,15 @@
             transition: opacity 0.3s;
         }
 
-        /* GitHub blue for all article links and feed name */
+        /* Article links in the accent; on hover a step toward the text colour (lighter in dark, darker
+           in light). */
         .article-content a {
-            color: #4493f8;
+            color: var(--accent);
             text-decoration: none;
         }
 
         .article-content a:hover {
-            color: #79c0ff;
-        }
-
-        /* In the light theme the dark theme's #4493f8 is 3.1:1 on white: links take the logo's blue. */
-        html:not(.dark) .article-content a {
-            color: var(--color-blue-600);
-        }
-
-        html:not(.dark) .article-content a:hover {
-            color: var(--color-blue-700, oklch(0.488 0.243 264.376));
+            color: color-mix(in srgb, var(--accent) 75%, var(--text-1));
         }
 
         a {
@@ -290,7 +282,7 @@
         }
 
         #article-body {
-            padding-top: 16px;   /* 28px since build 205; the stronger divider colour stays (build 300) */
+            padding-top: 16px;   /* 28px; the stronger divider colour stays */
         }
 
         .dynamic-list-preview,
@@ -299,11 +291,14 @@
         }
 
         /* Colour tokens, light then dark: text-1 headlines and headings, text-2 summaries and
-           previews, text-3 sources, times, counts and labels; the sheet surface and its dividers.
+           previews, text-3 sources, times, counts and labels; the sheet surface and its dividers; the
+           one accent (the house blue) for links, selection and primary actions.
            Sheets (Settings, Feeds, the phone's Search) are the app's own background: white, and in
            dark the desktop's panes (#0d1117) or the phone's black. */
         :root {
             color-scheme: light;
+            --accent: #3d6bb0;
+            --accent-rgb: 61, 107, 176;
             --text-1: #0f1923;
             --text-2: #374151;
             --text-3: #57606a;
@@ -314,6 +309,8 @@
         html.dark,
         .dark {
             color-scheme: dark;
+            --accent: #4d7cc7;
+            --accent-rgb: 77, 124, 199;
             --text-1: #f0f6fc;
             --text-2: #ccd2d8;
             --text-3: #8b949e;
@@ -321,7 +318,20 @@
             --divider: rgba(255, 255, 255, 0.09);
         }
 
-        @media (max-width: 900px) {
+        /* Tailwind's blues follow the accent, so its utilities (text-blue-500, ring-blue-400, the logo's
+           bg-blue-600) are the house blue in both themes. Declared on the root, where .dark is set. */
+        :root {
+            --color-blue-50: color-mix(in srgb, var(--accent) 8%, #fff);
+            --color-blue-100: color-mix(in srgb, var(--accent) 16%, #fff);
+            --color-blue-400: var(--accent);
+            --color-blue-500: var(--accent);
+            --color-blue-600: var(--accent);
+            --color-blue-700: color-mix(in srgb, var(--accent) 80%, #000);
+            --color-blue-900: color-mix(in srgb, var(--accent) 45%, #000);
+            --color-blue-950: color-mix(in srgb, var(--accent) 30%, #000);
+        }
+
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .dark {
                 --surface-sheet: #000000;
             }
@@ -366,7 +376,7 @@
         }
 
         .dark #article-body a:not(.brief-jump-pill) {
-            color: #58a6ff !important;
+            color: var(--accent) !important;
         }
 
         /* Folder and smart-feed names use the reading text colour. */
@@ -434,7 +444,7 @@
 
         #resizer:hover,
         .resizing #resizer {
-            background: #3b82f6;
+            background: var(--accent);
         }
 
         /* Pane borders start below the 74px header, so the top reads as one toolbar.
@@ -469,7 +479,7 @@
         }
 
         /* Continuous header bottom border: spans edge-to-edge (0px to 100vw) on both left and right sides */
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             #app-container {
                 position: relative;
             }
@@ -650,19 +660,19 @@
         #article-list .is-active-card,
         .dark #article-list .article-item-card.is-active-card,
         .dark #article-list>.is-active-card {
-            border-left: 3px solid #3d6bb0 !important;
-            border-left-color: #3d6bb0 !important;
-            background: rgba(61, 107, 176, 0.09) !important;
-            border-bottom-color: rgba(61, 107, 176, 0.25) !important;
+            border-left: 3px solid var(--accent) !important;
+            border-left-color: var(--accent) !important;
+            background: rgba(var(--accent-rgb), 0.09) !important;
+            border-bottom-color: rgba(var(--accent-rgb), 0.25) !important;
         }
 
         .dark .article-item-card.is-active-card,
         .dark #article-list .article-item-card.is-active-card,
         .dark #article-list>.is-active-card {
-            border-left: 3px solid #4d7cc7 !important;
-            border-left-color: #4d7cc7 !important;
-            background: rgba(61, 107, 176, 0.15) !important;
-            border-bottom-color: rgba(61, 107, 176, 0.3) !important;
+            border-left: 3px solid var(--accent) !important;
+            border-left-color: var(--accent) !important;
+            background: rgba(var(--accent-rgb), 0.15) !important;
+            border-bottom-color: rgba(var(--accent-rgb), 0.3) !important;
         }
 
         .article-item-card.article-read-pinned {
@@ -701,7 +711,7 @@
             width: 8px;
             height: 8px;
             border-radius: 9999px;
-            background: #3b82f6;
+            background: var(--accent);
             margin-right: -1px;
         }
 
@@ -988,7 +998,7 @@
 
 
         /* ===== MOBILE LAYOUT ===== */
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
 
             /* The body anchors the tab bar and its popovers (absolute, not fixed: standalone WebKit
                mis-anchors fixed elements under the 115% Page Zoom); lockMobileLayoutHeight() pins its
@@ -1218,7 +1228,7 @@
                36px logo in the 40px row, puts the logo 12px under it, as on Today. */
             #sidebar-pane>#sidebar-header {
                 height: auto !important;
-                padding: calc(max(env(safe-area-inset-top, 0px), 50px) + 10px) 14px 0.75rem !important;   /* bottom was 1.25rem (326) */
+                padding: calc(max(env(safe-area-inset-top, 0px), 50px) + 10px) 14px 0.75rem !important;
             }
 
             /* Full-screen lists carry their own status-bar offset, so the first card clears the clock. */
@@ -1299,7 +1309,7 @@
             pointer-events: none !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #desk-nav-group {
                 display: none !important;
             }
@@ -1507,13 +1517,13 @@
             border-bottom: 1px solid rgba(0, 0, 0, 0.08);
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #timeline-pane.is-saved-active .saved-readlater-bar {
                 display: flex !important;
             }
         }
 
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             #saved-readlater-bar,
             .saved-readlater-bar {
                 display: none !important;
@@ -1683,7 +1693,7 @@
             max-width: calc(100vw - 24px);
         }
 
-        /* A dropdown's list (desktop): on the app's own surface, as the search palette (on request: not the
+        /* A dropdown's list (desktop): on the app's own surface, as the search palette (not the
            menus' grey glass), with the menus' corners and shadow; a check before the current choice, Search's
            Folders / Feeds headings over their items, the item under the pointer or the keys in a grey tint;
            a long list scrolls (its height is set to the room left on open). */
@@ -1821,7 +1831,7 @@
         }
 
         /* The search palette (desktop) on the app's own surface, the reader's colour, as the phone's sheet
-           and Settings are (on request: the grey glass didn't match the reader); the phone's sheet sets its
+           and Settings are (the grey glass didn't match the reader); the phone's sheet sets its
            own shape below. */
         #mobile-search-sheet .search-inner {
             pointer-events: auto;
@@ -1939,7 +1949,7 @@
             display: none;
         }
 
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
 
             /* Fallbacks for the first frame: positionSearchPalette() sets the real top / left / width
                under the search control on open and on resize. */
@@ -1982,14 +1992,14 @@
             }
 
             #search-filter-row select:focus {
-                border-color: #4493f8;
+                border-color: var(--accent);
             }
         }
 
         /* On the phone Search is a sheet like Settings: over the tab bar, the full height under the
            status bar, the field at the top (clear of the keyboard) and the results down to the bottom.
            Done, a pull down or a tap on the dim strip above it closes it. */
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #mobile-search-sheet {
                 top: 0;
                 bottom: 0 !important;
@@ -2104,7 +2114,7 @@
         }
 
         /* The desktop palette in the light theme: a lighter shadow, and its filter menus light. */
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             html:not(.dark) #mobile-search-sheet .search-inner {
                 box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
             }
@@ -2117,7 +2127,7 @@
             }
 
             html:not(.dark) #search-filter-row select:focus {
-                border-color: #4493f8;
+                border-color: var(--accent);
             }
         }
 
@@ -2199,7 +2209,7 @@
         }
 
         /* ===== MOBILE APPLE GLASS THEME ===== */
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .dark body {
                 background: #000 !important;
             }
@@ -2229,8 +2239,8 @@
             }
 
             .dark .smart-feed-btn.active-item {
-                background: rgba(59, 130, 246, 0.16) !important;
-                color: #60a5fa !important;
+                background: rgba(var(--accent-rgb), 0.16) !important;
+                color: var(--accent) !important;
                 border-radius: 0 !important;
             }
 
@@ -2286,7 +2296,7 @@
             --zoom: var(--app-zoom, 1);
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             :root {
                 --zoom: var(--app-zoom-mobile, 1);
             }
@@ -2303,7 +2313,7 @@
             text-size-adjust: 100%;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
 
             #article-list,
             #reader-view,
@@ -2360,7 +2370,7 @@
         }
 
         .article-content blockquote {
-            border-left: 3px solid #4493f8;
+            border-left: 3px solid var(--accent);
             padding-left: 1em;
             margin: 1.5em 0;
             color: var(--text-3);
@@ -2436,7 +2446,7 @@
         .bsky-reply-header-label {
             font-size: 0.8em !important;
             font-weight: 600 !important;
-            color: #3d6bb0 !important;
+            color: var(--accent) !important;
             margin-bottom: 6px !important;
             display: flex !important;
             align-items: center !important;
@@ -2444,7 +2454,7 @@
         }
 
         .dark .bsky-reply-header-label {
-            color: #4d7cc7 !important;
+            color: var(--accent) !important;
         }
 
         /* Embedded parent post for social stories (replies, quotes, reposts) in Cards & Timeline */
@@ -2509,7 +2519,7 @@
         }
 
         .brief-social-parent-label {
-            color: #3d6bb0 !important;
+            color: var(--accent) !important;
             margin-left: auto !important;
             font-size: 0.85em !important;
             font-weight: 600 !important;
@@ -2518,7 +2528,7 @@
         }
 
         .dark .brief-social-parent-label {
-            color: #4d7cc7 !important;
+            color: var(--accent) !important;
         }
 
         .brief-social-parent-text {
@@ -2574,7 +2584,7 @@
         }
 
         .bsky-external-card:hover {
-            border-color: rgba(68, 147, 248, 0.4);
+            border-color: rgba(var(--accent-rgb), 0.4);
         }
 
         .bsky-external-thumb {
@@ -2607,7 +2617,7 @@
 
         .bsky-external-uri {
             font-size: 0.75em;
-            color: #4493f8;
+            color: var(--accent);
             margin-top: 4px;
         }
 
@@ -2716,7 +2726,7 @@
             line-height: var(--feed-line-height, 1.4) !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .smart-feed-btn,
             .pub-card-row {
                 line-height: var(--mob-feed-line-height, 1.4) !important;
@@ -2743,8 +2753,8 @@
            variant declares background: transparent !important; the #today-column id
            still wins on specificity. */
         #today-column .brief-story-card.brief-card-active {
-            background: rgba(68, 147, 248, 0.08) !important;
-            box-shadow: inset 3px 0 0 #4493f8 !important;
+            background: rgba(var(--accent-rgb), 0.08) !important;
+            box-shadow: inset 3px 0 0 var(--accent) !important;
             /* The tint and line reach 10px into the margin, with the padding grown to match, so the
                text starts 11px after the line. The width grows too: cards are width: 100%. */
             width: calc(100% + 20px) !important;
@@ -2826,7 +2836,7 @@
             left: max(1rem, calc(50% - 21rem));
         }
 
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             body.is-fullscreen #reader-view {
                 padding-bottom: 88px !important;
             }
@@ -2910,14 +2920,14 @@
 
         body.desktop-today-briefing #reader-view > div {
             max-width: 760px !important;
-            margin-left: 0 !important;
+            margin-left: auto !important;
             margin-right: auto !important;
             width: 100% !important;
         }
 
         body.desktop-today-briefing #reader-view #article-body {
             max-width: 760px !important;
-            margin-left: 0 !important;
+            margin-left: auto !important;
             margin-right: auto !important;
         }
 
@@ -2980,8 +2990,8 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             }
         }
-        @media (max-width: 768px) {
-            body.desktop-today-cards-wide #today-column .brief-cards-grid {
+        @media (max-width: 1000px) {
+            body.desktop-today-cards-wide[data-cards-cols] #today-column .brief-cards-grid {
                 grid-template-columns: minmax(0, 1fr) !important;
             }
         }
@@ -3000,6 +3010,7 @@
         }
 
         body.desktop-today-cards-wide #today-column .brief-cat-section {
+            margin-top: 0 !important;
             margin-bottom: 0 !important;
         }
 
@@ -3010,7 +3021,7 @@
         }
 
         .brief-cat-section:hover {
-            border-color: rgba(68, 147, 248, 0.3) !important;
+            border-color: rgba(var(--accent-rgb), 0.3) !important;
         }
 
         .brief-cat-header {
@@ -3062,7 +3073,7 @@
         }
 
         .brief-cat-section .brief-story-card:hover {
-            background: rgba(68, 147, 248, 0.035) !important;
+            background: rgba(var(--accent-rgb), 0.035) !important;
         }
 
         /* Read story disappearance */
@@ -3155,7 +3166,7 @@
         #article-body .brief-cat-section .ai-briefing-story:hover,
         .ai-reader-briefing .brief-cat-section .ai-briefing-story:hover,
         .brief-cat-section .ai-briefing-story:hover {
-            background: rgba(68, 147, 248, 0.035) !important;
+            background: rgba(var(--accent-rgb), 0.035) !important;
         }
 
         /* Briefing Option A: Editorial hover/focus action cluster for narrative bullets */
@@ -3216,7 +3227,7 @@
 
         .ai-bullet-act-btn.is-on,
         .ai-bullet-act-btn.ai-bullet-act-later.is-on {
-            color: #3b82f6 !important;
+            color: var(--accent) !important;
         }
 
         .ai-bullet-act-btn.ai-bullet-act-read.is-on {
@@ -3224,7 +3235,7 @@
         }
 
         /* Mobile: Borderless, full-width edge-to-edge reading layout (no boxes) */
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-cat-section,
             body.desktop-today-cards-wide #today-column .brief-cat-section,
             .ai-reader-briefing .brief-cat-section {
@@ -3320,7 +3331,7 @@
 
         .brief-item-act-btn.is-on,
         .brief-item-act-btn.brief-act-later.is-on {
-            color: #3b82f6 !important;
+            color: var(--accent) !important;
         }
 
         .brief-item-act-btn.brief-save-btn.is-on {
@@ -3337,7 +3348,7 @@
         }
 
         /* On mobile, keep story row meta clean by hiding quick action buttons (available in "..." menu) */
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-story-ctrls .brief-act-read-inline,
             .brief-story-ctrls .brief-act-later {
                 display: none !important;
@@ -3369,6 +3380,164 @@
             margin-right: auto !important;
         }
 
+        /* Reading beside the list (Settings > Stories > Open stories): the story opens next to the list,
+           which keeps its resizable width. Stories read meanwhile stay listed, dimmed, until the reader
+           closes, so the list never moves under the pointer. */
+        body.story-beside.desktop-today-story #timeline-pane {
+            display: flex !important;
+        }
+
+        body.story-beside.desktop-today-story #resizer {
+            display: block !important;
+        }
+
+        body.story-beside.desktop-today-story #today-column {
+            padding: 1rem 1rem 6rem !important;
+        }
+
+        body.story-beside.desktop-today-story #today-column .brief-container {
+            max-width: none !important;
+        }
+
+        body.story-beside.desktop-today-story #today-column .brief-story-card.brief-card-seen {
+            opacity: 0.55;
+        }
+
+        /* Cards: Top Stories spans the deck with its stories in the deck's columns; the folders below fill
+           column wrappers (balanceTodayDeck), so a short folder beside a long one leaves no hole. */
+        body.desktop-today-cards-wide #today-column .brief-cards-grid > #brief-cat-top_stories,
+        body.desktop-today-cards-wide #today-column .brief-cards-grid > .brief-all-read-note {
+            grid-column: 1 / -1;
+        }
+
+        /* Top Stories' stories flow down the deck's columns, so one without a picture beside one with a
+           picture leaves no hole; each column starts with the room a section's first story has. */
+        body.desktop-today-cards-wide #today-column #brief-cat-top_stories .brief-cat-stories {
+            display: block !important;
+            columns: var(--deck-cols, 1);
+            column-gap: 24px;
+            padding-top: 8px;
+        }
+
+        body.desktop-today-cards-wide #today-column #brief-cat-top_stories .brief-cat-stories > .brief-story-card {
+            break-inside: avoid;
+            padding-top: 14px !important;
+        }
+
+        .brief-deck-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 0;
+        }
+
+        /* The sidebar logo is its show / hide button on desktop; on hover it shows the panel icon. */
+        .sidebar-toggle {
+            border: 0;
+            cursor: pointer;
+        }
+
+        .sidebar-toggle .logo-toggle {
+            display: none;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            .sidebar-toggle:hover .logo-mark,
+            .sidebar-toggle:focus-visible .logo-mark {
+                display: none;
+            }
+
+            .sidebar-toggle:hover .logo-toggle,
+            .sidebar-toggle:focus-visible .logo-toggle {
+                display: block;
+            }
+        }
+
+        /* Collapsed sidebar: a 64px rail with the smart lists, Refresh and Settings, so navigation stays
+           on screen. */
+        #sidebar-rail-actions {
+            display: none;
+        }
+
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
+            body.sidebar-collapsed {
+                --sidebar-w: 64px;
+            }
+
+            body.sidebar-collapsed #sidebar-pane {
+                width: 64px !important;
+            }
+
+            body.sidebar-collapsed #sidebar-header {
+                padding: 0 !important;
+                justify-content: center !important;
+            }
+
+            body.sidebar-collapsed #sidebar-header > div:first-child > :not(#sidebar-toggle),
+            body.sidebar-collapsed #sidebar-header > div:last-child,
+            body.sidebar-collapsed #folders-section-wrap,
+            body.sidebar-collapsed .smart-feed-btn > span + span {
+                display: none !important;
+            }
+
+            body.sidebar-collapsed #sidebar-pane > .overflow-y-auto {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+            }
+
+            body.sidebar-collapsed .smart-feed-btn {
+                justify-content: center !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+
+            /* The label is a bare text node beside the icon: no font size hides it, the icon keeps its size. */
+            body.sidebar-collapsed .smart-feed-btn > span:first-child {
+                font-size: 0 !important;
+            }
+
+            body.sidebar-collapsed .smart-feed-btn > span:first-child > svg {
+                margin-right: 0 !important;
+            }
+
+            body.sidebar-collapsed #sidebar-rail-actions {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                padding: 12px 0 16px;
+            }
+        }
+
+        /* Settings > Today > Pictures > Small: each picture a square at the right of its story, the
+           headline and summary beside it, the source line under both. */
+        body.today-pictures-small .brief-cat-section .brief-story-card:not(.brief-card-read) {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto;
+            column-gap: 14px;
+            align-items: start;
+        }
+
+        body.today-pictures-small .brief-story-card > * {
+            grid-column: 1;
+        }
+
+        body.today-pictures-small .brief-story-card > .brief-hero,
+        body.today-pictures-small .brief-story-card > .brief-thumb {
+            grid-column: 2;
+            grid-row: 1 / span 3;
+            float: none;
+            width: 88px;
+            height: 88px;
+            aspect-ratio: auto;
+            margin: 2px 0 0;
+            border-radius: 10px;
+        }
+
+        body.today-pictures-small .brief-story-card > .brief-story-meta {
+            grid-column: 1 / -1;
+        }
+
         /* 6. Desktop Window Resize Safety: headers persist on desktop computers at all viewport widths */
         @media (hover: hover) and (pointer: fine) {
             body:not(.is-fullscreen) #timeline-header,
@@ -3381,10 +3550,8 @@
         }
 
         /* 7. Ultrawide / Wide Display Centered Layout & Edge Native Scrollbar */
-        @media (min-width: 901px) {
-            #app-container,
-            body.ultrawide-centered:not(.is-fullscreen) #app-container,
-            body:not(.ultrawide-stretch):not(.is-fullscreen) #app-container {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
+            #app-container {
                 margin: 0 !important;
                 border: none !important;
                 box-shadow: none !important;
@@ -3401,46 +3568,16 @@
                 padding-top: 0 !important;
             }
 
-            /* Center [Sidebar + Deck] together with zero gap between them */
-            body.desktop-today-cards-wide #sidebar-pane {
-                margin-left: max(0px, calc((100vw - (328px + 1240px + 5rem)) / 2)) !important;
-            }
-            body.desktop-today-cards-wide[data-cards-cols="1"] #sidebar-pane {
-                margin-left: max(0px, calc((100vw - (328px + 760px + 5rem)) / 2)) !important;
-            }
-            body.desktop-today-cards-wide[data-cards-cols="2"] #sidebar-pane {
-                margin-left: max(0px, calc((100vw - (328px + 1240px + 5rem)) / 2)) !important;
-            }
-            body.desktop-today-cards-wide[data-cards-cols="3"] #sidebar-pane {
-                margin-left: max(0px, calc((100vw - (328px + 1680px + 5rem)) / 2)) !important;
+            /* Centered Content: [sidebar + deck] centred together from the deck width alone, so the sidebar
+               keeps one place per window width in every view and opening a story never slides it. */
+            body.ultrawide-centered:not(.is-fullscreen) #sidebar-pane {
+                margin-left: max(0px, calc((100vw - (var(--sidebar-w) + var(--deck-w) + 5rem)) / 2)) !important;
             }
 
-            body.desktop-today-cards-wide #timeline-header .timeline-header-inner {
-                max-width: calc(1240px + 5rem) !important;
-                margin-left: 0 !important;
-                margin-right: auto !important;
-                padding-left: 2.5rem !important;
-                padding-right: 2.5rem !important;
-                box-sizing: border-box !important;
-            }
-            body.desktop-today-cards-wide[data-cards-cols="1"] #timeline-header .timeline-header-inner {
-                max-width: calc(760px + 5rem) !important;
-            }
-            body.desktop-today-cards-wide[data-cards-cols="2"] #timeline-header .timeline-header-inner {
-                max-width: calc(1240px + 5rem) !important;
-            }
-            body.desktop-today-cards-wide[data-cards-cols="3"] #timeline-header .timeline-header-inner {
-                max-width: calc(1680px + 5rem) !important;
-            }
-
-            /* Briefing & Story Mode: Sidebar (328px) + Reading Canvas (760px) centered together */
-            body.desktop-today-briefing #sidebar-pane,
-            body.desktop-today-story #sidebar-pane {
-                margin-left: max(0px, calc((100vw - (328px + 760px + 5rem)) / 2)) !important;
-            }
-            body.desktop-today-briefing #viewer-header .viewer-header-inner,
-            body.desktop-today-story #viewer-header .viewer-header-inner {
-                max-width: calc(760px + 5rem) !important;
+            body.ultrawide-centered.desktop-today-cards-wide #timeline-header .timeline-header-inner,
+            body.ultrawide-centered.desktop-today-briefing #viewer-header .viewer-header-inner,
+            body.ultrawide-centered.desktop-today-story #viewer-header .viewer-header-inner {
+                max-width: calc(var(--deck-w) + 5rem) !important;
                 margin-left: 0 !important;
                 margin-right: auto !important;
                 padding-left: 2.5rem !important;
@@ -3448,15 +3585,34 @@
                 box-sizing: border-box !important;
             }
 
-            /* Unread / Feed 3-Column Workstation: Sidebar + Timeline + Reader centered */
-            body.ultrawide-centered:not(.desktop-today-cards-wide):not(.desktop-today-briefing):not(.desktop-today-story):not(.is-fullscreen) #sidebar-pane,
-            body:not(.ultrawide-stretch):not(.desktop-today-cards-wide):not(.desktop-today-briefing):not(.desktop-today-story):not(.is-fullscreen) #sidebar-pane {
-                margin-left: max(0px, calc((100vw - 1720px) / 2)) !important;
+            /* Briefing and story: the right padding narrows the canvas area to the deck, so the 760px
+               canvas centres where the cards were. */
+            body.ultrawide-centered.desktop-today-briefing #reader-view,
+            body.ultrawide-centered.desktop-today-story #reader-view {
+                padding-right: max(2.5rem, calc(100% - 2.5rem - var(--deck-w))) !important;
+            }
+
+            /* Full Width Stretch: the sidebar stays at the left and the cards fill the pane. */
+            body:not(.ultrawide-centered).desktop-today-cards-wide #today-column .brief-container {
+                max-width: none !important;
             }
         }
+
+        /* The cards deck width for each Cards View Columns choice; the layout centres on it. */
+        body {
+            --deck-w: 1240px;
+            --sidebar-w: 328px;
         }
 
-        /* Today images: each story's picture 16:9 across its card, after its text (on request: the source
+        body[data-cards-cols="1"] {
+            --deck-w: 760px;
+        }
+
+        body[data-cards-cols="3"] {
+            --deck-w: 1680px;
+        }
+
+        /* Today images: each story's picture 16:9 across its card, after its text (the source
            line, headline and preview first, so each story starts with its source); one under 600px wide
            stays a square thumbnail beside the story. Boxes are reserved, so nothing jumps. !important beats
            .article-content img (on the phone Today renders in #article-body). Settings > Today > Show
@@ -3622,7 +3778,7 @@
             display: inline-flex;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .tts-player {
                 position: absolute;
                 bottom: calc(max(0px, env(safe-area-inset-bottom, 0px) - 8px) + 76px);
@@ -3630,7 +3786,7 @@
         }
 
         /* Listen & TL;DR in the story row are the phone's; desktop has them in the top bar. */
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             #listen-action-btn,
             #tldr-action-btn {
                 display: none !important;
@@ -3648,20 +3804,20 @@
             border: 1px solid transparent;
             border-radius: 9999px;
             background: transparent;
-            color: #4493f8;
+            color: var(--accent);
             flex-shrink: 0;
             cursor: pointer;
             transition: all 0.15s ease;
         }
 
         .brief-cat-recap-btn:hover {
-            color: #3b82f6;
-            background: rgba(59, 130, 246, 0.12);
+            color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.12);
         }
 
         .dark .brief-cat-recap-btn:hover {
-            color: #60a5fa;
-            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.2);
         }
 
         .brief-cat-recap-btn svg {
@@ -3671,8 +3827,8 @@
         }
 
         .ai-briefing-card {
-            border: 1px solid rgba(68, 147, 248, 0.25);
-            background: rgba(68, 147, 248, 0.04);
+            border: 1px solid rgba(var(--accent-rgb), 0.25);
+            background: rgba(var(--accent-rgb), 0.04);
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 20px;
@@ -3683,12 +3839,12 @@
 
         .dark .ai-briefing-card {
             background: rgba(22, 38, 66, 0.45);
-            border-color: rgba(68, 147, 248, 0.28);
+            border-color: rgba(var(--accent-rgb), 0.28);
         }
 
         .ai-tldr-card {
-            border: 1px solid rgba(68, 147, 248, 0.25);
-            background: rgba(68, 147, 248, 0.05);
+            border: 1px solid rgba(var(--accent-rgb), 0.25);
+            background: rgba(var(--accent-rgb), 0.05);
             border-radius: 10px;
             padding: 14px 16px;
             margin-bottom: 24px;
@@ -3697,7 +3853,7 @@
 
         .dark .ai-tldr-card {
             background: rgba(22, 38, 66, 0.4);
-            border-color: rgba(68, 147, 248, 0.25);
+            border-color: rgba(var(--accent-rgb), 0.25);
         }
 
         .ai-briefing-header {
@@ -3727,13 +3883,12 @@
             font-weight: 600;
             padding: 2px 7px;
             border-radius: 999px;
-            background: rgba(59, 130, 246, 0.12);
-            color: #2563eb;
+            background: rgba(var(--accent-rgb), 0.12);
+            color: var(--accent);
         }
 
         .dark .ai-briefing-badge {
-            background: rgba(68, 147, 248, 0.2);
-            color: #79b8ff;
+            background: rgba(var(--accent-rgb), 0.2);
         }
 
         .ai-briefing-body,
@@ -3778,7 +3933,7 @@
             padding-left: 0 !important;
         }
 
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             #article-body .ai-briefing-story,
             .ai-briefing-story {
                 font-size: var(--list-preview-font-size, 1.0em) !important;
@@ -3811,7 +3966,7 @@
             gap: 0.35rem !important;
         }
 
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             #article-body .ai-briefing-theme,
             .ai-briefing-theme {
                 font-size: var(--section-heading-size, 1.4em) !important;
@@ -3854,13 +4009,13 @@
         .ai-briefing-cite-link {
             font-size: var(--list-source-size, 0.86em) !important;
             font-weight: 500;
-            color: #2563eb !important;
+            color: var(--accent) !important;
             text-decoration: none;
             cursor: pointer;
             transition: opacity 0.15s ease, color 0.15s ease;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #article-body .ai-briefing-cite,
             .ai-briefing-cite,
             #article-body .ai-briefing-cite-link,
@@ -3871,7 +4026,7 @@
 
         .dark #article-body .ai-briefing-cite-link,
         .dark .ai-briefing-cite-link {
-            color: #58a6ff !important;
+            color: var(--accent) !important;
         }
 
         #article-body .ai-briefing-cite-link.is-visited,
@@ -3958,7 +4113,7 @@
             color: var(--text-3) !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .ai-briefing-topbar {
                 font-size: var(--mob-feed-name-size, 0.82em);
             }
@@ -4030,11 +4185,11 @@
         }
 
         .ai-inline-recap-act:hover {
-            color: #2563eb !important;
+            color: var(--accent) !important;
         }
 
         .dark .ai-inline-recap-act:hover {
-            color: #58a6ff !important;
+            color: var(--accent) !important;
         }
 
         .ai-inline-recap .ai-reader-briefing ul {
@@ -4063,7 +4218,7 @@
             margin-bottom: 0.65em !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #article-body .ai-inline-recap .ai-reader-briefing li,
             .ai-inline-recap .ai-reader-briefing li,
             #article-body .ai-inline-recap .ai-briefing-story,
@@ -4074,7 +4229,7 @@
         }
 
         #article-body .ai-reader-briefing li.ai-bullet-return-pulse {
-            background: rgba(59, 130, 246, 0.14);
+            background: rgba(var(--accent-rgb), 0.14);
             border-radius: 8px;
             padding: 4px 8px;
             margin-left: -8px;
@@ -4096,7 +4251,7 @@
             margin: -6px;
             border: none;
             background: transparent;
-            color: #4493f8;
+            color: var(--accent);
             font: inherit;
             cursor: pointer;
             white-space: nowrap;
@@ -4108,7 +4263,7 @@
         }
 
         .brief-header-new {
-            color: #4493f8 !important;
+            color: var(--accent) !important;
         }
 
         /* Today's status line is always one line tall, so its text changing never moves the page. */
@@ -4125,11 +4280,11 @@
         }
 
         .brief-header-status > span:not(:empty) ~ span:not(:empty)::before {
-            content: '\2022\00a0';
+            content: '\00a0\2022\00a0';
             color: #64748b;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-header-status {
                 font-size: 0.75em;
                 letter-spacing: -0.01em;
@@ -4182,7 +4337,7 @@
             flex-shrink: 0;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #brief-undo-bar {
                 position: absolute;
                 bottom: calc(max(0px, env(safe-area-inset-bottom, 0px) - 8px) + 76px);
@@ -4218,7 +4373,7 @@
             padding: 0;
             border: none;
             background: transparent;
-            color: #4493f8;
+            color: var(--accent);
             font: inherit;
             cursor: pointer;
             white-space: nowrap;
@@ -4372,9 +4527,9 @@
         }
 
         .pill-btn:not(.pill-primary):not(:disabled):hover {
-            color: #4493f8;
-            border-color: rgba(68, 147, 248, 0.45);
-            background: rgba(68, 147, 248, 0.12);
+            color: var(--accent);
+            border-color: rgba(var(--accent-rgb), 0.45);
+            background: rgba(var(--accent-rgb), 0.12);
         }
 
         .pill-btn.pill-primary {
@@ -4403,12 +4558,12 @@
             font-family: var(--view-font-family, inherit) !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #article-body.is-brief-body,
             #article-body:has(.brief-container),
             #article-body:has(.ai-reader-briefing) {
                 padding-top: 3px !important;
-                padding-bottom: 0 !important;   /* was 2rem (335): see .brief-container */
+                padding-bottom: 0 !important;   /* see .brief-container */
                 font-size: inherit !important;
                 line-height: inherit !important;
                 font-family: var(--view-font-family, inherit) !important;
@@ -4436,7 +4591,7 @@
             line-height: inherit !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-container {
                 font-size: inherit !important;
                 line-height: normal;
@@ -4511,7 +4666,7 @@
             gap: 0.35rem 0.5rem !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-header-meta {
                 display: none !important;
             }
@@ -4540,7 +4695,7 @@
             height: 22px;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .app-logo svg {
                 width: 1.5rem;
                 height: 1.5rem;
@@ -4554,19 +4709,19 @@
         }
 
         /* Words and controls for one size only. */
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             .phone-only {
                 display: none !important;
             }
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .desk-only {
                 display: none !important;
             }
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-container h2,
             .brief-header-title {
                 /* Article Reader > Title Size, as on desktop */
@@ -4732,9 +4887,9 @@
 
         .brief-jump-pill:not(.is-active):hover,
         .brief-jump-pill:not(.is-active):active {
-            color: #4493f8 !important;
-            border-color: rgba(68, 147, 248, 0.45) !important;
-            background: rgba(68, 147, 248, 0.12) !important;
+            color: var(--accent) !important;
+            border-color: rgba(var(--accent-rgb), 0.45) !important;
+            background: rgba(var(--accent-rgb), 0.12) !important;
         }
 
         html:not(.dark) .brief-jump-bar {
@@ -4751,9 +4906,9 @@
 
         html:not(.dark) .brief-jump-pill:not(.is-active):hover,
         html:not(.dark) .brief-jump-pill:not(.is-active):active {
-            color: #4493f8 !important;
-            border-color: rgba(68, 147, 248, 0.45) !important;
-            background: rgba(68, 147, 248, 0.12) !important;
+            color: var(--accent) !important;
+            border-color: rgba(var(--accent-rgb), 0.45) !important;
+            background: rgba(var(--accent-rgb), 0.12) !important;
         }
 
         /* Action buttons: borderless icons; ON = the filled glyph in the accent. Shared by the reader's
@@ -4785,7 +4940,7 @@
         }
         .icon-act.is-on,
         html:not(.dark) .icon-act.is-on {
-            color: #4493f8;
+            color: var(--accent);
         }
         .icon-act:disabled {
             opacity: 0.35;
@@ -4814,7 +4969,7 @@
             flex-basis: 100%;
             align-items: center;
             gap: 2px;
-            margin: 6px 0 0 -7px;    /* 6px under the author line (build 300; was 10); -7px = the buttons'
+            margin: 6px 0 0 -7px;    /* 6px under the author line; -7px = the buttons'
                                         own inset, so the first glyph sits on the text edge */
         }
 
@@ -4822,7 +4977,7 @@
            !important - these outrank them so ON really shows in the accent. */
         .brief-story-actions .icon-act.is-on,
         .dark .brief-story-actions .icon-act.is-on {
-            color: #4493f8 !important;
+            color: var(--accent) !important;
         }
         .brief-story-actions .icon-act:hover {
             background: rgba(139, 148, 158, 0.16) !important;
@@ -4842,7 +4997,7 @@
            reader's padding: md 1rem, lg 1.5rem; its md:ml-4 / lg:ml-8 are not compiled), so Back's pill
            lines up with the text's left edge and the buttons with its right. In Today briefing and story modes,
            padding is kept symmetric so headers and body content center simultaneously. */
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             body:not(.desktop-today-briefing):not(.desktop-today-story) #viewer-header {
                 padding-left: 1rem !important;
                 padding-right: max(1rem, calc(100% - 43rem)) !important;
@@ -4891,9 +5046,9 @@
         html:not(.dark) .brief-jump-pill.is-active:hover,
         html:not(.dark) .brief-jump-pill.is-active:active,
         html:not(.dark) .brief-jump-pill.is-active:focus {
-            background: rgba(37, 99, 235, 0.08) !important;
-            border: 1px solid rgba(37, 99, 235, 0.35) !important;
-            color: #2563eb !important;
+            background: rgba(var(--accent-rgb), 0.08) !important;
+            border: 1px solid rgba(var(--accent-rgb), 0.35) !important;
+            color: var(--accent) !important;
             font-weight: 500 !important;
             letter-spacing: normal !important;
             box-shadow: none !important;
@@ -4905,15 +5060,15 @@
         .dark .brief-jump-pill.is-active:hover,
         .dark .brief-jump-pill.is-active:active,
         .dark .brief-jump-pill.is-active:focus {
-            background: rgba(96, 165, 250, 0.12) !important;
-            border: 1px solid rgba(96, 165, 250, 0.35) !important;
-            color: #60a5fa !important;
+            background: rgba(var(--accent-rgb), 0.12) !important;
+            border: 1px solid rgba(var(--accent-rgb), 0.35) !important;
+            color: var(--accent) !important;
             font-weight: 500 !important;
             letter-spacing: normal !important;
             box-shadow: none !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-jump-bar {
                 position: relative !important;
                 background: transparent !important;
@@ -4943,7 +5098,7 @@
             scroll-margin-top: calc(max(env(safe-area-inset-top, 0px), 50px) + 24px) !important;
         }
 
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             .brief-cat-section {
                 scroll-margin-top: 24px !important;
             }
@@ -4992,11 +5147,11 @@
         }
 
         .brief-cat-heading svg {
-            color: #2563eb;
+            color: var(--accent);
         }
 
         .dark .brief-cat-heading svg {
-            color: #60a5fa;
+            color: var(--accent);
         }
 
         .brief-cat-controls {
@@ -5017,7 +5172,7 @@
             margin-right: 0.1rem !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
 
             .brief-container h3,
             .brief-cat-heading {
@@ -5046,13 +5201,13 @@
         }
 
         .brief-cat-mark-read-btn:hover {
-            color: #3b82f6;
-            background: rgba(59, 130, 246, 0.12);
+            color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.12);
         }
 
         .dark .brief-cat-mark-read-btn:hover {
-            color: #60a5fa;
-            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.2);
         }
 
         .brief-cat-mark-read-btn svg {
@@ -5103,7 +5258,7 @@
             padding-bottom: 4rem !important;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-footer {
                 margin-top: 24px !important;
                 padding-bottom: 1.5rem !important;
@@ -5275,7 +5430,7 @@
         .brief-story-card a.brief-story-title:hover,
         .brief-story-card a[href]:not(.brief-jump-pill):not([class*="action"]):not([class*="source"]):not(.brief-source-link):not(.brief-action-link):hover,
         .brief-story-title:hover {
-            color: #3b82f6 !important;
+            color: var(--accent) !important;
         }
 
         /* Story Excerpt: supports both .brief-story-excerpt and legacy stored <p> */
@@ -5369,14 +5524,14 @@
 
         .brief-action-btn:hover,
         .brief-open-reader:hover {
-            color: #2563eb !important;
-            background: rgba(37, 99, 235, 0.1) !important;
+            color: var(--accent) !important;
+            background: rgba(var(--accent-rgb), 0.1) !important;
         }
 
         .dark .brief-action-btn:hover,
         .dark .brief-open-reader:hover {
-            color: #60a5fa !important;
-            background: rgba(96, 165, 250, 0.15) !important;
+            color: var(--accent) !important;
+            background: rgba(var(--accent-rgb), 0.15) !important;
         }
 
         .brief-action-link:hover,
@@ -5405,7 +5560,7 @@
            Later, Save, Open original, Share. 32px icon buttons with 18px icons, 4px apart, the
            first icon on the text edge; grey off, the accent on. Names are tooltips only. "Open in
            Reader" is gone: a click on the card opens it. The phone keeps its own rows. */
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             .story-actions {
                 display: flex !important;
                 align-items: center !important;
@@ -5434,7 +5589,7 @@
 
             html.dark .story-actions .icon-act.is-on,
             html:not(.dark) .story-actions .icon-act.is-on {
-                color: #4493f8 !important;
+                color: var(--accent) !important;
             }
 
             .story-actions .brief-open-reader {
@@ -5444,7 +5599,7 @@
         }
 
         /* Mobile Editorial Memo Flow */
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-story-card {
                 padding: 1rem 0 !important;
                 margin-bottom: 0 !important;
@@ -5706,7 +5861,7 @@
         }
 
         /* Desktop lists: the action row shows on hover, keyboard focus or the open story. */
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             #article-list [data-id] .story-actions {
                 opacity: 0;
                 transition: opacity 0.15s ease;
@@ -5730,19 +5885,19 @@
         /* Back to Brief Return navigation styles (visible ONLY when coming from Brief) */
         @keyframes briefPulseHighlight {
             0% {
-                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-                border-color: rgba(59, 130, 246, 0.9);
-                background-color: rgba(59, 130, 246, 0.16);
+                box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.7);
+                border-color: rgba(var(--accent-rgb), 0.9);
+                background-color: rgba(var(--accent-rgb), 0.16);
             }
 
             50% {
-                box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.35);
-                border-color: rgba(59, 130, 246, 0.9);
-                background-color: rgba(59, 130, 246, 0.22);
+                box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.35);
+                border-color: rgba(var(--accent-rgb), 0.9);
+                background-color: rgba(var(--accent-rgb), 0.22);
             }
 
             100% {
-                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+                box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0);
                 border-color: inherit;
                 background-color: inherit;
             }
@@ -5864,7 +6019,7 @@
         .settings-value {
             font-size: calc(14px * var(--sheet-text, 1));
             font-weight: 600;
-            color: #3b82f6;
+            color: var(--accent);
         }
 
         /* Grouped list (iOS-style): rows separated by hairlines, no card-in-card. In dark, the fill of
@@ -5922,7 +6077,7 @@
             transition: background-color 0.15s ease, color 0.15s ease;
         }
 
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             .pub-category-label {
                 font-size: var(--category-font-size, 1.05em) !important;
                 line-height: var(--feed-line-height, 1.4) !important;
@@ -5942,8 +6097,8 @@
         }
 
         .pub-category-label.active-item {
-            color: #3b82f6 !important;
-            background: rgba(59, 130, 246, 0.15) !important;
+            color: var(--accent) !important;
+            background: rgba(var(--accent-rgb), 0.15) !important;
         }
 
         .pub-card-group {
@@ -6001,8 +6156,8 @@
         }
 
         .pub-card-row.active-item {
-            background: rgba(59, 130, 246, 0.15) !important;
-            color: #3b82f6 !important;
+            background: rgba(var(--accent-rgb), 0.15) !important;
+            color: var(--accent) !important;
         }
 
         .pub-favicon-wrap {
@@ -6056,7 +6211,7 @@
             text-overflow: ellipsis !important;
         }
 
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             .pub-card-row {
                 font-size: var(--category-font-size, 1.05em) !important;
                 padding-top: var(--feed-row-padding, 0.25rem) !important;
@@ -6154,7 +6309,7 @@
         }
 
         .feed-row-action.edit:hover {
-            color: #3b82f6;
+            color: var(--accent);
         }
 
         .feed-row-action.remove:hover {
@@ -6239,7 +6394,7 @@
             padding: 0 !important;
         }
 
-        @media (min-width: 901px) {
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             .today-view-switcher {
                 display: none !important;
             }
@@ -6306,7 +6461,7 @@
         .today-segmented button[data-active="true"],
         .saved-segmented button[data-active="true"] {
             background: transparent !important;
-            color: #2563eb !important;
+            color: var(--accent) !important;
             font-weight: 600 !important;
             box-shadow: none !important;
         }
@@ -6314,7 +6469,7 @@
         .dark .today-segmented button[data-active="true"],
         .dark .saved-segmented button[data-active="true"] {
             background: transparent !important;
-            color: #60a5fa !important;
+            color: var(--accent) !important;
             font-weight: 600 !important;
             box-shadow: none !important;
         }
@@ -6354,7 +6509,7 @@
         }
 
         #settings-modal input.settings-input:focus {
-            border-color: #4493f8;
+            border-color: var(--accent);
         }
 
         #settings-modal input.settings-input::placeholder {
@@ -6367,7 +6522,7 @@
         }
 
         html:not(.dark) #settings-modal input.settings-input:focus {
-            border-color: #4493f8;
+            border-color: var(--accent);
         }
 
         html:not(.dark) #settings-modal input.settings-input::placeholder {
@@ -6423,7 +6578,7 @@
            over the tab bar, with round top corners and a grabber, and pulling it down closes it
            (sheetDrag). Absolute in the locked body like the tab bar, since fixed mis-anchors under the
            115% Page Zoom. The desktop keeps the centred card. */
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #settings-modal {
                 position: absolute;
                 flex-direction: column;
@@ -6541,7 +6696,7 @@
 
         .form-sheet input:focus,
         .form-sheet select:focus {
-            border-color: #4493f8;
+            border-color: var(--accent);
         }
 
         .form-sheet input::placeholder {
@@ -6564,14 +6719,14 @@
 
         html:not(.dark) .form-sheet input:focus,
         html:not(.dark) .form-sheet select:focus {
-            border-color: #4493f8;
+            border-color: var(--accent);
         }
 
 
         /* Add Feed and Edit Feed: on the phone a sheet like Settings, over it (its edge shows 10px above),
            the fields at the top clear of the keyboard, the ✕ for Cancel and the action full width. The
            text runs at the sheets' 1.2. The desktop keeps the small centred dialog. */
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .form-sheet {
                 position: absolute;
                 flex-direction: column;
@@ -6703,7 +6858,7 @@
         #settings-modal .settings-action {
             font-size: calc(14px * var(--sheet-text, 1));
             font-weight: 500;
-            color: #4493f8;
+            color: var(--accent);
         }
 
         .settings-chevron {
@@ -6718,7 +6873,7 @@
             padding: 0 8px 4px 0;
             background: none;
             border: none;
-            color: #4493f8;
+            color: var(--accent);
             cursor: pointer;
         }
 
@@ -6792,7 +6947,7 @@
         .swipe-hint-left {
             left: 0;
             right: 0;
-            background: linear-gradient(to right, rgba(37, 99, 235, 0.75) 0%, rgba(37, 99, 235, 0.35) 50%, rgba(37, 99, 235, 0.1) 100%);
+            background: linear-gradient(to right, rgba(var(--accent-rgb), 0.75) 0%, rgba(var(--accent-rgb), 0.35) 50%, rgba(var(--accent-rgb), 0.1) 100%);
             justify-content: flex-start;
             padding-left: 16px;
         }
@@ -6820,7 +6975,7 @@
         }
 
         .swipe-hint-left span {
-            background: #1d4ed8;
+            background: var(--accent);
             color: #ffffff;
             padding: 7px 14px;
             border-radius: 999px;
@@ -6864,7 +7019,7 @@
             opacity: 1;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #list-position-pill {
                 display: none !important;
             }
@@ -6880,7 +7035,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #4493f8;
+            color: var(--accent);
             font-size: calc(15px * var(--zoom));
             font-weight: 600;
             transition: top 0.15s ease, opacity 0.15s ease;
@@ -6901,8 +7056,8 @@
         #today-ptr-spinner {
             width: 20px;
             height: 20px;
-            border: 2px solid rgba(88, 166, 255, 0.3);
-            border-top-color: #4493f8;
+            border: 2px solid rgba(var(--accent-rgb), 0.3);
+            border-top-color: var(--accent);
             border-radius: 50%;
         }
 
@@ -6916,7 +7071,7 @@
             display: none;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             #today-ptr-clip {
                 display: block;
                 position: absolute;
@@ -7087,6 +7242,11 @@
                 <path d="M3 4v5h5" />
                 <path d="M12 7v5l3 2" />
             </symbol>
+            <symbol id="icon-sidebar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M9 4v16" />
+            </symbol>
             <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <line x1="8" y1="6" x2="21" y2="6" />
@@ -7136,14 +7296,14 @@
                         for (var j = 0; j < rules.length; j++) {
                             var r = rules[j];
                             if (r.selectorText === '.active-item' && r.style && r.style.backgroundColor) {
-                                r.style.setProperty('background-color', 'rgba(59, 130, 246, 0.16)', 'important');
-                                r.style.setProperty('color', '#60a5fa', 'important');
+                                r.style.setProperty('background-color', 'rgba(var(--accent-rgb), 0.16)', 'important');
+                                r.style.setProperty('color', 'var(--accent)', 'important');
                             }
                             if (r.cssRules) for (var k = 0; k < r.cssRules.length; k++) {
                                 var r2 = r.cssRules[k];
                                 if (r2.selectorText === '.active-item' && r2.style && r2.style.backgroundColor) {
-                                    r2.style.setProperty('background-color', 'rgba(59, 130, 246, 0.16)', 'important');
-                                    r2.style.setProperty('color', '#60a5fa', 'important');
+                                    r2.style.setProperty('background-color', 'rgba(var(--accent-rgb), 0.16)', 'important');
+                                    r2.style.setProperty('color', 'var(--accent)', 'important');
                                 }
                             }
                         }
@@ -7164,11 +7324,15 @@
             <div id="sidebar-header"
                 class="px-4 h-[74px] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-2 min-w-0">
-                    <div class="app-logo">
-                        <svg>
+                    <button type="button" id="sidebar-toggle" class="app-logo sidebar-toggle" onclick="window.toggleSidebar()"
+                        title="Hide sidebar ([)" aria-label="Hide sidebar" aria-expanded="true">
+                        <svg class="logo-mark">
                             <use href="#icon-rss" />
                         </svg>
-                    </div>
+                        <svg class="logo-toggle">
+                            <use href="#icon-sidebar" />
+                        </svg>
+                    </button>
                     <div class="flex flex-col min-w-0 leading-none">
                         <!-- "Library" on the phone, the tab's name; the logo says which app it is. -->
                         <h1
@@ -7224,7 +7388,7 @@
                                 <use href="#icon-sun" />
                             </svg> Today</span>
                     </button>
-                    <button id="feed-btn-all" onclick="setSmartFeed('all')"
+                    <button id="feed-btn-all" onclick="setSmartFeed('all')" title="Unread"
                         oncontextmenu="showFolderContextMenu(event,'smart','all')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 active-item desk-only">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="currentColor"
@@ -7233,7 +7397,7 @@
                             </svg> Unread</span>
                         <span class="flex items-center gap-2"><span id="unread-older-note" class="unread-older-note"></span><span id="badge-all" class="feed-badge mob-unread-count text-gray-400 hidden">0</span></span>
                     </button>
-                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')"
+                    <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" title="Read Later"
                         oncontextmenu="showFolderContextMenu(event,'smart','read-later')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3">
@@ -7242,14 +7406,14 @@
                         <span id="badge-read-later"
                             class="feed-badge mob-saved-count text-amber-500 dark:text-amber-400 hidden">0</span>
                     </button>
-                    <button id="feed-btn-saved" onclick="setSmartFeed('saved')"
+                    <button id="feed-btn-saved" onclick="setSmartFeed('saved')" title="Saved"
                         oncontextmenu="showFolderContextMenu(event,'smart','saved')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 border-b border-white/5 text-gray-400">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3">
                                 <use href="#icon-star" />
                             </svg> Saved</span>
                     </button>
-                    <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')"
+                    <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" title="History"
                         oncontextmenu="showFolderContextMenu(event,'smart','recently-read')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-4 text-gray-400">
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3">
@@ -7275,6 +7439,21 @@
                     <div id="feed-list" class="space-y-4">
                     </div>
                 </div>
+            </div>
+            <!-- The collapsed rail's Refresh and Settings: the header has no room for them there. -->
+            <div id="sidebar-rail-actions">
+                <button type="button" onclick="refreshAll()" class="app-header-btn p-1.5 rounded-lg text-gray-500"
+                    title="Refresh Feeds" aria-label="Refresh Feeds">
+                    <svg class="h-[22px] w-[22px]">
+                        <use href="#icon-refresh" />
+                    </svg>
+                </button>
+                <button type="button" onclick="toggleSettings()" class="app-header-btn p-1.5 rounded-lg text-gray-500"
+                    title="Settings" aria-label="Settings">
+                    <svg class="h-[22px] w-[22px]">
+                        <use href="#icon-settings" />
+                    </svg>
+                </button>
             </div>
 
         </aside>
@@ -7782,9 +7961,12 @@
                     <h3 class="settings-section-label">Today</h3>
                     <div class="settings-list">
                         <div class="settings-row">
-                            <label class="settings-item-label-sm">Show images</label>
-                            <button id="today-images-toggle" onclick="toggleTodayImages()" class="toggle-switch"
-                                data-on="true" aria-label="Show images"></button>
+                            <label class="settings-item-label-sm" for="pref-today-pictures">Pictures</label>
+                            <select id="pref-today-pictures" onchange="window.saveTodayPictures(this.value)" class="settings-input is-inline">
+                                <option value="large" selected>Large</option>
+                                <option value="small">Small</option>
+                                <option value="none">None</option>
+                            </select>
                         </div>
                         <div class="settings-row">
                             <div class="min-w-0 flex-1">
@@ -7840,6 +8022,16 @@
                             <select id="pref-sort-order" onchange="renderTimeline(); rebuildTodayInPlace(false)" class="settings-input is-inline">
                                 <option value="asc" selected>Oldest first</option>
                                 <option value="desc">Newest first</option>
+                            </select>
+                        </div>
+                        <div class="settings-row desk-only">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm" for="pref-story-open">Open stories</label>
+                                <p class="settings-hint">Beside the list keeps it in view while you read</p>
+                            </div>
+                            <select id="pref-story-open" onchange="window.saveStoryOpen(this.value)" class="settings-input is-inline">
+                                <option value="page" selected>Full page</option>
+                                <option value="beside">Beside the list</option>
                             </select>
                         </div>
                         <div class="settings-row">
@@ -8198,6 +8390,7 @@
             <div class="shortcuts-row"><span>Open the original</span><span class="shortcuts-keys"><kbd class="kbd">o</kbd></span></div>
             <h3 class="settings-section-label">App</h3>
             <div class="shortcuts-row"><span>Today</span><span class="shortcuts-keys"><kbd class="kbd">t</kbd></span></div>
+            <div class="shortcuts-row"><span>Show or hide the sidebar</span><span class="shortcuts-keys"><kbd class="kbd">[</kbd></span></div>
             <div class="shortcuts-row"><span>Search</span><span class="shortcuts-keys"><kbd class="kbd">/</kbd></span></div>
             <div class="shortcuts-row"><span>Close a menu or window, leave full screen, back to Today</span><span class="shortcuts-keys"><kbd class="kbd">Esc</kbd></span></div>
             <div class="shortcuts-row"><span>These shortcuts</span><span class="shortcuts-keys"><kbd class="kbd">?</kbd></span></div>
@@ -8322,17 +8515,59 @@
         window._readLinks = new Set();
         window._readLaterLinks = new Set();
         window._pinnedArticleIds = new Set();
-        // Today images: on unless switched off. Hidden lazy images are never fetched, so off also means
-        // no image traffic.
-        window._todayImages = localStorage.getItem('newsreader_today_images') !== '0';
-        document.body.classList.toggle('today-no-images', !window._todayImages);
-        document.getElementById('today-images-toggle')?.setAttribute('data-on', window._todayImages ? 'true' : 'false');
+        // Today pictures: Large (16:9 under the story), Small (a square beside it) or None. Hidden lazy
+        // images are never fetched, so None also means no image traffic.
+        window.getTodayPictures = () => {
+            try {
+                const v = localStorage.getItem('newsreader_today_pictures');
+                if (v === 'large' || v === 'small' || v === 'none') return v;
+                return localStorage.getItem('newsreader_today_images') === '0' ? 'none' : 'large';
+            } catch (e) { return 'large'; }
+        };
+        window.applyTodayPictures = (v) => {
+            window._todayImages = v !== 'none';
+            document.body.classList.toggle('today-no-images', v === 'none');
+            document.body.classList.toggle('today-pictures-small', v === 'small');
+            const sel = document.getElementById('pref-today-pictures');
+            if (sel) sel.value = v;
+        };
+        window.applyTodayPictures(window.getTodayPictures());
+        // Per device, desktop only: stories open beside the list or on their own page; the sidebar can
+        // fold to a rail.
+        window.getStoryOpen = () => {
+            try { return localStorage.getItem('newsreader_story_open') === 'beside' ? 'beside' : 'page'; } catch (e) { return 'page'; }
+        };
+        window.saveStoryOpen = (v) => {
+            const mode = v === 'beside' ? 'beside' : 'page';
+            try { localStorage.setItem('newsreader_story_open', mode); } catch (e) { }
+            document.body.classList.toggle('story-beside', mode === 'beside');
+            const sel = document.getElementById('pref-story-open');
+            if (sel) sel.value = mode;
+        };
+        document.body.classList.toggle('story-beside', window.getStoryOpen() === 'beside');
+        const storyOpenSel = document.getElementById('pref-story-open');
+        if (storyOpenSel) storyOpenSel.value = window.getStoryOpen();
+        window.applySidebarCollapsed = (on) => {
+            document.body.classList.toggle('sidebar-collapsed', !!on);
+            const btn = document.getElementById('sidebar-toggle');
+            if (!btn) return;
+            btn.title = on ? 'Show sidebar ([)' : 'Hide sidebar ([)';
+            btn.setAttribute('aria-label', on ? 'Show sidebar' : 'Hide sidebar');
+            btn.setAttribute('aria-expanded', on ? 'false' : 'true');
+        };
+        window.toggleSidebar = () => {
+            if (isMobile()) return;   // the phone's Library header shares this logo
+            const on = !document.body.classList.contains('sidebar-collapsed');
+            try { localStorage.setItem('newsreader_sidebar_collapsed', on ? '1' : '0'); } catch (e) { }
+            window.applySidebarCollapsed(on);
+        };
+        try { window.applySidebarCollapsed(localStorage.getItem('newsreader_sidebar_collapsed') === '1'); } catch (e) { }
         window._showSourceIcons = localStorage.getItem('newsreader_source_icons') !== '0';
         document.body.classList.toggle('hide-source-icons', !window._showSourceIcons);
         document.getElementById('source-icons-toggle')?.setAttribute('data-on', window._showSourceIcons ? 'true' : 'false');
         // Per device. Rank stories: on = Top Stories and each folder's 5 most important first, then
         // the rest in Sort Order; off = Sort Order alone, with no Top Stories. Sort Order is the one
-        // direction for lists and Today. A stored newsreader_today_order (build 339) carries over once.
+        // direction for lists and Today. A stored newsreader_today_order carries over once.
         try {
             const was = localStorage.getItem('newsreader_today_order');
             if (was === 'chrono' || was === 'newest') {
@@ -8832,8 +9067,8 @@
         resizer.addEventListener('mousedown', (e) => { isResizing = true; document.body.classList.add('resizing'); });
         document.addEventListener('mousemove', (e) => {
             if (!isResizing) return;
-            const sidebarWidth = document.getElementById('sidebar-pane').offsetWidth;
-            const newWidth = e.clientX - sidebarWidth;
+            // From the list's own left edge: the centred layout puts space before the sidebar.
+            const newWidth = e.clientX - timelinePane.getBoundingClientRect().left;
             if (newWidth >= 210 && newWidth <= 800) timelinePane.style.width = `${newWidth}px`;
         });
         document.addEventListener('mouseup', () => {
@@ -9473,8 +9708,8 @@
             const _existingBskyIds = new Map();
             const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
             _feedOld.forEach(a => _existingBskyIds.set(a.link, a.id));
-            const _firstSeenByLink = new Map(_feedOld.map(a => [a.link, a._firstSeen]));   // build 313
-            const _keep = retainedUnread(_feedOld);   // build 302
+            const _firstSeenByLink = new Map(_feedOld.map(a => [a.link, a._firstSeen]));
+            const _keep = retainedUnread(_feedOld);
             window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
             let newCount = 0;
 
@@ -9695,8 +9930,8 @@
                 const _existingIds = new Map();
                 const _feedOld = window.articles.filter(a => a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName);
                 _feedOld.forEach(a => _existingIds.set(a.link, a.id));
-                const _firstSeenByLink = new Map(_feedOld.map(a => [a.link, a._firstSeen]));   // build 313
-                const _keep = retainedUnread(_feedOld);   // build 302
+                const _firstSeenByLink = new Map(_feedOld.map(a => [a.link, a._firstSeen]));
+                const _keep = retainedUnread(_feedOld);
                 window.articles = window.articles.filter(a => a.feedUrl ? a.feedUrl !== feedUrl : a.source !== sourceName);
                 // Invalidate excerpt cache for any re-fetched articles
                 window.articles.forEach(a => { if (a.feedUrl ? a.feedUrl === feedUrl : a.source === sourceName) a._excerptHtml = null; });
@@ -9834,7 +10069,7 @@
         function renderTimelineRefreshing() {
             return `
                 <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
-                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
                         <svg class="w-8 h-8" style="animation: ptr-spin 0.8s linear infinite;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#icon-refresh"/></svg>
                     </div>
                     <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">Refreshing feeds</h2>
@@ -9876,7 +10111,7 @@
             // No Refresh button in an empty list: Today's pull refreshes.
             return `
                 <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
-                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
                     </div>
                     <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">${esc(headline)}</h2>
@@ -10225,7 +10460,7 @@
         }
 
         function buildArticleCard(a) {
-            if (a.link) window._shownCardLinks.add(a.link);   // shown as a card (339)
+            if (a.link) window._shownCardLinks.add(a.link);   // shown as a card
             const selected = window.currentArticle?.id === a.id;
             const selCls = selected ? 'is-active-card' : '';
             const isBsky = a.feedUrl ? isBlueskyFeed(a.feedUrl) : false;
@@ -10254,7 +10489,7 @@
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview mb-1.5';
 
             // A picture beside the headline and summary, as on Today's cards: never an avatar, and a failed
-            // or tiny one leaves no box. Show images off and Compact Wire hide it.
+            // or tiny one leaves no box. Pictures: None hides it.
             const img = a.image && !/avatar/i.test(a.image) ? window.pictureUrl(a.image, 400) : '';
             const thumbHtml = img ? `<div class="brief-thumb list-thumb"><img src="${esc(img)}" alt="" loading="lazy" decoding="async" onload="if (this.naturalWidth < 100 || this.naturalHeight < 60) this.parentNode.remove(); else window.smoothPicture(this)" onerror="this.parentNode.remove()"></div>` : '';
 
@@ -10399,7 +10634,7 @@
                     // Swiping right → Mark Read (reveals left-side check pill, like Apple Mail / Reeder)
                     leftHint.style.opacity = progress;
                     rightHint.style.opacity = 0;
-                    _t.card.style.setProperty('background', `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.18}) 50%, rgba(37,99,235,${progress * 0.06}) 100%)`, 'important');
+                    _t.card.style.setProperty('background', `linear-gradient(to right, rgba(var(--accent-rgb), ${progress * 0.35}) 0%, rgba(var(--accent-rgb), ${progress * 0.18}) 50%, rgba(var(--accent-rgb), ${progress * 0.06}) 100%)`, 'important');
                 } else if (dx < -8) {
                     // Swiping left → Read Later (reveals right-side bookmark pill)
                     rightHint.style.opacity = progress;
@@ -10612,7 +10847,7 @@
             };
             window.appDB.put('readArchive', record).catch(e =>
                 console.warn('archiveReadArticle:', e?.message));
-            window.logReading?.(article, false);   // passed over, unless it was opened (339)
+            window.logReading?.(article, false);   // passed over, unless it was opened
         }
 
         // Learning from what you open: each story dealt with on this device is logged once for 30 days,
@@ -10940,7 +11175,7 @@
                     card.classList.add('is-social-story');
                     if (excerptEl) excerptEl.classList.add('line-clamp-social', 'is-social-post');
                 }
-                window.buildBriefStoryActions(card);   // build 273: the full action row
+                window.buildBriefStoryActions(card);   // the full action row
             });
             window.updateBriefStoryActionButtons(container);
 
@@ -11099,7 +11334,7 @@
             }
             if (!article) return;
 
-            const prevArticle = window.currentArticle;   // build 317: Today kept alive below
+            const prevArticle = window.currentArticle;   // Today kept alive below
             window.currentArticle = article;
             // Manage "Back to Brief" state: clear if navigating to an unrelated article
             if (window._returnToBriefState) {
@@ -11137,8 +11372,8 @@
                 window.articles.forEach(a => { if (a.id === id) a.unread = false; });
                 window._readLinks.add(article.link);
                 archiveReadArticle(article);
-                window.logReading?.(article, true);   // opened in the reader (339)
-                syncStoryCopies(id, false);   // its grouped copies are read too (build 279)
+                window.logReading?.(article, true);   // opened in the reader
+                syncStoryCopies(id, false);   // its grouped copies are read too
                 saveReadState();
             }
 
@@ -11267,6 +11502,7 @@
             } else {
                 bodyEl.classList.remove('is-brief-body');
                 bodyEl.innerHTML = DOMPurify.sanitize(linkify(article.body), { ADD_TAGS: ['iframe', 'video', 'audio', 'source'], ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type', 'preload'] });
+                stripPageChrome(bodyEl);
                 stripJsonBlobs(bodyEl);
                 stripImagePlaceholders(bodyEl);
                 stripLeadingEmptyBlocks(bodyEl);
@@ -11276,7 +11512,7 @@
                 ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
             }
             const readerElEarly = document.getElementById('reader-view');
-            if (readerElEarly) readerElEarly.scrollTop = keptScroll ?? 0;   // kept Today: where you were (317)
+            if (readerElEarly) readerElEarly.scrollTop = keptScroll ?? 0;   // kept Today: where you were
 
             if (!article.isBrief) attemptFullContentLoad(article);
 
@@ -11330,7 +11566,7 @@
 
             const readerEl = document.getElementById('reader-view');
             if (readerEl) {
-                const top = keptScroll ?? 0;   // kept Today: back where you were (build 317)
+                const top = keptScroll ?? 0;   // kept Today: back where you were
                 readerEl.scrollTop = top;
                 // Set scrollTop again once laid out: iOS Safari drops scrollTop set on a hidden scroll container.
                 // Not for the kept Today, which returnToBrief lands at once.
@@ -11577,6 +11813,7 @@
                                     }
                                 }
                             }
+                            stripPageChrome(content);
                             stripJsonBlobs(content);
                             // Skip linkify: extracted HTML already has proper <a> tags.
                             // The harvested gallery photos go ahead of the text, built from esc()'d values and checked
@@ -11624,7 +11861,7 @@
                         stubEl.className = 'truncation-stub';
                         stubEl.style.cssText = 'margin-top:1.2em;color:#9198a1;font-style:italic;font-size:0.9em;';
                         stubEl.innerHTML = (words === 0 ? 'Full content is not available in the RSS feed.' : 'Content may be truncated in the RSS feed.')
-                            + ` <a href="${DOMPurify.sanitize(article.link)}" target="_blank" rel="noopener noreferrer" style="color:#4493f8;text-decoration:underline;">Read full article →</a>`;
+                            + ` <a href="${DOMPurify.sanitize(article.link)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline;">Read full article →</a>`;
                         bodyEl.appendChild(stubEl);
                     }
                 }
@@ -11703,6 +11940,9 @@
                 if (window.currentArticle) {
                     toggleUnread(window.currentArticle); saveReadState(); refreshUI();
                 }
+            } else if (e.key === '[') {
+                e.preventDefault();
+                window.toggleSidebar();
             } else if (e.key === 't' || e.key === 'T') {
                 e.preventDefault();
                 if (typeof openToday === 'function') openToday();
@@ -11750,9 +11990,9 @@
                     window.returnToBrief();
                 } else if (document.body.classList.contains('desktop-today-story')) {
                     window.closeStoryToTodayColumn();
-                } else if (typeof isMobile === 'function' && isMobile() && window._mobilePane === 'viewer') {
+                } else if (isMobile() && window._mobilePane === 'viewer') {
                     setMobilePane('timeline');
-                } else if (typeof isMobile === 'function' && !isMobile() && window._todayInColumn && window.currentArticle && !window.currentArticle.isBrief) {
+                } else if (!isMobile() && window._todayInColumn && window.currentArticle && !window.currentArticle.isBrief) {
                     window.closeStoryToTodayColumn();
                 }
             }
@@ -11780,6 +12020,22 @@
                     el.remove();
                 } catch (e) { /* not valid JSON, leave alone */ }
             }
+        }
+
+        // A page's own controls are dead in the reader (its scripts never run): buttons and form fields leave
+        // only their labels; sprite icons point at the site's icon sheet, and an <svg> with nothing to draw
+        // shows as an empty 300x150 box; player tool menus and embed-code overlays are its UI. A <form> is
+        // unwrapped, not removed, since some sites wrap the whole article in one.
+        const PAGE_CHROME_CLASS = /(?:^|[\s_-])(?:audio|video|media|player)[\w-]*-(?:tools?|toggle|overlay|duration|more)(?:[\s_-]|$)|(?:^|\s)embed-(?:overlay|url|code)(?:\s|$)/i;
+        function stripPageChrome(rootEl) {
+            rootEl.querySelectorAll('button, input, select, textarea, dialog').forEach(el => el.remove());
+            rootEl.querySelectorAll('form').forEach(f => f.replaceWith(...f.childNodes));
+            rootEl.querySelectorAll('svg').forEach(svg => {
+                if (!svg.querySelector('path, circle, rect, polygon, polyline, line, ellipse, text, image, foreignObject')) svg.remove();
+            });
+            rootEl.querySelectorAll('[class]').forEach(el => {
+                if (el.isConnected && PAGE_CHROME_CLASS.test(el.getAttribute('class') || '')) el.remove();
+            });
         }
 
         // Strip aspect-ratio image placeholders (e.g. CNBC's <div style="padding-bottom:55.5%"
@@ -12007,7 +12263,7 @@
         }
         function refreshUI() {
             _lastTimelineKey = '';
-            if (typeof isMobile === 'function' && !isMobile()) {
+            if (!isMobile()) {
                 if (['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed)) {
                     window.renderPersonalHubColumn?.();
                 } else if (window.currentSmartFeed === 'all' && !document.getElementById('feed-btn-today')?.classList.contains('active-item')) {
@@ -12140,7 +12396,7 @@
             const unreadByUrl = {};
             const unreadByName = {};
             window.articles.forEach(a => {
-                if (!a.unread || window.isMuted(a)) return;   // muted: not counted (build 311)
+                if (!a.unread || window.isMuted(a)) return;   // muted: not counted
                 if (a.feedUrl) unreadByUrl[a.feedUrl] = (unreadByUrl[a.feedUrl] || 0) + 1;
                 else unreadByName[a.source] = (unreadByName[a.source] || 0) + 1;
             });
@@ -12643,7 +12899,7 @@
         }
 
         function updateBadges() {
-            const allUnread = window.articles.filter(a => a.unread && !window.isMuted(a)).length;   // muted not counted (311)
+            const allUnread = window.articles.filter(a => a.unread && !window.isMuted(a)).length;   // muted not counted
             const readLaterCount = window.articles.filter(a => a.readLater).length;
 
             const badgeAll = document.getElementById('badge-all');
@@ -12703,7 +12959,7 @@
         setInterval(() => {
             if (!window._lastRefreshAt) return;
             window.updateHeaderStatus();
-            window.updateTodayStatus?.();   // "Updated 5m ago" ages too (build 306)
+            window.updateTodayStatus?.();   // "Updated 5m ago" ages too
         }, 60000);
 
         // --- OPML & FEED CONFIG ---
@@ -13042,12 +13298,12 @@
             } else {
                 window._readLaterArticles = null;
             }
-            if (isPersonal && typeof isMobile === 'function' && !isMobile()) {
+            if (isPersonal && !isMobile()) {
                 window.showTodayColumn?.(true);
                 window.renderPersonalHubColumn?.(type);
                 return;
             }
-            if (type === 'all' && typeof isMobile === 'function' && !isMobile()) {
+            if (type === 'all' && !isMobile()) {
                 window.showTodayColumn?.(true);
                 window.renderFeedCardsWorkstation?.('all');
                 return;
@@ -13165,7 +13421,7 @@
                 return false;
             }
             window._refreshInFlight = true;
-            window.updateTodayStatus?.();   // "Updating..." (build 306)
+            window.updateTodayStatus?.();   // "Updating..."
             // From an empty list, show the "Refreshing feeds" spinner at once rather than "All caught up".
             if (_lastTimelineKey === '__empty__') {
                 _lastTimelineKey = '';
@@ -14287,7 +14543,7 @@
             const w = menu.offsetWidth, h = menu.offsetHeight;
             const left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
             let top = r.bottom + 6;
-            const bottomLimit = window.innerHeight - (typeof isMobile === 'function' && isMobile() ? 96 : 16);
+            const bottomLimit = window.innerHeight - (isMobile() ? 96 : 16);
             if (top + h > bottomLimit) top = Math.max(8, r.top - h - 6);
             menu.style.left = `${left}px`;
             menu.style.top = `${top}px`;
@@ -14630,7 +14886,7 @@
                 };
             }
             window._openingFromAiBriefing = true;
-            if (typeof isMobile === 'function' && isMobile()) setMobilePane('viewer');
+            if (isMobile()) setMobilePane('viewer');
             selectArticle(targetArt.id);
             return false;
         };
@@ -14646,14 +14902,12 @@
                 window._returnToBriefState = state.prevReturnToBriefState;
             }
             selectArticle(state.aiArticleId);
-            if (typeof isMobile === 'function') {
-                if (isMobile()) {
-                    setMobilePane('viewer');
-                } else {
-                    document.body.classList.add('desktop-today-briefing');
-                    document.body.classList.remove('desktop-today-cards-wide');
-                    document.getElementById('viewer-today-switcher')?.classList.remove('hidden');
-                }
+            if (isMobile()) {
+                setMobilePane('viewer');
+            } else {
+                document.body.classList.add('desktop-today-briefing');
+                document.body.classList.remove('desktop-today-cards-wide');
+                document.getElementById('viewer-today-switcher')?.classList.remove('hidden');
             }
             const restorePos = () => {
                 window.syncAiBriefingVisitedLinks(document.getElementById('article-body'));
@@ -14685,14 +14939,6 @@
             window._autoMorningBriefing = !window._autoMorningBriefing;
             try { localStorage.setItem('newsreader_auto_morning_briefing', window._autoMorningBriefing ? '1' : '0'); } catch (e) { }
             document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', window._autoMorningBriefing ? 'true' : 'false');
-            const todayViewSel = document.getElementById('pref-today-default-view');
-            if (todayViewSel) todayViewSel.value = window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing';
-            const cardsColsSel = document.getElementById('pref-today-cards-columns');
-            if (cardsColsSel) cardsColsSel.value = window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2';
-            if (typeof window.applyTodayCardsColumns === 'function') window.applyTodayCardsColumns(window.getTodayCardsColumns());
-            const ultrawideSel = document.getElementById('pref-ultrawide-layout');
-            if (ultrawideSel) ultrawideSel.value = window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered';
-            if (typeof window.applyUltrawideLayout === 'function') window.applyUltrawideLayout(window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered');
             if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
             window.showToast(window._autoMorningBriefing ? 'Morning Briefing on first open enabled' : 'Morning Briefing on first open off');
             if (window._autoMorningBriefing) {
@@ -14701,7 +14947,7 @@
         };
 
         window.getTodayDefaultView = function () {
-            if (typeof isMobile === 'function' && isMobile()) {
+            if (isMobile()) {
                 try {
                     const mobVal = localStorage.getItem('newsreader_today_default_view_mobile');
                     if (mobVal) return mobVal;
@@ -14713,7 +14959,7 @@
 
         window.saveTodayDefaultView = function (val) {
             const v = val === 'cards' ? 'cards' : 'briefing';
-            if (typeof isMobile === 'function' && isMobile()) {
+            if (isMobile()) {
                 try { localStorage.setItem('newsreader_today_default_view_mobile', v); } catch (e) { }
             } else {
                 try { localStorage.setItem('newsreader_today_default_view', v); } catch (e) { }
@@ -14721,7 +14967,7 @@
             window._todayDefaultView = v;
             const sel = document.getElementById('pref-today-default-view');
             if (sel) sel.value = v;
-            if (typeof window.saveUiPrefsCloud === 'function' && (!window.isMobile || !window.isMobile())) window.saveUiPrefsCloud();
+            if (typeof window.saveUiPrefsCloud === 'function' && !isMobile()) window.saveUiPrefsCloud();
         };
 
         window.getTodayCardsColumns = function () {
@@ -14757,6 +15003,15 @@
             document.body.classList.toggle('ultrawide-centered', mode === 'centered');
             const sel = document.getElementById('pref-ultrawide-layout');
             if (sel) sel.value = mode;
+        };
+
+        // Settings' Today view, Cards View Columns and Wide Screen Layout show this device's choices, and
+        // the layout follows them.
+        window.syncLayoutPrefControls = function () {
+            const todayViewSel = document.getElementById('pref-today-default-view');
+            if (todayViewSel) todayViewSel.value = window.getTodayDefaultView();
+            window.applyTodayCardsColumns(window.getTodayCardsColumns());
+            window.applyUltrawideLayout(window.getUltrawideLayout());
         };
 
         window.saveUltrawideLayout = function (val) {
@@ -14861,7 +15116,7 @@
                 window._openingFromAiBriefing = false;
                 window._returnToAiBriefingState = null;
                 window._hasSwitchedToCardsThisSession = true;
-                if (typeof isMobile === 'function' && !isMobile()) {
+                if (!isMobile()) {
                     document.body.classList.remove('desktop-today-briefing');
                     document.body.classList.remove('desktop-today-story');
                     document.body.classList.add('desktop-today-cards-wide');
@@ -14871,7 +15126,7 @@
                 await window.openToday({ forceCards: true });
             } else {
                 window._hasSwitchedToCardsThisSession = false;
-                if (typeof isMobile === 'function' && !isMobile()) {
+                if (!isMobile()) {
                     document.body.classList.add('desktop-today-briefing');
                     document.body.classList.remove('desktop-today-cards-wide');
                     document.body.classList.remove('desktop-today-story');
@@ -14900,7 +15155,7 @@
         window.maybeRunAutoMorningBriefing = async function () {
             if (!window._autoMorningBriefing) return;
             // On mobile, the app opens to Cards view; do not hijack the mobile screen with an automated briefing
-            if (typeof isMobile === 'function' && isMobile()) return;
+            if (isMobile()) return;
             if (!window.getGeminiApiKey()) return;
             if (window._autoBriefingInFlight || window._refreshInFlight || window._refreshPending) return;
             const dayKey = getLocalMorningBriefingDayKey();
@@ -15121,7 +15376,7 @@
                     }
                     window.openArticleInReader(window._cachedTodayBriefingId);
                     window.updateTodayViewSwitcherState?.('briefing');
-                    if (typeof isMobile === 'function' && !isMobile()) {
+                    if (!isMobile()) {
                         document.body.classList.add('desktop-today-briefing');
                         document.body.classList.remove('desktop-today-cards-wide');
                         document.body.classList.remove('desktop-today-story');
@@ -15177,7 +15432,7 @@ ${blocksText}`;
                         openInReader: true
                     });
                     window.updateTodayViewSwitcherState?.('briefing');
-                    if (typeof isMobile === 'function' && !isMobile()) {
+                    if (!isMobile()) {
                         document.body.classList.add('desktop-today-briefing');
                         document.body.classList.remove('desktop-today-cards-wide');
                         document.body.classList.remove('desktop-today-story');
@@ -15695,7 +15950,7 @@ ${sampleText}`;
                 const absDx = Math.abs(dx);
                 const progress = Math.min(1, absDx / THRESHOLD);
                 if (dx < -8) {
-                    card.style.background = `linear-gradient(to right, rgba(37,99,235,${progress * 0.35}) 0%, rgba(37,99,235,${progress * 0.14}) 60%, transparent 100%)`;
+                    card.style.background = `linear-gradient(to right, rgba(var(--accent-rgb), ${progress * 0.35}) 0%, rgba(var(--accent-rgb), ${progress * 0.14}) 60%, transparent 100%)`;
                 } else if (dx > 8) {
                     card.style.background = `linear-gradient(to left, rgba(22,163,74,${progress * 0.35}) 0%, rgba(22,163,74,${progress * 0.14}) 60%, transparent 100%)`;
                 } else {
@@ -15769,8 +16024,8 @@ ${sampleText}`;
 
         window.buildTodayBrief = function () {
             const now = Date.now();
-            const excluded = window._todayExcluded;   // folders left out of Today (build 310)
-            let mutedCount = 0;                        // muted stories it would show (build 311)
+            const excluded = window._todayExcluded;   // folders left out of Today
+            let mutedCount = 0;                        // muted stories it would show
             const pool = (window.articles || []).filter(a => {
                 if (!a.unread || a.isBrief) return false;
                 if (excluded && excluded.size && excluded.has(getCategoryForArticle(a))) return false;
@@ -15963,7 +16218,7 @@ ${sampleText}`;
                             </div>
                         </div>
                         <div class="text-center py-20 text-gray-400">
-                            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#${icon}"/></svg>
                             </div>
                             <p class="text-lg font-bold text-gray-900 dark:text-gray-100">${esc(emptyTitle)}</p>
@@ -16142,7 +16397,7 @@ ${sampleText}`;
                             </div>
                         </div>
                         <div class="text-center py-20 text-gray-400">
-                            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(59,130,246,0.12); color: #4493f8;">
+                            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#${icon}"/></svg>
                             </div>
                             <p class="text-lg font-bold text-gray-900 dark:text-gray-100">All caught up</p>
@@ -16221,7 +16476,7 @@ ${sampleText}`;
                 if (viewerSwitcher) viewerSwitcher.classList.add('hidden');
                 if (deskSwitcher) deskSwitcher.classList.add('hidden');
                 if (deskSavedSwitcher) deskSavedSwitcher.classList.add('hidden');
-            } else if (typeof isMobile === 'function' && !isMobile()) {
+            } else if (!isMobile()) {
                 const targetView = window._currentTodayView || 'cards';
                 if (isToday && targetView === 'briefing') {
                     document.body.classList.add('desktop-today-briefing');
@@ -16345,6 +16600,9 @@ ${sampleText}`;
 
                 let anySection = false, anyLeft = false;
                 let newShown = 0;
+                // Reading beside the list: stories read meanwhile stay listed (dimmed) until the reader closes.
+                const keepSeen = inColumn && document.body.classList.contains('story-beside')
+                    && document.body.classList.contains('desktop-today-story');
                 root.querySelectorAll('.brief-cat-section').forEach(sec => {
                     anySection = true;
                     let shown = 0, unread = 0;
@@ -16355,8 +16613,10 @@ ${sampleText}`;
                         const link = art ? art.link : card.querySelector('[data-save-link]')?.getAttribute('data-save-link');
                         const read = art ? !art.unread : !!(link && readLinks && readLinks.has(link));
                         const active = inColumn && id === activeId;
+                        const seen = read && !active && keepSeen;
                         card.classList.toggle('brief-card-active', active);
-                        if (read && !active) {
+                        card.classList.toggle('brief-card-seen', seen);
+                        if (read && !active && !seen) {
                             card.classList.add('brief-card-read');
                             card.classList.remove('brief-held');
                         } else {
@@ -16365,7 +16625,7 @@ ${sampleText}`;
                         // New since your last visit: counted for the header only (no per-story dot).
                         const first = Number(card.getAttribute('data-first') || 0);
                         if (boundary && first > boundary && !read) newShown++;
-                        if (!read || active) shown++;
+                        if (!read || active || seen) shown++;
                         if (!read) unread++;
                     });
                     if (shown === 0) {
@@ -16400,7 +16660,7 @@ ${sampleText}`;
                     el.textContent = newShown ? `${newShown} new` : '';
                     if (newShown) {
                         const s = document.createElement('span');
-                        s.className = 'desk-only';   // the phone's status line has room for "3 new" (334)
+                        s.className = 'desk-only';   // the phone's status line has room for "3 new"
                         s.textContent = since;
                         el.appendChild(s);
                     }
@@ -16413,7 +16673,7 @@ ${sampleText}`;
                         note = document.createElement('p');
                         note.className = 'brief-all-read-note';
                         note.textContent = "You're all caught up.";
-                        const hint = document.createElement('span');   // the phone's (build 336, on request)
+                        const hint = document.createElement('span');   // the phone's
                         hint.className = 'brief-pull-hint phone-only';
                         hint.textContent = 'Pull down to refresh.';
                         note.appendChild(hint);
@@ -16582,7 +16842,7 @@ ${sampleText}`;
             window.updateActionButton?.();
             window.updateViewerBackBtn?.();
             document.body.classList.remove('desktop-today-story');
-            if (typeof isMobile === 'function' && !isMobile() && window._todayInColumn) {
+            if (!isMobile() && window._todayInColumn) {
                 const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
                 const isToday = !isPersonal && !window.currentCategoryFilter && !window.currentSourceFilter && (document.getElementById('feed-btn-today')?.classList.contains('active-item') || window.currentSmartFeed === 'today');
                 if (isPersonal || !isToday || window._currentTodayView === 'cards') {
@@ -16606,7 +16866,7 @@ ${sampleText}`;
             const id = cur && !cur.isBrief ? cur.id : null;
             window._returnToBriefState = null;
             document.body.classList.remove('desktop-today-story');
-            if (typeof isMobile === 'function' && !isMobile()) {
+            if (!isMobile()) {
                 document.body.classList.add('desktop-today-cards-wide');
                 const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
                 const isToday = !isPersonal && !window.currentCategoryFilter && !window.currentSourceFilter && (document.getElementById('feed-btn-today')?.classList.contains('active-item') || window.currentSmartFeed === 'today');
@@ -16619,7 +16879,8 @@ ${sampleText}`;
                 if (timelineCountGroup) timelineCountGroup.classList.toggle('hidden', isToday || isPersonal);
             }
             window.clearReaderPane();
-            window.syncBriefCards(null, { now: true });   // Back: your tap (322)
+            window.syncBriefCards(null, { now: true });   // Back: your tap
+            window.balanceTodayDeck();
             if (!id) return;
             // The story just read has left the brief: land on the next unread.
             const card = window.briefLandingCard(Array.from(document.querySelectorAll('#today-column .brief-story-card[data-sa-id]'))
@@ -16648,7 +16909,7 @@ ${sampleText}`;
             if (scroller) {
                 const scrollerRect = scroller.getBoundingClientRect();
                 const targetRect = targetEl.getBoundingClientRect();
-                const isMob = typeof isMobile === 'function' ? isMobile() : (window.innerWidth <= 900);
+                const isMob = isMobile();
                 const topClearance = isMob ? 76 : 24;
                 const targetScrollTop = scroller.scrollTop + (targetRect.top - scrollerRect.top) - topClearance;
                 scroller.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
@@ -16760,7 +17021,7 @@ ${sampleText}`;
         };
 
         // Today on screen with no unread story showing (all caught up) takes its new stories at once:
-        // there is no place to keep, so the "N new stories" pill would only be one more tap (on request).
+        // there is no place to keep, so the "N new stories" pill would only be one more tap.
         window.showNewTodayIfBlank = function () {
             const where = todayOnScreen();
             if (!where || !(window._todayNewCount > 0)) return false;
@@ -16774,7 +17035,7 @@ ${sampleText}`;
 
         window.openToday = async function (opts = {}) {
             window._returnToBriefState = null;
-            const isMob = typeof isMobile === 'function' && isMobile();
+            const isMob = isMobile();
             const defaultView = window.getTodayDefaultView ? window.getTodayDefaultView() : (isMob ? 'cards' : 'briefing');
             const targetView = opts.forceCards ? 'cards' : (opts.forceBriefing ? 'briefing' : (window._currentTodayView || defaultView));
             if (targetView === 'briefing' && !window._hasSwitchedToCardsThisSession && (!isMob || opts.forceBriefing)) {
@@ -16798,7 +17059,7 @@ ${sampleText}`;
             document.getElementById('feed-btn-today')?.classList.add('active-item');
             window.updateSavedSwitcherState?.();
             window.updateTodayViewSwitcherState?.('cards');
-            if (typeof isMobile === 'function' && !isMobile()) {
+            if (!isMobile()) {
                 // DESKTOP: the brief takes the middle column; the reader stays for stories.
                 document.body.classList.remove('desktop-today-story');
                 window.clearReaderPane();
@@ -16809,9 +17070,9 @@ ${sampleText}`;
             }
             window.showTodayColumn(false);
             window._todayBrief = window.buildTodayBrief();
-            window._todayNewCount = 0;   // build 306
+            window._todayNewCount = 0;
             selectArticle(window.TODAY_BRIEF_ID);
-            if (typeof isMobile === 'function' && isMobile()) {
+            if (isMobile()) {
                 setMobilePane('viewer');
                 setMobileTab('today');
             }
@@ -16935,6 +17196,57 @@ ${sampleText}`;
             if (img.parentElement) briefImgChange(img.parentElement, 'remove');
         };
 
+        // Cards: the folders fill the deck's columns in order, each into the shortest, so a short folder
+        // beside a long one leaves no hole; Top Stories spans the deck above them. The column count is the
+        // CSS grid's. Placed after a render and when the count changes, never when a card shrinks, and a
+        // count seen before gets its earlier placement back, so nothing moves sideways under the reader.
+        window.balanceTodayDeck = function () {
+            const grid = document.querySelector('#today-column .brief-cards-grid');
+            if (!grid || !grid.getClientRects().length) return;
+            const cs = getComputedStyle(grid);
+            const n = cs.display === 'grid' ? cs.gridTemplateColumns.split(' ').filter(Boolean).length : 1;
+            const wraps = Array.from(grid.querySelectorAll(':scope > .brief-deck-col'));
+            if (grid.dataset.deckCols === String(n) && wraps.length === (n > 1 ? n : 0)) return;
+            window.keepTodayInPlace(() => {
+                const sections = Array.from(grid.querySelectorAll('.brief-cat-section'))
+                    .filter(s => s.id !== 'brief-cat-top_stories');
+                sections.forEach((s, i) => { if (!s.dataset.deckOrder) s.dataset.deckOrder = String(i); });
+                sections.sort((a, b) => a.dataset.deckOrder - b.dataset.deckOrder);
+                sections.forEach(s => grid.appendChild(s));
+                wraps.forEach(w => w.remove());
+                grid.dataset.deckCols = String(n);
+                grid.style.setProperty('--deck-cols', String(n));
+                if (n < 2) return;
+                const cols = Array.from({ length: n }, () => {
+                    const w = document.createElement('div');
+                    w.className = 'brief-deck-col';
+                    return { w, h: 0 };
+                });
+                const key = 'deckCol' + n;
+                const known = sections.every(s => s.dataset[key] !== undefined);
+                const heights = known ? [] : sections.map(s => s.offsetHeight);
+                sections.forEach((s, i) => {
+                    let c;
+                    if (known) c = cols[Number(s.dataset[key])] || cols[0];
+                    else {
+                        c = cols.reduce((a, b) => (b.h < a.h ? b : a));
+                        s.dataset[key] = String(cols.indexOf(c));
+                        c.h += heights[i] + (heights[i] ? 20 : 0);
+                    }
+                    c.w.appendChild(s);
+                });
+                cols.forEach(c => grid.appendChild(c.w));
+            });
+        };
+        (function () {
+            const col = document.getElementById('today-column');
+            if (!col) return;
+            let raf = 0;
+            const soon = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => window.balanceTodayDeck()); };
+            new MutationObserver(soon).observe(col, { childList: true });
+            new ResizeObserver(soon).observe(col);
+        })();
+
         function renderBriefSectionsHtml(categorySections, opts = {}) {
             let html = '';
             categorySections.forEach(cs => {
@@ -16983,7 +17295,7 @@ ${sampleText}`;
                     // story like the headline does.
                     const picUrl = window.pictureUrl(briefStoryImage(st), 1200);
                     const verdict = window._briefImgVerdict?.get(picUrl);
-                    const imgUrl = verdict === 'bad' ? '' : picUrl;   // known bad: no box (317)
+                    const imgUrl = verdict === 'bad' ? '' : picUrl;   // known bad: no box
                     // Large (16:9, above the source line) unless known to be under 600px wide.
                     const isHero = !!imgUrl && verdict !== 'thumb';
                     const mediaHtml = imgUrl
@@ -17229,8 +17541,8 @@ ${sampleText}`;
             const shownAt = cl => cl.leadArticle._ts || Date.parse(cl.leadArticle.timestamp) || 0;
             orderedCats.forEach(cat => grouped[cat].sort(opts.chronological
                 ? (opts.newestFirst
-                    ? (a, b) => shownAt(b) - shownAt(a)    // newest first, no ranking (339)
-                    : (a, b) => shownAt(a) - shownAt(b))   // oldest first, no ranking (339)
+                    ? (a, b) => shownAt(b) - shownAt(a)    // newest first, no ranking
+                    : (a, b) => shownAt(a) - shownAt(b))   // oldest first, no ranking
                 : (a, b) => {
                     // Lowest rank number = highest authority
                     if (a.effectiveRank !== b.effectiveRank) return a.effectiveRank - b.effectiveRank;
@@ -17463,11 +17775,11 @@ ${sampleText}`;
             const link = row.querySelector('.brief-source-link, a[href]')?.getAttribute('href')
                 || row.querySelector('[data-save-link]')?.getAttribute('data-save-link')
                 || window.briefStoryArticle(saId)?.link || '';
-            if (link) window._shownCardLinks.add(link);   // shown as a card (339)
+            if (link) window._shownCardLinks.add(link);   // shown as a card
             const j = escJs(saId);
             const b = (cls, label, icon, onclick) =>
                 `<button type="button" class="icon-act ${cls}" onclick="${onclick}" title="${label}" aria-label="${label}"><svg aria-hidden="true"><use href="#${icon}"/></svg></button>`;
-            row.className = 'brief-story-actions story-actions';   // story-actions: the desktop's one row (336)
+            row.className = 'brief-story-actions story-actions';   // story-actions: the desktop's one row
             const meta = card.querySelector('.brief-story-meta');
             if (meta && !meta.querySelector('.brief-more-btn')) {
                 meta.insertAdjacentHTML('beforeend', '<button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showBriefStoryMenu(this)" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>');
@@ -17478,7 +17790,7 @@ ${sampleText}`;
                 `<button type="button" class="icon-act brief-save-btn" data-save-id="${esc(saId)}" data-save-link="${esc(link)}" onclick="window.toggleBriefStorySaved('${j}', this)" title="Save" aria-label="Save"><svg aria-hidden="true"><use href="#icon-star"/></svg></button>` +
                 b('brief-open-reader', 'Open in Reader', 'icon-newspaper', `window.openArticleInReader('${j}')`) +
                 (link ? `<a class="icon-act brief-source-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" title="Open original source" aria-label="Open original source"><svg aria-hidden="true"><use href="#icon-external-link"/></svg></a>` : '') +
-                b('brief-act-share', 'Share', 'icon-share', `window.briefStoryAct('share', '${j}', this)`);   // last (build 308)
+                b('brief-act-share', 'Share', 'icon-share', `window.briefStoryAct('share', '${j}', this)`);   // last
         };
 
         // An action menu (the lists' context menu) whose items press buttons on the page, so each action
@@ -17613,7 +17925,7 @@ ${sampleText}`;
             }
             refreshUI();
             if (kind === 'read') {
-                window.syncBriefCards(null, { now: true });   // your tap: at once (322)
+                window.syncBriefCards(null, { now: true });   // your tap: at once
                 if (next && next.getClientRects().length) window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
             }
             updateActionButton();   // reader row if this is the open story, plus every card
@@ -17753,7 +18065,7 @@ ${sampleText}`;
             window.syncBriefCards?.(null, { now: true });
 
             // 2. If mobile, make sure viewer pane is active
-            if (typeof isMobile === 'function' && isMobile()) {
+            if (isMobile()) {
                 setMobilePane('viewer');
             }
 
@@ -17798,12 +18110,26 @@ ${sampleText}`;
         window.openArticleInReader = function (articleId) {
             const art = window.readerArticleById(articleId);
             if (art) {
-                if (typeof isMobile === 'function' && !isMobile()) {
+                if (!isMobile()) {
+                    const beside = window._todayInColumn && !art.isBrief && document.body.classList.contains('story-beside');
+                    const col = document.getElementById('today-column');
+                    const cardSel = `.brief-story-card[data-sa-id="${CSS.escape(articleId)}"]`;
+                    // Opening beside the list narrows it: the clicked card keeps its height on the screen.
+                    const before = beside && !document.body.classList.contains('desktop-today-story')
+                        ? col?.querySelector(cardSel)?.getBoundingClientRect().top : null;
                     document.body.classList.remove('desktop-today-cards-wide');
                     document.getElementById('viewer-today-switcher')?.classList.add('hidden');
                     document.getElementById('desk-today-switcher')?.classList.add('hidden');
                     if (window._todayInColumn && !art.isBrief) {
                         document.body.classList.add('desktop-today-story');
+                    }
+                    if (beside) {
+                        window.balanceTodayDeck();
+                        const card = col?.querySelector(cardSel);
+                        if (card && before != null) col.scrollTop += card.getBoundingClientRect().top - before;
+                        // j / k: the list scrolls only when the story's card starts out of view.
+                        const r = card?.getBoundingClientRect(), c = col?.getBoundingClientRect();
+                        if (r && c && (r.top < c.top || r.top > c.bottom - 80)) card.scrollIntoView({ block: 'start' });
                     }
                 }
                 if (window._todayInColumn && !art.isBrief) {
@@ -17850,7 +18176,7 @@ ${sampleText}`;
                         if (idx >= 0) window._returnToBriefState.storyIndex = idx;
                     }
                 }
-                if (typeof isMobile === 'function' && isMobile()) setMobilePane('viewer');
+                if (isMobile()) setMobilePane('viewer');
                 selectArticle(art.id);
             } else {
                 if (window.showToast) window.showToast("Article not found in local cache", true);
@@ -17881,11 +18207,17 @@ ${sampleText}`;
             rebuildTodayInPlace(false);
         };
 
-        window.toggleTodayImages = () => {
-            window._todayImages = !window._todayImages;
-            try { localStorage.setItem('newsreader_today_images', window._todayImages ? '1' : '0'); } catch (e) { }
-            document.getElementById('today-images-toggle')?.setAttribute('data-on', window._todayImages ? 'true' : 'false');
-            document.body.classList.toggle('today-no-images', !window._todayImages);
+        window.saveTodayPictures = (v) => {
+            const mode = (v === 'small' || v === 'none') ? v : 'large';
+            try {
+                localStorage.setItem('newsreader_today_pictures', mode);
+                localStorage.removeItem('newsreader_today_images');
+            } catch (e) { }
+            window.applyTodayPictures(mode);
+            // The boxes changed size: redraw each picture for its new box.
+            document.querySelectorAll('.brief-hero > img, .brief-thumb > img').forEach(img => {
+                if (img.complete && img.naturalWidth) window.smoothPicture(img);
+            });
         };
 
         window.toggleSourceIcons = () => {
@@ -18079,14 +18411,7 @@ ${sampleText}`;
             document.getElementById('rank-stories-toggle')?.setAttribute('data-on', window._todayRank ? 'true' : 'false');
             document.getElementById('learn-opens-toggle')?.setAttribute('data-on', window._learnOpens ? 'true' : 'false');
             document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', window._autoMorningBriefing ? 'true' : 'false');
-            const todayViewSel = document.getElementById('pref-today-default-view');
-            if (todayViewSel) todayViewSel.value = window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing';
-            const cardsColsSel = document.getElementById('pref-today-cards-columns');
-            if (cardsColsSel) cardsColsSel.value = window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2';
-            if (typeof window.applyTodayCardsColumns === 'function') window.applyTodayCardsColumns(window.getTodayCardsColumns());
-            const ultrawideSel = document.getElementById('pref-ultrawide-layout');
-            if (ultrawideSel) ultrawideSel.value = window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered';
-            if (typeof window.applyUltrawideLayout === 'function') window.applyUltrawideLayout(window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered');
+            window.syncLayoutPrefControls();
             const geminiInput = document.getElementById('gemini-api-key-input');
             if (geminiInput) geminiInput.value = window.getGeminiApiKey();
             window.renderMuteChips?.();
@@ -18705,7 +19030,7 @@ ${sampleText}`;
                 }
                 const img = e.target.closest('img');
                 if (!img) return;
-                if (img.closest('.brief-thumb, .brief-hero')) return;   // Today pictures open the story (build 290)
+                if (img.closest('.brief-thumb, .brief-hero')) return;   // Today pictures open the story
                 if (img.naturalWidth < 60 && img.naturalWidth > 0) return;
                 if (img.classList.contains('bsky-quote-avatar')) return;
                 const src = img.dataset.fullsize || img.src;
@@ -18912,7 +19237,7 @@ ${sampleText}`;
                 const w = menu.offsetWidth, h = menu.offsetHeight;
                 const left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
                 let top = r.bottom + 6;
-                const bottomLimit = window.innerHeight - (typeof isMobile === 'function' && isMobile() ? 96 : 16);
+                const bottomLimit = window.innerHeight - (isMobile() ? 96 : 16);
                 if (top + h > bottomLimit) top = Math.max(8, r.top - h - 6);
                 menu.style.left = `${left}px`;
                 menu.style.top = `${top}px`;
@@ -19437,7 +19762,7 @@ ${sampleText}`;
             });
             for (let i = 0; i < window.articles.length; i++) {
                 const a = window.articles[i];
-                if (!a.unread || a.isBrief || window.isMuted(a)) continue;   // muted not counted (311)
+                if (!a.unread || a.isBrief || window.isMuted(a)) continue;   // muted not counted
                 const hit = new Set();
                 bySource.get(a.source)?.forEach(c => hit.add(c));
                 if (a.feedUrl) byUrl.get(a.feedUrl)?.forEach(c => hit.add(c));
@@ -19486,7 +19811,7 @@ ${sampleText}`;
             window._pinnedArticleIds?.clear?.();
             refreshUI();
             updateBadges();
-            window.syncBriefCards(null, { now: true });   // your tap: at once (322)
+            window.syncBriefCards(null, { now: true });   // your tap: at once
             if (next && next.getClientRects().length) window.briefSlideUp(next, nextBefore - next.getBoundingClientRect().top);
 
             if (btnEl) {
@@ -19562,7 +19887,7 @@ ${sampleText}`;
             window._pinnedArticleIds?.clear?.();
             refreshUI();
             updateBadges();
-            window.syncBriefCards(null, { now: true });   // your tap: at once (322)
+            window.syncBriefCards(null, { now: true });   // your tap: at once
 
             window.updateBriefMarkReadButtons?.(true);
 
@@ -19897,7 +20222,7 @@ ${sampleText}`;
                     if (!a.body) a.body = '';
                 });
                 window.articles = fresh;
-                window._articleCacheRestored = true;   // saves may now prune the store (build 302)
+                window._articleCacheRestored = true;   // saves may now prune the store
             } catch (e) { console.warn('DB Restore error:', e.message); }
         }
 
@@ -20185,7 +20510,7 @@ ${sampleText}`;
 
             if (!art || isToday) {
                 if (backBtn) backBtn.classList.add('hidden');
-                if (viewerHeader && typeof isMobile === 'function' && isMobile()) {
+                if (viewerHeader && isMobile()) {
                     if (!document.body.classList.contains('desktop-today-briefing') && !document.body.classList.contains('desktop-today-story')) {
                         viewerHeader.style.display = 'none';
                     }
@@ -20201,7 +20526,7 @@ ${sampleText}`;
                 backBtn.classList.remove('hidden');
                 const bTitle = window._returnToAiBriefingState.aiArticleTitle || 'Briefing';
                 if (backLabel) backLabel.textContent = bTitle.includes('Recap') ? 'Recap' : 'Briefing';
-            } else if (backBtn && (window._todayInColumn || document.body.classList.contains('desktop-today-story')) && typeof isMobile === 'function' && !isMobile()) {
+            } else if (backBtn && (window._todayInColumn || document.body.classList.contains('desktop-today-story')) && !isMobile()) {
                 // Desktop Today, Personal Hub & Feed Cards: Back closes the story and returns to its card in
                 // the brief beside it (closeStoryToTodayColumn) - the same bar as mobile.
                 backBtn.classList.remove('hidden');
@@ -20302,12 +20627,12 @@ ${sampleText}`;
 
         // --- MOBILE SEARCH SHEET ---
         // On desktop the search dropdown is placed under the search control by measurement (the column is
-        // resizable and the header follows App Zoom). Below 901px the inline values go and the CSS anchor
-        // above the tab bar applies. setProperty(..., 'important'), as the base rules use !important.
+        // resizable and the header follows App Zoom). In the phone layout the inline values go and the CSS
+        // anchor above the tab bar applies. setProperty(..., 'important'), as the base rules use !important.
         function positionSearchPalette() {
             const sheet = document.getElementById('mobile-search-sheet');
             if (!sheet) return;
-            if (window.innerWidth <= 900) {
+            if (isMobile()) {
                 ['top', 'left', 'width'].forEach(prop => sheet.style.removeProperty(prop));
                 return;
             }
@@ -20594,7 +20919,7 @@ ${sampleText}`;
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 _hiddenAt = Date.now();
-                try { localStorage.setItem('newsreader_last_seen_at', String(_hiddenAt)); } catch (e) { }   // build 313
+                try { localStorage.setItem('newsreader_last_seen_at', String(_hiddenAt)); } catch (e) { }
             } else {
                 // Catch-up render on return: refresh the timestamps/badges that the
                 // gated tick skipped while hidden.
@@ -20617,7 +20942,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 469;
+        window.APP_BUILD = 470;
 
         (async function initApp() {
             try {
@@ -20671,7 +20996,7 @@ ${sampleText}`;
                         restoreLocalFeeds(),
                         restoreReadLaterState(),
                         restoreCategoryOrder(),
-                        window.loadReadingLog()   // what you have opened (339)
+                        window.loadReadingLog()   // what you have opened
                     ]);
 
                     window._readLinks = new Set(await getStoredReadLinks());
@@ -20736,14 +21061,7 @@ ${sampleText}`;
                     }
 
                     document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', window._autoMorningBriefing ? 'true' : 'false');
-            const todayViewSel = document.getElementById('pref-today-default-view');
-            if (todayViewSel) todayViewSel.value = window.getTodayDefaultView ? window.getTodayDefaultView() : 'briefing';
-            const cardsColsSel = document.getElementById('pref-today-cards-columns');
-            if (cardsColsSel) cardsColsSel.value = window.getTodayCardsColumns ? window.getTodayCardsColumns() : '2';
-            if (typeof window.applyTodayCardsColumns === 'function') window.applyTodayCardsColumns(window.getTodayCardsColumns());
-            const ultrawideSel = document.getElementById('pref-ultrawide-layout');
-            if (ultrawideSel) ultrawideSel.value = window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered';
-            if (typeof window.applyUltrawideLayout === 'function') window.applyUltrawideLayout(window.getUltrawideLayout ? window.getUltrawideLayout() : 'centered');
+                    window.syncLayoutPrefControls();
 
                     const prefs = JSON.parse(localStorage.getItem('newsreader_prefs') || '{}');
                     if (prefs.autoRefresh) {
@@ -21209,7 +21527,7 @@ ${sampleText}`;
                         document.getElementById('auto-morning-briefing-toggle')?.setAttribute('data-on', data.autoMorningBriefing ? 'true' : 'false');
                     }
                     if (data.todayDefaultView) {
-                        if (typeof isMobile === 'function' && isMobile()) {
+                        if (isMobile()) {
                             // On mobile, keep mobile's cards default; do not let desktop's cloud sync overwrite it
                         } else {
                             try { localStorage.setItem('newsreader_today_default_view', data.todayDefaultView); } catch (e) { }
@@ -21495,7 +21813,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v469';
+const CACHE_NAME = 'rss-reader-v470';
 const APP_SHELL = [
     '/',
     'index.html'

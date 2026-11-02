@@ -14,7 +14,7 @@
 ## 1. Executive Summary & Design Vision
 
 The **Briefing & Today Library Redesign** transforms the user's reading experience by eliminating the cramped, legacy 3-pane layout entirely across desktop, unifying the entire application under a modern, focused **2-Pane Workstation Architecture**:
-**Sidebar (240px) + Centered Cards Grid/Canvas (`#today-column`)**.
+**Sidebar (328px) + Centered Cards Grid/Canvas (`#today-column`)**.
 
 ### Core Principles
 1. **Total Elimination of the 3-Pane Design:**
@@ -46,7 +46,7 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 +-------------------+-------------------------------------------------------------------+
 |                   |  [Action/Mark Read]      [Centered Switcher / Count]       [Acts] |
 |                   +-------------------------------------------------------------------+
-|  Sidebar (240px)  |                                                                   |
+|  Sidebar (328px)  |                                                                   |
 |  - Today          |                      Centered Cards Grid / Canvas                 |
 |  - Unread         |                     (Jump Bar: Categories or Feeds)               |
 |  - Read Later     |                     (Cards Deck: 1, 2, or 3 columns)              |
@@ -58,7 +58,7 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 +---------------------------------------------------------------------------------------+
 |  STORY READING MODE (2-Pane: Sidebar + Centered Reader Canvas)                       |
 +-------------------+-------------------------------------------------------------------+
-|  Sidebar (240px)  |  [< Back to Source]                         [Nav]  [Share] [Star] |
+|  Sidebar (328px)  |  [< Back to Source]                         [Nav]  [Share] [Star] |
 |  - Today          +-------------------------------------------------------------------+
 |  - Unread         |                                                                   |
 |  - Read Later     |                      Full Article Reader                          |
@@ -69,11 +69,11 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 
 | Mode | Active Body Class | Pane 1 (Sidebar) | Pane 2 (`#today-column` Cards) | Pane 3 (`#viewer-pane` Reader) | Column Count |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Today: Briefing** | `desktop-today-briefing` | Visible (240px) | `display: none` | Full width (`flex: 1`), centered 760px | **2 Panes** |
-| **Today: Cards** | `desktop-today-cards-wide` | Visible (240px) | Full width (`flex: 1`), centered grid | `display: none` | **2 Panes** |
-| **Personal Hub** | `desktop-today-cards-wide` | Visible (240px) | Full width (`flex: 1`), centered grid | `display: none` | **2 Panes** |
-| **Unread / Folders** | `desktop-today-cards-wide` | Visible (240px) | Full width (`flex: 1`), centered grid | `display: none` | **2 Panes** |
-| **Story Reading** | `desktop-today-story` | Visible (240px) | `display: none` | Full width (`flex: 1`), centered 760px | **2 Panes** |
+| **Today: Briefing** | `desktop-today-briefing` | Visible (328px) | `display: none` | Full width (`flex: 1`), centered 760px | **2 Panes** |
+| **Today: Cards** | `desktop-today-cards-wide` | Visible (328px) | Full width (`flex: 1`), centered grid | `display: none` | **2 Panes** |
+| **Personal Hub** | `desktop-today-cards-wide` | Visible (328px) | Full width (`flex: 1`), centered grid | `display: none` | **2 Panes** |
+| **Unread / Folders** | `desktop-today-cards-wide` | Visible (328px) | Full width (`flex: 1`), centered grid | `display: none` | **2 Panes** |
+| **Story Reading** | `desktop-today-story` | Visible (328px) | `display: none` | Full width (`flex: 1`), centered 760px | **2 Panes** |
 
 ---
 
@@ -185,6 +185,7 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 | **464** | `b5ffc3e` | **Repost Attribution Placement:**<br>• Moved `↻ Reposted from [Author]` from top of post to a dedicated line directly above the post author byline. |
 | **465** | `b2bf39d` | **Floating Centered Jump Bar:**<br>• Removed bottom border divider under jump bar buttons (`border-bottom: none !important;`).<br>• Centered jump bar vertically between header hairline and category story cards (`padding: 20px 0; margin: 0`). |
 | **466** | `6fb627d` | **Repost Attribution Typography Polish:**<br>• Increased repost badge font size slightly from `0.75rem` (12px) to `0.85rem` (~13.5px) with `line-height: 1.35` for optimal readability. |
+| **470** | *(2026-11-02)* | **Desktop Layout Fixes (found reviewing the desktop companion's refresh):**<br>• **No navigation in a narrow desktop window:** at 900px and below, a mouse device lost both the sidebar and the tab bar (CSS switched to the phone layout by width while `isMobile()` stayed false by device, and build 435 hid the tab bar). The 31 phone and 17 desktop media queries now use the same device test as `isMobile()`, so a mouse device keeps the desktop layout at any width; the phone is unchanged. The duplicate Briefing/Cards switcher under 900px went with it.<br>• **Sidebar slid 116px when a story opened** (at 1400px; 240px on ultrawide): each view centred a different total width. One rule now centres `[sidebar + deck]` from the Cards View Columns width (`--deck-w`) in every view; briefing and story canvases centre where the cards were.<br>• **Full Width Stretch did nothing:** no rule checked it. It now keeps the sidebar at the left and lets the cards fill the pane.<br>• **Second card 20px lower than the first:** cards in the grid now take no top margin (the grid gap spaces them).<br>• **One column at 1000px and below:** the 768px rule never applied (the per-setting rule outranked it).<br>• **Stray `}` from build 448** dropped the `.brief-thumb, .brief-hero` base rule (position, clipping, placeholder); restored.<br>• Search sheet placement uses `isMobile()` instead of the raw width.<br>• **Reading beside the list** (Settings → Stories → Open stories): `body.story-beside` lays story mode out as list + resizer + reader; the clicked card keeps its height on opening, stories read meanwhile stay listed dimmed (`brief-card-seen`) until the reader closes. The resizer now measures from the list's own left edge (it ignored the centring offset).<br>• **Collapsible sidebar rail:** `[` or the logo (`#sidebar-toggle`) folds the sidebar to a 64px rail with the smart lists, Refresh and Settings; `--sidebar-w` feeds the centring.<br>• **Top Stories band and balanced deck:** Top Stories spans the deck, its stories in CSS columns; `balanceTodayDeck()` places folder cards shortest-column-first in `.brief-deck-col` wrappers, only after a render or a column-count change.<br>• **Pictures: Large / Small / None** replaces the Show images switch; Small is a CSS grid card with an 88px square picture.<br>• **Page chrome removed from stories** (`stripPageChrome`): buttons, form fields, empty sprite SVGs (NPR's player left 300×150 gaps), player tool menus and embed-code overlays.<br>• **One accent:** `--accent` / `--accent-rgb` replace 14 shades of hard-coded blue (about 135 uses); Tailwind's blue scale is remapped to it; `theme-color` is the house blue.<br>• **Clean-up:** 29 always-true `typeof isMobile === 'function'` guards removed; the layout-settings sync is one function (`syncLayoutPrefControls`) instead of three copies (one sat in the Morning Briefing switch); the dead `ultrawide-stretch` selectors went; 45 comments lost their build numbers and "on request" (comments-only change proven with TypeScript's comment-free print). A static scan found no CSS selector that can never match. `!important` was not cut: only 2 of 1,273 are provably redundant by property, and the rest need a per-view cascade check.<br>• The status line's bullet has a space before it (`Updated just now • 3 new`). |
 
 ---
 
@@ -195,6 +196,7 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 | `1` | Anywhere in Today | Switch immediately to **✦ Briefing View** |
 | `2` | Anywhere in Today | Switch immediately to **▣ Cards View** |
 | `t` / `T` | Anywhere in App | Jump to Today |
+| `[` | Desktop | Show or hide the sidebar (rail) |
 | `j` / `↓` | Cards / Reader | Next article in queue |
 | `k` / `↑` | Cards / Reader | Previous article in queue |
 | `b` / `B` | While reading any story | Return to originating Cards view |
@@ -210,7 +212,7 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 | :--- | :--- | :--- | :---: |
 | **Header Centering** | Toggle between Briefing and Cards mode. | Switcher sits exactly above the centerline of the body content. | PASS |
 | **Dynamic Resizing** | Drag desktop window border from 1600px down to 700px. | Header and body content shift simultaneously with zero horizontal drift. | PASS |
-| **Header Persistence** | Resize desktop window to `< 900px` (e.g. split screen). | Headers (`#viewer-header`, `#timeline-header`) remain visible (`display: flex`); mobile tab bar stays hidden. | PASS |
+| **Header Persistence** | Resize desktop window to `< 900px` (e.g. split screen). | Sidebar, headers (`#viewer-header`, `#timeline-header`) and one switcher stay visible; mobile tab bar stays hidden; cards in one column. | PASS (470) |
 | **Unified 2-Pane Workstation** | Switch across Today, Unread, Folders, Feeds, and Personal Hub. | All views render as spacious centered cards in `#today-column`; 3-pane layout never appears. | PASS |
 | **Return Flow** | Click `< Source` or press `Escape` / `b`. | Closes story, restores full-width Cards mode, and scrolls to the read card. | PASS |
 | **Personal Hub Preservation** | Open Read Later, Saved, or History in cards view. | Stories remain permanently visible; read stories are never hidden. | PASS |

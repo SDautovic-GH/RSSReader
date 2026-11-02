@@ -4,9 +4,9 @@
 | :--- | :--- |
 | **Product** | Today (formerly RSS Reader) |
 | **Live App** | [today.dautovic.com](https://today.dautovic.com) |
-| **Build Target** | Build 466+ |
+| **Build Target** | Build 470+ |
 | **Documentation Type** | Comprehensive User Manual |
-| **Last Updated** | November 1, 2026 |
+| **Last Updated** | November 2, 2026 |
 
 ---
 
@@ -99,11 +99,28 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 #### Push-and-Return Story Flow
 * When you click any card in any view, the story opens in a focused 2-pane reader canvas (`desktop-today-story`), centered at 760px with a prominent `< Source` back button in the header reflecting where you came from (`< Unread`, `< Technology`, `< Ars Technica`, `< Saved`, etc.).
 * Tap Back, press `b`, or press `Escape` to return to Cards view. The read card is centered smoothly and pulses gently into place.
+* Story pages leave out the original site's own buttons and player menus (for example NPR's "Toggle more options", Download and Embed); a Listen link to the audio stays.
+
+#### Reading Beside the List
+* Under **Settings → Stories → Open stories**, choose **Beside the list** to read with the list still on screen: the story opens to the right and the list keeps its width (drag the divider between them to change it).
+* The card you clicked stays where it was on the screen. Stories you read while the reader is open stay in the list, dimmed, so nothing moves under the pointer; they leave when you close the reader (Back, `b` or `Escape`).
+* `j` / `k` open the next or previous story in the list; the list scrolls only when that story's card starts out of view.
+* **Full page** (the default) opens each story on its own, as before.
+
+#### Collapsing the Sidebar
+* Press `[`, or click the app logo at the top left (it shows a panel icon when you point at it), to fold the sidebar into a narrow rail. The rail keeps Today, Unread, Read Later, Saved and History as icons, plus Refresh and Settings at the bottom; press `[` or click the logo again to open it.
+* Today remembers the choice on each device.
+
+#### Cards: Top Stories and Balanced Columns
+* **Top Stories** runs across the full width of the deck, its stories flowing down the columns.
+* The folder cards below fill the columns in order, each going to the shorter column, so a short folder beside a long one leaves no empty block. They keep their places while you read; they are laid out again only when the number of columns changes (window width, Cards View Columns, or opening a story beside the list).
 
 #### Persistent Simultaneous Centering
 * As you resize your desktop browser window (e.g. side-by-side split screen or tiling next to your code editor):
   * The top bar switcher and the body content below it remain **mathematically locked to the exact center** (`50%` of the pane width).
   * The header **never disappears or collapses**, and the mobile phone tab bar never intrudes on desktop.
+  * With a mouse, the desktop layout (sidebar and headers) stays at every window width, down to a narrow half-screen window; at 1000px and below the cards drop to one column.
+  * The sidebar keeps the same place in every view, so opening a story never slides it sideways.
 
 #### Wide Screen & Ultrawide Layout
 * On wide or ultrawide monitors ($> 1720px$ width, such as 1440p, 4K, or 34-inch/49-inch ultrawides), Today integrates seamlessly with the browser window at 100% full bleed—without artificial outer letterboxing bars or black margins.
@@ -111,7 +128,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
   * **Today Cards View:** `Mark Read` aligns with the left edge of card column 1, the `Briefing / Cards` switcher sits in the horizontal center, and `Search` aligns with the right edge of the card deck.
   * **Today Briefing & Story View:** Back button aligns with the left margin of the reading text, the switcher sits in the center, and the article toolbar actions align with the right margin.
 * This eliminates the neck-straining "tennis match" effect where controls are stranded thousands of pixels away from the reading column.
-* You can switch between **Centered Content (Recommended)** and **Full Width Stretch** under **Settings → Appearance → Wide Screen Layout**.
+* You can switch between **Centered Content (Recommended)** and **Full Width Stretch** (the sidebar stays at the left and the cards fill the window) under **Settings → Appearance → Wide Screen Layout**.
 
 #### Unified Workstation Canvas & Visual Rhythm
 * **Single Surface Canvas:** The left sidebar and right cards/reading canvas share an uninterrupted single background color (`#0d1117` in dark mode, `#ffffff` in light mode). Vertical dividing lines between panes are eliminated, yielding a calm, unified digital workstation.
@@ -143,6 +160,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 | `1` | Anywhere in Today | Switch to **✦ Briefing View** |
 | `2` | Anywhere in Today | Switch to **▣ Cards View** |
 | `t` / `T` | Anywhere | Jump directly to Today |
+| `[` | Desktop | Show or hide the sidebar (rail) |
 | `j` / `↓` | Today Cards / Reader | Move to next story |
 | `k` / `↑` | Today Cards / Reader | Move to previous story |
 | `b` / `B` | While reading a story | Return to Today Cards / Briefing |
@@ -210,8 +228,9 @@ All stale backlog stories are marked read immediately, leaving you with only tod
 Open **Settings** (gear icon) to tailor your experience:
 * **Wide Screen Layout (Desktop):** Toggle between **Centered Content (Recommended)** (centers header controls directly above the content reading column) and **Full Width Stretch**.
 * **Cards View Columns (Desktop):** Select between **1 Column** (focused reading), **2 Columns** (magazine layout), or **3 Columns** (ultra-wide monitor layout).
+* **Open stories (Desktop, Settings → Stories):** **Full page** or **Beside the list** (see 3.1).
 * **AI & Briefings:** Configure your Gemini API key, customize briefing synthesis, and enable automatic 5:00 AM Morning Briefing preparation.
 * **Appearance & Theme:** Switch between Dark and Light mode, or choose your preferred font.
 * **Text Size & Zoom:** Adjust App Zoom, Section Heading Size, Article List title size, and reader line spacing independently for your phone and desktop.
-* **Today Controls:** Toggle article images, adjust the number of stories per category (5 to 50, or All), and enable/disable importance ranking.
+* **Today Controls:** **Pictures** (**Large**: a wide picture under each story; **Small**: a square at its right, so more stories fit on the screen; **None**: no pictures and no picture downloads), the number of stories per category (5 to 50, or All), and importance ranking on or off.
 * **Muted Words:** Filter out topics you wish to avoid; muted articles are silently excluded from unread counts and briefings.
