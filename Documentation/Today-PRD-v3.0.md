@@ -2,7 +2,7 @@
 
 | Metadata | Value |
 | :--- | :--- |
-| **Document Version** | v3.16 (Build 471) |
+| **Document Version** | v3.17 (Build 472) |
 | **Date** | November 2, 2026 |
 | **Status** | Live in Production (`today.dautovic.com`) |
 | **Primary Repository** | `SDautovic-GH/RSSReader` |
@@ -24,7 +24,7 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
   - **▣ Cards View:** A rich, responsive magazine card deck displaying clustered coverage with customizable column density (1, 2, or 3 columns) and sticky Category Jump Bars.
 - **Unified 2-Pane Workstation Architecture (All Views):**
   - The legacy 3-pane layout (Sidebar + Timeline article list + Reader pane + resizer) is completely retired.
-  - Every view on desktop — **Today**, **Unread**, **Personal Hub** (`Read Later`, `Saved`, `History`), **Subscription Folders**, and **Single Feeds** — operates as a dedicated **2-pane workstation**: **Sidebar (328px) + Centered Cards Grid/Canvas (`#today-column`)**.
+  - Every view on desktop — **Today**, **Unread**, **Personal Hub** (`Read Later`, `Saved`, `History`), **Subscription Folders**, and **Single Feeds** — operates as a dedicated **2-pane workstation**: **Sidebar (280px) + Centered Cards Grid/Canvas (`#today-column`)**.
   - Clicking any card in any view opens the story in a focused 2-pane reader canvas (`desktop-today-story`), centered at 760px with a dynamic back button (`< Unread`, `< Technology`, `< Ars Technica`, `< Saved`, etc.).
   - Returning via Back, `b`, or `Escape` immediately restores the cards grid and smoothly centers and pulses the read card.
 - **Durable Personal Hub Preservation:** Stories in `Read Later`, `Saved`, and `History` are durable collections; read stories are never auto-hidden by inbox sweeps.
@@ -83,6 +83,7 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 | :--- | :--- | :--- |
 | **✦ AI Morning Briefing** | Executive synthesis | Powered by Gemini Flash (`gemini-2.5-flash`). Synthesizes unread coverage into an executive brief broken down by folder section with bold topic headlines and numbered citations (`#1`, `#2`) that link directly to full articles. Automatically prepped at 5:00 AM local time or generated on-demand. |
 | **▣ Cards View (Category Cards)** | Unified category deck with immediate unread-only triage | Each folder/category renders as a **single unified Category Card** (`.brief-cat-section`) containing its stories in clean list rows with subtle dividers, eliminating the visual clutter of dozens of isolated boxes. Stories feature inline action controls: `Mark Read` (checkmark button with smooth collapse animation), `Save` (star button), and `...` More options. Supports 1, 2, or 3 columns (`--today-cards-cols`) configured via App Settings (`760px`, `1240px`, `1680px`). |
+| **Card Anatomy: Source First** | Who it's from before what it says | Every story card and list card opens with the source / author line (favicon, name, time) carrying the Mark Read, Read Later and `…` actions at its right; a repost note (`↻ Reposted from …`) sits just above it. Then the headline and summary, a Small thumbnail floating beside them or a Large picture under them, and "Also from …". `normalizeBriefDOM` puts the line first on every render; `placeBriefThumb` puts a thumbnail right after it. |
 | **Immediate Read Disappearance** | Strict unread-only presentation | Marking a story read immediately hides it (`display: none !important`), smoothly collapsing the row. Opening a story in the reader automatically hides it upon return via `< Today`, `b`, or `Escape`, ensuring only unread stories remain visible. Categories with zero unread stories cleanly disappear; when all stories are read, "You're all caught up" displays. |
 | **View Switcher** | Instant seamless toggle | Unified segmented control (`✦ Briefing` and `▣ Cards`) anchored in the active desktop header bar. Keyboard shortcuts `1` (Briefing) and `2` (Cards). Obsolete inline briefing banner slots and compact wire toggle removed in favor of clean dedicated views. |
 | **Top Stories Band & Balanced Deck** | No holes between cards | In Cards, Top Stories spans the deck with its stories flowing down the deck's columns (CSS columns). The folder cards below are placed by `balanceTodayDeck()` into column wrappers (`.brief-deck-col`), each into the shortest column in order. Placement runs after a render and when the CSS grid's column count changes, never when a card shrinks; a column count seen before gets its earlier placement back (`data-deck-col<N>`). |
@@ -122,7 +123,7 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 | **Sanitization** | Security guarantee | DOMPurify 3.1.6 sanitization on all inbound HTML elements and styling attributes. |
 | **Page Chrome Removal** | No dead controls in stories | `stripPageChrome()` runs on extracted pages before they are cached and on every displayed body: removes buttons and form fields (a `<form>` is unwrapped), SVGs with nothing to draw (sprite icons that point at the site's own sheet render as empty 300×150 boxes), and player tool menus / embed-code overlays (`PAGE_CHROME_CLASS`). Links, audio and video stay. |
 | **Typography & Sizing** | Device-specific customization | Granular App Zoom, title sizing, line height, preview lengths, Cards View Columns (1, 2, or 3), and custom typography configurable per device. |
-| **Pictures** | Large / Small / None | Settings → Today → Pictures (`newsreader_today_pictures`; the old `newsreader_today_images = '0'` reads as None). Small (`body.today-pictures-small`) turns each story card into a grid with an 88px square picture at its right; None (`today-no-images`) also stops picture downloads. |
+| **Pictures** | Large / Small / None | Settings → Today → Pictures (`newsreader_today_pictures`; the old `newsreader_today_images = '0'` reads as None). Small (`body.today-pictures-small`) draws every picture as the 88px thumbnail: a card with a thumbnail is flow content (`:has(> .brief-thumb)`, not the flex column, which ignores float), so it floats top right beside the headline and summary and the source line clears below the taller of the two; None (`today-no-images`) also stops picture downloads. |
 
 ---
 
@@ -157,11 +158,11 @@ A fast, private, single-file RSS reader and newsletter briefing tool that operat
 
 | State | Active Body Class | `#sidebar-pane` | `#timeline-pane` | `#viewer-pane` | Header Switcher |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Today: Briefing** | `desktop-today-briefing` | Visible (328px) | `display: none` | `display: flex` (100%) | `#viewer-today-switcher` (Centered at 50%) |
-| **Today: Cards** | `desktop-today-cards-wide` | Visible (328px) | `display: flex` (100%) | `display: none` | `#desk-today-switcher` (Centered at 50%) |
-| **Today: Story** | `desktop-today-story` | Visible (328px) | `display: none` | `display: flex` (100%) | Hidden (`< Today` back button shown) |
-| **Story beside the list** | `desktop-today-story` + `story-beside` | Visible (328px; 64px rail when collapsed) | `display: flex` (440px default, resizable) | `display: flex` (rest) | Back button closes the reader |
-| **Unread / Feeds / Personal Hub** | `desktop-today-cards-wide` | Visible (328px) | `display: flex` (100%) | `display: none` | Mark Read / `#desk-saved-switcher` |
+| **Today: Briefing** | `desktop-today-briefing` | Visible (280px) | `display: none` | `display: flex` (100%) | `#viewer-today-switcher` (Centered at 50%) |
+| **Today: Cards** | `desktop-today-cards-wide` | Visible (280px) | `display: flex` (100%) | `display: none` | `#desk-today-switcher` (Centered at 50%) |
+| **Today: Story** | `desktop-today-story` | Visible (280px) | `display: none` | `display: flex` (100%) | Hidden (`< Today` back button shown) |
+| **Story beside the list** | `desktop-today-story` + `story-beside` | Visible (280px; 64px rail when collapsed) | `display: flex` (440px default, resizable) | `display: flex` (rest) | Back button closes the reader |
+| **Unread / Feeds / Personal Hub** | `desktop-today-cards-wide` | Visible (280px) | `display: flex` (100%) | `display: none` | Mark Read / `#desk-saved-switcher` |
 
 ### 4.3 Deployment Pipeline
 - Code updates committed to `SDautovic-GH/RSSReader` via `SyncGit-macOS-RSSReader.ps1` (or Windows counterpart).

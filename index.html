@@ -715,15 +715,15 @@
             margin-right: -1px;
         }
 
-        /* A list card is Today's card: headline, summary, and a quiet source · time + "..." footer at
-           the bottom; a thumbnail floats beside the headline and summary; the body holds the float. */
+        /* A list card is Today's card: the source · time + "..." line on top, then the headline and
+           summary with a thumbnail floating beside them; the body holds the float. */
         .list-card-body {
             display: flow-root;
         }
 
         .list-card-meta {
-            clear: both;
-            margin-top: 0.35rem !important;
+            margin-top: 0 !important;
+            margin-bottom: 0.35rem !important;
             margin-bottom: 0 !important;
         }
 
@@ -3475,12 +3475,28 @@
         }
 
         @media (min-width: 901px), (hover: hover) and (pointer: fine) {
-            body.sidebar-collapsed {
-                --sidebar-w: 64px;
+            /* The sidebar's width is the token (280px, the rail's 64px), so the centring always matches it. */
+            #sidebar-pane {
+                width: var(--sidebar-w) !important;
             }
 
-            body.sidebar-collapsed #sidebar-pane {
-                width: 64px !important;
+            /* 28px header buttons (20px icons), so "Today" and its status fit beside them. */
+            #sidebar-header > div:last-child {
+                gap: 2px;
+            }
+
+            #sidebar-header > div:last-child > .app-header-btn {
+                margin: 0;
+                padding: 4px;
+            }
+
+            #sidebar-header > div:last-child > .app-header-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            body.sidebar-collapsed {
+                --sidebar-w: 64px;
             }
 
             body.sidebar-collapsed #sidebar-header {
@@ -3547,33 +3563,25 @@
             }
         }
 
-        /* Settings > Today > Pictures > Small: each picture a square at the right of its story, the
-           headline and summary beside it, the source line under both. */
-        body.today-pictures-small .brief-cat-section .brief-story-card:not(.brief-card-read) {
-            display: grid !important;
-            grid-template-columns: minmax(0, 1fr) auto;
-            column-gap: 14px;
-            align-items: start;
+        /* A story with a thumbnail is flow content, not the card's flex column (which ignores float):
+           under the source line the thumbnail floats right with the headline and summary beside it, and
+           the card holds the float. Settings > Today > Pictures > Small draws every picture so. */
+        .brief-cat-section .brief-story-card:has(> .brief-thumb):not(.brief-card-read) {
+            display: flow-root !important;
         }
 
-        body.today-pictures-small .brief-story-card > * {
-            grid-column: 1;
+        .brief-story-card:has(> .brief-thumb) > * + * {
+            margin-top: 6px;
         }
 
-        body.today-pictures-small .brief-story-card > .brief-hero,
-        body.today-pictures-small .brief-story-card > .brief-thumb {
-            grid-column: 2;
-            grid-row: 1 / span 3;
-            float: none;
+        /* A quoted post's box sits beside the thumbnail rather than running under it. */
+        .brief-story-card:has(> .brief-thumb) .brief-social-parent {
+            display: flow-root;
+        }
+
+        body.today-pictures-small .brief-thumb {
             width: 88px;
             height: 88px;
-            aspect-ratio: auto;
-            margin: 2px 0 0;
-            border-radius: 10px;
-        }
-
-        body.today-pictures-small .brief-story-card > .brief-story-meta {
-            grid-column: 1 / -1;
         }
 
         /* 6. Desktop Window Resize Safety: headers persist on desktop computers at all viewport widths */
@@ -3639,7 +3647,7 @@
         /* The cards deck width for each Cards View Columns choice; the layout centres on it. */
         body {
             --deck-w: 1240px;
-            --sidebar-w: 328px;
+            --sidebar-w: 280px;
         }
 
         body[data-cards-cols="1"] {
@@ -5837,6 +5845,22 @@
                 -webkit-user-select: none;
                 user-select: none;
             }
+        }
+
+        #article-body .brief-story-card > div.brief-story-meta,
+        #today-column .brief-story-card > div.brief-story-meta {
+            margin-top: 0 !important;
+        }
+
+        /* With a thumbnail the card is flow content (no gap): the source line's margin gives the headline
+           and the thumbnail the same 6px below it. */
+        #article-body .brief-story-card:has(> .brief-thumb) > div.brief-story-meta,
+        #today-column .brief-story-card:has(> .brief-thumb) > div.brief-story-meta {
+            margin-bottom: 6px !important;
+        }
+
+        .brief-story-card:has(> .brief-thumb) > .brief-thumb {
+            margin-top: 0;
         }
 
         /* No 6-icon action row under a Today story on desktop or phone: the "..." button at the end of
@@ -8565,12 +8589,35 @@
                 return localStorage.getItem('newsreader_today_images') === '0' ? 'none' : 'large';
             } catch (e) { return 'large'; }
         };
+        // A thumbnail's place is right after the card's source line, so the headline and summary wrap beside it.
+        window.placeBriefThumb = (box) => {
+            const card = box.parentElement;
+            if (!card) return;
+            const meta = card.querySelector(':scope > .brief-story-meta');
+            card.insertBefore(box, meta ? meta.nextSibling : card.firstChild);
+        };
         window.applyTodayPictures = (v) => {
             window._todayImages = v !== 'none';
             document.body.classList.toggle('today-no-images', v === 'none');
             document.body.classList.toggle('today-pictures-small', v === 'small');
             const sel = document.getElementById('pref-today-pictures');
             if (sel) sel.value = v;
+            // Cards on screen: a large picture becomes the thumbnail at the top (Small), and back under the
+            // text otherwise, unless it is too small for that (a known 'thumb').
+            document.querySelectorAll('.brief-story-card').forEach(card => {
+                const box = card.querySelector(':scope > .brief-hero, :scope > .brief-thumb[data-hero]');
+                if (!box) return;
+                if (v === 'small' && box.classList.contains('brief-hero')) {
+                    box.classList.replace('brief-hero', 'brief-thumb');
+                    box.dataset.hero = '1';
+                    window.placeBriefThumb(box);
+                } else if (v !== 'small' && box.dataset.hero) {
+                    delete box.dataset.hero;
+                    if (window._briefImgVerdict?.get(box.querySelector('img')?.getAttribute('src')) === 'thumb') return;
+                    box.classList.replace('brief-thumb', 'brief-hero');
+                    card.insertBefore(box, card.querySelector(':scope > .brief-story-actions'));
+                }
+            });
         };
         window.applyTodayPictures(window.getTodayPictures());
         // Per device, desktop only: stories open beside the list or on their own page; the sidebar can
@@ -10562,11 +10609,7 @@
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 ${swipeHintsHtml()}
                 <div class="min-w-0 list-card-body">
-                    ${thumbHtml}
                     ${repostLine}
-                    ${titleHtml}
-                    <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
-                    ${parentCardHtml}
                     <div class="list-card-meta flex items-center gap-1.5 min-w-0">
                         ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
                         <span class="list-source-label truncate min-w-0">${favicon}${esc(sourceLabel)}</span>
@@ -10574,6 +10617,10 @@
                         <span class="list-date-label flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         <button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showListCardMenu(this, '${saId}')" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>
                     </div>
+                    ${thumbHtml}
+                    ${titleHtml}
+                    <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
+                    ${parentCardHtml}
                 </div>
             </div>`;
         }
@@ -11087,7 +11134,7 @@
                     el.classList.remove('text-xs', 'text-[11px]', 'text-sm');
                 });
 
-                // Ensure story metadata components do not wrap vertically, drop favicons, and sit cleanly at the end of the story
+                // Story metadata stays on one line, drops favicons, and tops the story (who it's from comes first)
                 const sMeta = card.querySelector('.brief-story-meta') || card.querySelector(':scope > div:first-child:not(.brief-thumb):not(.brief-hero):not(.brief-story-also):not(.brief-story-actions)');
                 if (sMeta) {
                     sMeta.classList.add('brief-story-meta');
@@ -11178,8 +11225,8 @@
                     excerptEl.style.paddingTop = '0px';
                 }
                 if (sMeta) {
-                    if (sActions && sActions.parentElement === card) card.insertBefore(sMeta, sActions);
-                    else card.appendChild(sMeta);
+                    const repost = card.querySelector(':scope > .bsky-repost-pill');
+                    card.insertBefore(sMeta, repost ? repost.nextSibling : card.firstChild);
                 }
 
                 // Detect if card represents a social / microblog post (Bluesky, Mastodon, or single-text post)
@@ -17288,8 +17335,7 @@ ${sampleText}`;
             if (kind === 'remove') box.remove();
             else if (kind === 'thumb') {
                 box.classList.replace('brief-hero', 'brief-thumb');
-                // A thumbnail's place is at the top of the card so the headline and summary wrap beside it.
-                box.parentElement?.prepend(box);
+                window.placeBriefThumb(box);
                 const img = box.querySelector('img');
                 if (img) window.smoothPicture(img);
             }
@@ -17418,12 +17464,14 @@ ${sampleText}`;
                     const verdict = window._briefImgVerdict?.get(picUrl);
                     const imgUrl = verdict === 'bad' ? '' : picUrl;   // known bad: no box
                     // Large (16:9, above the source line) unless known to be under 600px wide.
-                    const isHero = !!imgUrl && verdict !== 'thumb';
+                    const isHero = !!imgUrl && verdict !== 'thumb' && !document.body.classList.contains('today-pictures-small');
+                    const heroAttr = imgUrl && !isHero && verdict !== 'thumb' ? ' data-hero="1"' : '';
                     const mediaHtml = imgUrl
-                        ? `<div class="${isHero ? 'brief-hero' : 'brief-thumb'}" onclick="window.openArticleInReader('${saId}')"><img src="${esc(imgUrl)}" alt="" loading="lazy" decoding="async" onload="window.briefImgLoaded(this)" onerror="window.briefImgFailed(this)"></div>`
+                        ? `<div class="${isHero ? 'brief-hero' : 'brief-thumb'}"${heroAttr} onclick="window.openArticleInReader('${saId}')"><img src="${esc(imgUrl)}" alt="" loading="lazy" decoding="async" onload="window.briefImgLoaded(this)" onerror="window.briefImgFailed(this)"></div>`
                         : '';
-                    // The large picture follows the story's text; a thumbnail goes at the top of the card so the
-                    // headline and summary wrap beside it, and the source / time line sits quietly at the end.
+                    // Who it's from comes first: the source / time line (with the actions) tops the card. The
+                    // large picture follows the story's text; a thumbnail follows the source line so the headline
+                    // and summary wrap beside it.
                     const heroHtml = isHero ? mediaHtml : '';
                     const thumbHtml = isHero ? '' : mediaHtml;
 
@@ -17491,12 +17539,8 @@ ${sampleText}`;
 
                     html += `
                         <div class="brief-story-card ${isSocial ? 'is-social-story' : ''}" id="brief-card-${saId}" data-sa-id="${saId}"${covAttr}${firstAttr}>
-                            ${thumbHtml}
-                            ${storyBodyHtml}
-                            ${alsoReported}
-                            ${heroHtml}
                             ${repostBadgeHtml}
-                            <div class="brief-story-meta flex items-center justify-between text-xs text-gray-400 pt-1 flex-nowrap min-w-0">
+                            <div class="brief-story-meta flex items-center justify-between text-xs text-gray-400 flex-nowrap min-w-0">
                                 <div class="flex items-center gap-1.5 min-w-0 truncate">
                                     <span class="brief-story-source list-source-label truncate font-medium text-gray-400">${favHtml}${esc(st.source)}</span>
                                     <span class="brief-story-dot flex-shrink-0">•</span>
@@ -17515,6 +17559,10 @@ ${sampleText}`;
                                     </button>
                                 </div>
                             </div>
+                            ${thumbHtml}
+                            ${storyBodyHtml}
+                            ${alsoReported}
+                            ${heroHtml}
                             <div class="brief-story-actions flex items-center gap-1.5 pt-0.5">
                                 <button type="button" onclick="window.openArticleInReader('${saId}')" class="brief-action-btn brief-open-reader text-gray-500 dark:text-gray-400" title="Open in Reader" aria-label="Open in Reader">
                                     <svg class="brief-action-icon"><use href="#icon-newspaper"/></svg>
@@ -21063,7 +21111,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 471;
+        window.APP_BUILD = 472;
 
         (async function initApp() {
             try {
@@ -21934,7 +21982,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v471';
+const CACHE_NAME = 'rss-reader-v472';
 const APP_SHELL = [
     '/',
     'index.html'
