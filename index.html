@@ -3620,10 +3620,25 @@
                 margin-left: max(0px, calc((100vw - (var(--sidebar-w) + var(--deck-w) + 5rem)) / 2)) !important;
             }
 
+            /* Beside the list (3-pane workstation): centre [sidebar + list + story reader] symmetrically. */
+            body.ultrawide-centered.story-beside.desktop-today-story:not(.is-fullscreen) #sidebar-pane {
+                margin-left: max(0px, calc((100vw - (var(--sidebar-w) + var(--timeline-w, 440px) + 760px + 5rem)) / 2)) !important;
+            }
+
             body.ultrawide-centered.desktop-today-cards-wide #timeline-header .timeline-header-inner,
             body.ultrawide-centered.desktop-today-briefing #viewer-header .viewer-header-inner,
-            body.ultrawide-centered.desktop-today-story #viewer-header .viewer-header-inner {
+            body.ultrawide-centered.desktop-today-story:not(.story-beside) #viewer-header .viewer-header-inner {
                 max-width: calc(var(--deck-w) + 5rem) !important;
+                margin-left: 0 !important;
+                margin-right: auto !important;
+                padding-left: 2.5rem !important;
+                padding-right: 2.5rem !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Beside the list: header inner matches the 760px story column and its padding */
+            body.ultrawide-centered.story-beside.desktop-today-story #viewer-header .viewer-header-inner {
+                max-width: calc(760px + 5rem) !important;
                 margin-left: 0 !important;
                 margin-right: auto !important;
                 padding-left: 2.5rem !important;
@@ -3634,8 +3649,20 @@
             /* Briefing and story: the right padding narrows the canvas area to the deck, so the 760px
                canvas centres where the cards were. */
             body.ultrawide-centered.desktop-today-briefing #reader-view,
-            body.ultrawide-centered.desktop-today-story #reader-view {
+            body.ultrawide-centered.desktop-today-story:not(.story-beside) #reader-view {
                 padding-right: max(2.5rem, calc(100% - 2.5rem - var(--deck-w))) !important;
+            }
+
+            /* Beside the list: story canvas sits in its own column with symmetric padding */
+            body.ultrawide-centered.story-beside.desktop-today-story #reader-view {
+                padding-left: 2.5rem !important;
+                padding-right: 2.5rem !important;
+            }
+
+            body.ultrawide-centered.story-beside.desktop-today-story #reader-view > div {
+                max-width: 760px !important;
+                margin-left: 0 !important;
+                margin-right: auto !important;
             }
 
             /* Full Width Stretch: the sidebar stays at the left and the cards fill the pane. */
@@ -3648,6 +3675,7 @@
         body {
             --deck-w: 1240px;
             --sidebar-w: 280px;
+            --timeline-w: 440px;
         }
 
         body[data-cards-cols="1"] {
@@ -9157,7 +9185,10 @@
             if (!isResizing) return;
             // From the list's own left edge: the centred layout puts space before the sidebar.
             const newWidth = e.clientX - timelinePane.getBoundingClientRect().left;
-            if (newWidth >= 210 && newWidth <= 800) timelinePane.style.width = `${newWidth}px`;
+            if (newWidth >= 210 && newWidth <= 800) {
+                timelinePane.style.width = `${newWidth}px`;
+                document.body.style.setProperty('--timeline-w', `${newWidth}px`);
+            }
         });
         document.addEventListener('mouseup', () => {
             if (isResizing) {
@@ -9172,7 +9203,9 @@
         // width), not a choice, so it becomes the 440px default.
         window.paneWidthOrDefault = w => (!w || w === '336px') ? '440px' : w;
         try {
-            timelinePane.style.width = window.paneWidthOrDefault(localStorage.getItem('newsreader_pane_width'));
+            const restoredPaneWidth = window.paneWidthOrDefault(localStorage.getItem('newsreader_pane_width'));
+            timelinePane.style.width = restoredPaneWidth;
+            document.body.style.setProperty('--timeline-w', restoredPaneWidth);
         } catch (e) { console.warn('Storage error:', e.message); }
 
         // --- FETCH & ARTICLE LOGIC ---
@@ -21111,7 +21144,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 472;
+        window.APP_BUILD = 473;
 
         (async function initApp() {
             try {
@@ -21982,7 +22015,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v472';
+const CACHE_NAME = 'rss-reader-v473';
 const APP_SHELL = [
     '/',
     'index.html'
