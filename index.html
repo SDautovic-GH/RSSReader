@@ -3347,11 +3347,27 @@
             background: rgba(0, 0, 0, 0.05);
         }
 
-        /* On mobile, keep story row meta clean by hiding quick action buttons (available in "..." menu) */
+        /* Phone: Mark Read and Read Later beside "..." keep its size (30x22) and its 44pt touch area (the
+           ::after), spaced so the touch areas meet without overlapping. */
         @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
-            .brief-story-ctrls .brief-act-read-inline,
-            .brief-story-ctrls .brief-act-later {
-                display: none !important;
+            .brief-story-ctrls,
+            .list-card-ctrls {
+                gap: 14px !important;
+            }
+
+            .brief-story-ctrls .brief-item-act-btn,
+            .list-card-ctrls .brief-item-act-btn {
+                position: relative;
+                width: 30px;
+                height: 22px;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            .brief-story-ctrls .brief-item-act-btn::after,
+            .list-card-ctrls .brief-item-act-btn::after {
+                content: '';
+                position: absolute;
+                inset: -11px -7px;
             }
         }
 
@@ -5084,14 +5100,37 @@
             }
         }
 
+        /* The repost note is the same size as the author / source line under it, set by Text size &
+           zoom's feed-name size (desktop and phone each have their own). */
         .bsky-repost-pill,
         .bsky-repost-byline {
+            display: flex;
+            align-items: center;
             color: var(--text-3, #8b949e) !important;
             font-weight: 400 !important;
-            font-size: 0.92rem !important;
-            line-height: 1.35 !important;
-            margin-top: 5px !important;
+            font-size: var(--list-source-size, 0.8em) !important;
+            line-height: 1.25 !important;
+            margin-top: 0 !important;
             margin-bottom: 3px !important;
+        }
+
+        /* The repost icon is the favicon's size and gap, so it sits right above the author line's icon. */
+        .bsky-repost-icon {
+            width: 1em;
+            height: 1em;
+            margin-right: 0.35em;
+            flex-shrink: 0;
+        }
+
+        .bsky-repost-name {
+            font-weight: 500;
+        }
+
+        @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
+            .bsky-repost-pill,
+            .bsky-repost-byline {
+                font-size: var(--mob-feed-name-size, 0.8em) !important;
+            }
         }
 
         /* The jump bar takes the pane colour (it was black, a strip on desktop's #0d1117 panes):
@@ -5948,6 +5987,26 @@
 
         html:not(.dark) .brief-more-btn {
             color: #57606a;
+        }
+
+        /* A list card's Mark Read, Read Later and "...", together at the end of its source line. */
+        .list-card-ctrls {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .list-card-ctrls .brief-more-btn {
+            margin-left: 0;
+        }
+
+        /* The desktop's list keeps only "..." (and the keyboard); the phone shows all three. */
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
+            .list-card-ctrls .brief-item-act-btn {
+                display: none;
+            }
         }
 
         /* Desktop lists: the action row shows on hover, keyboard focus or the open story. */
@@ -7336,6 +7395,13 @@
                 stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="4" width="18" height="16" rx="2" />
                 <path d="M9 4v16" />
+            </symbol>
+            <symbol id="icon-repost" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="m2 9 3-3 3 3" />
+                <path d="M13 18H7a2 2 0 0 1-2-2V6" />
+                <path d="m22 15-3 3-3-3" />
+                <path d="M11 6h6a2 2 0 0 1 2 2v10" />
             </symbol>
             <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -10599,10 +10665,10 @@
             const sourceLabel = a.source || feedObj?.name || feedObj?.title || 'News';
             const favicon = getFavicon(sourceLabel);
 
-            // For Bluesky reposts, show the original author above the post text so the
-            // person being read is visible without losing the feed name at the bottom.
-            const repostLine = (isBsky && a.bskyIsRepost && a.bskyOriginalAuthor)
-                ? `<p class="bsky-repost-byline dynamic-list-preview text-gray-500 dark:text-gray-400 font-normal mb-1">↻ Reposted from ${esc(a.bskyOriginalAuthor)}</p>`
+            // A repost: who shared it on the top line (the feed), the post's own author on the source line.
+            const isRepost = !!(isBsky && a.bskyIsRepost && a.bskyOriginalAuthor);
+            const repostLine = isRepost
+                ? `<p class="bsky-repost-byline"><svg class="bsky-repost-icon" aria-hidden="true"><use href="#icon-repost"/></svg><span>Reposted by <span class="bsky-repost-name">${esc(sourceLabel)}</span></span></p>`
                 : '';
             const titleHtml = isBsky ? '' : `<h3 class="font-semibold text-gray-900 dark:text-white leading-snug mb-1 dynamic-list-title">${esc(a.title)}</h3>`;
             const previewCls = isBsky
@@ -10645,10 +10711,14 @@
                     ${repostLine}
                     <div class="list-card-meta flex items-center gap-1.5 min-w-0">
                         ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
-                        <span class="list-source-label truncate min-w-0">${favicon}${esc(sourceLabel)}</span>
+                        <span class="list-source-label truncate min-w-0">${favicon}${esc(isRepost ? a.bskyOriginalAuthor : sourceLabel)}</span>
                         <span class="list-meta-dot" aria-hidden="true">•</span>
                         <span class="list-date-label flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
-                        <button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showListCardMenu(this, '${saId}')" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>
+                        <span class="list-card-ctrls">
+                            <button type="button" class="brief-item-act-btn brief-act-read-inline" onclick="event.stopPropagation(); window.listCardAct(this.closest('[data-id]'), 'read')" title="${a.unread ? 'Mark Read' : 'Mark Unread'}" aria-label="${a.unread ? 'Mark Read' : 'Mark Unread'}"><svg class="w-3.5 h-3.5" aria-hidden="true"><use href="#icon-check"/></svg></button>
+                            <button type="button" class="brief-item-act-btn brief-act-later ${a.readLater ? 'is-on' : ''}" onclick="event.stopPropagation(); window.listCardAct(this.closest('[data-id]'), 'later')" title="${a.readLater ? 'Remove from Read Later' : 'Read Later'}" aria-label="${a.readLater ? 'Remove from Read Later' : 'Read Later'}"><svg class="w-3.5 h-3.5" aria-hidden="true"><use href="#${a.readLater ? 'icon-bookmark-filled' : 'icon-bookmark'}"/></svg></button>
+                            <button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showListCardMenu(this, '${saId}')" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>
+                        </span>
                     </div>
                     ${thumbHtml}
                     ${titleHtml}
@@ -10797,8 +10867,9 @@
             }, true);
         }
 
-        attachCardSwipes(document.getElementById('article-list'), target => target.closest('[data-id]'), (card, kind) => {
-            const id = card.getAttribute('data-id');
+        // A list card's Mark Read / Read Later, from its swipe or its buttons.
+        window.listCardAct = (card, kind) => {
+            const id = card && card.getAttribute('data-id');
             // Bucket-backed views (Read Later / Saved / Recently Read) render
             // articles that are NOT in window.articles — search all sources.
             const article = id && findArticleAnywhere(id);
@@ -10816,7 +10887,8 @@
                 window.showToast(article.readLater ? 'Added to Read Later' : 'Removed from Read Later');
             }
             maybeGoHomeIfTimelineEmpty();
-        });
+        };
+        attachCardSwipes(document.getElementById('article-list'), target => target.closest('[data-id]'), window.listCardAct);
 
         // Today's cards on the phone: read with Undo (the card leaves Today), Read Later as its button.
         attachCardSwipes(document.getElementById('reader-view'),
@@ -11265,8 +11337,8 @@
                 // Detect if card represents a social / microblog post (Bluesky, Mastodon, or single-text post)
                 const saId = card.getAttribute('data-sa-id') || card.id?.replace(/^brief-card-/, '');
                 const art = saId ? (liveById.get(saId) || archiveByKey.get(saId) || null) : null;
-                const srcText = card.querySelector('.brief-story-source')?.textContent?.trim();
-                const feed = feedByName.get(srcText);
+                const srcEl = card.querySelector('.brief-story-source');
+                const feed = feedByName.get((srcEl?.dataset.source || srcEl?.textContent || '').trim());
                 const isSocial = (art && ((art.feedUrl && isBlueskyFeed(art.feedUrl)) || (art.link && typeof isMastodonPost === 'function' && isMastodonPost(art.link)) || (art.category && /fediverse|mastodon|bluesky|social/i.test(art.category)) || (!art.title)))
                     || (feed && ((feed.url && isBlueskyFeed(feed.url)) || (feed.category && /fediverse|mastodon|bluesky|social/i.test(feed.category))));
 
@@ -17547,10 +17619,10 @@ ${sampleText}`;
                         </div>
                     ` : '';
 
-                    const repostBadgeHtml = (st.bskyIsRepost && st.bskyOriginalAuthor) ? `
-                        <div class="bsky-repost-pill text-gray-500 dark:text-gray-400 font-normal mb-1 flex items-center gap-1">
-                            <span>↻ Reposted from ${esc(st.bskyOriginalAuthor)}</span>
-                        </div>
+                    // A repost: who shared it on the top line (the feed), the post's own author on the source line.
+                    const isRepost = !!(st.bskyIsRepost && st.bskyOriginalAuthor);
+                    const repostBadgeHtml = isRepost ? `
+                        <div class="bsky-repost-pill"><svg class="bsky-repost-icon" aria-hidden="true"><use href="#icon-repost"/></svg><span>Reposted by <span class="bsky-repost-name">${esc(st.source)}</span></span></div>
                     ` : '';
 
                     if (isSocial) {
@@ -17575,7 +17647,7 @@ ${sampleText}`;
                             ${repostBadgeHtml}
                             <div class="brief-story-meta flex items-center justify-between text-xs text-gray-400 flex-nowrap min-w-0">
                                 <div class="flex items-center gap-1.5 min-w-0 truncate">
-                                    <span class="brief-story-source list-source-label truncate font-medium text-gray-400">${favHtml}${esc(st.source)}</span>
+                                    <span class="brief-story-source list-source-label truncate font-medium text-gray-400" data-source="${esc(st.source)}">${favHtml}${esc(isRepost ? st.bskyOriginalAuthor : st.source)}</span>
                                     <span class="brief-story-dot flex-shrink-0">•</span>
                                     <span class="brief-story-time flex-shrink-0 whitespace-nowrap">${relTime}</span>
                                     ${mutedTag}
@@ -18035,7 +18107,7 @@ ${sampleText}`;
         const _isOn = b => !!b && (b.classList.contains('is-on') || b.classList.contains('is-saved'));
 
         // A Today story's menu (its "..." or a long-press on the phone, a right-click on the desktop):
-        // Quick actions (Mark Read & Read Later) are on the story row on desktop and in this menu everywhere.
+        // Quick actions (Mark Read & Read Later) are on the story row and in this menu.
         window.showBriefStoryMenu = function (from, x, y, pointer) {
             const card = from.closest('.brief-story-card');
             if (!card) return;
@@ -18078,10 +18150,20 @@ ${sampleText}`;
                 const id = card.getAttribute('data-sa-id');
                 const art = byId.get(id) || window.briefStoryArticle(id);
                 if (!art) return;
-                window.setActBtn(card.querySelector('.brief-act-read'), !!art.unread,
+                const bar = card.querySelector('.brief-story-actions');
+                const laterIcon = art.readLater ? 'icon-bookmark-filled' : 'icon-bookmark';
+                const laterLabel = art.readLater ? 'Remove from Read Later' : 'Read Later';
+                window.setActBtn(bar?.querySelector('.brief-act-read'), !!art.unread,
                     art.unread ? 'icon-dot-filled' : 'icon-dot-hollow', art.unread ? 'Mark Read' : 'Mark Unread');
-                window.setActBtn(card.querySelector('.brief-act-later'), !!art.readLater,
-                    art.readLater ? 'icon-bookmark-filled' : 'icon-bookmark', art.readLater ? 'Remove from Read Later' : 'Read Later');
+                window.setActBtn(bar?.querySelector('.brief-act-later'), !!art.readLater, laterIcon, laterLabel);
+                // The source line's Read Later is a small button: its state, icon and label, not the bar's style.
+                const rowLater = card.querySelector('.brief-story-ctrls .brief-act-later');
+                if (rowLater) {
+                    rowLater.classList.toggle('is-on', !!art.readLater);
+                    rowLater.querySelector('use')?.setAttribute('href', '#' + laterIcon);
+                    rowLater.title = laterLabel;
+                    rowLater.setAttribute('aria-label', laterLabel);
+                }
             });
             window.updateBriefStorySaveButtons?.();
         };
@@ -18138,6 +18220,8 @@ ${sampleText}`;
                 || (window.articles || []).find(a => a.id === id);
             if (!art) return;
             const card = btn ? btn.closest('.brief-story-card') : document.getElementById('brief-card-' + id);
+            // The phone: as the swipe (the copies grouped under it too), with Undo, since a thumb can slip.
+            if (card && isMobile()) { window.markBriefCardRead(card); return; }
             if (card) {
                 card.classList.add('brief-story-dismissing');
                 setTimeout(() => {
@@ -21144,7 +21228,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 473;
+        window.APP_BUILD = 474;
 
         (async function initApp() {
             try {
@@ -22015,7 +22099,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v473';
+const CACHE_NAME = 'rss-reader-v474';
 const APP_SHELL = [
     '/',
     'index.html'

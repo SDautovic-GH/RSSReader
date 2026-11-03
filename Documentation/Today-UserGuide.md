@@ -79,7 +79,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
   Presents a concise, executive memo generated from your unread stories. Each bullet point begins with a bold takeaway and concludes with a clickable `#N` reference tag linking directly to the full story.
 * **▣ Cards View (Category Cards):** 
   Presents your stories grouped into **unified Category Cards** (one clean card container per folder), eliminating the visual noise of dozens of fragmented boxes.
-  - **Inline Story Controls:** Each story row features direct quick controls on its source line: **Mark Read** (checkmark icon with a smooth dismiss collapse animation), **Save** (star icon), and **More options** (`...`).
+  - **Inline Story Controls:** Each story row features direct quick controls on its source line: **Mark Read** (checkmark icon with a smooth dismiss collapse animation), **Read Later** (bookmark icon), and **More options** (`...`).
   - **Immediate Unread-Only Triage:** As soon as you mark a story read in Today or Unread, it animates and immediately vanishes from view so only unread stories are visible.
   - **Auto-Disappear on Return:** When you open a story in the reader and return via Back, `b`, or `Escape`, the story you just read disappears immediately, automatically landing on the next unread item. Categories with zero unread stories cleanly hide.
   - **Columns:** Choose between 1, 2, or 3 columns in **Settings → Reading & Display**.
@@ -143,7 +143,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 * **Synchronous 24px Top Padding:** Both the sidebar list items and the main cards grid align with identical `1.5rem` (24px) top padding beneath the header hairline, delivering optical harmony across panes.
 * **Floating Centered Jump Bar:** Category navigation capsules float vertically centered between the header hairline and the category cards, with the bottom border divider removed for a lighter, distraction-free appearance.
 * **Native macOS Scrollbars:** Dark mode communicates native color schemes (`color-scheme: dark`) to the browser, rendering native macOS translucent gray floating scroll pills anchored to the far right screen edge.
-* **Socials Repost Attribution & Context:** Bluesky reposts feature a clear, subtle attribution line (`↻ Reposted from [Author]`) positioned on a separate line directly above the post author byline, formatted in regular-weight text with gentle contrast. Quoted posts and replies display parent context cards directly below the post.
+* **Socials Repost Attribution & Context:** A Bluesky repost starts with a repost icon and "Reposted by" the account you follow; the line under it names the person who wrote the post. Both lines are the same size, set by Text size & zoom. Quoted posts and replies display parent context cards directly below the post.
 * **Triage Breathing Room:** Category cards feature generous vertical separation, and the "Mark All Read" action maintains a 36px top margin to prevent visual crowding against cards.
 
 ### 3.2 Mobile Interface
@@ -153,6 +153,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
   * **Bookmarks (Personal Hub):** 1-tap access to your reading queue with a sticky 3-way segmented control at the top of the timeline: `[ 🔖 Read Later ]  [ ⭐ Saved ]  [ ⏱️ History ]`. Tapping the Bookmarks tab cycles between these views or scrolls to the top.
   * **Search:** Instant full-text search across all saved, unread, and archived stories.
   * **Visual Style:** YouTube-style ultra-translucent frosted glass capsule (`-webkit-backdrop-filter: blur(20px) saturate(180%)`) with GPU acceleration, a soft translucent tint (`rgba(18, 18, 22, 0.25)`), an elevated inner capsule highlight around the active tab, and a pure bright white icon (`#ffffff`). Zero text clutter.
+* **Quick Actions on Every Story:** The checkmark and bookmark sit on each story's source line next to `...`, in Today and in lists. Tap the checkmark to mark a story read (Undo appears for 5 seconds, as after a swipe) and the bookmark to add it to Read Later or take it off. Swiping still works.
 * **Header Controls:**
   * **Headphones Icon:** Tap to have Today read your brief aloud using text-to-speech. On the phone it plays through the speaker even in Silent Mode; on a computer it uses the computer's own voices, so the text stays on your device.
   * **Status Line:** Displays synchronization status (e.g., "Updated just now • 4 new").
