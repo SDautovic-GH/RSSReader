@@ -4459,7 +4459,8 @@
         }
 
         /* "Top" after a jump-bar tap (window.briefJumpTo): bottom right of the cards pane, clear of the
-           centred Undo bar and Listen player and of the new-stories pill at the top; the Undo bar's glass. */
+           centred Undo bar and Listen player and of the new-stories pill at the top. The phone's is a pill
+           in the Undo bar's glass; the desktop's (below) looks like the sidebar rail's buttons. */
         .jump-top-btn {
             display: none;
             position: absolute;
@@ -4490,6 +4491,48 @@
         .jump-top-btn svg {
             width: 16px;
             height: 16px;
+        }
+
+        /* Desktop: the rail's Refresh and Settings (22px icon, 6px padding, grey, the hover tint), 16px from
+           the bottom as Settings is; showJumpTop sets right to clear the pane's scrollbar. It floats over the
+           stories, so it takes the pane's colour. */
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
+            .jump-top-btn {
+                bottom: 16px;
+                height: auto;
+                padding: 6px;
+                border: none;
+                border-radius: 8px;
+                background: #0d1117;
+                box-shadow: none;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                color: var(--color-gray-500);
+                transition: background-color 0.15s ease, color 0.15s ease;
+            }
+
+            html:not(.dark) .jump-top-btn {
+                background: #ffffff;
+            }
+
+            .jump-top-btn:hover {
+                background: rgba(139, 148, 158, 0.16);
+                color: var(--text-1, #f0f6fc);
+            }
+
+            html:not(.dark) .jump-top-btn:hover {
+                background: rgba(0, 0, 0, 0.06);
+                color: #0f1923;
+            }
+
+            .jump-top-btn svg {
+                width: 22px;
+                height: 22px;
+            }
+
+            .jump-top-btn > span {
+                display: none;
+            }
         }
 
         @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
@@ -17297,6 +17340,8 @@ ${sampleText}`;
             }
             const pane = scroller.closest('#viewer-pane, #timeline-pane') || scroller.parentElement;
             if (_jumpTopBtn.parentElement !== pane) pane.appendChild(_jumpTopBtn);
+            // Desktop: just inside the pane's scrollbar (the phone's place is in the CSS).
+            _jumpTopBtn.style.right = isMobile() ? '' : `${scroller.offsetWidth - scroller.clientWidth + 6}px`;
             if (_jumpTopScroller !== scroller) {
                 hideJumpTop();
                 _jumpTopScroller = scroller;
@@ -21331,7 +21376,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 479;
+        window.APP_BUILD = 480;
 
         (async function initApp() {
             try {
@@ -22202,7 +22247,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v479';
+const CACHE_NAME = 'rss-reader-v480';
 const APP_SHELL = [
     '/',
     'index.html'
