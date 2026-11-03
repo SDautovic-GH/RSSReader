@@ -4494,10 +4494,11 @@
         }
 
         /* Desktop: the rail's Refresh and Settings (22px icon, 6px padding, grey, the hover tint), 16px from
-           the bottom as Settings is; showJumpTop sets right to clear the pane's scrollbar. It floats over the
-           stories, so it takes the pane's colour. */
+           the bottom as Settings is; placeJumpTop puts it beside the cards column. Over stories (no room
+           beside them) it keeps the pane's colour. */
         @media (min-width: 901px), (hover: hover) and (pointer: fine) {
             .jump-top-btn {
+                right: auto;
                 bottom: 16px;
                 height: auto;
                 padding: 6px;
@@ -17319,8 +17320,24 @@ ${sampleText}`;
         function onJumpTopScroll() {
             const st = _jumpTopScroller.scrollTop;
             if (st < 40 && st <= _jumpTopLast) hideJumpTop();
-            else _jumpTopLast = st;
+            else { _jumpTopLast = st; placeJumpTop(); }
         }
+        // Desktop: as far right of the cards column as the rail's Settings is left of it (the rail's 32px
+        // half-width plus the column's inset when the sidebar is open); inside the scrollbar if that's off the pane.
+        function placeJumpTop() {
+            const b = _jumpTopBtn, sc = _jumpTopScroller;
+            if (!b || !sc || !b.classList.contains('is-on')) return;
+            if (isMobile()) { b.style.left = ''; return; }
+            const col = sc.querySelector('.brief-container');
+            const pane = b.parentElement.getBoundingClientRect();
+            const maxLeft = pane.width - (sc.offsetWidth - sc.clientWidth) - 6 - b.offsetWidth;
+            if (!col) { b.style.left = `${maxLeft}px`; return; }
+            const c = col.getBoundingClientRect();
+            const set = [...document.querySelectorAll('#sidebar-rail-actions button')].find(x => x.getClientRects().length);
+            const gap = set ? c.left - (set.getBoundingClientRect().left + set.offsetWidth / 2) : 32 + (c.left - sc.getBoundingClientRect().left);
+            b.style.left = `${Math.min(maxLeft, c.right + gap - b.offsetWidth / 2 - pane.left)}px`;
+        }
+        window.addEventListener('resize', () => placeJumpTop());
         function showJumpTop(scroller) {
             if (!_jumpTopBtn) {
                 _jumpTopBtn = document.createElement('button');
@@ -17340,8 +17357,7 @@ ${sampleText}`;
             }
             const pane = scroller.closest('#viewer-pane, #timeline-pane') || scroller.parentElement;
             if (_jumpTopBtn.parentElement !== pane) pane.appendChild(_jumpTopBtn);
-            // Desktop: just inside the pane's scrollbar (the phone's place is in the CSS).
-            _jumpTopBtn.style.right = isMobile() ? '' : `${scroller.offsetWidth - scroller.clientWidth + 6}px`;
+
             if (_jumpTopScroller !== scroller) {
                 hideJumpTop();
                 _jumpTopScroller = scroller;
@@ -17349,6 +17365,7 @@ ${sampleText}`;
             }
             _jumpTopLast = scroller.scrollTop;
             _jumpTopBtn.classList.add('is-on');
+            placeJumpTop();
         }
 
         window.centerBriefPill = function (pill) {
@@ -21376,7 +21393,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 480;
+        window.APP_BUILD = 481;
 
         (async function initApp() {
             try {
@@ -22247,7 +22264,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v480';
+const CACHE_NAME = 'rss-reader-v481';
 const APP_SHELL = [
     '/',
     'index.html'
