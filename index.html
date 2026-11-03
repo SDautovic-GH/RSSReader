@@ -7672,8 +7672,6 @@
                         <span class="flex items-center"><svg class="w-4 h-4 mr-3">
                                 <use href="#icon-bookmark" />
                             </svg> Read Later</span>
-                        <span id="badge-read-later"
-                            class="feed-badge mob-saved-count text-amber-500 dark:text-amber-400 hidden">0</span>
                     </button>
                     <button id="feed-btn-saved" onclick="setSmartFeed('saved')" title="Saved"
                         oncontextmenu="showFolderContextMenu(event,'smart','saved')"
@@ -13282,19 +13280,19 @@
 
         function updateBadges() {
             const allUnread = window.articles.filter(a => a.unread && !window.isMuted(a)).length;   // muted not counted
-            const readLaterCount = window.articles.filter(a => a.readLater).length;
+            // Count the Read Later bucket, which the view lists: it keeps stories past the 4-day cache, which
+            // window.articles has dropped (a 2-story list counted 1).
+            const readLaterCount = (window.readLaterBucket && typeof window.readLaterBucket.size === 'function')
+                ? window.readLaterBucket.size() : window.articles.filter(a => a.readLater).length;
 
             const badgeAll = document.getElementById('badge-all');
-            const badgeReadLater = document.getElementById('badge-read-later');
 
             if (badgeAll) { badgeAll.textContent = allUnread; badgeAll.classList.toggle('hidden', allUnread === 0); }
             // Unread stories older than Today's 24 hours: Today never shows them.
             const olderNote = document.getElementById('unread-older-note');
             if (olderNote) olderNote.textContent = '';
-            if (badgeReadLater) { badgeReadLater.textContent = readLaterCount; badgeReadLater.classList.toggle('hidden', readLaterCount === 0); }
-
-            // Dim empty Read Later / Saved smart feeds (always-visible, unlike category
-            // folders which hide when read). History is a rolling window — never dimmed.
+            // Read Later and Saved show no count, on request; they dim when empty (always visible, unlike
+            // category folders, which hide when read). History is a rolling window - never dimmed.
             const savedCount = (window.savedBucket && typeof window.savedBucket.list === 'function')
                 ? window.savedBucket.list().length : 0;
             const btnReadLater = document.getElementById('feed-btn-read-later');
@@ -17248,6 +17246,14 @@ ${sampleText}`;
         window.closeStoryToTodayColumn = function () {
             const cur = window.currentArticle;
             const id = cur && !cur.isBrief ? cur.id : null;
+            // Where the next card lands: reading beside the list, where the open story's card is now (nothing moves);
+            // full page, where the card you opened sat (the column was out of sight).
+            const col = document.getElementById('today-column');
+            const openCard = id && col ? col.querySelector(`.brief-story-card[data-sa-id="${CSS.escape(id)}"]`) : null;
+            let landTop = window._returnToBriefState?.cardTop ?? null;
+            if (document.body.classList.contains('story-beside') && openCard && openCard.getClientRects().length) {
+                landTop = openCard.getBoundingClientRect().top - col.getBoundingClientRect().top;
+            }
             window._returnToBriefState = null;
             document.body.classList.remove('desktop-today-story');
             if (!isMobile()) {
@@ -17270,7 +17276,8 @@ ${sampleText}`;
             const card = window.briefLandingCard(Array.from(document.querySelectorAll('#today-column .brief-story-card[data-sa-id]'))
                 .find(c => c.getAttribute('data-sa-id') === id));
             if (card) {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (landTop != null) col.scrollTop += card.getBoundingClientRect().top - col.getBoundingClientRect().top - landTop;
+                else card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 if (document.body.classList.contains('kbd-nav')) setCardCursor(card, false);
                 card.classList.add('brief-card-return-pulse');
                 setTimeout(() => card.classList.remove('brief-card-return-pulse'), 2500);
@@ -17297,6 +17304,7 @@ ${sampleText}`;
                 const isMob = isMobile();
                 const topClearance = isMob ? 76 : 24;
                 const targetScrollTop = scroller.scrollTop + (targetRect.top - scrollerRect.top) - topClearance;
+                holdJumpHighlight(pill.closest('.brief-jump-bar'), scroller, targetScrollTop);
                 scroller.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
                 if (targetScrollTop > 40) showJumpTop(scroller);
             } else {
@@ -17351,6 +17359,7 @@ ${sampleText}`;
                     if (!sc) return;
                     const first = sc.querySelector('.brief-jump-bar .brief-jump-pill:not(.brief-gone)');
                     hideJumpTop();
+                    holdJumpHighlight(first?.closest('.brief-jump-bar'), sc, 0);
                     sc.scrollTo({ top: 0, behavior: 'smooth' });
                     if (first) window.centerBriefPill(first);
                 };
@@ -17367,6 +17376,32 @@ ${sampleText}`;
             _jumpTopBtn.classList.add('is-on');
             placeJumpTop();
         }
+
+        // The highlighted pill is the section a pill (or Top) took you to. Scrolling by hand clears it, as it would
+        // point at the wrong section; back at the top the first section is highlighted again. A pill's own smooth
+        // scroll keeps it until it reaches where it was going (or 1.5s, if something stops it short).
+        function holdJumpHighlight(bar, scroller, top) {
+            if (!bar) return;
+            bar._jumpTarget = Math.min(Math.max(0, top), scroller.scrollHeight - scroller.clientHeight);
+            bar._jumpUntil = Date.now() + 1500;
+        }
+        document.addEventListener('scroll', e => {   // scroll events come at most once a frame
+            const sc = e.target;
+            if (!(sc instanceof Element) || (sc.id !== 'today-column' && sc.id !== 'reader-view')) return;
+            const bar = [...sc.querySelectorAll('.brief-jump-bar')].find(b => b.getClientRects().length);
+            if (!bar) return;
+            if (bar._jumpTarget != null) {
+                const arrived = Math.abs(sc.scrollTop - bar._jumpTarget) <= 2;
+                if (arrived || Date.now() > bar._jumpUntil) bar._jumpTarget = null;
+                if (arrived || bar._jumpTarget != null) return;   // the jump's own scroll
+            }
+            if (sc.scrollTop < 40) {
+                const first = bar.querySelector('.brief-jump-pill:not(.brief-gone)');
+                if (first && !bar.querySelector('.brief-jump-pill.is-active')) window.centerBriefPill(first);
+            } else {
+                bar.querySelectorAll('.brief-jump-pill.is-active').forEach(p => p.classList.remove('is-active'));
+            }
+        }, { capture: true, passive: true });
 
         window.centerBriefPill = function (pill) {
             if (!pill) return;
@@ -18382,8 +18417,8 @@ ${sampleText}`;
                 || (window.articles || []).find(a => a.id === id);
             if (!art) return;
             const card = btn ? btn.closest('.brief-story-card') : document.getElementById('brief-card-' + id);
-            // The phone: as the swipe (the copies grouped under it too), with Undo, since a thumb can slip.
-            if (card && isMobile()) { window.markBriefCardRead(card); return; }
+            // As the phone's swipe: the copies grouped under it too, with Undo, since a thumb or a mouse can slip.
+            if (card && briefUnreadStories([card]).size) { window.markBriefCardRead(card); return; }
             if (card) {
                 card.classList.add('brief-story-dismissing');
                 setTimeout(() => {
@@ -18558,10 +18593,13 @@ ${sampleText}`;
         window.openArticleInReader = function (articleId) {
             const art = window.readerArticleById(articleId);
             if (art) {
+                let tappedTop = null;   // desktop: the card's height in the column, so Back lands the next one there
                 if (!isMobile()) {
                     const beside = window._todayInColumn && !art.isBrief && document.body.classList.contains('story-beside');
                     const col = document.getElementById('today-column');
                     const cardSel = `.brief-story-card[data-sa-id="${CSS.escape(articleId)}"]`;
+                    const tapped = window._todayInColumn && !document.body.classList.contains('desktop-today-story') ? col?.querySelector(cardSel) : null;
+                    if (tapped && tapped.getClientRects().length) tappedTop = tapped.getBoundingClientRect().top - col.getBoundingClientRect().top;
                     // Opening beside the list narrows it: the clicked card keeps its height on the screen.
                     const before = beside && !document.body.classList.contains('desktop-today-story')
                         ? col?.querySelector(cardSel)?.getBoundingClientRect().top : null;
@@ -18597,6 +18635,7 @@ ${sampleText}`;
                         storyIds: colIds.length ? colIds : [art.id],
                         storyIndex: colIdx >= 0 ? colIdx : 0,
                         scrollTop: col ? col.scrollTop : 0,
+                        cardTop: tappedTop,
                         inColumn: true
                     };
                 } else if (window.currentArticle && window.currentArticle.isBrief) {
@@ -21393,7 +21432,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 481;
+        window.APP_BUILD = 482;
 
         (async function initApp() {
             try {
@@ -21530,10 +21569,19 @@ ${sampleText}`;
                 }
                 renderTimeline();
                 updateEmptyState();
-                if (window.articles.some(a => a.source !== 'System')) {
+                const todayAtStart = window.articles.some(a => a.source !== 'System');
+                if (todayAtStart) {
                     if (typeof openToday === 'function') {
                         openToday();
                     }
+                }
+                // No stories cached yet (feeds, but a cleared cache): Today opens when the first refresh brings them,
+                // unless you've clicked or typed meanwhile, so nothing moves under you.
+                let actedAtStart = false;
+                if (!todayAtStart) {
+                    const acted = () => { actedAtStart = true; };
+                    document.addEventListener('pointerdown', acted, { once: true, capture: true });
+                    document.addEventListener('keydown', acted, { once: true, capture: true });
                 }
 
                 // 7. Start Background Sync
@@ -21546,7 +21594,9 @@ ${sampleText}`;
                     // Which feeds this pass covers, so the snapshot can tell whether it needs
                     // to fetch anything new.
                     window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
-                    window.runFullRefresh({ isBackground: true });
+                    window.runFullRefresh({ isBackground: true }).then(() => {
+                        if (!todayAtStart && !actedAtStart && window.articles.some(a => a.source !== 'System')) openToday();
+                    });
                 }
 
                 // Listeners
@@ -22264,7 +22314,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v481';
+const CACHE_NAME = 'rss-reader-v482';
 const APP_SHELL = [
     '/',
     'index.html'

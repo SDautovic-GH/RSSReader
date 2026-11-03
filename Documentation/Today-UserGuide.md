@@ -81,7 +81,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
   Presents your stories grouped into **unified Category Cards** (one clean card container per folder), eliminating the visual noise of dozens of fragmented boxes.
   - **Inline Story Controls:** Each story row features direct quick controls on its source line: **Mark Read** (checkmark icon with a smooth dismiss collapse animation) and **More options** (`...`), which has Read Later, Save, Share and Open Original.
   - **Immediate Unread-Only Triage:** As soon as you mark a story read in Today or Unread, it animates and immediately vanishes from view so only unread stories are visible.
-  - **Auto-Disappear on Return:** When you open a story in the reader and return via Back, `b`, or `Escape`, the story you just read disappears immediately, automatically landing on the next unread item. Categories with zero unread stories cleanly hide.
+  - **Auto-Disappear on Return:** When you open a story in the reader and return via Back, `b`, or `Escape`, the story you just read disappears immediately, and the next unread story takes its place at the same height on the screen. Categories with zero unread stories cleanly hide.
   - **Columns:** Choose between 1, 2, or 3 columns in **Settings → Reading & Display**.
 * **Instant Switching:** 
   Use the segmented button in the top bar or press `1` for Briefing and `2` for Cards.
@@ -109,7 +109,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 
 #### Collapsing the Sidebar
 * Press `[`, or click the app logo at the top left (it shows a panel icon when you point at it), to fold the sidebar into a narrow rail. The rail keeps Today, Unread, Read Later, Saved and History as icons, plus Refresh and Settings at the bottom; press `[` or click the logo again to open it.
-* Unread and Read Later keep their counts on the rail, as small badges under the icons.
+* Unread keeps its count on the rail, as a small badge under the icon. Read Later and Saved show no count; they dim when empty.
 * Today remembers the choice on each device.
 
 #### Triage from the Keyboard (Desktop)
@@ -153,7 +153,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
   * **Bookmarks (Personal Hub):** 1-tap access to your reading queue with a sticky 3-way segmented control at the top of the timeline: `[ 🔖 Read Later ]  [ ⭐ Saved ]  [ ⏱️ History ]`. Tapping the Bookmarks tab cycles between these views or scrolls to the top.
   * **Search:** Instant full-text search across all saved, unread, and archived stories.
   * **Visual Style:** YouTube-style ultra-translucent frosted glass capsule (`-webkit-backdrop-filter: blur(20px) saturate(180%)`) with GPU acceleration, a soft translucent tint (`rgba(18, 18, 22, 0.25)`), an elevated inner capsule highlight around the active tab, and a pure bright white icon (`#ffffff`). Zero text clutter.
-* **Back to the Top:** After you tap a category in the jump bar, a **Top** button appears at the bottom right (on a computer, an up arrow just right of the stories, mirroring the sidebar's Settings button on their left). Tap it to go back to the top; it goes away once you're at the top.
+* **Back to the Top:** After you tap a category in the jump bar, a **Top** button appears at the bottom right (on a computer, an up arrow just right of the stories, mirroring the sidebar's Settings button on their left). Tap it to go back to the top. The category you jumped to stays highlighted in the jump bar until you scroll yourself; it goes away once you're at the top.
 * **Mark Read on Every Story:** The checkmark sits on each story's source line next to `...`, in Today and in lists. Tap it to mark a story read (Undo appears for 5 seconds, as after a swipe). Read Later, Save, Share and Open Original are in the `...` menu. Swiping still works.
 * **Header Controls:**
   * **Headphones Icon:** Tap to have Today read your brief aloud using text-to-speech. On the phone it plays through the speaker even in Silent Mode; on a computer it uses the computer's own voices, so the text stays on your device.
@@ -218,7 +218,7 @@ Keep your primary email inbox clean by sending newsletters straight to Today:
 * **Story Clustering:** When multiple outlets cover the exact same event, Today groups them into one clean card with an "Also from..." footer.
 
 ### 6.2 Progressive Mark Read & Immediate Story Triage
-* **Inline Story Mark Read:** Click the checkmark icon directly on any story row to dismiss it immediately with a smooth collapse animation.
+* **Inline Story Mark Read:** Click the checkmark icon on any story row to mark it read; the next story slides up and **Undo** appears for 5 seconds.
 * **Auto-Disappear on Return:** Reading any story in the reader automatically marks it read and dismisses it from Today Cards when you return, keeping your view focused strictly on remaining unread news.
 * **Category Mark Read:** Tap the checkmark in any Category Card header to mark the entire category read and dismiss the card.
 * **Mark N Read:** At the bottom of each folder section, tap **Mark N Read** to mark the visible cards read and smoothly reveal the next section.
