@@ -3329,8 +3329,7 @@
             background: rgba(255, 255, 255, 0.08);
         }
 
-        .brief-item-act-btn.is-on,
-        .brief-item-act-btn.brief-act-later.is-on {
+        .brief-item-act-btn.is-on {
             color: var(--accent) !important;
         }
 
@@ -3347,9 +3346,23 @@
             background: rgba(0, 0, 0, 0.05);
         }
 
-        /* Phone: Mark Read and Read Later beside "..." (22x22, 7px apart: about 15px between the icons). Each
-           touch area (the ::after) is 44 tall and reaches halfway into the gaps, so the areas meet without
-           overlapping; "..." gives up the rest of its left reach. */
+        /* Mark Read beside "..." on a story's source line: 26px and a 14px icon, plus 10%; the negative margins
+           keep the extra out of the line's height, so no card grows. */
+        .brief-story-ctrls .brief-item-act-btn,
+        .list-card-ctrls .brief-item-act-btn {
+            width: 28.6px;
+            height: 28.6px;
+            margin-block: -1.3px;
+        }
+
+        .brief-story-ctrls .brief-item-act-btn svg,
+        .list-card-ctrls .brief-item-act-btn svg {
+            width: 15.4px;
+            height: 15.4px;
+        }
+
+        /* Phone: Mark Read is 24.2px (22 plus 10%), 7px from "...". Its touch area (the ::after) is 44 tall
+           and reaches halfway into the gap, as does "..."'s, so the areas meet without overlapping. */
         @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
             .brief-story-ctrls,
             .list-card-ctrls {
@@ -3359,8 +3372,9 @@
             .brief-story-ctrls .brief-item-act-btn,
             .list-card-ctrls .brief-item-act-btn {
                 position: relative;
-                width: 22px;
-                height: 22px;
+                width: 24.2px;
+                height: 24.2px;
+                margin-block: -1.1px;
                 -webkit-tap-highlight-color: transparent;
             }
 
@@ -3368,7 +3382,7 @@
             .list-card-ctrls .brief-item-act-btn::after {
                 content: '';
                 position: absolute;
-                inset: -11px -3.5px;
+                inset: -9.9px -3.5px;
             }
 
             .brief-story-ctrls .brief-more-btn::after,
@@ -5951,8 +5965,10 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 30px;
-            height: 22px;
+            width: 33px;
+            height: 24.2px;
+            margin-top: -1.1px;
+            margin-bottom: -1.1px;
             margin-left: auto;
             margin-right: -5px;
             padding: 0;
@@ -5978,12 +5994,12 @@
         .brief-more-btn::after {
             content: '';
             position: absolute;
-            inset: -11px -7px;
+            inset: -9.9px -7px;
         }
 
         .brief-more-btn svg {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             transform: rotate(90deg);
         }
 
@@ -5995,7 +6011,7 @@
             color: #57606a;
         }
 
-        /* A list card's Mark Read, Read Later and "...", together at the end of its source line. */
+        /* A list card's Mark Read and "...", together at the end of its source line. */
         .list-card-ctrls {
             display: inline-flex;
             align-items: center;
@@ -6006,13 +6022,6 @@
 
         .list-card-ctrls .brief-more-btn {
             margin-left: 0;
-        }
-
-        /* The desktop's list keeps only "..." (and the keyboard); the phone shows all three. */
-        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
-            .list-card-ctrls .brief-item-act-btn {
-                display: none;
-            }
         }
 
         /* Desktop lists: the action row shows on hover, keyboard focus or the open story. */
@@ -10722,7 +10731,6 @@
                         <span class="list-date-label flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
                         <span class="list-card-ctrls">
                             <button type="button" class="brief-item-act-btn brief-act-read-inline" onclick="event.stopPropagation(); window.listCardAct(this.closest('[data-id]'), 'read')" title="${a.unread ? 'Mark Read' : 'Mark Unread'}" aria-label="${a.unread ? 'Mark Read' : 'Mark Unread'}"><svg class="w-3.5 h-3.5" aria-hidden="true"><use href="#icon-check"/></svg></button>
-                            <button type="button" class="brief-item-act-btn brief-act-later ${a.readLater ? 'is-on' : ''}" onclick="event.stopPropagation(); window.listCardAct(this.closest('[data-id]'), 'later')" title="${a.readLater ? 'Remove from Read Later' : 'Read Later'}" aria-label="${a.readLater ? 'Remove from Read Later' : 'Read Later'}"><svg class="w-3.5 h-3.5" aria-hidden="true"><use href="#${a.readLater ? 'icon-bookmark-filled' : 'icon-bookmark'}"/></svg></button>
                             <button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showListCardMenu(this, '${saId}')" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>
                         </span>
                     </div>
@@ -17662,9 +17670,6 @@ ${sampleText}`;
                                     <button type="button" class="brief-item-act-btn brief-act-read-inline" onclick="event.stopPropagation(); window.toggleStoryReadInline('${saId}', this)" title="Mark Read" aria-label="Mark Read">
                                         <svg class="w-3.5 h-3.5"><use href="#icon-check"/></svg>
                                     </button>
-                                    <button type="button" class="brief-item-act-btn brief-act-later ${st.readLater ? 'is-on' : ''}" data-later-id="${saId}" onclick="event.stopPropagation(); window.toggleStoryReadLaterInline('${saId}', this)" title="${st.readLater ? 'Remove from Read Later' : 'Read Later'}" aria-label="${st.readLater ? 'Remove from Read Later' : 'Read Later'}">
-                                        <svg class="w-3.5 h-3.5"><use href="#${st.readLater ? 'icon-bookmark-filled' : 'icon-bookmark'}"/></svg>
-                                    </button>
                                     <button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showBriefStoryMenu(this)" title="More options" aria-label="More actions">
                                         <svg class="w-3.5 h-3.5" aria-hidden="true"><use href="#icon-more"/></svg>
                                     </button>
@@ -18113,7 +18118,7 @@ ${sampleText}`;
         const _isOn = b => !!b && (b.classList.contains('is-on') || b.classList.contains('is-saved'));
 
         // A Today story's menu (its "..." or a long-press on the phone, a right-click on the desktop):
-        // Mark Read and Read Later are here only for a card whose source line doesn't show them.
+        // Mark Read is here only for a card whose source line doesn't show it.
         window.showBriefStoryMenu = function (from, x, y, pointer) {
             const card = from.closest('.brief-story-card');
             if (!card) return;
@@ -18163,14 +18168,6 @@ ${sampleText}`;
                 window.setActBtn(bar?.querySelector('.brief-act-read'), !!art.unread,
                     art.unread ? 'icon-dot-filled' : 'icon-dot-hollow', art.unread ? 'Mark Read' : 'Mark Unread');
                 window.setActBtn(bar?.querySelector('.brief-act-later'), !!art.readLater, laterIcon, laterLabel);
-                // The source line's Read Later is a small button: its state, icon and label, not the bar's style.
-                const rowLater = card.querySelector('.brief-story-ctrls .brief-act-later');
-                if (rowLater) {
-                    rowLater.classList.toggle('is-on', !!art.readLater);
-                    rowLater.querySelector('use')?.setAttribute('href', '#' + laterIcon);
-                    rowLater.title = laterLabel;
-                    rowLater.setAttribute('aria-label', laterLabel);
-                }
             });
             window.updateBriefStorySaveButtons?.();
         };
@@ -19495,7 +19492,7 @@ ${sampleText}`;
             const laterLabel = article?.readLater ? 'Remove from Read Later' : 'Read Later';
             const savedLabel = (window.savedBucket && article?.link && window.savedBucket.has(article.link)) ? 'Unsave' : 'Save';
             const sid = escJs(id);
-            // The phone's list cards show Mark Read and Read Later on the source line; the menu leaves them out.
+            // A list card shows Mark Read on its source line; the menu leaves it out there.
             const card = document.querySelector(`#article-list [data-id="${CSS.escape(id)}"]`);
             const onCard = !!card?.querySelector('.list-card-ctrls .brief-act-read-inline')?.getClientRects().length;
             const divider = `<div class="my-1 border-t border-gray-200 dark:border-gray-700"></div>`;
@@ -19504,7 +19501,7 @@ ${sampleText}`;
             // (Mark Read/Unread, Mark Below Read) drop below a divider.
             let items = '';
             if (idx > 0) items += `<button onclick="markAboveRead()" class="${btnClass}">Mark Above Read</button>`;
-            if (!onCard) items += `<button onclick="toggleArticleReadLater('${sid}')" class="${btnClass}">${laterLabel}</button>`;
+            items += `<button onclick="toggleArticleReadLater('${sid}')" class="${btnClass}">${laterLabel}</button>`;
             items += `<button onclick="toggleArticleSaved('${sid}')" class="${btnClass}">${savedLabel}</button>`;
             items += divider;
             if (!onCard) items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
@@ -21238,7 +21235,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 476;
+        window.APP_BUILD = 477;
 
         (async function initApp() {
             try {
@@ -22109,7 +22106,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v476';
+const CACHE_NAME = 'rss-reader-v477';
 const APP_SHELL = [
     '/',
     'index.html'
