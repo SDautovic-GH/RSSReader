@@ -153,7 +153,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
   * **Bookmarks (Personal Hub):** 1-tap access to your reading queue with a sticky 3-way segmented control at the top of the timeline: `[ 🔖 Read Later ]  [ ⭐ Saved ]  [ ⏱️ History ]`. Tapping the Bookmarks tab cycles between these views or scrolls to the top.
   * **Search:** Instant full-text search across all saved, unread, and archived stories.
   * **Visual Style:** YouTube-style ultra-translucent frosted glass capsule (`-webkit-backdrop-filter: blur(20px) saturate(180%)`) with GPU acceleration, a soft translucent tint (`rgba(18, 18, 22, 0.25)`), an elevated inner capsule highlight around the active tab, and a pure bright white icon (`#ffffff`). Zero text clutter.
-* **Quick Actions on Every Story:** The checkmark and bookmark sit on each story's source line next to `...`, in Today and in lists. Tap the checkmark to mark a story read (Undo appears for 5 seconds, as after a swipe) and the bookmark to add it to Read Later or take it off. Swiping still works.
+* **Quick Actions on Every Story:** The checkmark and bookmark sit on each story's source line next to `...`, in Today and in lists. Tap the checkmark to mark a story read (Undo appears for 5 seconds, as after a swipe) and the bookmark to add it to Read Later or take it off; the `...` menu has the rest (Save, Share, Open Original). Swiping still works.
 * **Header Controls:**
   * **Headphones Icon:** Tap to have Today read your brief aloud using text-to-speech. On the phone it plays through the speaker even in Silent Mode; on a computer it uses the computer's own voices, so the text stays on your device.
   * **Status Line:** Displays synchronization status (e.g., "Updated just now • 4 new").

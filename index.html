@@ -18113,7 +18113,7 @@ ${sampleText}`;
         const _isOn = b => !!b && (b.classList.contains('is-on') || b.classList.contains('is-saved'));
 
         // A Today story's menu (its "..." or a long-press on the phone, a right-click on the desktop):
-        // Quick actions (Mark Read & Read Later) are on the story row and in this menu.
+        // Mark Read and Read Later are here only for a card whose source line doesn't show them.
         window.showBriefStoryMenu = function (from, x, y, pointer) {
             const card = from.closest('.brief-story-card');
             if (!card) return;
@@ -18129,10 +18129,11 @@ ${sampleText}`;
 
             const isRead = art ? !art.unread : card.classList.contains('brief-card-read');
             const isLater = art ? !!art.readLater : (laterBtn && laterBtn.classList.contains('is-on'));
+            const onRow = b => !!b && !!b.closest('.brief-story-ctrls') && b.getClientRects().length > 0;
 
             window.showActionMenu(from, [
-                readBtn && [isRead ? 'Mark Unread' : 'Mark Read', readBtn],
-                laterBtn && [isLater ? 'Remove from Read Later' : 'Read Later', laterBtn],
+                readBtn && !onRow(readBtn) && [isRead ? 'Mark Unread' : 'Mark Read', readBtn],
+                laterBtn && !onRow(laterBtn) && [isLater ? 'Remove from Read Later' : 'Read Later', laterBtn],
                 save && [_isOn(save) ? 'Unsave' : 'Save', save],
                 share && ['Share…', share],
                 source && ['Open Original', source],
@@ -19494,16 +19495,19 @@ ${sampleText}`;
             const laterLabel = article?.readLater ? 'Remove from Read Later' : 'Read Later';
             const savedLabel = (window.savedBucket && article?.link && window.savedBucket.has(article.link)) ? 'Unsave' : 'Save';
             const sid = escJs(id);
+            // The phone's list cards show Mark Read and Read Later on the source line; the menu leaves them out.
+            const card = document.querySelector(`#article-list [data-id="${CSS.escape(id)}"]`);
+            const onCard = !!card?.querySelector('.list-card-ctrls .brief-act-read-inline')?.getClientRects().length;
             const divider = `<div class="my-1 border-t border-gray-200 dark:border-gray-700"></div>`;
             // Order follows real usage frequency: Mark Above Read (most used) sits
             // at the finger, then Read Later, then Save. Lower-frequency toggles
             // (Mark Read/Unread, Mark Below Read) drop below a divider.
             let items = '';
             if (idx > 0) items += `<button onclick="markAboveRead()" class="${btnClass}">Mark Above Read</button>`;
-            items += `<button onclick="toggleArticleReadLater('${sid}')" class="${btnClass}">${laterLabel}</button>`;
+            if (!onCard) items += `<button onclick="toggleArticleReadLater('${sid}')" class="${btnClass}">${laterLabel}</button>`;
             items += `<button onclick="toggleArticleSaved('${sid}')" class="${btnClass}">${savedLabel}</button>`;
             items += divider;
-            items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
+            if (!onCard) items += `<button onclick="toggleArticleUnread('${sid}')" class="${btnClass}">${readLabel}</button>`;
             if (idx < total - 1) items += `<button onclick="markBelowRead()" class="${btnClass}">Mark Below Read</button>`;
             items += `<button onclick="hideContextMenu(); markAllRead({ olderThanDays: 1 })" class="${btnClass}">Older than 1 day</button>`;
             items += `<button onclick="hideContextMenu(); markAllRead({ olderThanDays: 3 })" class="${btnClass}">Older than 3 days</button>`;
@@ -21234,7 +21238,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 475;
+        window.APP_BUILD = 476;
 
         (async function initApp() {
             try {
@@ -22105,7 +22109,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v475';
+const CACHE_NAME = 'rss-reader-v476';
 const APP_SHELL = [
     '/',
     'index.html'
