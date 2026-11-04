@@ -3473,6 +3473,19 @@
             .list-card-ctrls .brief-more-btn::after {
                 left: -3.5px;
             }
+
+            /* More room for the name: "..." hugs its icon (it ends where it did: the -5px reached past the card),
+               and the time follows the name without a " • ". */
+            .brief-story-meta .brief-more-btn,
+            .list-card-ctrls .brief-more-btn {
+                width: 26px;
+                margin-right: 0;
+            }
+
+            .brief-story-dot,
+            #article-list .list-meta-dot {
+                display: none !important;
+            }
         }
 
         /* 5. Story Reading from Today Cards: 2-Column Workstation Layout (Sidebar + Centered Reading Canvas, Back to Cards) */
@@ -9436,6 +9449,12 @@
             return result;
         }
 
+        // A story card's time. The phone's is compact ("19h", "3d", "now"), so the source line has room for the name.
+        function storyTime(isoString) {
+            const t = getRelativeTime(isoString);
+            return isMobile() ? (t === 'Just now' ? 'now' : t.replace(/ ago$/, '')) : t;
+        }
+
         // --- RESIZER IMPLEMENTATION ---
         const resizer = document.getElementById('resizer');
         const timelinePane = document.getElementById('timeline-pane');
@@ -10908,7 +10927,7 @@
                         ${showDot ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}
                         <span class="list-source-label truncate min-w-0">${favicon}${esc(isRepost ? a.bskyOriginalAuthor : sourceLabel)}</span>
                         <span class="list-meta-dot" aria-hidden="true">•</span>
-                        <span class="list-date-label flex-shrink-0">${getRelativeTime(a.timestamp)}</span>
+                        <span class="list-date-label flex-shrink-0">${storyTime(a.timestamp)}</span>
                         <span class="list-card-ctrls">
                             <button type="button" class="brief-item-act-btn brief-act-read-inline" onclick="event.stopPropagation(); window.listCardAct(this.closest('[data-id]'), 'read')" title="${a.unread ? 'Mark Read' : 'Mark Unread'}" aria-label="${a.unread ? 'Mark Read' : 'Mark Unread'}"><svg class="w-3.5 h-3.5" aria-hidden="true"><use href="#icon-check"/></svg></button>
                             <button type="button" class="brief-more-btn" onclick="event.stopPropagation(); window.showListCardMenu(this, '${saId}')" title="More" aria-label="More actions"><svg aria-hidden="true"><use href="#icon-more"/></svg></button>
@@ -17861,7 +17880,7 @@ ${sampleText}`;
                 `;
                 cs.stories.forEach(st => {
                     const favHtml = typeof getFavicon === 'function' ? getFavicon(st.source) : '';
-                    const relTime = typeof getRelativeTime === 'function' ? getRelativeTime(st.timestamp) : '';
+                    const relTime = storyTime(st.timestamp);
                     // Other outlets grouped under this story, on their own line under the summary (at the end of the
                     // source line they were squeezed to a few letters).
                     const alsoNames = st.alsoReportedBy || [];
@@ -21542,7 +21561,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 485;
+        window.APP_BUILD = 486;
 
         (async function initApp() {
             try {
@@ -22424,7 +22443,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v485';
+const CACHE_NAME = 'rss-reader-v486';
 const APP_SHELL = [
     '/',
     'index.html'
