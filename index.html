@@ -185,6 +185,20 @@
             overflow-wrap: anywhere;
         }
 
+        /* A row too wide for the reader (fitEmailToReader): its cells wrap onto more lines instead. */
+        .article-content.is-email tr.email-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            column-gap: 8px;
+        }
+
+        .article-content.is-email tr.email-wrap > td,
+        .article-content.is-email tr.email-wrap > th {
+            display: block;
+            min-width: 0;
+        }
+
         /* ===== IMAGE LIGHTBOX ===== */
         #img-lightbox {
             position: fixed;
@@ -11845,6 +11859,7 @@
                 normalizeBodyStyles(bodyEl);       // feed fonts/sizes must not beat the app's
                 initBodyImages(bodyEl, article);   // normalize/drop unusable images first...
                 ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
+                if (bodyEl.classList.contains('is-email')) fitEmailToReader(bodyEl);
             }
             const readerElEarly = document.getElementById('reader-view');
             if (readerElEarly) readerElEarly.scrollTop = keptScroll ?? 0;   // kept Today: where you were
@@ -11949,6 +11964,33 @@
         // or /users/<user>/statuses/<id>), since the instance can be anything.
         const MASTODON_POST_RE = /^https?:\/\/[^\/]+\/(?:@[^\/]+\/\d+|users\/[^\/]+\/statuses\/\d+)\/?$/i;
         function isMastodonPost(link) { return MASTODON_POST_RE.test(link || ''); }
+
+        // The is-email CSS lets most emails fit the reader. A row that can't (Substack's header: avatar, date,
+        // like / comment / share and READ IN APP on one line) holds its table, and every table around it, at its
+        // width, so every row looks too wide. The rows are tried one at a time, innermost first: a row wraps its cells
+        // onto more lines only if that narrows the email, and it stops once the email fits. Text stays full size.
+        function fitEmailToReader(body) {
+            body.querySelectorAll('tr.email-wrap').forEach(tr => tr.classList.remove('email-wrap'));
+            const edge = body.getBoundingClientRect().right;
+            const overBy = () => Math.max(0, ...[...body.children].map(c => c.getBoundingClientRect().right - edge));
+            const tried = new Set();
+            for (let pass = 0; pass < 30 && overBy() > 1; pass++) {
+                const rows = [...body.querySelectorAll('tr:not(.email-wrap)')].filter(tr => !tried.has(tr) && tr.getBoundingClientRect().right > edge + 1);
+                const inner = rows.filter(tr => !rows.some(o => o !== tr && tr.contains(o)));
+                if (!inner.length) break;
+                for (const tr of inner) {
+                    const before = overBy();
+                    tr.classList.add('email-wrap');
+                    if (overBy() < before - 0.5) break;   // this row held it wide: measure again from here
+                    tr.classList.remove('email-wrap');
+                    tried.add(tr);
+                }
+            }
+        }
+        window.addEventListener('resize', () => {
+            const body = document.getElementById('article-body');
+            if (body?.classList.contains('is-email')) fitEmailToReader(body);
+        });
 
         // A story from the email newsletter bridge: the whole email, as its sender laid it out.
         function isNewsletterStory(article) {
@@ -21469,7 +21511,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 483;
+        window.APP_BUILD = 484;
 
         (async function initApp() {
             try {
@@ -22351,7 +22393,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v483';
+const CACHE_NAME = 'rss-reader-v484';
 const APP_SHELL = [
     '/',
     'index.html'
