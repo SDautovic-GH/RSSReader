@@ -154,6 +154,37 @@
             display: block;
         }
 
+        /* An email newsletter (the bridge sends the whole email) is laid out in fixed-width tables and boxes for a
+           600-700px window: they fit the reader instead (on the phone they ran off the right edge). */
+        .article-content.is-email table {
+            width: 100% !important;
+            max-width: 100% !important;
+            table-layout: auto !important;
+        }
+
+        .article-content.is-email td,
+        .article-content.is-email th {
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+        }
+
+        .article-content.is-email [width],
+        .article-content.is-email [style*="width"] {
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box;
+        }
+
+        /* A fixed width on a box (not a table, cell or picture) holds its cell, and so the table, at that width. */
+        .article-content.is-email [style*="width"]:not(table):not(td):not(th):not(img) {
+            width: auto !important;
+        }
+
+        .article-content.is-email {
+            overflow-wrap: anywhere;
+        }
+
         /* ===== IMAGE LIGHTBOX ===== */
         #img-lightbox {
             position: fixed;
@@ -11763,6 +11794,7 @@
             }
             authorEl.style.display = isBskyArticle ? 'none' : '';
             const bodyEl = document.getElementById('article-body');
+            bodyEl.classList.toggle('is-email', !article.isBrief && !article.isAiBriefing && isNewsletterStory(article));
             // Today stays alive while a story is open: leaving detaches its page as it is and returning
             // puts it back at the same scroll, so nothing reloads or moves; the story read just drops out.
             // A rebuild on return raced against late pictures resizing cards. Only a new brief object
@@ -11918,13 +11950,18 @@
         const MASTODON_POST_RE = /^https?:\/\/[^\/]+\/(?:@[^\/]+\/\d+|users\/[^\/]+\/statuses\/\d+)\/?$/i;
         function isMastodonPost(link) { return MASTODON_POST_RE.test(link || ''); }
 
+        // A story from the email newsletter bridge: the whole email, as its sender laid it out.
+        function isNewsletterStory(article) {
+            return !!article && ((article.feedUrl || '').includes('newsletter')
+                || (article.link || '').includes('newsletter-bridge') || (article.link || '').includes('workers.dev/item/'));
+        }
+
         async function attemptFullContentLoad(article) {
             if (!article || !article.link || article.link === '#') return;
             if (article._fullBodyLoaded || article.isAiBriefing || article.link.includes('ai.google.dev/briefing')) return;
 
             if (isMastodonPost(article.link)) return;   // JS-only shell, feed already complete
-            if (article.feedUrl && article.feedUrl.includes('newsletter')) return; // Newsletters are complete by design
-            if (article.link && (article.link.includes('newsletter-bridge') || article.link.includes('workers.dev/item/'))) return;
+            if (isNewsletterStory(article)) return; // Newsletters are complete by design
             try {
                 const domain = new URL(article.link).hostname.replace('www.', '');
                 if (JS_RENDERED_DOMAINS.has(domain)) {
@@ -21432,7 +21469,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 482;
+        window.APP_BUILD = 483;
 
         (async function initApp() {
             try {
@@ -22314,7 +22351,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v482';
+const CACHE_NAME = 'rss-reader-v483';
 const APP_SHELL = [
     '/',
     'index.html'
