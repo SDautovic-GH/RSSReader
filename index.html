@@ -4740,8 +4740,14 @@
         .brief-cat-section.brief-section-empty,
         .brief-jump-pill.brief-gone,
         .brief-jump-bar.brief-gone,
-        .brief-footer.brief-gone {
+        .brief-footer.brief-gone,
+        .brief-header-meta.brief-gone,
+        .brief-listen-btn.brief-gone {
             display: none !important;
+        }
+
+        .brief-header.brief-header-empty {
+            border-bottom: none !important;
         }
 
         .brief-story-card.brief-story-dismissing {
@@ -4782,9 +4788,24 @@
             height: 16px;
         }
 
-        .brief-all-read-note {
-            margin: 2.5rem 0;
+        .brief-all-read-note,
+        .brief-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 55vh;
+            padding: 2rem 1rem;
             text-align: center;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        @media (min-width: 901px) {
+            .brief-all-read-note,
+            .brief-empty-state {
+                min-height: calc(100vh - 280px);
+            }
         }
 
         /* "Pull down to refresh." under "All caught up" on the phone. */
@@ -10527,12 +10548,15 @@
                 headline = 'All caught up';
                 subtext = '<span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span>';
             }
+            const showBadge = (hasFeeds && (isSaved || isRecentlyRead || isReadLater)) || !hasFeeds;
+            const badgeHtml = showBadge ? `
+                    <div class="empty-state-badge">
+                        ${iconSvg}
+                    </div>` : '';
             // No Refresh button in an empty list: Today's pull refreshes.
             return `
                 <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh;">
-                    <div class="empty-state-badge">
-                        ${iconSvg}
-                    </div>
+                    ${badgeHtml}
                     <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">${esc(headline)}</h2>
                     <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs">${subtext}</p>
                 </div>
@@ -15614,10 +15638,11 @@
                     day: 'numeric'
                 });
             }
+            const isEmptyBrief = totalStories === 0;
             const sw = (!isPersonalHub && !isFeedCards && window.getTodayViewSwitcherHtml) ? window.getTodayViewSwitcherHtml(activeView) : '';
             const secLabel = sectionCount > 0 ? `<span class="brief-meta-item whitespace-nowrap desk-only">${sectionCount} ${sectionCount === 1 ? 'section' : 'sections'}</span><span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>` : '';
             return `
-                <div class="brief-header border-b border-gray-100 dark:border-gray-800">
+                <div class="brief-header border-b border-gray-100 dark:border-gray-800${isEmptyBrief ? ' brief-header-empty' : ''}">
                     <div class="app-header-row">
                         <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#${headerIcon || 'icon-rss'}"/></svg></span>
                         <div class="app-header-text">
@@ -15629,9 +15654,9 @@
                                 </span>
                             </h2>
                         </div>
-                        ${headerAction || ''}
+                        ${(isEmptyBrief ? '' : headerAction) || ''}
                     </div>
-                    <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1">
+                    <div class="brief-header-meta text-gray-400 flex items-center flex-wrap gap-x-2 gap-y-1${isEmptyBrief ? ' brief-gone' : ''}">
                         ${secLabel}
                         <span class="brief-meta-item whitespace-nowrap desk-only">${totalStories} ${totalStories === 1 ? 'story' : 'stories'}</span>
                         <span class="brief-meta-dot text-gray-500 flex-shrink-0 desk-only">•</span>
@@ -16737,7 +16762,7 @@ ${sampleText}`;
             if (totalStories === 0) {
                 body = `
                     <div class="brief-container" data-personal-hub="${hubType}">
-                        <div class="brief-header border-b border-gray-100 dark:border-gray-800">
+                        <div class="brief-header border-b border-gray-100 dark:border-gray-800 brief-header-empty">
                             <div class="app-header-row">
                                 <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#${icon}"/></svg></span>
                                 <div class="app-header-text">
@@ -16747,7 +16772,7 @@ ${sampleText}`;
                                 </div>
                             </div>
                         </div>
-                        <div class="text-center py-16 px-4">
+                        <div class="brief-empty-state text-center py-16 px-4">
                             <div class="empty-state-badge">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#${icon}"/></svg>
                             </div>
@@ -16918,7 +16943,7 @@ ${sampleText}`;
                     : `No unread stories in ${esc(title)}.`;
                 body = `
                     <div class="brief-container" data-feed-cards="${viewType}">
-                        <div class="brief-header border-b border-gray-100 dark:border-gray-800">
+                        <div class="brief-header border-b border-gray-100 dark:border-gray-800 brief-header-empty">
                             <div class="app-header-row">
                                 <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#${icon}"/></svg></span>
                                 <div class="app-header-text">
@@ -16929,10 +16954,7 @@ ${sampleText}`;
                                 </div>
                             </div>
                         </div>
-                        <div class="text-center py-16 px-4">
-                            <div class="empty-state-badge desk-only">
-                                <svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-                            </div>
+                        <div class="brief-empty-state text-center py-16 px-4">
                             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
                             <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">${emptySub}<span class="brief-pull-hint phone-only">Pull down to refresh.</span></p>
                         </div>
@@ -17182,15 +17204,31 @@ ${sampleText}`;
                         if (label) label.textContent = unread ? `Mark ${unread} read` : 'All read';
                     }
                 });
+                const isEmpty = !!(root.querySelector('.brief-empty-state') || (anySection && !anyLeft));
                 const bar = root.querySelector('.brief-jump-bar');
                 if (bar) {
-                    if (anySection && !anyLeft) bar.classList.add('brief-gone');
+                    if (isEmpty) bar.classList.add('brief-gone');
                     else bar.classList.remove('brief-gone');
                 }
                 const footer = root.querySelector('.brief-footer');
                 if (footer) {
-                    if (anySection && !anyLeft) footer.classList.add('brief-gone');
+                    if (isEmpty) footer.classList.add('brief-gone');
                     else footer.classList.remove('brief-gone');
+                }
+                const bHeader = root.querySelector('.brief-header');
+                if (bHeader) {
+                    if (isEmpty) bHeader.classList.add('brief-header-empty');
+                    else bHeader.classList.remove('brief-header-empty');
+                }
+                const bMeta = root.querySelector('.brief-header-meta');
+                if (bMeta) {
+                    if (isEmpty) bMeta.classList.add('brief-gone');
+                    else bMeta.classList.remove('brief-gone');
+                }
+                const phoneListen = root.querySelector('.brief-listen-btn.phone-only');
+                if (phoneListen) {
+                    if (isEmpty) phoneListen.classList.add('brief-gone');
+                    else phoneListen.classList.remove('brief-gone');
                 }
                 root.querySelectorAll('[data-today-new]').forEach(el => {
                     const since = newShown ? ` since ${window.visitLabel(boundary)}` : '';
@@ -17211,9 +17249,6 @@ ${sampleText}`;
                         note = document.createElement('div');
                         note.className = 'brief-all-read-note';
                         note.innerHTML = `
-                            <div class="empty-state-badge desk-only">
-                                <svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-                            </div>
                             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
                             <p class="text-sm text-gray-500 dark:text-gray-400"><span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span></p>
                         `;
@@ -18346,9 +18381,6 @@ ${sampleText}`;
                 } else {
                     html += `
                         <div class="brief-empty-state text-center py-16 px-4">
-                            <div class="empty-state-badge desk-only">
-                                <svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-                            </div>
                             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
                             <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto"><span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span></p>
                         </div>
@@ -21603,7 +21635,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 489;
+        window.APP_BUILD = 490;
 
         (async function initApp() {
             try {
@@ -22489,7 +22521,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v489';
+const CACHE_NAME = 'rss-reader-v490';
 const APP_SHELL = [
     '/',
     'index.html'
