@@ -4766,11 +4766,9 @@
         .brief-all-read-note {
             margin: 2.5rem 0;
             text-align: center;
-            font-weight: 600;
-            color: #8b949e;
         }
 
-        /* "Pull down to refresh." under "You're all caught up." on the phone. */
+        /* "Pull down to refresh." under "All caught up" on the phone. */
         .brief-pull-hint {
             display: block;
             margin-top: 4px;
@@ -4789,10 +4787,6 @@
             font-size: 1em;
             font-weight: 600;
             color: var(--text-3);
-        }
-
-        html:not(.dark) .brief-all-read-note {
-            color: #57606a;
         }
 
         .brief-cat-end.is-empty:not(.brief-held) {
@@ -10469,12 +10463,12 @@
         // state). Gives clear in-progress feedback instead of a static empty screen.
         function renderTimelineRefreshing() {
             return `
-                <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
-                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
-                        <svg class="w-8 h-8" style="animation: ptr-spin 0.8s linear infinite;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#icon-refresh"/></svg>
+                <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh;">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center mb-3" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
+                        <svg class="w-4 h-4" style="animation: ptr-spin 0.8s linear infinite;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#icon-refresh"/></svg>
                     </div>
-                    <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">Refreshing feeds</h2>
-                    <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">Checking your sources for new articles...</p>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">Refreshing feeds</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs">Checking your sources for new stories...</p>
                 </div>
             `;
         }
@@ -10486,37 +10480,42 @@
             const isReadLater = window.currentSmartFeed === 'read-later';
             const isRecentlyRead = window.currentSmartFeed === 'recently-read';
             const isSaved = window.currentSmartFeed === 'saved';
-            let headline, subtext;
+            let headline, subtext, iconSvg;
+            iconSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
             if (!hasFeeds) {
                 headline = 'No feeds yet';
                 subtext = 'Add your first feed from Edit feeds (the pencil) to get started.';
+                iconSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#icon-rss"/></svg>';
             } else if (isSaved) {
                 headline = 'Nothing saved yet';
                 subtext = 'Tap the star on any article to keep it here for future reference. Saved items sync across your devices.';
+                iconSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#icon-star"/></svg>';
             } else if (isRecentlyRead) {
                 headline = 'No history yet';
                 subtext = `Articles you've read in the last ${getRecentlyReadDays()} days will appear here.`;
+                iconSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#icon-history"/></svg>';
             } else if (isReadLater) {
                 headline = 'No saved articles';
                 subtext = 'Tap the bookmark on any article to save it for later.';
+                iconSvg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#icon-bookmark"/></svg>';
             } else if (inFolder) {
                 headline = 'All caught up';
-                subtext = `No unread articles in ${esc(window.currentCategoryFilter)}.`;
+                subtext = `No unread stories in ${esc(window.currentCategoryFilter)}.`;
             } else if (inSource) {
                 headline = 'All caught up';
-                subtext = `No unread articles from ${esc(window.currentSourceFilter)}.`;
+                subtext = `No unread stories from ${esc(window.currentSourceFilter)}.`;
             } else {
                 headline = 'All caught up';
-                subtext = "You've read everything.";
+                subtext = '<span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span>';
             }
             // No Refresh button in an empty list: Today's pull refreshes.
             return `
-                <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh; color: rgba(255,255,255,0.55);">
-                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-5" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                <div class="flex flex-col items-center justify-center text-center px-6" style="min-height: 70vh;">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center mb-3" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
+                        ${iconSvg}
                     </div>
-                    <h2 class="text-lg font-bold mb-2" style="color: rgba(255,255,255,0.92);">${esc(headline)}</h2>
-                    <p class="text-sm mb-6 max-w-xs" style="color: rgba(255,255,255,0.5);">${esc(subtext)}</p>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">${esc(headline)}</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs">${subtext}</p>
                 </div>
             `;
         }
@@ -16594,11 +16593,6 @@ ${sampleText}`;
             }, sections, totalStories);
 
             let body = composed.body;
-            if (totalStories === 0) {
-                body = body
-                    .replace('No new articles were captured in this delivery window.', "You're all caught up.")
-                    .replace(/Feeds may not have updated between [^<]*\./, `<span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span>`);
-            }
 
             return {
                 id: window.TODAY_BRIEF_ID,
@@ -16728,12 +16722,12 @@ ${sampleText}`;
                                 </div>
                             </div>
                         </div>
-                        <div class="text-center py-20 text-gray-400">
-                            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
-                                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#${icon}"/></svg>
+                        <div class="text-center py-16 px-4">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-3" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#${icon}"/></svg>
                             </div>
-                            <p class="text-lg font-bold text-gray-900 dark:text-gray-100">${esc(emptyTitle)}</p>
-                            <p class="text-sm text-gray-500 mt-1">${esc(emptySubtext)}</p>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">${esc(emptyTitle)}</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">${esc(emptySubtext)}</p>
                         </div>
                     </div>
                 `;
@@ -16894,6 +16888,9 @@ ${sampleText}`;
 
             let body = composed.body;
             if (totalStories === 0) {
+                const emptySub = viewType === 'source'
+                    ? `No unread stories from ${esc(title)}.`
+                    : `No unread stories in ${esc(title)}.`;
                 body = `
                     <div class="brief-container" data-feed-cards="${viewType}">
                         <div class="brief-header border-b border-gray-100 dark:border-gray-800">
@@ -16907,12 +16904,12 @@ ${sampleText}`;
                                 </div>
                             </div>
                         </div>
-                        <div class="text-center py-20 text-gray-400">
-                            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
-                                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><use href="#${icon}"/></svg>
+                        <div class="text-center py-16 px-4">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-3" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
                             </div>
-                            <p class="text-lg font-bold text-gray-900 dark:text-gray-100">All caught up</p>
-                            <p class="text-sm text-gray-500 mt-1">No unread stories in ${esc(title)}.</p>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">${emptySub}<span class="brief-pull-hint phone-only">Pull down to refresh.</span></p>
                         </div>
                     </div>
                 `;
@@ -17181,13 +17178,15 @@ ${sampleText}`;
                 let note = root.querySelector('.brief-all-read-note');
                 if (anySection && !anyLeft) {
                     if (!note) {
-                        note = document.createElement('p');
+                        note = document.createElement('div');
                         note.className = 'brief-all-read-note';
-                        note.textContent = "You're all caught up.";
-                        const hint = document.createElement('span');   // the phone's
-                        hint.className = 'brief-pull-hint phone-only';
-                        hint.textContent = 'Pull down to refresh.';
-                        note.appendChild(hint);
+                        note.innerHTML = `
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-3" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                            </div>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">No unread stories.<span class="brief-pull-hint phone-only">Pull down to refresh.</span></p>
+                        `;
                         const first = root.querySelector('.brief-cat-section');
                         first.parentNode.insertBefore(note, first);
                     }
@@ -18307,9 +18306,12 @@ ${sampleText}`;
             // Category Sections & Story Cards
             if (categorySections.length === 0) {
                 html += `
-                    <div class="text-center py-12 text-gray-400">
-                        <p class="brief-empty-message">No new articles were captured in this delivery window.</p>
-                        <p class="brief-empty-subtext text-gray-500 mt-1">Feeds may not have updated between ${esc(slotDef.windowLabel)}.</p>
+                    <div class="brief-empty-state text-center py-16 px-4">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-3" style="background: rgba(var(--accent-rgb), 0.12); color: var(--accent);">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto"><span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span></p>
                     </div>
                 `;
             } else {
@@ -21561,7 +21563,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 486;
+        window.APP_BUILD = 487;
 
         (async function initApp() {
             try {
@@ -22443,7 +22445,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v486';
+const CACHE_NAME = 'rss-reader-v487';
 const APP_SHELL = [
     '/',
     'index.html'
