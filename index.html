@@ -4739,7 +4739,8 @@
         .brief-story-card.brief-card-read,
         .brief-cat-section.brief-section-empty,
         .brief-jump-pill.brief-gone,
-        .brief-jump-bar.brief-gone {
+        .brief-jump-bar.brief-gone,
+        .brief-footer.brief-gone {
             display: none !important;
         }
 
@@ -13953,6 +13954,9 @@
                 _lastTimelineKey = '';
                 renderTimeline(true);
             }
+            if (typeof todayOnScreen === 'function' && todayOnScreen() && (!window._todayBrief || window._todayBrief.totalStories === 0)) {
+                if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
+            }
             try {
                 await fetchAllStaggered(window.feeds, opts.maxItems ?? null, opts.isBackground ?? false);
                 return true;
@@ -13975,6 +13979,9 @@
                 if (!window._refreshPending) {
                     window.updateTodayStatus?.();
                     window.checkTodayForNewStories?.();
+                    if (typeof todayOnScreen === 'function' && todayOnScreen() && (!window._todayBrief || window._todayBrief.totalStories === 0)) {
+                        if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
+                    }
                     setTimeout(() => window.maybeRunAutoMorningBriefing?.(), 400);
                 }
                 if (window._refreshPending) {
@@ -16923,7 +16930,7 @@ ${sampleText}`;
                             </div>
                         </div>
                         <div class="text-center py-16 px-4">
-                            <div class="empty-state-badge">
+                            <div class="empty-state-badge desk-only">
                                 <svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
                             </div>
                             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
@@ -17180,6 +17187,11 @@ ${sampleText}`;
                     if (anySection && !anyLeft) bar.classList.add('brief-gone');
                     else bar.classList.remove('brief-gone');
                 }
+                const footer = root.querySelector('.brief-footer');
+                if (footer) {
+                    if (anySection && !anyLeft) footer.classList.add('brief-gone');
+                    else footer.classList.remove('brief-gone');
+                }
                 root.querySelectorAll('[data-today-new]').forEach(el => {
                     const since = newShown ? ` since ${window.visitLabel(boundary)}` : '';
                     if (el.textContent === (newShown ? `${newShown} new${since}` : '')) return;
@@ -17199,11 +17211,11 @@ ${sampleText}`;
                         note = document.createElement('div');
                         note.className = 'brief-all-read-note';
                         note.innerHTML = `
-                            <div class="empty-state-badge">
+                            <div class="empty-state-badge desk-only">
                                 <svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
                             </div>
                             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">No unread stories.<span class="brief-pull-hint phone-only">Pull down to refresh.</span></p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400"><span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span></p>
                         `;
                         const first = root.querySelector('.brief-cat-section');
                         first.parentNode.insertBefore(note, first);
@@ -18323,15 +18335,25 @@ ${sampleText}`;
 
             // Category Sections & Story Cards
             if (categorySections.length === 0) {
-                html += `
-                    <div class="brief-empty-state text-center py-16 px-4">
-                        <div class="empty-state-badge">
-                            <svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                const isRefreshing = !!(window._refreshInFlight || window._refreshPending);
+                if (isRefreshing && !slotDef.isPersonalHub) {
+                    html += `
+                        <div class="brief-empty-state text-center py-16 px-4">
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">Checking for stories…</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">Updating feeds in the background.</p>
                         </div>
-                        <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto"><span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span></p>
-                    </div>
-                `;
+                    `;
+                } else {
+                    html += `
+                        <div class="brief-empty-state text-center py-16 px-4">
+                            <div class="empty-state-badge desk-only">
+                                <svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                            </div>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto"><span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span></p>
+                        </div>
+                    `;
+                }
             } else {
                 html += `<div class="brief-cards-grid">`;
                 html += renderBriefSectionsHtml(categorySections);
@@ -21581,7 +21603,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 488;
+        window.APP_BUILD = 489;
 
         (async function initApp() {
             try {
@@ -21710,7 +21732,21 @@ ${sampleText}`;
                     }
                 } catch (e) { console.warn('App: UI mode restore failed:', e); }
 
-                // 6. Initial Render (Crucial)
+                // 6. Start Background Sync (initiated before initial render so Today and Timeline show in-progress state)
+                // Two possible startup fetches: here, with the locally restored feed list, and the first cloud
+                // snapshot (syncCloudFeeds). The first claims it via _startupFetchDone; the snapshot fetches again
+                // only when it brought different feeds. The local list is the synced list from the last visit.
+                let bgRefreshPromise = null;
+                if (window.feeds.length > 0 && !window._startupFetchDone) {
+                    console.log('App: Starting background fetch...');
+                    window._startupFetchDone = true;
+                    // Which feeds this pass covers, so the snapshot can tell whether it needs
+                    // to fetch anything new.
+                    window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
+                    bgRefreshPromise = window.runFullRefresh({ isBackground: true });
+                }
+
+                // 7. Initial Render (Crucial)
                 console.log('App: Performing initial render...');
                 renderFeeds();
                 if (window.articles.length === 0 || (window.articles.length === 1 && window.articles[0].source === 'System')) {
@@ -21732,18 +21768,8 @@ ${sampleText}`;
                     document.addEventListener('pointerdown', acted, { once: true, capture: true });
                     document.addEventListener('keydown', acted, { once: true, capture: true });
                 }
-
-                // 7. Start Background Sync
-                // Two possible startup fetches: here, with the locally restored feed list, and the first cloud
-                // snapshot (syncCloudFeeds). The first claims it via _startupFetchDone; the snapshot fetches again
-                // only when it brought different feeds. The local list is the synced list from the last visit.
-                if (window.feeds.length > 0 && !window._startupFetchDone) {
-                    console.log('App: Starting background fetch...');
-                    window._startupFetchDone = true;
-                    // Which feeds this pass covers, so the snapshot can tell whether it needs
-                    // to fetch anything new.
-                    window._lastFetchedFeedKey = window.feeds.map(f => f.url).sort().join('|');
-                    window.runFullRefresh({ isBackground: true }).then(() => {
+                if (bgRefreshPromise) {
+                    bgRefreshPromise.then(() => {
                         if (!todayAtStart && !actedAtStart && window.articles.some(a => a.source !== 'System')) openToday();
                     });
                 }
@@ -22463,7 +22489,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v488';
+const CACHE_NAME = 'rss-reader-v489';
 const APP_SHELL = [
     '/',
     'index.html'
