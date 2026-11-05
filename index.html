@@ -134,6 +134,34 @@
             display: none !important;
         }
 
+        /* Orphaned figures without media must never display */
+        .article-content figure:not(:has(img:not([data-broken]), video, picture, iframe)) {
+            display: none !important;
+        }
+
+        .article-content figure {
+            margin: 1.5rem 0;
+        }
+
+        .article-content figure img {
+            margin: 0 !important;
+        }
+
+        .article-content figcaption {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            opacity: 0.75;
+            margin-top: 0.5rem;
+            color: inherit;
+        }
+
+        .article-content figcaption .photo-credit {
+            display: block;
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-top: 0.2rem;
+        }
+
         .article-content video,
         .article-content audio {
             max-width: 100% !important;
@@ -11957,9 +11985,11 @@
                 stripLeadingEmptyBlocks(bodyEl);
                 stripRepeatedHeader(bodyEl, article);
                 if (bodyEl.classList.contains('is-email')) tidyEmail(bodyEl);
+                else tidyArticle(bodyEl);
                 normalizeBodyStyles(bodyEl);       // feed fonts/sizes must not beat the app's
                 initBodyImages(bodyEl, article);   // normalize/drop unusable images first...
                 ensureLeadImage(bodyEl, article);  // ...so this sees a genuinely image-less body
+                if (!bodyEl.classList.contains('is-email')) tidyArticle(bodyEl);
             }
             const readerElEarly = document.getElementById('reader-view');
             if (readerElEarly) readerElEarly.scrollTop = keptScroll ?? 0;   // kept Today: where you were
@@ -12082,6 +12112,79 @@
             const blank = e => !(e.textContent || '').replace(/[\s\u00a0\u034f\u2007\u00ad\u200b-\u200d\ufeff]/g, '')
                 && !e.querySelector('img, video, iframe, svg, hr');
             body.querySelectorAll('p, figure, li, tr, table, div').forEach(e => { if (e.isConnected && blank(e)) e.remove(); });
+        }
+
+        // General cleaner for web articles (counterpart to tidyEmail for newsletters): purges publisher
+        // promotional furniture (Google Preferred Source/News follows, ad-slots, adhesion bars, newsletter
+        // signups, inline recirculation, social share bars), orphaned image wrappers and captions whose
+        // media cannot be displayed or failed to load, standalone photo agency credits with no image, and
+        // empty structural blocks left behind by stripped widgets.
+        const ARTICLE_PROMO_SELECTORS = [
+            '[class*="googlePreferredSource" i]', '[class*="GooglePreferredSource" i]',
+            '[class*="google-news" i]', '[class*="googleNews" i]', '[id*="google-news" i]',
+            '[data-module="GooglePreferredSource"]',
+            '[class*="MobileAdhesion" i]', '[class*="adhesion" i]', '[data-module="mps-slot"]',
+            '[class*="ad-slot" i]', '[class*="ad-container" i]', '[class*="advertisement" i]',
+            '[class*="sponsor-wrap" i]', '[id*="ad-slot" i]', '[id*="advertisement" i]',
+            '[class*="app-promo" i]', '[class*="app-banner" i]', '[class*="smart-banner" i]',
+            '[class*="newsletter-signup" i]', '[class*="email-signup" i]', '[class*="newsletter-promo" i]',
+            '[class*="newsletter-box" i]', '[class*="newsletter-cta" i]', '[class*="newsletter-form" i]',
+            '[class*="subscribe-box" i]', '[class*="subscribe-card" i]',
+            '[class*="inline-recirc" i]', '[class*="article-recirc" i]', '[class*="related-content" i]',
+            '[class*="related-stories" i]', '[class*="trending-articles" i]', '[data-module*="Recirc" i]',
+            '.HighlightShare-hidden', '[class*="HighlightShare" i]', '[class*="social-share" i]',
+            '[class*="share-tools" i]', '[class*="share-bar" i]', '[class*="share-buttons" i]',
+            '[class*="article-sharing" i]'
+        ].join(', ');
+
+        const PHOTO_CREDIT_RE = /(?:^|\s)(?:photo|image|credit|source)\s*[:|•-]|(?:\|\s*(?:Getty Images|Bloomberg|Reuters|AFP|\bAP Photo\b|Shutterstock)|(?:Getty Images|Bloomberg|Reuters|AFP|\bAP Photo\b|Alamy)\s*[\/|•·]|\bvia\s+(?:Getty Images|Reuters|AFP|AP)\b)/i;
+
+        function tidyArticle(body) {
+            if (!body) return;
+            // 1. Remove publisher promotional / ad / share widgets (safeguard: never remove prose containers)
+            body.querySelectorAll(ARTICLE_PROMO_SELECTORS).forEach(el => {
+                if (el.querySelectorAll('p').length > 2) return;
+                el.remove();
+            });
+
+            // 2. Remove orphaned image containers (figures or embed wrappers with NO usable image or video)
+            const imgContainers = body.querySelectorAll('figure, [class*="InlineImage" i], [class*="image-embed" i], [class*="image-wrapper" i], [class*="wp-caption" i], [class*="media-container" i]');
+            imgContainers.forEach(c => {
+                const hasImg = c.querySelector('img:not([data-broken]), video, picture source');
+                if (!hasImg) {
+                    c.remove();
+                }
+            });
+
+            // 3. Remove standalone orphaned figcaptions
+            body.querySelectorAll('figcaption').forEach(fc => {
+                const parentFig = fc.closest('figure');
+                if (!parentFig || !parentFig.querySelector('img:not([data-broken]), video, picture source')) {
+                    fc.remove();
+                }
+            });
+
+            // 4. Remove standalone photo credit leaf elements with no preceding/parent image
+            body.querySelectorAll('p, div, span, small').forEach(el => {
+                if (!el.parentElement || el.children.length > 1) return;
+                const txt = el.textContent.trim();
+                if (!txt || txt.length > 140) return;
+                if (PHOTO_CREDIT_RE.test(txt)) {
+                    const prev = el.previousElementSibling;
+                    const hasNearbyImg = el.querySelector('img:not([data-broken])')
+                        || (prev && (prev.tagName === 'IMG' || prev.querySelector('img:not([data-broken])')));
+                    if (!hasNearbyImg) {
+                        el.remove();
+                    }
+                }
+            });
+
+            // 5. Clean up empty blocks left behind
+            const blank = e => !(e.textContent || '').replace(/[\s\u00a0\u034f\u2007\u00ad\u200b-\u200d\ufeff]/g, '')
+                && !e.querySelector('img:not([data-broken]), video, iframe, svg, hr, audio, table');
+            body.querySelectorAll('p, figure, li, div, section').forEach(e => {
+                if (e.parentElement && blank(e)) e.remove();
+            });
         }
 
         // A story from the email newsletter bridge: the whole email, as its sender laid it out.
@@ -12287,6 +12390,57 @@
                                     }
                                 }
                             }
+                            // Bridge client-side inline images (e.g. CNBC's .InlineImage-imageEmbed)
+                            content.querySelectorAll('.InlineImage-imageEmbed, [class*="InlineImage-imageEmbed"]').forEach(embed => {
+                                if (embed.querySelector('img')) return;
+                                const m = (embed.id || '').match(/(\d{6,})/);
+                                const imgId = m ? m[1] : null;
+                                const capEl = embed.querySelector('.InlineImage-imageEmbedCaption, [class*="imageEmbedCaption"]');
+                                const credEl = embed.querySelector('.InlineImage-imageEmbedCredit, [class*="imageEmbedCredit"]');
+                                const captionText = capEl ? capEl.textContent.trim() : '';
+                                const creditText = credEl ? credEl.textContent.trim() : '';
+
+                                let foundUrl = null;
+                                if (imgId) {
+                                    if (ogImage && ogImage.includes(imgId)) {
+                                        foundUrl = ogImage;
+                                    } else {
+                                        const raw = doc.documentElement ? doc.documentElement.innerHTML : '';
+                                        const match = raw.match(new RegExp('https?:\\\\?/\\\\?/[^"\'\\\\s<>]+' + imgId + '[^"\'\\\\s<>]*', 'i'));
+                                        if (match) {
+                                            foundUrl = match[0].replace(/\\u002F/gi, '/').replace(/&amp;/gi, '&');
+                                        }
+                                    }
+                                }
+                                if (!foundUrl && ogImage && !content.querySelector('figure.article-inline-image, figure.lead-image')) {
+                                    foundUrl = ogImage;
+                                }
+
+                                if (foundUrl) {
+                                    const fig = doc.createElement('figure');
+                                    fig.className = 'article-inline-image';
+                                    const newImg = doc.createElement('img');
+                                    newImg.src = foundUrl;
+                                    newImg.alt = captionText || '';
+                                    newImg.loading = 'eager';
+                                    fig.appendChild(newImg);
+                                    if (captionText || creditText) {
+                                        const figCap = doc.createElement('figcaption');
+                                        figCap.textContent = captionText;
+                                        if (creditText) {
+                                            const sp = doc.createElement('span');
+                                            sp.className = 'photo-credit';
+                                            sp.textContent = creditText;
+                                            figCap.appendChild(sp);
+                                        }
+                                        fig.appendChild(figCap);
+                                    }
+                                    embed.replaceWith(fig);
+                                } else {
+                                    embed.remove();
+                                }
+                            });
+
                             stripPageChrome(content);
                             stripJsonBlobs(content);
                             // Skip linkify: extracted HTML already has proper <a> tags.
@@ -12300,19 +12454,22 @@
                             // og:image backstop, apply: only when the extracted markup has no media and the feed gave no
                             // article.image (ensureLeadImage renders that). Inside `sanitized`, so the cached body keeps it.
                             const ogLead = (ogImage
-                                && !/<(?:img|picture|video|audio|iframe)[\s>]/i.test(extractedHtml)
+                                && !/<(?:img|picture|video|audio)[\s>]/i.test(extractedHtml)
+                                && !content.querySelector('figure.article-inline-image')
                                 && !/^https?:\/\//i.test(article.image || ''))
                                 ? '<figure class="lead-image"><img src="' + esc(ogImage) + '" alt="" loading="eager"></figure>'
                                 : '';
                             const sanitized = ogLead + extractedHtml;
                             bodyEl.innerHTML = sanitized;
                             stripImagePlaceholders(bodyEl);
+                            tidyArticle(bodyEl);
                             stripLeadingEmptyBlocks(bodyEl);
                             stripRepeatedHeader(bodyEl, article);
                             normalizeBodyStyles(bodyEl);
                             initBodyImages(bodyEl, article);
                             ensureLeadImage(bodyEl, article);
-                            article.body = sanitized;
+                            tidyArticle(bodyEl);
+                            article.body = bodyEl.innerHTML;
                             article._fullBodyLoaded = true;
                             // Body just got replaced with a much longer extracted version —
                             // snap back to the top so the reader doesn't appear mid-article.
@@ -12669,7 +12826,7 @@
             if (!bodyEl || !article) return;
             const src = article.image || '';
             if (!/^https?:\/\//i.test(src)) return;                       // no data:/javascript:
-            if (bodyEl.querySelector('img, video, iframe, audio')) return;  // body has its own media
+            if (bodyEl.querySelector('img:not([data-broken]), video, picture, figure.lead-image, figure.article-inline-image')) return;  // body has its own media
             if (bodyEl.querySelector('figure.lead-image')) return;          // already inserted
             const fig = document.createElement('figure');
             fig.className = 'lead-image';
@@ -12758,7 +12915,14 @@
                 }
                 // 4. Still nothing usable: drop the element so it leaves no broken icon,
                 //    stray request or empty gap.
-                if (isPlaceholderSrc(img.getAttribute('src'))) { img.remove(); return; }
+                if (isPlaceholderSrc(img.getAttribute('src'))) {
+                    const parentFig = img.closest('figure, [class*="InlineImage"], [class*="image-embed"], [class*="wp-caption"]');
+                    img.remove();
+                    if (parentFig && !parentFig.querySelector('img:not([data-broken]), video, picture source')) {
+                        parentFig.remove();
+                    }
+                    return;
+                }
                 // Eager-load body images: WebKit reports complete=true with naturalWidth=0 for a deferred lazy
                 // image, so the collapse() check below hid it and its wrappers for good (Chrome takes the onload
                 // path, hence images on desktop and none on the phone). It is the article being read anyway.
@@ -12767,14 +12931,21 @@
                 const collapse = () => {
                     img.setAttribute('data-broken', '1');
                     img.style.setProperty('display', 'none', 'important');
+                    const fig = img.closest('figure, [class*="InlineImage"], [class*="image-embed"], [class*="wp-caption"], [class*="article-image"]');
+                    if (fig && !fig.querySelector('img:not([data-broken]), video, picture source')) {
+                        fig.remove();
+                        return;
+                    }
                     // Walk ancestors up to bodyEl, hiding wrappers that have nothing else visible
                     let el = img.parentElement;
                     while (el && el !== bodyEl) {
                         const hasVisible = Array.from(el.childNodes).some(n => {
+                            if (n === img) return false;
                             if (n.nodeType === Node.TEXT_NODE) return n.textContent.trim() !== '';
                             if (n.nodeType !== Node.ELEMENT_NODE) return false;
                             const tag = n.tagName.toLowerCase();
                             if (tag === 'figcaption') return false;
+                            if (n.classList && (n.classList.contains('photo-credit') || /caption|credit/i.test(n.className))) return false;
                             if (n.hasAttribute('data-broken')) return false;
                             if (n.style.getPropertyValue('display') === 'none') return false;
                             return true;
@@ -21635,7 +21806,7 @@ ${sampleText}`;
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 490;
+        window.APP_BUILD = 491;
 
         (async function initApp() {
             try {
@@ -22521,7 +22692,7 @@ ${sampleText}`;
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v490';
+const CACHE_NAME = 'rss-reader-v491';
 const APP_SHELL = [
     '/',
     'index.html'
