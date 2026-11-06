@@ -3695,37 +3695,63 @@
                 box-shadow: 0 0 0 2px #ffffff !important;
             }
 
-            /* Bottom Action Dock: Collapsed Rail (Centered 44px squircles) */
+            /* Bottom Action Dock: Collapsed Rail (Matches Smart Feeds: 60x56px, 20px icon, 10.5px label) */
             body.sidebar-collapsed #sidebar-rail-actions {
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                gap: 6px !important;
+                gap: 4px !important;
                 padding: 12px 0 16px !important;
                 width: 72px !important;
             }
 
             body.sidebar-collapsed #sidebar-rail-actions .app-header-btn {
-                width: 44px !important;
-                height: 44px !important;
+                width: 60px !important;
+                height: 56px !important;
+                min-height: 56px !important;
                 display: flex !important;
+                flex-direction: column !important;
                 align-items: center !important;
                 justify-content: center !important;
                 border-radius: 12px !important;
+                border: none !important;
+                padding: 0 !important;
                 margin: 0 auto !important;
-                transition: background-color 0.15s ease !important;
+                overflow: hidden !important;
+                position: relative !important;
+                transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease !important;
+            }
+
+            body.sidebar-collapsed #sidebar-rail-actions .app-header-btn svg {
+                width: 20px !important;
+                height: 20px !important;
+                min-width: 20px !important;
+                min-height: 20px !important;
+                max-width: 20px !important;
+                max-height: 20px !important;
+                margin: 0 0 3px 0 !important;
+                flex-shrink: 0 !important;
+                display: block !important;
+            }
+
+            body.sidebar-collapsed #sidebar-rail-actions .rail-action-label {
+                font-size: 10.5px !important;
+                line-height: 1.15 !important;
+                letter-spacing: -0.01em !important;
+                font-weight: 500 !important;
+                text-align: center !important;
+                white-space: nowrap !important;
+                display: block !important;
             }
 
             body.sidebar-collapsed #sidebar-rail-actions .app-header-btn:hover {
                 background-color: rgba(255, 255, 255, 0.08) !important;
+                color: var(--text-1, #f0f6fc) !important;
             }
 
             :root:not(.dark) body.sidebar-collapsed #sidebar-rail-actions .app-header-btn:hover {
                 background-color: rgba(0, 0, 0, 0.06) !important;
-            }
-
-            body.sidebar-collapsed #sidebar-rail-actions .rail-action-label {
-                display: none !important;
+                color: #1f2328 !important;
             }
 
             /* Bottom Action Dock: Expanded Sidebar (Pinned elegant dock with Refresh & Settings) */
@@ -3755,6 +3781,7 @@
                 font-weight: 500 !important;
                 color: var(--text-3, #94a3b8) !important;
                 background: rgba(255, 255, 255, 0.03) !important;
+                overflow: hidden !important;
                 transition: background-color 0.15s ease, color 0.15s ease !important;
             }
 
@@ -3776,6 +3803,12 @@
             body:not(.sidebar-collapsed) #sidebar-rail-actions .app-header-btn svg {
                 width: 16px !important;
                 height: 16px !important;
+                min-width: 16px !important;
+                min-height: 16px !important;
+                max-width: 16px !important;
+                max-height: 16px !important;
+                flex-shrink: 0 !important;
+                display: block !important;
             }
 
             body:not(.sidebar-collapsed) #sidebar-rail-actions .rail-action-label {
@@ -4927,6 +4960,11 @@
 
             html.dark .app-title {
                 color: #fff !important;
+            }
+
+            .app-title a {
+                color: inherit !important;
+                text-decoration: none !important;
             }
 
             html .app-subtitle {
@@ -7514,28 +7552,12 @@
                     <div class="flex flex-col min-w-0 leading-none">
                         <!-- "Library" on the phone, the tab's name; the logo says which app it is. -->
                         <h1
-                            class="app-title font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap"><span class="desk-only">Today</span><span class="phone-only">Library</span></h1>
+                            class="app-title font-bold text-[17px] text-gray-900 dark:text-white tracking-tight whitespace-nowrap"><a href="/" onclick="event.preventDefault(); openToday();" class="desk-only hover:opacity-85 transition-opacity" style="color: inherit; text-decoration: none; cursor: pointer;">Today</a><span class="phone-only">Library</span></h1>
                         <!-- Live status: unread total + last-updated relative time. Populated by
                              updateHeaderStatus() on every updateBadges() and refresh completion. -->
                         <span id="header-status"
                             class="app-subtitle text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap truncate mt-0.5 phone-only"></span>
                     </div>
-                </div>
-                <div class="flex space-x-1 phone-only">
-                    <button id="phone-edit-feeds-btn" onclick="openFeedManager()"
-                        class="app-header-btn p-1.5 rounded-lg text-gray-500" title="Edit feeds"
-                        aria-label="Edit feeds">
-                        <svg class="h-[22px] w-[22px]">
-                            <use href="#icon-pencil" />
-                        </svg>
-                    </button>
-                    <button id="phone-add-feed-btn" onclick="openAddFeedModal()"
-                        class="app-header-btn p-1.5 rounded-lg text-gray-500" title="Add Feed"
-                        aria-label="Add Feed">
-                        <svg class="h-[22px] w-[22px]">
-                            <use href="#icon-plus" />
-                        </svg>
-                    </button>
                 </div>
             </div>
 
@@ -7636,16 +7658,16 @@
             </div>
             <!-- Pinned Bottom Dock: Refresh & Settings in Expanded and Collapsed Rail -->
             <div id="sidebar-rail-actions">
-                <button type="button" id="header-refresh-btn" onclick="refreshAll()" class="app-header-btn p-1.5 rounded-lg text-gray-500"
+                <button type="button" id="header-refresh-btn" onclick="refreshAll()" class="app-header-btn rounded-lg text-gray-500"
                     title="Refresh Feeds" aria-label="Refresh Feeds">
-                    <svg class="h-[20px] w-[20px]">
+                    <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24">
                         <use href="#icon-refresh" />
                     </svg>
                     <span class="rail-action-label">Refresh</span>
                 </button>
-                <button type="button" onclick="toggleSettings()" class="app-header-btn p-1.5 rounded-lg text-gray-500"
+                <button type="button" onclick="toggleSettings()" class="app-header-btn rounded-lg text-gray-500"
                     title="Settings" aria-label="Settings">
-                    <svg class="h-[20px] w-[20px]">
+                    <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24">
                         <use href="#icon-settings" />
                     </svg>
                     <span class="rail-action-label">Settings</span>
@@ -19598,7 +19620,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 497;
+        window.APP_BUILD = 498;
 
         (async function initApp() {
             try {
@@ -20468,7 +20490,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v497';
+const CACHE_NAME = 'rss-reader-v498';
 const APP_SHELL = [
     '/',
     'index.html'
