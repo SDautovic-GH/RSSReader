@@ -3534,6 +3534,15 @@
                 padding-left: calc(2.5rem + 36px) !important;
             }
 
+            /* Viewer header flows cleanly past the "Today" brand anchor when sidebar is collapsed */
+            body.sidebar-collapsed #viewer-header {
+                padding-left: 68px !important;
+            }
+
+            body.sidebar-collapsed.desktop-today-story #viewer-header .viewer-header-inner {
+                padding-left: calc(2.5rem + 48px) !important;
+            }
+
             /* Smart Feeds in Expanded Sidebar (Option 1 aesthetic): clean rounded floating pill rows */
             body:not(.sidebar-collapsed) #smart-feeds-card {
                 display: flex !important;
@@ -3913,7 +3922,8 @@
                 box-sizing: border-box !important;
             }
 
-            body.sidebar-collapsed.desktop-today-cards-wide #timeline-header .timeline-header-inner {
+            body.sidebar-collapsed.desktop-today-cards-wide #timeline-header .timeline-header-inner,
+            body.sidebar-collapsed.desktop-today-story:not(.story-beside) #viewer-header .viewer-header-inner {
                 padding-left: calc(2.5rem + 48px) !important;
             }
 
@@ -5024,6 +5034,65 @@
             }
         }
 
+        /* Jump Bar Wrapper and Nav Chevrons */
+        .brief-jump-wrap {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        .brief-jump-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 25;
+            width: 28px;
+            height: 28px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(22, 27, 34, 0.92);
+            backdrop-filter: blur(8px);
+            color: var(--text-2, #8b949e);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+        }
+
+        .brief-jump-nav:hover {
+            background: rgba(33, 38, 45, 0.98);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        :root:not(.dark) .brief-jump-nav {
+            background: rgba(255, 255, 255, 0.94);
+            border-color: rgba(0, 0, 0, 0.12);
+            color: #57606a;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        :root:not(.dark) .brief-jump-nav:hover {
+            background: #ffffff;
+            color: #1f2328;
+            border-color: rgba(0, 0, 0, 0.25);
+        }
+
+        .brief-jump-nav-left {
+            left: 0;
+        }
+
+        .brief-jump-nav-right {
+            right: 0;
+        }
+
+        .brief-jump-nav.hidden {
+            display: none !important;
+        }
+
         /* Jump Bar — vertically centered between the thin hairline border above and the stories box below */
         .brief-jump-bar {
             position: relative;
@@ -5318,6 +5387,9 @@
             }
         }
 
+        .brief-jump-wrap + .brief-cards-grid,
+        .brief-jump-wrap + .brief-cat-section,
+        .brief-jump-wrap + * > .brief-cat-section:first-child,
         .brief-jump-bar + .brief-cards-grid,
         .brief-jump-bar + .brief-cat-section,
         .brief-jump-bar + * > .brief-cat-section:first-child,
@@ -11459,6 +11531,10 @@
 
             // Every pill goes through briefJumpTo, so the bar slides to the tapped pill.
             container.querySelectorAll('.brief-jump-pill').forEach(p => p.setAttribute('onclick', 'event.preventDefault(); window.briefJumpTo(this);'));
+            const jumpBar = container.querySelector('.brief-jump-bar');
+            if (jumpBar && typeof window.updateBriefJumpNav === 'function') {
+                window.updateBriefJumpNav(jumpBar);
+            }
 
             // Ensure brief header has 0px top padding matching the sidebar pane top spacing
             const bHeader = container.querySelector('.brief-header');
@@ -15681,9 +15757,7 @@
             placeJumpTop();
         }
 
-        // The highlighted pill is the section a pill (or Top) took you to. Scrolling by hand clears it, as it would
-        // point at the wrong section; back at the top the first section is highlighted again. A pill's own smooth
-        // scroll keeps it until it reaches where it was going (or 1.5s, if something stops it short).
+        // The highlighted pill is the section a pill (or Top) took you to.
         function holdJumpHighlight(bar, scroller, top) {
             if (!bar) return;
             bar._jumpTarget = Math.min(Math.max(0, top), scroller.scrollHeight - scroller.clientHeight);
@@ -15701,11 +15775,66 @@
             }
             if (sc.scrollTop < 40) {
                 const first = bar.querySelector('.brief-jump-pill:not(.brief-gone)');
-                if (first && !bar.querySelector('.brief-jump-pill.is-active')) window.centerBriefPill(first);
-            } else {
-                bar.querySelectorAll('.brief-jump-pill.is-active').forEach(p => p.classList.remove('is-active'));
+                if (first && !first.classList.contains('is-active')) {
+                    window.centerBriefPill(first);
+                }
+                return;
+            }
+
+            // Sync active jump pill with category section currently in view as user scrolls
+            const sections = Array.from(sc.querySelectorAll('.brief-cat-section[id^="brief-cat-"]'));
+            const scRect = sc.getBoundingClientRect();
+            let currentSec = null;
+            for (let i = 0; i < sections.length; i++) {
+                const r = sections[i].getBoundingClientRect();
+                if (r.top <= scRect.top + 180) {
+                    currentSec = sections[i];
+                }
+            }
+            if (currentSec) {
+                const slug = currentSec.id.replace(/^brief-cat-/, '');
+                const targetPill = bar.querySelector(`.brief-jump-pill[href="#brief-cat-${CSS.escape(slug)}"]`);
+                if (targetPill && !targetPill.classList.contains('is-active')) {
+                    window.centerBriefPill(targetPill);
+                }
             }
         }, { capture: true, passive: true });
+
+        window.updateBriefJumpNav = function (bar) {
+            if (!bar) return;
+            const wrap = bar.closest('.brief-jump-wrap');
+            if (!wrap) return;
+            const prev = wrap.querySelector('.brief-jump-nav-left');
+            const next = wrap.querySelector('.brief-jump-nav-right');
+            const maxScroll = Math.max(0, bar.scrollWidth - bar.clientWidth);
+            if (maxScroll <= 6) {
+                if (prev) prev.classList.add('hidden');
+                if (next) next.classList.add('hidden');
+                return;
+            }
+            if (prev) prev.classList.toggle('hidden', bar.scrollLeft <= 8);
+            if (next) next.classList.toggle('hidden', bar.scrollLeft >= maxScroll - 8);
+        };
+
+        window.scrollBriefJumpBar = function (delta) {
+            const bar = document.querySelector('.brief-jump-bar');
+            if (!bar) return;
+            bar.scrollBy({ left: delta, behavior: 'smooth' });
+            setTimeout(() => window.updateBriefJumpNav(bar), 350);
+        };
+
+        // Horizontal mouse wheel scrolling for jump bar
+        document.addEventListener('wheel', e => {
+            const bar = e.target.closest?.('.brief-jump-bar');
+            if (!bar) return;
+            if (bar.scrollWidth > bar.clientWidth) {
+                if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                    e.preventDefault();
+                    bar.scrollLeft += e.deltaY;
+                    window.updateBriefJumpNav(bar);
+                }
+            }
+        }, { passive: false });
 
         window.centerBriefPill = function (pill) {
             if (!pill) return;
@@ -15715,14 +15844,12 @@
             pill.classList.add('is-active');
 
             // Compute exact target scrollLeft to center the tapped pill inside the bar
-            let pillLeft = pill.offsetLeft;
-            if (pill.offsetParent !== bar) {
-                const bRect = bar.getBoundingClientRect();
-                const pRect = pill.getBoundingClientRect();
-                pillLeft = (pRect.left - bRect.left) + bar.scrollLeft;
-            }
+            const bRect = bar.getBoundingClientRect();
+            const pRect = pill.getBoundingClientRect();
+            const pillLeft = (pRect.left - bRect.left) + bar.scrollLeft;
             const targetLeft = pillLeft - (bar.clientWidth / 2) + (pill.offsetWidth / 2);
             bar.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+            setTimeout(() => window.updateBriefJumpNav(bar), 300);
         };
 
         // ===== TODAY KNOWS HOW CURRENT IT IS =====
@@ -16454,10 +16581,14 @@
 
             // Sticky Jump Pills (Table of Contents)
             if (categorySections.length > 0) {
-                html += `<div class="brief-jump-bar">`;
+                html += `<div class="brief-jump-wrap">`;
+                html += `<button type="button" class="brief-jump-nav brief-jump-nav-left hidden" onclick="window.scrollBriefJumpBar(-240)" aria-label="Previous categories"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>`;
+                html += `<div class="brief-jump-bar" onscroll="window.updateBriefJumpNav(this)">`;
                 categorySections.forEach((cs, idx) => {
                     html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill${idx === 0 ? ' is-active' : ''}" onclick="event.preventDefault(); window.briefJumpTo(this);">${esc(cs.name)}</a>`;
                 });
+                html += `</div>`;
+                html += `<button type="button" class="brief-jump-nav brief-jump-nav-right hidden" onclick="window.scrollBriefJumpBar(240)" aria-label="More categories"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></button>`;
                 html += `</div>`;
             }
 
@@ -19684,7 +19815,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 503;
+        window.APP_BUILD = 504;
 
         (async function initApp() {
             try {
@@ -20554,7 +20685,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v503';
+const CACHE_NAME = 'rss-reader-v504';
 const APP_SHELL = [
     '/',
     'index.html'
