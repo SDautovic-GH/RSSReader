@@ -2756,6 +2756,13 @@
             border-bottom: none !important;
         }
 
+        /* The desktop's folders are pill rows: no lines between them. */
+        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
+            #feed-list [data-category] {
+                border-bottom: none !important;
+            }
+        }
+
         /* Desktop feed font size + line-height — smart feeds, subscriptions, category folders, and source names */
         #sidebar-pane .smart-feed-btn,
         #sidebar-pane .dynamic-category-text,
@@ -3057,9 +3064,10 @@
             transition: opacity 0.2s ease !important;
         }
 
+        /* The deck's columns (.brief-deck-col) and grid space the sections 20px apart; a margin here doubled it. */
         body.desktop-today-cards-wide #today-column .brief-cat-section {
             margin-top: 0 !important;
-            margin-bottom: 24px !important;
+            margin-bottom: 0 !important;
         }
 
         :root:not(.dark) .brief-cat-section {
@@ -3154,7 +3162,7 @@
             display: flex !important;
             justify-content: flex-end !important;
             align-items: center !important;
-            padding: 4px 14px 12px 14px !important;
+            padding: 4px 14px 4px 14px !important;
             min-height: 44px !important;
             margin: 0 !important;
             border-top: none !important;
@@ -3251,18 +3259,6 @@
             :root:not(.dark) .brief-cat-section .brief-cat-end {
                 background: transparent !important;
                 border-top: none !important;
-            }
-
-            .ai-bullet-actions {
-                opacity: 1 !important;
-                pointer-events: auto !important;
-                margin-left: 6px !important;
-                gap: 2px !important;
-            }
-
-            .ai-bullet-act-btn {
-                width: 28px !important;
-                height: 28px !important;
             }
         }
 
@@ -3828,14 +3824,6 @@
 
             body:not(.sidebar-collapsed) #sidebar-rail-actions .app-header-btn svg {
                 width: 16px !important;
-                height: 16px !important;
-                min-width: 16px !important;
-                min-height: 16px !important;
-                max-width: 16px !important;
-                max-height: 16px !important;
-                flex-shrink: 0 !important;
-                display: block !important;
-            }
                 height: 16px !important;
                 min-width: 16px !important;
                 min-height: 16px !important;
@@ -6575,9 +6563,6 @@
                 font-size: inherit !important;
                 line-height: inherit !important;
             }
-            #reader-view .today-view-switcher {
-                display: none !important;
-            }
             #reader-view .brief-header-logo {
                 display: none !important;
             }
@@ -6736,21 +6721,6 @@
         .dark .segmented button[data-active="true"] {
             background: #4a4a52;
             color: #fff;
-        }
-
-        /* Unified pill segmented switch */
-        .today-view-switcher {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            margin: 10px 0 6px 0 !important;
-            padding: 0 !important;
-        }
-
-        @media (min-width: 901px), (hover: hover) and (pointer: fine) {
-            .today-view-switcher {
-                display: none !important;
-            }
         }
 
         .today-segmented,
@@ -7460,6 +7430,20 @@
 </head>
 
 <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200 ultrawide-centered">
+    <script>
+        // This device's layout before the first paint: Today showed its default 2 columns (and the centred layout,
+        // the open sidebar) for a moment until start-up applied the saved ones. Start-up still applies them, and
+        // sets Settings' controls to match.
+        try {
+            const cols = localStorage.getItem('newsreader_today_cards_columns');
+            if (cols === '1' || cols === '3') {
+                document.body.setAttribute('data-cards-cols', cols);
+                document.documentElement.style.setProperty('--today-cards-cols', cols);
+            }
+            if (localStorage.getItem('newsreader_ultrawide_layout') === 'stretch') document.body.classList.remove('ultrawide-centered');
+            if (localStorage.getItem('newsreader_sidebar_collapsed') === '1') document.body.classList.add('sidebar-collapsed');
+        } catch (e) { }
+    </script>
 
     <!-- SVG Symbol Definitions -->
     <svg xmlns="http://www.w3.org/2000/svg" class="hidden">
@@ -15029,9 +15013,7 @@
             normalizeBriefDOM(col);
             col.scrollTop = keepScroll;
 
-            const deskTodaySwitcher = document.getElementById('desk-today-switcher');
             const deskSavedSwitcher = document.getElementById('desk-saved-switcher');
-            if (deskTodaySwitcher) deskTodaySwitcher.classList.add('hidden');
             if (deskSavedSwitcher) {
                 deskSavedSwitcher.classList.add('hidden');
             }
@@ -15204,8 +15186,7 @@
             normalizeBriefDOM(col);
             col.scrollTop = keepScroll;
 
-            // Switchers: Today and Personal Hub switchers are hidden for feed cards
-            document.getElementById('desk-today-switcher')?.classList.add('hidden');
+            // The Personal Hub switcher is hidden for feed cards
             document.getElementById('desk-saved-switcher')?.classList.add('hidden');
 
             const countEl = document.getElementById('timeline-count');
@@ -17031,8 +17012,6 @@
                     const before = beside && !document.body.classList.contains('desktop-today-story')
                         ? col?.querySelector(cardSel)?.getBoundingClientRect().top : null;
                     document.body.classList.remove('desktop-today-cards-wide');
-                    document.getElementById('viewer-today-switcher')?.classList.add('hidden');
-                    document.getElementById('desk-today-switcher')?.classList.add('hidden');
                     if (window._todayInColumn && !art.isBrief) {
                         document.body.classList.add('desktop-today-story');
                     }
@@ -19815,7 +19794,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 504;
+        window.APP_BUILD = 505;
 
         (async function initApp() {
             try {
@@ -20685,7 +20664,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v504';
+const CACHE_NAME = 'rss-reader-v505';
 const APP_SHELL = [
     '/',
     'index.html'

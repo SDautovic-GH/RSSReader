@@ -12,11 +12,9 @@
 
 ## 1. Welcome to Today
 
-**Today** is a private, calm RSS reader and newsletter briefing tool designed for mobile and desktop workstations. Instead of forcing you to swim through endless unread lists, Today presents a structured daily intelligence workspace of unread stories published in the last 24 hours, categorized strictly by your chosen folders.
+**Today** is a private, calm RSS reader and newsletter reader designed for mobile and desktop workstations. Instead of forcing you to swim through endless unread lists, Today presents a structured daily intelligence workspace of unread stories published in the last 24 hours, categorized strictly by your chosen folders.
 
-Today offers two distinct intelligence experiences via a single-click switcher:
-1. **✦ Briefing View:** An AI-synthesized executive summary highlighting the most critical news and market movements, broken down by folder section with bold headlines and direct `#N` source links.
-2. **▣ Cards View:** A visual magazine card deck clustering multi-outlet coverage into clean cards, customizable in 1, 2, or 3 columns.
+Today is a visual magazine card deck that clusters multi-outlet coverage into clean cards, in 1, 2 or 3 columns. Nothing you read is sent to an AI service.
 
 ---
 
@@ -32,13 +30,6 @@ Today offers two distinct intelligence experiences via a single-click switcher:
 2. If you are a new user, click **Create Account**. Your account gets an independent, private space in the cloud.
 3. Once signed in, all your feeds, folders, read states, and starred stories synchronize seamlessly between your phone, tablet, and desktop.
 
-### 2.3 Setting up the AI Morning Briefing
-To enable the **✦ Briefing** view:
-1. Open **Settings** (gear icon) $\rightarrow$ **AI & Briefings**.
-2. Enter your **Google Gemini API Key** (free from [Google AI Studio](https://aistudio.google.com)).
-3. Enable **Morning Briefing** if you would like your briefing prepared automatically at 5:00 AM local time.
-4. You can also generate or refresh your briefing on demand at any time by clicking **✦ Briefing** in the header.
-
 ---
 
 ## 3. Navigating Today
@@ -49,7 +40,7 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 
 ```
 +---------------------------------------------------------------------------------------+
-|  UNIFIED 2-PANE WORKSTATION (Today, Unread, Personal Hub, Folders & Feeds)            |
+|  UNIFIED 2-PANE WORKSTATION (Unread, Personal Hub, Folders & Feeds)                   |
 +-------------------+-------------------------------------------------------------------+
 |                   |  [Action/Mark Read]      [Centered Switcher / Count]       [Acts] |
 |                   +-------------------------------------------------------------------+
@@ -74,25 +65,21 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 +-------------------+-------------------------------------------------------------------+
 ```
 
-#### Dual Intelligence Views: Briefing vs. Cards
-* **✦ Briefing View:** 
-  Presents a concise, executive memo generated from your unread stories. Each bullet point begins with a bold takeaway and concludes with a clickable `#N` reference tag linking directly to the full story.
-* **▣ Cards View (Category Cards):** 
+#### Today's Cards
+* **Category Cards:** 
   Presents your stories grouped into **unified Category Cards** (one clean card container per folder), eliminating the visual noise of dozens of fragmented boxes.
   - **Inline Story Controls:** Each story row features direct quick controls on its source line: **Mark Read** (checkmark icon with a smooth dismiss collapse animation) and **More options** (`...`), which has Read Later, Save, Share and Open Original.
   - **Immediate Unread-Only Triage:** As soon as you mark a story read in Today or Unread, it animates and immediately vanishes from view so only unread stories are visible.
   - **Auto-Disappear on Return:** When you open a story in the reader and return via Back, `b`, or `Escape`, the story you just read disappears immediately, and the next unread story takes its place at the same height on the screen. Categories with zero unread stories cleanly hide.
   - **Columns:** Choose between 1, 2, or 3 columns in **Settings → Reading & Display**.
-* **Instant Switching:** 
-  Use the segmented button in the top bar or press `1` for Briefing and `2` for Cards.
 
 #### Personal Hub Cards Workstation (`Read Later`, `Saved`, `History`)
 * Clicking `Read Later`, `Saved`, or `History` in the sidebar opens into the full-width cards workstation in `#today-column`.
-* Features an absolute-centered 3-way segmented switcher in the timeline header: `[ 🔖 Read Later ] [ ⭐ Saved ] [ ⏱️ History ]`.
+* On a computer you move between them in the sidebar; on the phone a sticky 3-way switcher sits at the top: `[ 🔖 Read Later ] [ ⭐ Saved ] [ ⏱️ History ]`.
 * **Durable Story Preservation:** Unlike the unread inbox, stories in your Personal Hub are permanent reading lists and archives. Stories remain visible regardless of read state and are never auto-hidden by background sweeps.
 
 #### Unread, Subscription Folders & Single Feeds
-* **Unread (`'all'`):** Renders all unread stories across subscriptions in the cards workstation, grouped by category folder with Category Jump Bar pills (`[Top Stories] [Technology]...`).
+* **Unread:** Today and Unread are one view. Unread at the top of the sidebar opens Today: Top Stories first, then your folders' unread stories, with the Category Jump Bar (`[Top Stories] [Technology]...`), Mark Read and Undo.
 * **Subscription Folders (`setCategoryFilter`):** Opening any folder (e.g., `Technology`) partitions the stories by **Publication Source** (`Ars Technica`, `The Verge`, `Wired`), complete with Outlet Jump Bars to hop directly between news sources.
 * **Single Feeds (`setSourceFilter`):** Displays a focused cards stream for that publication with *"Mark Feed Read"*.
 
@@ -108,12 +95,16 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 * **Full page** (the default) opens each story on its own, as before.
 
 #### Collapsing the Sidebar
-* Press `[`, or click the app logo at the top left (it shows a panel icon when you point at it), to fold the sidebar into a narrow rail. The rail keeps Today, Unread, Read Later, Saved and History as icons, plus Refresh and Settings at the bottom; press `[` or click the logo again to open it.
+* Press `[`, or click the app logo at the top left (it shows a panel icon when you point at it), to fold the sidebar into a narrow rail. The rail keeps Unread, Read Later, Saved and History as icons with short labels under them, and Refresh and Settings stay at the bottom, where they also sit when the sidebar is open; press `[` or click the logo again to open it.
 * Unread keeps its count on the rail, as a small badge under the icon. Read Later and Saved show no count; they dim when empty.
 * Today remembers the choice on each device.
 
+#### The Jump Bar (Desktop)
+* The jump bar under Today's heading takes you straight to a section. When its categories don't all fit, ‹ › arrows at its ends scroll it, or scroll it with the mouse wheel.
+* The highlighted category is the one you're reading: it follows you as you scroll.
+
 #### Triage from the Keyboard (Desktop)
-* In any card view (Today, Unread, a folder or feed, Read Later, Saved, History), press `j` / `k` to move a highlight from card to card; the page scrolls only when the card isn't fully on screen.
+* In any card view (Unread, a folder or feed, Read Later, Saved, History), press `j` / `k` to move a highlight from card to card; the page scrolls only when the card isn't fully on screen.
 * On the highlighted card: `Enter` opens it, `r` marks it read (the highlight moves to the next card), `s` saves it, `l` adds it to Read Later, `o` opens the original site. `Esc` lets go of the highlight.
 * `Tab` also reaches every headline; `Enter` on a focused headline opens it. The highlight shows only while you use the keyboard and goes when you use the mouse.
 * After a story, Back (`b` or `Esc`) returns the highlight to the card Today lands on.
@@ -132,8 +123,8 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 #### Wide Screen & Ultrawide Layout
 * On wide or ultrawide monitors ($> 1720px$ width, such as 1440p, 4K, or 34-inch/49-inch ultrawides), Today integrates seamlessly with the browser window at 100% full bleed—without artificial outer letterboxing bars or black margins.
 * Rather than scattering header controls across multiple thousands of pixels, Today centers the header controls directly above the content reading canvas:
-  * **Today Cards View:** `Mark Read` aligns with the left edge of card column 1, the `Briefing / Cards` switcher sits in the horizontal center, and `Search` aligns with the right edge of the card deck.
-  * **Today Briefing & Story View:** Back button aligns with the left margin of the reading text, the switcher sits in the center, and the article toolbar actions align with the right margin.
+  * **Today Cards View:** `Mark Read` aligns with the left edge of card column 1, and `Search` aligns with the right edge of the card deck.
+  * **Story View:** Back button aligns with the left margin of the reading text, and the article toolbar actions align with the right margin.
 * This eliminates the neck-straining "tennis match" effect where controls are stranded thousands of pixels away from the reading column.
 * You can switch between **Centered Content (Recommended)** and **Full Width Stretch** (the sidebar stays at the left and the cards fill the window) under **Settings → Appearance → Wide Screen Layout**.
 
@@ -148,12 +139,12 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 
 ### 3.2 Mobile Interface
 * **The Floating Bottom Tab Bar:** A detached floating glass capsule (YouTube-style, 42px compact height) with four pure-icon tabs:
-  * **Today:** Your curated 24-hour brief with a live unread badge counter. **Smart Tap:** When scrolled down into cards or briefing, tapping Today smoothly scrolls you to the top; tapping again toggles between Cards and Briefing view.
+  * **Today:** Your curated 24-hour brief with a live unread badge counter. **Smart Tap:** When scrolled down, tapping Today smoothly scrolls you to the top.
   * **Library:** Dedicated exclusively to managing your Folders & Subscriptions (clutter-free, without redundant smart feed lists).
   * **Bookmarks (Personal Hub):** 1-tap access to your reading queue with a sticky 3-way segmented control at the top of the timeline: `[ 🔖 Read Later ]  [ ⭐ Saved ]  [ ⏱️ History ]`. Tapping the Bookmarks tab cycles between these views or scrolls to the top.
   * **Search:** Instant full-text search across all saved, unread, and archived stories.
   * **Visual Style:** YouTube-style ultra-translucent frosted glass capsule (`-webkit-backdrop-filter: blur(20px) saturate(180%)`) with GPU acceleration, a soft translucent tint (`rgba(18, 18, 22, 0.25)`), an elevated inner capsule highlight around the active tab, and a pure bright white icon (`#ffffff`). Zero text clutter.
-* **Back to the Top:** After you tap a category in the jump bar, a **Top** button appears at the bottom right (on a computer, an up arrow just right of the stories, mirroring the sidebar's Settings button on their left). Tap it to go back to the top. The category you jumped to stays highlighted in the jump bar until you scroll yourself; it goes away once you're at the top.
+* **Back to the Top:** After you tap a category in the jump bar, a **Top** button appears at the bottom right (on a computer, an up arrow just right of the stories, mirroring the sidebar's Settings button on their left). Tap it to go back to the top; it goes away once you're at the top. The jump bar highlights the category you're reading as you scroll.
 * **The Source Line:** On the phone each story starts with its source or author and a short time ("19h", "3d", "now"), leaving the name as much room as possible; on a computer the time reads "19h ago".
 * **Mark Read on Every Story:** The checkmark sits on each story's source line next to `...`, in Today and in lists. Tap it to mark a story read (Undo appears for 5 seconds, as after a swipe). Read Later, Save, Share and Open Original are in the `...` menu. Swiping still works.
 * **Header Controls:**
@@ -167,15 +158,13 @@ Today replaces the cramped 3-pane layout entirely with a unified, modern **2-Pan
 
 | Shortcut | Context | Function |
 | :---: | :--- | :--- |
-| `1` | Anywhere in Today | Switch to **✦ Briefing View** |
-| `2` | Anywhere in Today | Switch to **▣ Cards View** |
 | `t` / `T` | Anywhere | Jump directly to Today |
 | `[` | Desktop | Show or hide the sidebar (rail) |
 | `j` / `↓` | Cards / Reader | Cards: highlight the next card; Reader: next story |
 | `k` / `↑` | Cards / Reader | Cards: highlight the previous card; Reader: previous story |
 | `Enter` | Cards | Open the highlighted story |
-| `b` / `B` | While reading a story | Return to Today Cards / Briefing |
-| `Escape` | While reading a story | Close story and return to Today Cards / Briefing |
+| `b` / `B` | While reading a story | Return to Today |
+| `Escape` | While reading a story | Close the story and return to Today |
 | `r` / `R` | Cards / Story | Mark the highlighted card read, or toggle the open story's read status |
 | `s` / `S` | Cards / Story | Save or unsave |
 | `l` / `L` | Cards / Story | Add to or remove from Read Later |
@@ -213,7 +202,7 @@ Keep your primary email inbox clean by sending newsletters straight to Today:
 
 ## 6. Calm Reading & Backlog Triage
 
-### 6.1 The Today Briefing
+### 6.1 Today
 * **Top Stories:** When "Rank stories" is enabled in Settings, the 5 most authoritative and consensus-driven stories appear at the top.
 * **Folder Sections:** Your folders follow in the exact order you set in Following.
 * **Story Clustering:** When multiple outlets cover the exact same event, Today groups them into one clean card with an "Also from..." footer.
@@ -223,7 +212,7 @@ Keep your primary email inbox clean by sending newsletters straight to Today:
 * **Auto-Disappear on Return:** Reading any story in the reader automatically marks it read and dismisses it from Today Cards when you return, keeping your view focused strictly on remaining unread news.
 * **Category Mark Read:** Tap the checkmark in any Category Card header to mark the entire category read and dismiss the card.
 * **Mark N Read:** At the bottom of each folder section, tap **Mark N Read** to mark the visible cards read and smoothly reveal the next section.
-* **Mark All Read in Folders:** Tap the blue pill at the very bottom of Today when you've finished your briefing.
+* **Mark All Read in Folders:** Tap the blue pill at the very bottom of Today when you've finished Today.
 * **5-Second Undo:** Accidental taps can be undone immediately using the floating Undo bar.
 
 ### 6.3 Triaging Backlogs ("Older than 24 Hours")
@@ -242,8 +231,7 @@ Open **Settings** (gear icon) to tailor your experience:
 * **Wide Screen Layout (Desktop):** Toggle between **Centered Content (Recommended)** (centers header controls directly above the content reading column) and **Full Width Stretch**.
 * **Cards View Columns (Desktop):** Select between **1 Column** (focused reading), **2 Columns** (magazine layout), or **3 Columns** (ultra-wide monitor layout).
 * **Open stories (Desktop, Settings → Stories):** **Full page** or **Beside the list** (see 3.1).
-* **AI & Briefings:** Configure your Gemini API key, customize briefing synthesis, and enable automatic 5:00 AM Morning Briefing preparation.
 * **Appearance & Theme:** Switch between Dark and Light mode, or choose your preferred font.
 * **Text Size & Zoom:** Adjust App Zoom, Section Heading Size, Article List title size, and reader line spacing independently for your phone and desktop.
 * **Today Controls:** **Pictures** (**Large**: a wide picture under each story; **Small**: a square at its right, so more stories fit on the screen; **None**: no pictures and no picture downloads), the number of stories per category (5 to 50, or All), and importance ranking on or off.
-* **Muted Words:** Filter out topics you wish to avoid; muted articles are silently excluded from unread counts and briefings.
+* **Muted Words:** Filter out topics you wish to avoid; muted articles are silently excluded from unread counts and Today.
