@@ -182,6 +182,44 @@
             display: block;
         }
 
+        /* Content layout & responsiveness: fixed-width tables and boxes fit the reader instead
+           of running off the edge on mobile devices. */
+        .article-content table {
+            width: 100% !important;
+            max-width: 100% !important;
+            table-layout: auto !important;
+        }
+
+        .article-content td,
+        .article-content th {
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+        }
+
+        .article-content [width],
+        .article-content [style*="width"] {
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box;
+        }
+
+        /* A fixed width on a box (not a table, cell or picture) holds its cell, and so the table, at that width. */
+        .article-content [style*="width"]:not(table):not(td):not(th):not(img):not(figure):not(picture) {
+            width: auto !important;
+        }
+
+        .article-content {
+            overflow-wrap: anywhere;
+        }
+
+        /* Buttons set never to wrap (Substack's "Give the gift of Paul Krugman's Substack", ~350px) held a whole
+           story at their width, wider than the phone: their text wraps instead. */
+        .article-content [style*="nowrap"] {
+            white-space: normal !important;
+            max-width: 100%;
+        }
+
         /* An email newsletter (the bridge sends the whole email) is laid out in fixed-width tables and boxes for a
            600-700px window: they fit the reader instead (on the phone they ran off the right edge). */
         .article-content.is-email table {
@@ -1131,14 +1169,14 @@
         /* ===== MOBILE LAYOUT ===== */
         @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
 
-            /* The body anchors the tab bar and its popovers (absolute, not fixed: standalone WebKit
-               mis-anchors fixed elements under the 115% Page Zoom); lockMobileLayoutHeight() pins its
-               height. Only the bar uses that height. The panes keep 100dvh, so content still slides
-               under the status bar. */
+            /* The body anchors mobile layout and popovers; lockMobileLayoutHeight() pins its
+               height safely. The panes keep 100dvh, so content still slides under the status bar.
+               overflow: hidden guarantees the document never scrolls vertically or horizontally. */
             body {
                 position: relative;
                 height: 100vh;
                 height: 100dvh;
+                overflow: hidden;
             }
 
             /* On mobile, pull-to-refresh replaces the explicit refresh button. */
@@ -1182,6 +1220,10 @@
 
             #mobile-tab-bar {
                 display: flex !important;
+                position: fixed !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
             }
 
             #sidebar-pane.mobile-active {
@@ -1447,12 +1489,10 @@
         }
 
         /* ===== YOUTUBE-STYLE FLOATING GLASS CAPSULE BOTTOM BAR ===== */
-        /* Absolute in the body, NOT fixed: under 115% Safari Page Zoom, standalone
-           WebKit mis-anchors the fixed viewport after the lightbox closes. The body
-           never scrolls, so absolute acts like fixed. */
+        /* Fixed to the viewport bottom so it remains cleanly anchored on all mobile browsers and zoom levels. */
         #mobile-tab-bar {
             display: none;
-            position: absolute;
+            position: fixed;
             left: 0;
             right: 0;
             bottom: 0;
@@ -11915,6 +11955,11 @@
             '[class*="newsletter-signup" i]', '[class*="email-signup" i]', '[class*="newsletter-promo" i]',
             '[class*="newsletter-box" i]', '[class*="newsletter-cta" i]', '[class*="newsletter-form" i]',
             '[class*="subscribe-box" i]', '[class*="subscribe-card" i]',
+            '[class*="subscription-widget" i]', '[class*="subscribe-widget" i]',
+            '[class*="button-wrapper" i]', '[class*="captioned-button" i]',
+            '[class*="image-link-expand" i]', '[class*="email-ufi" i]',
+            '.subscription-widget-wrap-editor', '.subscription-widget',
+            '.button-wrapper', '.captioned-button-wrap', '.fake-input-wrapper',
             '[class*="inline-recirc" i]', '[class*="article-recirc" i]', '[class*="related-content" i]',
             '[class*="related-stories" i]', '[class*="trending-articles" i]', '[data-module*="Recirc" i]',
             '.HighlightShare-hidden', '[class*="HighlightShare" i]', '[class*="social-share" i]',
@@ -11972,10 +12017,13 @@
             });
         }
 
-        // A story from the email newsletter bridge: the whole email, as its sender laid it out.
+        // A story from the email newsletter bridge or a Substack feed: formatted as newsletter prose.
         function isNewsletterStory(article) {
             return !!article && ((article.feedUrl || '').includes('newsletter')
-                || (article.link || '').includes('newsletter-bridge') || (article.link || '').includes('workers.dev/item/'));
+                || (article.feedUrl || '').includes('substack.com')
+                || (article.link || '').includes('newsletter-bridge')
+                || (article.link || '').includes('substack.com')
+                || (article.link || '').includes('workers.dev/item/'));
         }
 
         async function attemptFullContentLoad(article) {
@@ -17682,8 +17730,8 @@
         };
 
         // Phone: the tab bar steps aside while a story scrolls down and returns on a small scroll up, near
-        // the top, or at the end (see tabbar-tucked). isMobile() only inside the handler: never at top
-        // level (TDZ).
+        // the top, or at the end (see tabbar-tucked). Short stories with minimal scroll range never tuck.
+        // isMobile() only inside the handler: never at top level (TDZ).
         (function () {
             const rv = document.getElementById('reader-view');
             if (!rv) return;
@@ -17693,7 +17741,8 @@
                 const art = window.currentArticle;
                 const reading = isMobile() && window._mobilePane === 'viewer' && art && !art.isBrief;
                 const body = document.body;
-                if (!reading || y < 60 || y + rv.clientHeight >= rv.scrollHeight - 40) {
+                const maxScroll = rv.scrollHeight - rv.clientHeight;
+                if (!reading || maxScroll < 80 || y < 60 || y + rv.clientHeight >= rv.scrollHeight - 40) {
                     body.classList.remove('tabbar-tucked');
                     lastY = y;
                 } else if (y - lastY > 8) {
@@ -17780,8 +17829,11 @@
                 }
                 var s = (window.visualViewport && window.visualViewport.scale) || 1;
                 s = Math.min(Math.max(s, 1), 3);         // clamp to valid zoom range
-                if (s > maxScale) maxScale = s;          // PURE MAX: first clean read wins, dips ignored
-                const glassH = Math.round(Math.max(screen.width, screen.height) / (maxScale || 1));
+                if (s <= 1.05) maxScale = 1;             // reset baseline on un-zoom
+                if (s > maxScale && s <= 1.25) maxScale = s; // accept verified page zoom only, ignore large pinch/input spikes
+                let glassH = Math.round(Math.max(screen.width, screen.height) / (maxScale || 1));
+                const minH = Math.max(window.innerHeight || 0, Math.round((window.visualViewport && window.visualViewport.height) || 0));
+                if (glassH < minH) glassH = minH;        // never shrink body below visible viewport
                 if (glassH > 0) {
                     document.body.style.height = glassH + 'px';
                     window._lockState.h = glassH;
@@ -19805,7 +19857,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 506;
+        window.APP_BUILD = 507;
 
         (async function initApp() {
             try {
@@ -20675,7 +20727,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v506';
+const CACHE_NAME = 'rss-reader-v507';
 const APP_SHELL = [
     '/',
     'index.html'
