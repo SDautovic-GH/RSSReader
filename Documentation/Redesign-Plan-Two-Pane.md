@@ -5,7 +5,7 @@
 | Project | RSS Reader Web Application (`today.dautovic.com`) |
 | Document | Redesign Plan & Implementation Record — Unified Two-Pane Workstation |
 | Target File | `/Users/samirdautovic/Developer/RSSReader/index.html` |
-| Current State | **Active — Build 494** deployed to production via Cloudflare Workers CI |
+| Current State | **Active — Build 495** deployed to production via Cloudflare Workers CI |
 | Date | 2026-11-01 |
 | Status | Complete & Deployed |
 
@@ -258,6 +258,7 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 | **Card View Action Breathing Room (Build 462)** | Scroll to end of Cards view. | "Mark All Read" button maintains 36px separation from story card borders. | PASS |
 | **Continuous Edge-to-Edge Hairline Border (Build 463)** | Inspect header divider border on wide display. | Hairline divider spans continuously from 0px to 100vw across both left and right panes. | PASS |
 | **Equal 24px Top Padding Alignment (Build 463)** | Compare top offset of sidebar navigation items vs right pane cards. | Both panes start at identical 24px (`1.5rem`) vertical offset beneath the 73px header. | PASS |
+| **Floating Editorial Stream Right Pane Redesign (Build 495)** | Inspect Today cards, Unread, and category sections across dark/light modes and 1-col/2-col layouts. | Eliminated all enclosing card boxes (.brief-cat-section), category header underlines, story divider lines, and footer bands; jump pills converted to borderless ghost pills; story cards feature 14px rounded soft squircle hover; computed borders verified at 0px via CDP; APP_BUILD bumped to 495 with cache `rss-reader-v495`. | PASS |
 | **Floating Squircles Rail & Clean Sidebar Redesign (Build 494)** | Inspect collapsed rail and expanded sidebar across dark and light modes. | Eliminated rigid outer card container and horizontal ladder hairline dividers from `#smart-feeds-card`; collapsed rail features centered 44×44px floating squircles with unread badge floating on top-right shoulder and 44×44px bottom actions; expanded sidebar renders clean floating rounded rows with subtle hover and active tint; centered 10px on each side of 64px rail column next to right pane; verified AST and empirical CDP metrics; APP_BUILD bumped to 494 with cache `rss-reader-v494`. | PASS |
 | **Settings Layout Preference Controls Restoration (Build 493)** | Click Settings gear button on desktop and tap Settings in following tab on mobile. | Settings modal opens cleanly without errors; `syncLayoutPrefControls`, `getTodayCardsColumns`, `applyTodayCardsColumns`, `saveTodayCardsColumns`, `getUltrawideLayout`, `applyUltrawideLayout`, and `saveUltrawideLayout` are properly restored and functional; APP_BUILD bumped to 493 with cache `rss-reader-v493`. | PASS |
 | **AI Features & Dead Code Elimination (Build 492)** | Inspect Today header, Category card headers, Reader actions, Settings modal, and code base. | All Gemini AI features (Today Executive Briefing, Category Recaps, Article TL;DR, auto-morning briefings, and Gemini API settings) and associated dead scaffolding/CSS/JS completely removed; Today is 100% native Cards; "Briefing / Cards" header switchers purged; shortcuts cleaned; 0 console errors; APP_BUILD bumped to 492 with cache `rss-reader-v492`. | PASS |
