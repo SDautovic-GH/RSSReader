@@ -2780,7 +2780,8 @@
             border: none !important;
             transition: color 0.15s ease, background-color 0.15s ease;
             cursor: pointer !important;
-            width: 100% !important;
+            width: auto !important;
+            flex: 1 1 auto !important;
             box-sizing: border-box !important;
         }
 
@@ -3501,19 +3502,52 @@
             }
 
             body.sidebar-collapsed {
-                --sidebar-w: 64px;
+                --sidebar-w: 72px;
+            }
+
+            /* YouTube-style brand anchor: keep [Logo] Today visible when sidebar is collapsed */
+            body.sidebar-collapsed #sidebar-pane {
+                overflow: visible !important;
             }
 
             body.sidebar-collapsed #sidebar-header {
-                padding: 0 !important;
-                justify-content: center !important;
+                padding: 0 0 0 16px !important;
+                justify-content: flex-start !important;
+                width: 140px !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                z-index: 35 !important;
+                background: transparent !important;
+                border-bottom: none !important;
+                box-shadow: none !important;
             }
 
-            body.sidebar-collapsed #sidebar-header > div:first-child > :not(#sidebar-toggle),
+            body.sidebar-collapsed #sidebar-header > div:first-child {
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+            }
+
+            body.sidebar-collapsed #sidebar-header .app-title {
+                display: block !important;
+                font-size: 17px !important;
+                font-weight: 700 !important;
+            }
+
             body.sidebar-collapsed #sidebar-header > div:last-child,
             body.sidebar-collapsed #folders-section-wrap,
             body.sidebar-collapsed #unread-older-note {
                 display: none !important;
+            }
+
+            /* Timeline header flows cleanly past the "Today" brand anchor */
+            body.sidebar-collapsed:not(.desktop-today-cards-wide) #timeline-header {
+                padding-left: 68px !important;
+            }
+
+            body.sidebar-collapsed.desktop-today-cards-wide #timeline-header .timeline-header-inner {
+                padding-left: calc(2.5rem + 36px) !important;
             }
 
             /* Smart Feeds in Expanded Sidebar (Option 1 aesthetic): clean rounded floating rows */
@@ -3536,12 +3570,20 @@
                 font-weight: 600 !important;
             }
 
-            /* Option 1: Floating Squircles in Collapsed Rail */
+            body:not(.sidebar-collapsed) .label-short {
+                display: none !important;
+            }
+
+            body:not(.sidebar-collapsed) .label-full {
+                display: inline !important;
+            }
+
+            /* YouTube-style Mini-Rail in Collapsed Mode (72px wide column, centered items with micro-labels) */
             body.sidebar-collapsed #smart-feeds-card {
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                gap: 6px !important;
+                gap: 4px !important;
                 padding: 0 !important;
                 margin: 0 !important;
             }
@@ -3549,23 +3591,65 @@
             body.sidebar-collapsed #sidebar-pane > .overflow-y-auto {
                 padding-left: 0 !important;
                 padding-right: 0 !important;
+                margin-top: 74px !important;
+            }
+
+            body:not(.sidebar-collapsed) #sidebar-pane > .overflow-y-auto {
+                margin-top: 0 !important;
             }
 
             body.sidebar-collapsed .smart-feed-btn {
-                width: 44px !important;
-                height: 44px !important;
-                min-height: 44px !important;
+                width: 60px !important;
+                height: 56px !important;
+                min-height: 56px !important;
                 border-radius: 12px !important;
                 border: none !important;
                 border-bottom: none !important;
                 padding: 0 !important;
                 margin: 0 auto !important;
                 display: flex !important;
+                flex-direction: column !important;
                 align-items: center !important;
                 justify-content: center !important;
                 position: relative !important;
-                flex-direction: row !important;
                 transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease !important;
+            }
+
+            body.sidebar-collapsed .smart-feed-main {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 100% !important;
+            }
+
+            body.sidebar-collapsed .smart-feed-main > svg.smart-feed-icon {
+                width: 20px !important;
+                height: 20px !important;
+                margin: 0 0 3px 0 !important;
+                flex-shrink: 0 !important;
+            }
+
+            body.sidebar-collapsed .smart-feed-text {
+                font-size: 10.5px !important;
+                line-height: 1.15 !important;
+                letter-spacing: -0.01em !important;
+                font-weight: 500 !important;
+                text-align: center !important;
+                white-space: nowrap !important;
+                display: block !important;
+            }
+
+            body.sidebar-collapsed .smart-feed-btn.active-item .smart-feed-text {
+                font-weight: 600 !important;
+            }
+
+            body.sidebar-collapsed .label-full {
+                display: none !important;
+            }
+
+            body.sidebar-collapsed .label-short {
+                display: inline !important;
             }
 
             body.sidebar-collapsed .smart-feed-btn:hover:not(.active-item) {
@@ -3587,11 +3671,11 @@
                 color: var(--accent) !important;
             }
 
-            /* Floating badge on top-right shoulder */
+            /* Floating badge on top-right shoulder of Unread item */
             body.sidebar-collapsed .smart-feed-btn .feed-badge {
                 position: absolute !important;
-                top: 2px !important;
-                right: 2px !important;
+                top: 4px !important;
+                right: 8px !important;
                 min-width: 17px !important;
                 height: 15px !important;
                 padding: 0 4px !important;
@@ -3611,31 +3695,14 @@
                 box-shadow: 0 0 0 2px #ffffff !important;
             }
 
-            /* The label is a bare text node beside the icon: no font size hides it, the icon keeps its size. */
-            body.sidebar-collapsed .smart-feed-btn > span:first-child {
-                font-size: 0 !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-            }
-
-            body.sidebar-collapsed .smart-feed-btn > span:first-child > svg {
-                margin-right: 0 !important;
-                width: 20px !important;
-                height: 20px !important;
-            }
-
-            body.sidebar-collapsed .smart-feed-btn > span + span {
-                gap: 0 !important;
-            }
-
-            /* Rail actions centered with 44px squircles matching top */
+            /* Bottom Action Dock: Collapsed Rail (Centered 44px squircles) */
             body.sidebar-collapsed #sidebar-rail-actions {
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
                 gap: 6px !important;
                 padding: 12px 0 16px !important;
+                width: 72px !important;
             }
 
             body.sidebar-collapsed #sidebar-rail-actions .app-header-btn {
@@ -3655,6 +3722,64 @@
 
             :root:not(.dark) body.sidebar-collapsed #sidebar-rail-actions .app-header-btn:hover {
                 background-color: rgba(0, 0, 0, 0.06) !important;
+            }
+
+            body.sidebar-collapsed #sidebar-rail-actions .rail-action-label {
+                display: none !important;
+            }
+
+            /* Bottom Action Dock: Expanded Sidebar (Pinned elegant dock with Refresh & Settings) */
+            body:not(.sidebar-collapsed) #sidebar-rail-actions {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                padding: 10px 14px !important;
+                border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+                gap: 8px !important;
+                background: inherit !important;
+            }
+
+            :root:not(.dark) body:not(.sidebar-collapsed) #sidebar-rail-actions {
+                border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+            }
+
+            body:not(.sidebar-collapsed) #sidebar-rail-actions .app-header-btn {
+                flex: 1 !important;
+                height: 34px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 6px !important;
+                border-radius: 8px !important;
+                font-size: 12px !important;
+                font-weight: 500 !important;
+                color: var(--text-3, #94a3b8) !important;
+                background: rgba(255, 255, 255, 0.03) !important;
+                transition: background-color 0.15s ease, color 0.15s ease !important;
+            }
+
+            :root:not(.dark) body:not(.sidebar-collapsed) #sidebar-rail-actions .app-header-btn {
+                color: #57606a !important;
+                background: rgba(0, 0, 0, 0.03) !important;
+            }
+
+            body:not(.sidebar-collapsed) #sidebar-rail-actions .app-header-btn:hover {
+                color: var(--text-1, #f0f6fc) !important;
+                background: rgba(255, 255, 255, 0.08) !important;
+            }
+
+            :root:not(.dark) body:not(.sidebar-collapsed) #sidebar-rail-actions .app-header-btn:hover {
+                color: #1f2328 !important;
+                background: rgba(0, 0, 0, 0.06) !important;
+            }
+
+            body:not(.sidebar-collapsed) #sidebar-rail-actions .app-header-btn svg {
+                width: 16px !important;
+                height: 16px !important;
+            }
+
+            body:not(.sidebar-collapsed) #sidebar-rail-actions .rail-action-label {
+                display: inline !important;
             }
         }
 
@@ -3728,6 +3853,10 @@
                 padding-left: 2.5rem !important;
                 padding-right: 2.5rem !important;
                 box-sizing: border-box !important;
+            }
+
+            body.sidebar-collapsed.desktop-today-cards-wide #timeline-header .timeline-header-inner {
+                padding-left: calc(2.5rem + 48px) !important;
             }
 
             /* Beside the list: header inner matches the 760px story column and its padding */
@@ -7392,33 +7521,19 @@
                             class="app-subtitle text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap truncate mt-0.5 phone-only"></span>
                     </div>
                 </div>
-                <div class="flex space-x-1">
-                    <button id="header-refresh-btn" onclick="refreshAll()"
-                        class="app-header-btn p-1.5 rounded-lg text-gray-500"
-                        title="Refresh Feeds">
-                        <svg class="h-[22px] w-[22px]">
-                            <use href="#icon-refresh" />
-                        </svg>
-                    </button>
-                    <button id="header-edit-feeds-btn" onclick="openFeedManager()"
+                <div class="flex space-x-1 phone-only">
+                    <button id="phone-edit-feeds-btn" onclick="openFeedManager()"
                         class="app-header-btn p-1.5 rounded-lg text-gray-500" title="Edit feeds"
                         aria-label="Edit feeds">
                         <svg class="h-[22px] w-[22px]">
                             <use href="#icon-pencil" />
                         </svg>
                     </button>
-                    <button id="header-add-feed-btn" onclick="openAddFeedModal()"
+                    <button id="phone-add-feed-btn" onclick="openAddFeedModal()"
                         class="app-header-btn p-1.5 rounded-lg text-gray-500" title="Add Feed"
                         aria-label="Add Feed">
                         <svg class="h-[22px] w-[22px]">
                             <use href="#icon-plus" />
-                        </svg>
-                    </button>
-                    <button onclick="toggleSettings()"
-                        class="app-header-btn p-1.5 rounded-lg text-gray-500"
-                        title="Settings">
-                        <svg class="h-[22px] w-[22px]">
-                            <use href="#icon-settings" />
                         </svg>
                     </button>
                 </div>
@@ -7430,75 +7545,110 @@
                     <button id="feed-btn-today" onclick="openToday()"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-3 text-gray-400 desk-only"
                         title="Live brief of your unread stories">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3 flex-shrink-0" fill="none"
+                        <span class="smart-feed-main flex items-center">
+                            <svg class="w-4 h-4 mr-3 flex-shrink-0 smart-feed-icon" fill="none"
                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                                 viewBox="0 0 24 24">
                                 <use href="#icon-sun" />
-                            </svg> Today</span>
+                            </svg>
+                            <span class="smart-feed-text">Today</span>
+                        </span>
                     </button>
                     <button id="feed-btn-all" onclick="setSmartFeed('all')" title="Unread"
                         oncontextmenu="showFolderContextMenu(event,'smart','all')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-3 active-item desk-only">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3" fill="currentColor"
+                        <span class="smart-feed-main flex items-center">
+                            <svg class="w-4 h-4 mr-3 smart-feed-icon" fill="currentColor"
                                 viewBox="0 0 20 20">
                                 <circle cx="10" cy="10" r="6" />
-                            </svg> Unread</span>
+                            </svg>
+                            <span class="smart-feed-text">Unread</span>
+                        </span>
                         <span class="flex items-center gap-2"><span id="unread-older-note" class="unread-older-note"></span><span id="badge-all" class="feed-badge mob-unread-count text-gray-400 hidden">0</span></span>
                     </button>
                     <button id="feed-btn-read-later" onclick="setSmartFeed('read-later')" title="Read Later"
                         oncontextmenu="showFolderContextMenu(event,'smart','read-later')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-3 text-gray-400">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3">
+                        <span class="smart-feed-main flex items-center">
+                            <svg class="w-4 h-4 mr-3 smart-feed-icon">
                                 <use href="#icon-bookmark" />
-                            </svg> Read Later</span>
+                            </svg>
+                            <span class="smart-feed-text"><span class="label-full">Read Later</span><span class="label-short">Later</span></span>
+                        </span>
                     </button>
                     <button id="feed-btn-saved" onclick="setSmartFeed('saved')" title="Saved"
                         oncontextmenu="showFolderContextMenu(event,'smart','saved')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-3 text-gray-400">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3">
+                        <span class="smart-feed-main flex items-center">
+                            <svg class="w-4 h-4 mr-3 smart-feed-icon">
                                 <use href="#icon-star" />
-                            </svg> Saved</span>
+                            </svg>
+                            <span class="smart-feed-text">Saved</span>
+                        </span>
                     </button>
                     <button id="feed-btn-recently-read" onclick="setSmartFeed('recently-read')" title="History"
                         oncontextmenu="showFolderContextMenu(event,'smart','recently-read')"
                         class="smart-feed-btn dynamic-category-text w-full flex items-center justify-between px-3 text-gray-400">
-                        <span class="flex items-center"><svg class="w-4 h-4 mr-3">
+                        <span class="smart-feed-main flex items-center">
+                            <svg class="w-4 h-4 mr-3 smart-feed-icon">
                                 <use href="#icon-history" />
-                            </svg> History</span>
+                            </svg>
+                            <span class="smart-feed-text">History</span>
+                        </span>
                     </button>
                 </div>
-                <!-- Subscriptions Directory with Collapse/Expand -->
+                <!-- Subscriptions Directory with Collapse/Expand & Contextual Actions -->
                 <div id="folders-section-wrap" class="space-y-2 pt-2">
-                    <button id="toggle-folders-section-btn" type="button" onclick="window.toggleFoldersSection()"
-                        class="dynamic-category-text flex items-center justify-between w-full px-2 py-1 text-gray-400 hover:text-gray-200 font-semibold select-none rounded-lg transition-colors cursor-pointer group"
-                        title="Collapse or expand subscriptions"
-                        aria-label="Collapse or expand subscriptions">
-                        <div class="flex items-center gap-1.5 min-w-0">
-                            <svg id="folders-section-chevron" class="w-3.5 h-3.5 transition-transform duration-200 flex-shrink-0"
-                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
-                            </svg>
-                            <span class="subscriptions-label truncate">Subscriptions</span>
+                    <div class="flex items-center justify-between w-full">
+                        <button id="toggle-folders-section-btn" type="button" onclick="window.toggleFoldersSection()"
+                            class="dynamic-category-text flex items-center justify-between flex-1 px-2 py-1 text-gray-400 hover:text-gray-200 font-semibold select-none rounded-lg transition-colors cursor-pointer group min-w-0 mr-1"
+                            title="Collapse or expand subscriptions"
+                            aria-label="Collapse or expand subscriptions">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <svg id="folders-section-chevron" class="w-3.5 h-3.5 transition-transform duration-200 flex-shrink-0"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                                </svg>
+                                <span class="subscriptions-label truncate">Subscriptions</span>
+                            </div>
+                            <span id="folders-section-count" class="feed-badge text-gray-500 font-medium"></span>
+                        </button>
+                        <div class="flex items-center space-x-0.5 flex-shrink-0 pr-1">
+                            <button id="sub-add-feed-btn" type="button" onclick="openAddFeedModal()"
+                                class="app-header-btn p-1.5 rounded-lg text-gray-400 hover:text-gray-200 transition-colors"
+                                title="Add Feed" aria-label="Add Feed">
+                                <svg class="h-4 w-4">
+                                    <use href="#icon-plus" />
+                                </svg>
+                            </button>
+                            <button id="sub-edit-feeds-btn" type="button" onclick="openFeedManager()"
+                                class="app-header-btn p-1.5 rounded-lg text-gray-400 hover:text-gray-200 transition-colors"
+                                title="Edit Feeds" aria-label="Edit Feeds">
+                                <svg class="h-4 w-4">
+                                    <use href="#icon-pencil" />
+                                </svg>
+                            </button>
                         </div>
-                        <span id="folders-section-count" class="feed-badge text-gray-500 font-medium"></span>
-                    </button>
+                    </div>
                     <div id="feed-list" class="space-y-4">
                     </div>
                 </div>
             </div>
-            <!-- The collapsed rail's Refresh and Settings: the header has no room for them there. -->
+            <!-- Pinned Bottom Dock: Refresh & Settings in Expanded and Collapsed Rail -->
             <div id="sidebar-rail-actions">
-                <button type="button" onclick="refreshAll()" class="app-header-btn p-1.5 rounded-lg text-gray-500"
+                <button type="button" id="header-refresh-btn" onclick="refreshAll()" class="app-header-btn p-1.5 rounded-lg text-gray-500"
                     title="Refresh Feeds" aria-label="Refresh Feeds">
-                    <svg class="h-[22px] w-[22px]">
+                    <svg class="h-[20px] w-[20px]">
                         <use href="#icon-refresh" />
                     </svg>
+                    <span class="rail-action-label">Refresh</span>
                 </button>
                 <button type="button" onclick="toggleSettings()" class="app-header-btn p-1.5 rounded-lg text-gray-500"
                     title="Settings" aria-label="Settings">
-                    <svg class="h-[22px] w-[22px]">
+                    <svg class="h-[20px] w-[20px]">
                         <use href="#icon-settings" />
                     </svg>
+                    <span class="rail-action-label">Settings</span>
                 </button>
             </div>
 
@@ -19448,7 +19598,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 496;
+        window.APP_BUILD = 497;
 
         (async function initApp() {
             try {
@@ -20318,7 +20468,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v496';
+const CACHE_NAME = 'rss-reader-v497';
 const APP_SHELL = [
     '/',
     'index.html'
