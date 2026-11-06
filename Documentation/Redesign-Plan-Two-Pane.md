@@ -5,7 +5,7 @@
 | Project | RSS Reader Web Application (`today.dautovic.com`) |
 | Document | Redesign Plan & Implementation Record — Unified Two-Pane Workstation |
 | Target File | `/Users/samirdautovic/Developer/RSSReader/index.html` |
-| Current State | **Active — Build 492** deployed to production via Cloudflare Workers CI |
+| Current State | **Active — Build 493** deployed to production via Cloudflare Workers CI |
 | Date | 2026-11-01 |
 | Status | Complete & Deployed |
 
@@ -258,6 +258,7 @@ The **Briefing & Today Library Redesign** transforms the user's reading experien
 | **Card View Action Breathing Room (Build 462)** | Scroll to end of Cards view. | "Mark All Read" button maintains 36px separation from story card borders. | PASS |
 | **Continuous Edge-to-Edge Hairline Border (Build 463)** | Inspect header divider border on wide display. | Hairline divider spans continuously from 0px to 100vw across both left and right panes. | PASS |
 | **Equal 24px Top Padding Alignment (Build 463)** | Compare top offset of sidebar navigation items vs right pane cards. | Both panes start at identical 24px (`1.5rem`) vertical offset beneath the 73px header. | PASS |
+| **Settings Layout Preference Controls Restoration (Build 493)** | Click Settings gear button on desktop and tap Settings in following tab on mobile. | Settings modal opens cleanly without errors; `syncLayoutPrefControls`, `getTodayCardsColumns`, `applyTodayCardsColumns`, `saveTodayCardsColumns`, `getUltrawideLayout`, `applyUltrawideLayout`, and `saveUltrawideLayout` are properly restored and functional; APP_BUILD bumped to 493 with cache `rss-reader-v493`. | PASS |
 | **AI Features & Dead Code Elimination (Build 492)** | Inspect Today header, Category card headers, Reader actions, Settings modal, and code base. | All Gemini AI features (Today Executive Briefing, Category Recaps, Article TL;DR, auto-morning briefings, and Gemini API settings) and associated dead scaffolding/CSS/JS completely removed; Today is 100% native Cards; "Briefing / Cards" header switchers purged; shortcuts cleaned; 0 console errors; APP_BUILD bumped to 492 with cache `rss-reader-v492`. | PASS |
 | **Article Cleaner & Orphan Image Suppression (Build 491)** | Inspect articles with client-side image placeholders (CNBC) or broken/missing images, as well as publisher promotional furniture (Google Preferred Source, adhesion bars, recirculation widgets, newsletter signups). | Orphan image captions, credits, and empty containers without media are suppressed completely; recoverable client-side images (CNBC `InlineImage-imageEmbed`) are reconstructed as `<figure class="article-inline-image">` with `<img>` and styled `<figcaption>`; publisher promo widgets are purged via `tidyArticle`; `ensureLeadImage` is no longer blocked by `<iframe>` data charts. | PASS |
 | **Zen Empty States & Header Cleanup (Build 490)** | Inspect Today when all stories are read and on fresh empty launch. | Stale metadata and headphones button are hidden; hairline divider is cleanly removed; empty state is text-only without badge and optically centered vertically in the viewport with 0 overflow. | PASS |

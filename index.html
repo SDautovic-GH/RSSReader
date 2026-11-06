@@ -14025,6 +14025,56 @@
             `;
         };
 
+        window.getTodayCardsColumns = function () {
+            try { return localStorage.getItem('newsreader_today_cards_columns') || '2'; } catch (e) { return '2'; }
+        };
+
+        window.applyTodayCardsColumns = function (cols) {
+            const c = (cols === '1' || cols === '3') ? cols : '2';
+            document.documentElement.style.setProperty('--today-cards-cols', c);
+            document.body.setAttribute('data-cards-cols', c);
+            const sel = document.getElementById('pref-today-cards-columns');
+            if (sel) sel.value = c;
+            setTimeout(() => {
+                document.querySelectorAll('#today-column .brief-hero > img, #today-column .brief-thumb > img').forEach(img => {
+                    if (img.complete && img.naturalWidth && window.smoothPicture) window.smoothPicture(img);
+                });
+            }, 60);
+        };
+
+        window.saveTodayCardsColumns = function (val) {
+            const c = (val === '1' || val === '3') ? val : '2';
+            try { localStorage.setItem('newsreader_today_cards_columns', c); } catch (e) { }
+            window.applyTodayCardsColumns(c);
+            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+        };
+
+        window.getUltrawideLayout = function () {
+            try { return localStorage.getItem('newsreader_ultrawide_layout') || 'centered'; } catch (e) { return 'centered'; }
+        };
+
+        window.applyUltrawideLayout = function (layout) {
+            const mode = (layout === 'stretch') ? 'stretch' : 'centered';
+            document.body.classList.toggle('ultrawide-centered', mode === 'centered');
+            const sel = document.getElementById('pref-ultrawide-layout');
+            if (sel) sel.value = mode;
+        };
+
+        window.saveUltrawideLayout = function (val) {
+            const mode = (val === 'stretch') ? 'stretch' : 'centered';
+            try { localStorage.setItem('newsreader_ultrawide_layout', mode); } catch (e) { }
+            window.applyUltrawideLayout(mode);
+            if (typeof window.saveUiPrefsCloud === 'function') window.saveUiPrefsCloud();
+            window.showToast?.(mode === 'centered' ? 'Centered content layout enabled' : 'Full width stretch enabled');
+        };
+
+        // Settings' Cards View Columns and Wide Screen Layout show this device's choices, and
+        // the layout follows them.
+        window.syncLayoutPrefControls = function () {
+            window.applyTodayCardsColumns(window.getTodayCardsColumns());
+            window.applyUltrawideLayout(window.getUltrawideLayout());
+        };
+
         window.toggleShowEmptyCategories = () => {
             window._showEmptyCategories = !window._showEmptyCategories;
             const btn = document.getElementById('show-empty-cats-toggle');
@@ -19144,7 +19194,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 492;
+        window.APP_BUILD = 493;
 
         (async function initApp() {
             try {
@@ -20014,7 +20064,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             const swCode = `
-const CACHE_NAME = 'rss-reader-v492';
+const CACHE_NAME = 'rss-reader-v493';
 const APP_SHELL = [
     '/',
     'index.html'
