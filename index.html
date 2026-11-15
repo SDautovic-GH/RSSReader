@@ -8808,7 +8808,7 @@
                         <div class="settings-row">
                             <label class="settings-item-label-sm">Show empty folders</label>
                             <button id="show-empty-cats-toggle" onclick="toggleShowEmptyCategories()"
-                                class="toggle-switch" data-on="false" aria-label="Show empty categories"></button>
+                                class="toggle-switch" data-on="true" aria-label="Show empty categories"></button>
                         </div>
                         <div class="settings-row">
                             <label class="settings-item-label-sm" for="pref-recently-read-days">History</label>
@@ -9497,7 +9497,7 @@
         };
         window._ttsActive = false;
         window._categoryOrder = [];
-        window._showEmptyCategories = false;
+        window._showEmptyCategories = true;
         window._navigating = false;
         window._mobilePane = 'sidebar';
 
@@ -20571,7 +20571,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 524;
+        window.APP_BUILD = 525;
 
         (async function initApp() {
             try {
@@ -20683,11 +20683,10 @@
 
                 // 5. Restore UI Modes
                 try {
-                    if (localStorage.getItem('newsreader_showemptycats') === '1') {
-                        window._showEmptyCategories = true;
-                        const btn = document.getElementById('show-empty-cats-toggle');
-                        if (btn) btn.setAttribute('data-on', 'true');
-                    }
+                    const _sec = localStorage.getItem('newsreader_showemptycats');
+                    window._showEmptyCategories = _sec === null ? true : _sec === '1';
+                    const btn = document.getElementById('show-empty-cats-toggle');
+                    if (btn) btn.setAttribute('data-on', window._showEmptyCategories ? 'true' : 'false');
 
                     window.syncLayoutPrefControls();
 
