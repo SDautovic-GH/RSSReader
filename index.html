@@ -7555,27 +7555,74 @@
             opacity: 1;
         }
 
-        /* 6. Mobile Reader Floating Back & Quick Action Bar */
+        /* 6. Mobile Reader Apple-Style Top Bar (Circular Back + Glass Action Capsule) */
+        :root {
+            --phone-clock-inset: env(safe-area-inset-top, 0px);
+        }
+
+        @supports (-webkit-touch-callout: none) {
+            :root {
+                --phone-clock-inset: max(env(safe-area-inset-top, 0px), 50px);
+            }
+        }
+
         #mobile-reader-bar {
             display: none;
         }
 
         @media (max-width: 900px) and (hover: none), (max-width: 900px) and (pointer: coarse) {
+            /* Reserve exact clearance beneath the 40px top bar (top: +4px, height: 40px, gap: 8px = +52px) */
+            #viewer-pane.mobile-active.has-article:not(.is-today-brief) #reader-view {
+                padding-top: calc(var(--phone-clock-inset) + 52px) !important;
+            }
+
+            /* Hide duplicate in-flow action row on mobile — actions live in the top-right capsule */
+            #article-actions {
+                display: none !important;
+            }
+
+            #article-byline {
+                margin-bottom: 14px !important;
+                padding-bottom: 8px !important;
+            }
+
+            #article-byline.byline-dup {
+                margin-bottom: 10px !important;
+                padding-bottom: 2px !important;
+            }
+
             #viewer-pane.has-article:not(.is-brief-view) #mobile-reader-bar {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 position: fixed;
-                top: calc(env(safe-area-inset-top, 0px) + 8px);
-                left: 12px;
-                right: 12px;
+                top: calc(var(--phone-clock-inset) + 4px);
+                left: 14px;
+                right: 14px;
                 z-index: 48;
                 pointer-events: none;
                 transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
             }
 
+            /* Top progressive fade scrim so scrolling lines soften under the floating glass controls */
+            #viewer-pane.has-article:not(.is-brief-view) #mobile-reader-bar::before {
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: calc(var(--phone-clock-inset) + 52px);
+                background: linear-gradient(to bottom, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.72) 68%, rgba(255, 255, 255, 0) 100%);
+                pointer-events: none;
+                z-index: -1;
+            }
+
+            html.dark #viewer-pane.has-article:not(.is-brief-view) #mobile-reader-bar::before {
+                background: linear-gradient(to bottom, rgba(13, 17, 23, 0.94) 0%, rgba(13, 17, 23, 0.72) 68%, rgba(13, 17, 23, 0) 100%);
+            }
+
             body.tabbar-tucked #viewer-pane.has-article:not(.is-brief-view) #mobile-reader-bar {
-                transform: translateY(-64px);
+                transform: translateY(calc(-100% - var(--phone-clock-inset) - 12px));
                 opacity: 0;
             }
 
@@ -7583,51 +7630,103 @@
                 pointer-events: auto;
                 display: inline-flex;
                 align-items: center;
-                gap: 4px;
-                min-height: 38px;
-                padding: 4px 12px;
+                min-block-size: 40px;
                 border-radius: 9999px;
-                background: rgba(255, 255, 255, 0.88);
-                backdrop-filter: blur(14px) saturate(180%);
-                -webkit-backdrop-filter: blur(14px) saturate(180%);
+                background: rgba(255, 255, 255, 0.82);
+                backdrop-filter: blur(20px) saturate(180%);
+                -webkit-backdrop-filter: blur(20px) saturate(180%);
                 border: 1px solid rgba(15, 23, 42, 0.09);
-                box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+                box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
                 color: var(--text-1, #0f172a);
-                font-size: 13.5px;
-                font-weight: 600;
             }
 
             html.dark .mobile-reader-pill {
-                background: rgba(22, 27, 34, 0.86);
-                border-color: rgba(255, 255, 255, 0.12);
-                box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+                background: rgba(28, 33, 42, 0.78);
+                border-color: rgba(255, 255, 255, 0.13);
+                box-shadow: 0 2px 14px rgba(0, 0, 0, 0.42);
                 color: var(--text-1, #e6edf3);
             }
 
+            /* Apple-style 40x40 circular Back button (with 44x44 touch target extension) */
+            .mobile-reader-back-circle {
+                position: relative;
+                min-inline-size: 40px;
+                width: 40px;
+                height: 40px;
+                padding: 0;
+                justify-content: center;
+            }
+
+            .mobile-reader-back-circle::after {
+                content: "";
+                position: absolute;
+                inset: -2px;
+            }
+
+            .mobile-reader-back-circle svg {
+                width: 20px;
+                height: 20px;
+                margin-left: -1px;
+            }
+
             .mobile-reader-pill-actions {
-                padding: 3px 6px;
+                padding: 0 5px;
                 gap: 2px;
             }
 
             .mobile-reader-icon-btn {
+                position: relative;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                width: 34px;
-                height: 32px;
+                min-inline-size: 36px;
+                min-block-size: 36px;
+                width: 36px;
+                height: 36px;
                 border-radius: 9999px;
                 color: inherit;
                 background: transparent;
-                border: none;
+                border: 1px solid transparent;
             }
 
-            .mobile-reader-icon-btn:active {
+            .mobile-reader-icon-btn::after {
+                content: "";
+                position: absolute;
+                inset: -4px -1px;
+            }
+
+            .mobile-reader-icon-btn[aria-pressed="true"],
+            .mobile-reader-icon-btn.is-on {
+                color: var(--accent, #3d6bb0) !important;
                 background: rgba(61, 107, 176, 0.14);
+                border-color: rgba(61, 107, 176, 0.32);
+            }
+
+            html.dark .mobile-reader-icon-btn[aria-pressed="true"],
+            html.dark .mobile-reader-icon-btn.is-on {
+                color: var(--accent, #4d7cc7) !important;
+                background: rgba(77, 124, 199, 0.18);
+                border-color: rgba(77, 124, 199, 0.38);
+            }
+
+            .mobile-reader-icon-btn:active,
+            .mobile-reader-back-circle:active {
+                background: rgba(61, 107, 176, 0.18);
+            }
+
+            .mobile-reader-icon-btn:focus-visible,
+            .mobile-reader-back-circle:focus-visible {
+                outline: 2px solid var(--accent, #4d7cc7);
+                outline-offset: 2px;
             }
 
             .mobile-reader-icon-btn svg {
-                width: 17px;
-                height: 17px;
+                width: 18px;
+                height: 18px;
+            }
+
+            #mobile-reader-more-btn svg {
+                transform: rotate(90deg);
             }
         }
 
@@ -8243,19 +8342,21 @@
             <div class="flex-1 relative">
                 <div id="reader-progress-bar" aria-hidden="true"></div>
                 <div id="mobile-reader-bar" class="phone-only" aria-label="Article navigation and actions">
-                    <button type="button" class="mobile-reader-pill" onclick="closeMobileReader()" aria-label="Back">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.25" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                        <span>Back</span>
+                    <button type="button" id="mobile-reader-back-btn" class="mobile-reader-pill mobile-reader-back-circle" onclick="closeMobileReader()" aria-label="Back" title="Back">
+                        <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                     </button>
-                    <div class="mobile-reader-pill mobile-reader-pill-actions">
-                        <button type="button" id="mobile-reader-queue-btn" class="mobile-reader-icon-btn" onclick="handleReadLaterAction()" aria-label="Read Later" title="Read Later">
+                    <div id="mobile-reader-toolbar" role="toolbar" focusgroup="toolbar wrap" aria-label="Story actions" aria-controls="article-content" class="mobile-reader-pill mobile-reader-pill-actions">
+                        <button type="button" id="mobile-reader-queue-btn" class="mobile-reader-icon-btn icon-act" onclick="handleReadLaterAction()" aria-pressed="false" aria-label="Read Later" title="Read Later">
                             <svg aria-hidden="true"><use href="#icon-bookmark" /></svg>
                         </button>
-                        <button type="button" id="mobile-reader-save-btn" class="mobile-reader-icon-btn" onclick="handleSavedAction()" aria-label="Save Story" title="Save Story">
+                        <button type="button" id="mobile-reader-save-btn" class="mobile-reader-icon-btn icon-act" onclick="handleSavedAction()" aria-pressed="false" aria-label="Save" title="Save">
                             <svg aria-hidden="true"><use href="#icon-star" /></svg>
                         </button>
-                        <button type="button" id="mobile-reader-share-btn" class="mobile-reader-icon-btn" onclick="shareArticle()" aria-label="Share Story" title="Share Story">
-                            <svg aria-hidden="true"><use href="#icon-share" /></svg>
+                        <button type="button" id="mobile-reader-listen-btn" class="mobile-reader-icon-btn icon-act" onclick="toggleTTS()" aria-pressed="false" aria-label="Listen" title="Listen">
+                            <svg aria-hidden="true"><use href="#icon-headphones" /></svg>
+                        </button>
+                        <button type="button" id="mobile-reader-more-btn" class="mobile-reader-icon-btn icon-act" onclick="event.stopPropagation(); window.showStoryMenu(this)" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" title="More actions">
+                            <svg aria-hidden="true"><use href="#icon-more" /></svg>
                         </button>
                     </div>
                 </div>
@@ -14896,14 +14997,20 @@
             const active = window._ttsActive;
             const icon = active ? 'icon-stop' : 'icon-headphones';
             const label = active ? 'Stop' : 'Listen';
-            ['tts-btn', 'listen-action-btn'].forEach(id => {
+            const storyActive = !!(active && window._ttsSource === 'story');
+            ['tts-btn', 'listen-action-btn', 'mobile-reader-listen-btn'].forEach(id => {
                 const btn = document.getElementById(id);
                 if (!btn) return;
                 const hidden = btn.classList.contains('hidden');
                 btn.innerHTML = `<svg aria-hidden="true"><use href="#${icon}"/></svg>`;
                 btn.title = label;
-                btn.setAttribute('aria-label', label);
-                btn.className = (active && window._ttsSource === 'story' ? 'icon-act is-on' : 'icon-act') + (hidden ? ' hidden' : '');
+                if (id === 'mobile-reader-listen-btn') {
+                    btn.setAttribute('aria-pressed', storyActive ? 'true' : 'false');
+                    btn.className = 'mobile-reader-icon-btn icon-act' + (storyActive ? ' is-on' : '') + (hidden ? ' hidden' : '');
+                } else {
+                    btn.setAttribute('aria-label', label);
+                    btn.className = (storyActive ? 'icon-act is-on' : 'icon-act') + (hidden ? ' hidden' : '');
+                }
             });
             const todayOn = active && window._ttsSource === 'today';
             document.querySelectorAll('.brief-listen-btn').forEach(btn => {
@@ -18450,6 +18557,7 @@
             const shareBtn = document.getElementById('share-btn');
             const ttsBtn = document.getElementById('tts-btn');
             const listenBtn = document.getElementById('listen-action-btn');
+            const mobListenBtn = document.getElementById('mobile-reader-listen-btn');
             const unreadBtn = document.getElementById('unread-action-btn');
             const savedBtn = document.getElementById('saved-action-btn');
             const origBtn = document.getElementById('open-original-btn');
@@ -18458,7 +18566,7 @@
             const hasArticle = !!art;
             const isRegularArticle = hasArticle && !art.isBrief;
             [laterBtn, shareBtn, unreadBtn, savedBtn, origBtn, deskNavGroup].forEach(el => el?.classList.toggle('hidden', !hasArticle));
-            [ttsBtn, listenBtn].forEach(el => el?.classList.toggle('hidden', !isRegularArticle));
+            [ttsBtn, listenBtn, mobListenBtn].forEach(el => el?.classList.toggle('hidden', !isRegularArticle));
             window.updateBriefStoryActionButtons?.();
             if (!hasArticle) return;
 
@@ -18470,8 +18578,16 @@
             window.setActBtn(savedBtn, isSaved, isSaved ? 'icon-star-filled' : 'icon-star', isSaved ? 'Unsave' : 'Save');
             const mobQueueBtn = document.getElementById('mobile-reader-queue-btn');
             const mobSaveBtn = document.getElementById('mobile-reader-save-btn');
-            if (mobQueueBtn) window.setActBtn(mobQueueBtn, isLater, isLater ? 'icon-bookmark-filled' : 'icon-bookmark', isLater ? 'Remove from Read Later' : 'Read Later');
-            if (mobSaveBtn) window.setActBtn(mobSaveBtn, isSaved, isSaved ? 'icon-star-filled' : 'icon-star', isSaved ? 'Unsave' : 'Save');
+            if (mobQueueBtn) {
+                window.setActBtn(mobQueueBtn, isLater, isLater ? 'icon-bookmark-filled' : 'icon-bookmark');
+                mobQueueBtn.setAttribute('aria-pressed', isLater ? 'true' : 'false');
+                mobQueueBtn.title = isLater ? 'Remove from Read Later' : 'Read Later';
+            }
+            if (mobSaveBtn) {
+                window.setActBtn(mobSaveBtn, isSaved, isSaved ? 'icon-star-filled' : 'icon-star');
+                mobSaveBtn.setAttribute('aria-pressed', isSaved ? 'true' : 'false');
+                mobSaveBtn.title = isSaved ? 'Unsave' : 'Save';
+            }
             if (window.updateBriefStorySaveButtons) window.updateBriefStorySaveButtons();
         };
 
@@ -18530,6 +18646,40 @@
             }
             window.onTodayTabClick();
         };
+
+        (function initMobileReaderToolbarFocusgroup() {
+            const bar = document.getElementById('mobile-reader-toolbar');
+            if (!bar || ('focusGroup' in HTMLElement.prototype)) return;
+            const getItems = () => Array.from(bar.querySelectorAll('button:not(.hidden)'));
+            const allButtons = Array.from(bar.querySelectorAll('button'));
+            allButtons.forEach((b, i) => { b.tabIndex = i ? -1 : 0; });
+            bar.addEventListener('focusin', ({ target }) => {
+                if (allButtons.includes(target)) {
+                    allButtons.forEach(b => { b.tabIndex = b === target ? 0 : -1; });
+                }
+            });
+            bar.addEventListener('keydown', (e) => {
+                const items = getItems();
+                if (!items.length) return;
+                const idx = items.indexOf(document.activeElement);
+                if (idx === -1) return;
+                const rtl = getComputedStyle(bar).direction === 'rtl';
+                const steps = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 };
+                let nextIdx = -1;
+                if (e.key in steps) {
+                    nextIdx = (idx + steps[e.key] + items.length) % items.length;
+                } else if (e.key === 'Home') {
+                    nextIdx = 0;
+                } else if (e.key === 'End') {
+                    nextIdx = items.length - 1;
+                }
+                if (nextIdx !== -1) {
+                    e.preventDefault();
+                    items.forEach(b => { b.tabIndex = b === items[nextIdx] ? 0 : -1; });
+                    items[nextIdx].focus();
+                }
+            });
+        })();
 
         window.markAllRead = (opts = {}) => {
             let toMark;
@@ -20426,7 +20576,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 516;
+        window.APP_BUILD = 517;
 
         (async function initApp() {
             try {
