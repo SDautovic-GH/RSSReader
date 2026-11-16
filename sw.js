@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rss-reader-v530';
+const CACHE_NAME = 'rss-reader-v531';
 const APP_SHELL = [
     './',
     './index.html',
@@ -23,7 +23,7 @@ self.addEventListener('install', event => {
                 [...APP_SHELL, ...EXTERNAL_ASSETS].map(url =>
                     fetch(url)
                         .then(res => { if (res && res.ok) return cache.put(url, res); })
-                        .catch(() => {})
+                        .catch(() => { })
                 )
             );
         }).then(() => self.skipWaiting())
