@@ -584,6 +584,63 @@
             overflow: hidden;
         }
 
+        body.hide-list-preview #today-column .brief-story-card:not(.is-social-story) .brief-story-excerpt,
+        body.hide-list-preview #article-body .brief-story-card:not(.is-social-story) .brief-story-excerpt,
+        body.hide-list-preview #article-list .article-item-card .dynamic-list-preview:not(.line-clamp-social) {
+            display: none !important;
+        }
+
+        body.merge-list-title-preview #today-column .brief-story-card:not(.is-social-story) .brief-story-copy,
+        body.merge-list-title-preview #article-body .brief-story-card:not(.is-social-story) .brief-story-copy,
+        body.merge-list-title-preview #article-list .list-card-copy {
+            font-size: var(--list-preview-font-size, 1.05em);
+            line-height: var(--list-preview-line-height, 1.4);
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: var(--list-preview-lines, 4);
+            line-clamp: var(--list-preview-lines, 4);
+            overflow: hidden;
+            margin-bottom: 0.375rem;
+        }
+
+        body.merge-list-title-preview.hide-list-preview #today-column .brief-story-card:not(.is-social-story) .brief-story-copy,
+        body.merge-list-title-preview.hide-list-preview #article-body .brief-story-card:not(.is-social-story) .brief-story-copy,
+        body.merge-list-title-preview.hide-list-preview #article-list .list-card-copy {
+            display: block;
+            -webkit-line-clamp: unset;
+            line-clamp: unset;
+        }
+
+        body.merge-list-title-preview #today-column .brief-story-card:not(.is-social-story) .brief-story-title,
+        body.merge-list-title-preview #article-body .brief-story-card:not(.is-social-story) .brief-story-title,
+        body.merge-list-title-preview #article-list .list-card-copy .dynamic-list-title {
+            display: inline !important;
+            font-size: 1em !important;
+            line-height: inherit !important;
+            font-weight: 600 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        body.merge-list-title-preview:not(.hide-list-preview) #today-column .brief-story-card:not(.is-social-story) .brief-story-title::after,
+        body.merge-list-title-preview:not(.hide-list-preview) #article-body .brief-story-card:not(.is-social-story) .brief-story-title::after,
+        body.merge-list-title-preview:not(.hide-list-preview) #article-list .list-card-copy .dynamic-list-title::after {
+            content: " ";
+            padding-right: 0.2em;
+        }
+
+        body.merge-list-title-preview #today-column .brief-story-card:not(.is-social-story) .brief-story-excerpt,
+        body.merge-list-title-preview #article-body .brief-story-card:not(.is-social-story) .brief-story-excerpt,
+        body.merge-list-title-preview #article-list .list-card-copy .dynamic-list-preview {
+            display: inline !important;
+            font-size: 1em !important;
+            line-height: inherit !important;
+            -webkit-line-clamp: unset !important;
+            line-clamp: unset !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
         .pane-transition {
             transition: background-color 0.2s;
         }
@@ -6173,6 +6230,14 @@
                 line-clamp: var(--mob-list-preview-lines-social, 10) !important;
             }
 
+            body.merge-list-title-preview #article-body .brief-story-card:not(.is-social-story) .brief-story-copy,
+            body.merge-list-title-preview #article-list .list-card-copy {
+                font-size: var(--mob-list-preview-size, 1.05em);
+                line-height: var(--mob-list-preview-line-height, 1.4);
+                -webkit-line-clamp: var(--mob-list-preview-lines, 4);
+                line-clamp: var(--mob-list-preview-lines, 4);
+            }
+
             #article-body .brief-story-card,
             #article-body .brief-story-card img {
                 -webkit-touch-callout: none;
@@ -8987,7 +9052,7 @@
                                 <span class="settings-item-label-sm">Preview Lines</span>
                                 <span class="settings-value" id="lines-val">4 Lines</span>
                             </div>
-                            <input type="range" min="2" max="15" value="4" id="lines-slider" class="settings-range"
+                            <input type="range" min="0" max="10" value="4" id="lines-slider" class="settings-range"
                                 oninput="updateLines(this.value)">
                         </div>
                         <div class="settings-row settings-row-stacked">
@@ -8997,6 +9062,14 @@
                             </div>
                             <input type="range" min="2" max="20" value="10" id="lines-social-slider"
                                 class="settings-range" oninput="updateLinesSocial(this.value)">
+                        </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 pr-3">
+                                <label class="settings-item-label-sm">Merge title &amp; preview</label>
+                                <p class="settings-hint">Same size as preview, keeping title bold</p>
+                            </div>
+                            <button id="merge-title-preview-toggle" onclick="toggleMergeTitlePreview()"
+                                class="toggle-switch" data-on="false" aria-label="Merge title and preview"></button>
                         </div>
                     </div>
                 </div>
@@ -11354,8 +11427,7 @@
                         </span>
                     </div>
                     ${thumbHtml}
-                    ${titleHtml}
-                    <p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>
+                    ${isBsky ? `${titleHtml}<p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>` : `<div class="list-card-copy">${titleHtml}<p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p></div>`}
                     ${parentCardHtml}
                 </div>
             </div>`;
@@ -16821,10 +16893,12 @@
                         `;
                     } else {
                         storyBodyHtml = `
-                            <h4 class="brief-story-title dynamic-list-title text-gray-900 dark:text-white leading-snug mt-0 cursor-pointer" onclick="window.openArticleInReader('${saId}')" tabindex="0" role="link" onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.openArticleInReader('${saId}'); }">
-                                ${esc(st.title)}
-                            </h4>
-                            ${st.excerpt ? `<p class="brief-story-excerpt dynamic-list-preview text-gray-500 dark:text-gray-400 mt-0 mb-1.5 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">${esc(st.excerpt)}</p>` : ''}
+                            <div class="brief-story-copy">
+                                <h4 class="brief-story-title dynamic-list-title text-gray-900 dark:text-white leading-snug mt-0 cursor-pointer" onclick="window.openArticleInReader('${saId}')" tabindex="0" role="link" onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.openArticleInReader('${saId}'); }">
+                                    ${esc(st.title)}
+                                </h4>
+                                ${st.excerpt ? `<p class="brief-story-excerpt dynamic-list-preview text-gray-500 dark:text-gray-400 mt-0 mb-1.5 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">${esc(st.excerpt)}</p>` : ''}
+                            </div>
                             ${parentCardHtml}
                         `;
                     }
@@ -18176,13 +18250,24 @@
         };
 
         window.updateLines = (v) => {
+            const n = parseInt(v, 10);
             const cssVar = isMobile() ? '--mob-list-preview-lines' : '--list-preview-lines';
-            document.documentElement.style.setProperty(cssVar, v);
+            document.documentElement.style.setProperty(cssVar, n);
             const briefCssVar = isMobile() ? '--mob-list-preview-lines-brief' : '--list-preview-lines-brief';
-            document.documentElement.style.setProperty(briefCssVar, v);
+            document.documentElement.style.setProperty(briefCssVar, n);
+            document.body.classList.toggle('hide-list-preview', n === 0);
             const label = document.getElementById('lines-val');
-            if (label) label.textContent = `${v} Lines`;
+            if (label) label.textContent = `${n} Lines`;
             renderTimeline();
+            saveTypographyPrefs();
+        };
+
+        window._mergeTitlePreview = false;
+        window.toggleMergeTitlePreview = () => {
+            window._mergeTitlePreview = !window._mergeTitlePreview;
+            document.body.classList.toggle('merge-list-title-preview', window._mergeTitlePreview);
+            const btn = document.getElementById('merge-title-preview-toggle');
+            if (btn) btn.setAttribute('data-on', window._mergeTitlePreview ? 'true' : 'false');
             saveTypographyPrefs();
         };
 
@@ -19610,6 +19695,7 @@
                     ...previewLines,
                     ...previewLinesSoc,
                     dedupByTitle: window._dedupByTitle || false,
+                    mergeTitlePreview: window._mergeTitlePreview || false,
                     // Written by updateRecentlyReadDays; left out, any save dropped it.
                     recentlyReadDays: prevPrefs.recentlyReadDays,
                 }));
@@ -19704,16 +19790,18 @@
             // previewLines is integer-valued and not in SHARED_SIZE_MAP — apply manually.
             const linesDesk = prefs.previewLinesDesktop;
             const linesMob = prefs.previewLinesMobile;
-            if (linesDesk) {
+            if (linesDesk !== undefined && linesDesk !== null && linesDesk !== '') {
                 root.style.setProperty('--list-preview-lines', linesDesk);
                 root.style.setProperty('--list-preview-lines-brief', linesDesk);
             }
-            if (linesMob) {
+            if (linesMob !== undefined && linesMob !== null && linesMob !== '') {
                 root.style.setProperty('--mob-list-preview-lines', linesMob);
                 root.style.setProperty('--mob-list-preview-lines-brief', linesMob);
             }
             const activeLines = mob ? linesMob : linesDesk;
-            if (activeLines) {
+            if (activeLines !== undefined && activeLines !== null && activeLines !== '') {
+                const n = parseInt(activeLines, 10);
+                document.body.classList.toggle('hide-list-preview', n === 0);
                 const el = document.getElementById('lines-slider'); if (el) el.value = activeLines;
                 const lb = document.getElementById('lines-val'); if (lb) lb.textContent = `${activeLines} Lines`;
             }
@@ -19757,6 +19845,12 @@
                 window._dedupByTitle = prefs.dedupByTitle;
                 const btn = document.getElementById('dedup-title-toggle');
                 if (btn) btn.setAttribute('data-on', prefs.dedupByTitle ? 'true' : 'false');
+            }
+            if (typeof prefs.mergeTitlePreview === 'boolean') {
+                window._mergeTitlePreview = prefs.mergeTitlePreview;
+                document.body.classList.toggle('merge-list-title-preview', prefs.mergeTitlePreview);
+                const btn = document.getElementById('merge-title-preview-toggle');
+                if (btn) btn.setAttribute('data-on', prefs.mergeTitlePreview ? 'true' : 'false');
             }
             fetchMemoRankings();
         }
@@ -20612,7 +20706,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 531;
+        window.APP_BUILD = 532;
 
         (async function initApp() {
             try {
