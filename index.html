@@ -641,6 +641,15 @@
             padding: 0 !important;
         }
 
+        body.merge-list-title-preview .social-lead {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .dark body.merge-list-title-preview .social-lead {
+            color: #ffffff;
+        }
+
         .pane-transition {
             transition: background-color 0.2s;
         }
@@ -9827,6 +9836,37 @@
         }
         window.appDB = new RSSReaderDB();
 
+        // Wrap the opening sentence (or first ~14 words if no sentence end) in .social-lead
+        // so Merge title & preview can bold it seamlessly without breaking URLs/handles.
+        function formatSocialLeadHtml(rawText, useLinkify = false) {
+            const text = String(rawText || '');
+            if (!text) return '';
+            const abbrRe = /^(?:U\.S|U\.K|E\.U|Mr|Mrs|Ms|Dr|Prof|Sen|Rep|Gov|Pres|St|vs|etc|e\.g|i\.e|a\.m|p\.m|[A-Z])$/i;
+            let splitAt = -1;
+            const sentRe = /[.!?]+["”’)\]]*(?=\s|$)/g;
+            let m;
+            while ((m = sentRe.exec(text)) !== null) {
+                const end = m.index + m[0].length;
+                const before = text.slice(0, m.index + 1);
+                const token = (before.match(/(\S+)$/) || ['', ''])[1];
+                if (/[@\/]/.test(token) || /^https?:/i.test(token) || /\.(?:com|org|net|edu|gov|io|co|uk|social|app|dev|ai)$/i.test(token)) continue;
+                const stem = token.replace(/^[("‘“']+|[.!?]+$/g, '');
+                if (abbrRe.test(stem)) continue;
+                splitAt = end;
+                break;
+            }
+            if (splitAt === -1) {
+                const nl = text.indexOf('\n');
+                if (nl > 0) splitAt = nl;
+            }
+            if (splitAt === -1) {
+                const words = text.match(/^(?:\S+\s+){1,13}\S+/);
+                splitAt = words ? words[0].length : text.length;
+            }
+            const html = `<span class="social-lead">${esc(text.slice(0, splitAt))}</span>${esc(text.slice(splitAt))}`;
+            return useLinkify ? linkify(html) : html;
+        }
+
         // URLs to links, in text nodes only. SECURITY: linkify is NOT a sanitizer. The innerHTML below
         // is on an inert <template>; callers pass esc()'d text (previews) or DOMPurify the result (the
         // article body). Any new caller must do one of the two, or it is an XSS.
@@ -11427,7 +11467,7 @@
                         </span>
                     </div>
                     ${thumbHtml}
-                    ${isBsky ? `${titleHtml}<p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p>` : `<div class="list-card-copy">${titleHtml}<p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p></div>`}
+                    ${isBsky ? `${titleHtml}<p class="${previewCls}">${a._socialLeadHtml || (a._socialLeadHtml = formatSocialLeadHtml(a.excerpt, true))}</p>` : `<div class="list-card-copy">${titleHtml}<p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p></div>`}
                     ${parentCardHtml}
                 </div>
             </div>`;
@@ -16887,7 +16927,7 @@
                     if (isSocial) {
                         storyBodyHtml = `
                             <p class="brief-story-excerpt dynamic-list-preview line-clamp-social is-social-post text-gray-800 dark:text-gray-200 mt-0 mb-1.5 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')" tabindex="0" role="link" onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.openArticleInReader('${saId}'); }">
-                                ${esc(postText)}
+                                ${formatSocialLeadHtml(postText, false)}
                             </p>
                             ${parentCardHtml}
                         `;
@@ -20706,7 +20746,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 533;
+        window.APP_BUILD = 534;
 
         (async function initApp() {
             try {
