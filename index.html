@@ -70,39 +70,39 @@
         #feed-list .smart-feed-btn.active-item,
         .smart-feed-btn.active-item,
         .active-item {
-            background-color: rgba(var(--accent-rgb), 0.16) !important;
-            color: var(--accent) !important;
+            background-color: rgba(255, 255, 255, 0.16) !important;
+            color: #ffffff !important;
         }
 
         .active-item svg {
-            color: var(--accent) !important;
+            color: #ffffff !important;
         }
 
         :root:not(.dark) #smart-feeds-card .smart-feed-btn.active-item,
         :root:not(.dark) #feed-list .smart-feed-btn.active-item,
         :root:not(.dark) .smart-feed-btn.active-item,
         :root:not(.dark) .active-item {
-            background-color: rgba(var(--accent-rgb), 0.12) !important;
-            color: var(--accent) !important;
+            background-color: rgba(0, 0, 0, 0.08) !important;
+            color: #111827 !important;
         }
 
         :root:not(.dark) .active-item svg {
-            color: var(--accent) !important;
+            color: #111827 !important;
         }
 
-        /* Count badge inside the active feed row reads in matching accent tint */
+        /* Count badge inside the active feed row reads in matching monochrome contrast */
         .smart-feed-btn.active-item .feed-badge,
         .smart-feed-btn.active-item .mob-unread-count,
         .active-item .mob-unread-count,
         .active-item .text-gray-400 {
-            color: var(--accent) !important;
+            color: rgba(255, 255, 255, 0.85) !important;
         }
 
         :root:not(.dark) .smart-feed-btn.active-item .feed-badge,
         :root:not(.dark) .smart-feed-btn.active-item .mob-unread-count,
         :root:not(.dark) .active-item .mob-unread-count,
         :root:not(.dark) .active-item .text-gray-400 {
-            color: var(--accent) !important;
+            color: #374151 !important;
         }
 
         .article-content img {
@@ -627,6 +627,14 @@
         body.merge-list-title-preview:not(.hide-list-preview) #article-list .list-card-copy .dynamic-list-title::after {
             content: " ";
             padding-right: 0.2em;
+        }
+
+        .merged-title-dot {
+            display: none;
+        }
+
+        body.merge-list-title-preview:not(.hide-list-preview) .merged-title-dot {
+            display: inline;
         }
 
         body.merge-list-title-preview:not(.hide-list-preview) #today-column .brief-story-card:not(.is-social-story) .brief-story-excerpt,
@@ -2460,8 +2468,8 @@
             }
 
             .dark .smart-feed-btn.active-item {
-                background: rgba(var(--accent-rgb), 0.16) !important;
-                color: var(--accent) !important;
+                background: rgba(255, 255, 255, 0.16) !important;
+                color: #ffffff !important;
             }
 
             /* Category folders — transparent bg, keep bottom border for dividers */
@@ -3806,14 +3814,14 @@
             }
 
             body.sidebar-collapsed .smart-feed-btn.active-item {
-                background-color: rgba(var(--accent-rgb), 0.16) !important;
-                color: var(--accent) !important;
+                background-color: rgba(255, 255, 255, 0.16) !important;
+                color: #ffffff !important;
                 border-radius: 9999px !important;
             }
 
             :root:not(.dark) body.sidebar-collapsed .smart-feed-btn.active-item {
-                background-color: rgba(var(--accent-rgb), 0.12) !important;
-                color: var(--accent) !important;
+                background-color: rgba(0, 0, 0, 0.08) !important;
+                color: #111827 !important;
                 border-radius: 9999px !important;
             }
 
@@ -11389,7 +11397,9 @@
             const repostLine = isRepost
                 ? `<p class="bsky-repost-byline"><svg class="bsky-repost-icon" aria-hidden="true"><use href="#icon-repost"/></svg><span>Reposted by <span class="bsky-repost-name">${esc(sourceLabel)}</span></span></p>`
                 : '';
-            const titleHtml = isBsky ? '' : `<h3 class="font-semibold text-gray-900 dark:text-white leading-snug mb-1 dynamic-list-title">${esc(a.title)}</h3>`;
+            const _titleTrim = (a.title || '').trim();
+            const _needsDot = !!(a.excerpt && _titleTrim && !/[.!?…:]["”’)\]]*$/.test(_titleTrim));
+            const titleHtml = isBsky ? '' : `<h3 class="font-semibold text-gray-900 dark:text-white leading-snug mb-1 dynamic-list-title">${esc(a.title)}${_needsDot ? '<span class="merged-title-dot" aria-hidden="true">.</span>' : ''}</h3>`;
             const previewCls = isBsky
                 ? 'text-gray-900 dark:text-white leading-relaxed line-clamp-social dynamic-list-preview mb-1.5'
                 : 'text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-custom dynamic-list-preview mb-1.5';
@@ -16904,10 +16914,12 @@
                             ${parentCardHtml}
                         `;
                     } else {
+                        const _stTitleTrim = (st.title || '').trim();
+                        const _stNeedsDot = !!(st.excerpt && _stTitleTrim && !/[.!?…:]["”’)\]]*$/.test(_stTitleTrim));
                         storyBodyHtml = `
                             <div class="brief-story-copy">
                                 <h4 class="brief-story-title dynamic-list-title text-gray-900 dark:text-white leading-snug mt-0 cursor-pointer" onclick="window.openArticleInReader('${saId}')" tabindex="0" role="link" onkeydown="if (event.key === 'Enter') { event.preventDefault(); window.openArticleInReader('${saId}'); }">
-                                    ${esc(st.title)}
+                                    ${esc(st.title)}${_stNeedsDot ? '<span class="merged-title-dot" aria-hidden="true">.</span>' : ''}
                                 </h4>
                                 ${st.excerpt ? `<p class="brief-story-excerpt dynamic-list-preview text-gray-500 dark:text-gray-400 mt-0 mb-1.5 leading-relaxed cursor-pointer" onclick="window.openArticleInReader('${saId}')">${esc(st.excerpt)}</p>` : ''}
                             </div>
@@ -20718,7 +20730,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 546;
+        window.APP_BUILD = 547;
 
         (async function initApp() {
             try {
