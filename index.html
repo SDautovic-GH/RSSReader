@@ -8146,6 +8146,37 @@
     <!-- Global Toast Notification -->
     <div id="toast-notification" role="status"></div>
 
+    <!-- Clear the compiled Tailwind .active-item !important colors via CSSOM so the
+         unlayered monochrome dark/light .active-item rules above control both themes. -->
+    <script>
+        (function () {
+            function patch() {
+                try {
+                    for (var i = 0; i < document.styleSheets.length; i++) {
+                        var rules; try { rules = document.styleSheets[i].cssRules; } catch (e) { continue; }
+                        if (!rules) continue;
+                        for (var j = 0; j < rules.length; j++) {
+                            var r = rules[j];
+                            if (r.selectorText === '.active-item' && r.style && r.style.backgroundColor) {
+                                r.style.removeProperty('background-color');
+                                r.style.removeProperty('color');
+                            }
+                            if (r.cssRules) for (var k = 0; k < r.cssRules.length; k++) {
+                                var r2 = r.cssRules[k];
+                                if (r2.selectorText === '.active-item' && r2.style && r2.style.backgroundColor) {
+                                    r2.style.removeProperty('background-color');
+                                    r2.style.removeProperty('color');
+                                }
+                            }
+                        }
+                    }
+                } catch (e) { }
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', patch);
+            else patch();
+        })();
+    </script>
+
     <div id="app-container" class="flex h-screen w-full overflow-hidden">
 
         <!-- PANE 1: Sidebar -->
@@ -20698,7 +20729,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 548;
+        window.APP_BUILD = 549;
 
         (async function initApp() {
             try {
