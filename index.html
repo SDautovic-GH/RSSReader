@@ -4586,7 +4586,7 @@
         }
 
         #viewer-pane > .today-new-pill {
-            top: calc(max(env(safe-area-inset-top, 0px), 50px) + 10px);
+            top: calc(max(env(safe-area-inset-top, 0px), 50px) + 58px);
         }
 
         /* Read stories and emptied category cards leave the view immediately */
@@ -16529,6 +16529,16 @@
             document.querySelectorAll('[data-today-status]').forEach(el => { if (el.textContent !== text) el.textContent = text; });
             const where = todayOnScreen();
             const n = window._todayNewCount;
+            if (where && n > 0 && !window._rebuildingBlankToday) {
+                const root = document.getElementById(where === 'column' ? 'today-column' : 'article-body');
+                const hasUnread = Array.from(root?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
+                    .some(c => c.getClientRects().length && !c.classList.contains('brief-card-read'));
+                if (!hasUnread) {
+                    window._rebuildingBlankToday = true;
+                    try { rebuildTodayInPlace(true); } finally { window._rebuildingBlankToday = false; }
+                    return;
+                }
+            }
             const pill = todayNewPill();
             const show = !!where && n > 0;
             if (show) {
@@ -20729,7 +20739,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 550;
+        window.APP_BUILD = 551;
 
         (async function initApp() {
             try {
