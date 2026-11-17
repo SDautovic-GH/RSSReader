@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rss-reader-v549';
+const CACHE_NAME = 'rss-reader-v550';
 const APP_SHELL = [
     './',
     './index.html',
@@ -15,6 +15,13 @@ const EXTERNAL_ASSETS = [
     'https://unpkg.com/@phosphor-icons/web',
     'https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap'
 ];
+const STATIC_CDN_HOSTS = new Set([
+    'cdn.jsdelivr.net',
+    'cdnjs.cloudflare.com',
+    'unpkg.com',
+    'fonts.googleapis.com',
+    'fonts.gstatic.com'
+]);
 
 self.addEventListener('install', event => {
     event.waitUntil(
@@ -46,11 +53,14 @@ self.addEventListener('fetch', event => {
     if (req.method !== 'GET') return;
     const url = new URL(req.url);
 
-    // Let Supabase REST/Auth/Realtime API calls go straight to network
-    if (url.hostname.includes('supabase.co')) return;
+    // Only cache same-origin app shell / static files and explicit static CDN hosts.
+    // All RSS feeds, proxies, Bluesky, Firebase, Supabase, and media go straight to network.
+    const isSameOrigin = url.origin === self.location.origin;
+    const isStaticCdn = STATIC_CDN_HOSTS.has(url.hostname);
+    if (!isSameOrigin && !isStaticCdn) return;
 
     // Navigation / HTML: Network-first with cached shell fallback
-    if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
+    if (isSameOrigin && (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html'))) {
         event.respondWith(
             fetch(req).then(res => {
                 const clone = res.clone();
@@ -61,7 +71,7 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Static assets, fonts, icons: Stale-while-revalidate
+    // Static app shell & CDN assets: Stale-while-revalidate
     event.respondWith(
         caches.match(req).then(cached => {
             const networkFetch = fetch(req).then(res => {
