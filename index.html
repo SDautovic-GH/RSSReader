@@ -9838,20 +9838,20 @@
                 if (nl > 0) splitAt = nl;
             }
             const wordCount = (s) => (s.trim() ? s.trim().split(/\s+/).length : 0);
-            // Cap long first sentences (or posts without periods) to ~2 lines (~65 chars / max 10 words),
-            // preferring a comma/clause break around words 6–10.
-            if (splitAt === -1 || wordCount(text.slice(0, splitAt)) > 10 || splitAt > 70) {
+            // Cap long first sentences (or posts without periods) to ~3 lines (~95 chars / max 14 words),
+            // preferring a comma/clause break around words 6–14 (<= 105 chars).
+            if (splitAt === -1 || wordCount(text.slice(0, splitAt)) > 14 || splitAt > 105) {
                 const allWords = [];
                 for (const wm of text.matchAll(/\S+/g)) {
                     allWords.push({ end: wm.index + wm[0].length, tok: wm[0] });
-                    if (allWords.length >= 12) break;
+                    if (allWords.length >= 16) break;
                 }
-                if (allWords.length <= 10 && text.length <= 70) {
+                if (allWords.length <= 14 && text.length <= 105) {
                     splitAt = text.length;
                 } else {
                     let commaEnd = -1;
-                    for (let wi = Math.min(10, allWords.length - 1); wi >= 4; wi--) {
-                        if (allWords[wi].end <= 80 && allWords[wi].end >= 24 && /[,;—]["”’)\]]*$/.test(allWords[wi].tok)) {
+                    for (let wi = Math.min(13, allWords.length - 1); wi >= 4; wi--) {
+                        if (allWords[wi].end <= 105 && allWords[wi].end >= 24 && /[,;—]["”’)\]]*$/.test(allWords[wi].tok)) {
                             commaEnd = allWords[wi].end;
                             break;
                         }
@@ -9860,16 +9860,16 @@
                         splitAt = commaEnd;
                     } else {
                         let pick = Math.min(4, allWords.length - 1);
-                        for (let wi = 0; wi < Math.min(10, allWords.length); wi++) {
-                            if (allWords[wi].end <= 65) pick = wi;
+                        for (let wi = 0; wi < Math.min(14, allWords.length); wi++) {
+                            if (allWords[wi].end <= 95) pick = wi;
                             else break;
                         }
                         if (pick + 1 < allWords.length && /^[A-Z]/.test(allWords[pick].tok) && /^[A-Z]/.test(allWords[pick + 1].tok)) {
                             let ext = pick;
-                            while (ext + 1 < allWords.length && ext < 11 && /^[A-Z]/.test(allWords[ext].tok) && /^[A-Z]/.test(allWords[ext + 1].tok)) {
+                            while (ext + 1 < allWords.length && ext < 15 && /^[A-Z]/.test(allWords[ext].tok) && /^[A-Z]/.test(allWords[ext + 1].tok)) {
                                 ext++;
                             }
-                            if (allWords[ext].end <= 72) pick = ext;
+                            if (allWords[ext].end <= 105) pick = ext;
                             else while (pick > 4 && /^[A-Z]/.test(allWords[pick].tok)) pick--;
                         }
                         const glueRe = /^(?:and|or|but|nor|so|yet|the|a|an|of|in|on|at|to|for|with|by|from|as|into|onto|over|under|between|among|its|their|his|her|my|our|your|this|that|these|those|is|are|was|were|be|been|being|has|have|had)$/i;
@@ -20777,7 +20777,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 560;
+        window.APP_BUILD = 561;
 
         (async function initApp() {
             try {
