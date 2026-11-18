@@ -15996,6 +15996,7 @@
                 if (el.classList.contains('brief-held') && (now || !onTodayScreen(el))) el.classList.remove('brief-held');
                 return el.classList.contains('brief-held');
             };
+            let emptied = false;
             window.keepTodayInPlace(() => roots.forEach(root => {
                 const inColumn = root.id === 'today-column';
                 const isPersonalHub = !!(root.querySelector('.brief-container[data-personal-hub]')
@@ -16127,10 +16128,12 @@
                         const first = root.querySelector('.brief-cat-section');
                         first.parentNode.insertBefore(note, first);
                     }
+                    emptied = true;
                 } else if (note) {
                     note.remove();
                 }
             }));
+            if (emptied) window.showNewTodayIfBlank?.();
         };
 
         // `el` and everything after it slide up into the space they just moved by: drawn `dy` px lower,
@@ -16213,6 +16216,10 @@
             window.showBriefUndo(`Marked ${cards.length} read`, () => {
                 marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
                 apply();
+                if (!sec.isConnected) {
+                    rebuildTodayInPlace(false);
+                    return;
+                }
                 // The screen as it was before the tap.
                 if (scroller && next && next.getClientRects().length) scroller.scrollTop += next.getBoundingClientRect().top - nextBefore;
             });
@@ -16231,6 +16238,7 @@
             window.showBriefUndo('Marked read', () => {
                 marked.forEach(a => { if (!a.unread) { a.unread = true; applyReadState(a); } });
                 applyBriefReadChange();
+                if (!card.isConnected) rebuildTodayInPlace(false);
             });
         };
 
@@ -16256,6 +16264,7 @@
             updateBadges();
             window.updateActionButton?.();
             window.syncBriefCards(null, { now: true });   // your tap: at once
+            window.showNewTodayIfBlank?.();
         }
 
         window.renderTodayColumn = function () {
@@ -16571,18 +16580,9 @@
             const text = (window._refreshInFlight || window._refreshPending) ? 'Updating…'
                 : (window._lastRefreshAt ? `Updated ${formatRelativeTime(window._lastRefreshAt)}` : '');
             document.querySelectorAll('[data-today-status]').forEach(el => { if (el.textContent !== text) el.textContent = text; });
+            if (window.showNewTodayIfBlank()) return;
             const where = todayOnScreen();
             const n = window._todayNewCount;
-            if (where && n > 0 && !window._rebuildingBlankToday) {
-                const root = document.getElementById(where === 'column' ? 'today-column' : 'article-body');
-                const hasUnread = Array.from(root?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
-                    .some(c => c.getClientRects().length && !c.classList.contains('brief-card-read'));
-                if (!hasUnread) {
-                    window._rebuildingBlankToday = true;
-                    try { rebuildTodayInPlace(true); } finally { window._rebuildingBlankToday = false; }
-                    return;
-                }
-            }
             const pill = todayNewPill();
             const show = !!where && n > 0;
             if (show) {
@@ -16632,16 +16632,29 @@
             if (!window.showNewTodayIfBlank()) window.updateTodayStatus();
         };
 
-        // Today on screen with no unread story showing (all caught up) takes its new stories at once:
-        // there is no place to keep, so the "N new stories" pill would only be one more tap.
+        function hasTodayEligibleUnread() {
+            const excluded = window._todayExcluded;
+            return (window.articles || []).some(a => {
+                if (!a.unread || a.isBrief) return false;
+                if (excluded && excluded.size && excluded.has(getCategoryForArticle(a))) return false;
+                if (window.isMuted(a)) return !!window._showMuted;
+                return true;
+            });
+        }
+
+        // Today on screen with no unread story showing (all caught up) loads any waiting unread stories at once
+        // (either newly fetched or overflow beyond Stories per Category), so it never shows "All caught up"
+        // while the Today badge still has unread stories.
         window.showNewTodayIfBlank = function () {
             const where = todayOnScreen();
-            if (!where || !(window._todayNewCount > 0)) return false;
+            if (!where || window._rebuildingBlankToday) return false;
+            if (!(window._todayNewCount > 0) && !hasTodayEligibleUnread()) return false;
             const root = document.getElementById(where === 'column' ? 'today-column' : 'article-body');
             const unread = Array.from(root?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
                 .some(c => c.getClientRects().length && !c.classList.contains('brief-card-read'));
             if (unread) return false;
-            rebuildTodayInPlace(true);
+            window._rebuildingBlankToday = true;
+            try { rebuildTodayInPlace(true); } finally { window._rebuildingBlankToday = false; }
             return true;
         };
 
@@ -20783,7 +20796,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 563;
+        window.APP_BUILD = 564;
 
         (async function initApp() {
             try {
