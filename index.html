@@ -626,7 +626,6 @@
         body.merge-list-title-preview:not(.hide-list-preview) #article-body .brief-story-card:not(.is-social-story) .brief-story-title::after,
         body.merge-list-title-preview:not(.hide-list-preview) #article-list .list-card-copy .dynamic-list-title::after {
             content: " ";
-            padding-right: 0.2em;
         }
 
         .merged-title-dot {
@@ -9860,12 +9859,15 @@
                     if (commaEnd !== -1) {
                         splitAt = commaEnd;
                     } else {
-                        let fallbackEnd = allWords[Math.min(3, allWords.length - 1)].end;
+                        let pick = Math.min(3, allWords.length - 1);
                         for (let wi = 0; wi < allWords.length; wi++) {
-                            if (allWords[wi].end <= 65) fallbackEnd = allWords[wi].end;
+                            if (allWords[wi].end <= 65) pick = wi;
                             else break;
                         }
-                        splitAt = fallbackEnd;
+                        if (pick + 1 < allWords.length && /^(?:Van|Von|De|Del|La|El|Al|San|Santa|St)$/i.test(allWords[pick].tok)) {
+                            pick++;
+                        }
+                        splitAt = allWords[pick].end;
                     }
                 }
             }
@@ -20766,7 +20768,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 554;
+        window.APP_BUILD = 555;
 
         (async function initApp() {
             try {
