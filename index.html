@@ -9819,6 +9819,12 @@
         function formatSocialLeadHtml(rawText, useLinkify = false) {
             const text = String(rawText || '');
             if (!text) return '';
+            const trimmed = text.trim();
+            if (!/\s/.test(trimmed) && /^(?:https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,}\/)/i.test(trimmed)) {
+                const plain = esc(text);
+                return useLinkify ? linkify(plain) : plain;
+            }
+            const wordCount = (s) => (s.trim() ? s.trim().split(/\s+/).length : 0);
             const abbrRe = /^(?:U\.S|U\.K|E\.U|Mr|Mrs|Ms|Dr|Prof|Sen|Rep|Gov|Pres|St|vs|etc|e\.g|i\.e|a\.m|p\.m|[A-Z])$/i;
             let splitAt = -1;
             const sentRe = /[.!?:]+["”’)\]]*(?=\s|$)/g;
@@ -9828,6 +9834,7 @@
                 const before = text.slice(0, m.index + 1);
                 const token = (before.match(/(\S+)$/) || ['', ''])[1];
                 if (/[@\/]/.test(token) || /^(?:https?|mailto):/i.test(token) || /\.(?:com|org|net|edu|gov|io|co|uk|social|app|dev|ai)$/i.test(token)) continue;
+                if (/:$/.test(before) && (wordCount(before) < 3 || before.trim().length < 15)) continue;
                 const stem = token.replace(/^[("‘“']+|[.!?]+$/g, '');
                 if (abbrRe.test(stem)) continue;
                 splitAt = end;
@@ -9837,7 +9844,6 @@
                 const nl = text.indexOf('\n');
                 if (nl > 0) splitAt = nl;
             }
-            const wordCount = (s) => (s.trim() ? s.trim().split(/\s+/).length : 0);
             // Cap long first sentences (or posts without periods) to ~3 lines (~95 chars / max 14 words),
             // preferring a comma/clause break around words 6–14 (<= 105 chars).
             if (splitAt === -1 || wordCount(text.slice(0, splitAt)) > 14 || splitAt > 105) {
@@ -20777,7 +20783,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 561;
+        window.APP_BUILD = 562;
 
         (async function initApp() {
             try {
