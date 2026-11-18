@@ -9839,26 +9839,34 @@
                 if (nl > 0) splitAt = nl;
             }
             const wordCount = (s) => (s.trim() ? s.trim().split(/\s+/).length : 0);
-            // Cap long first sentences (or posts without periods) at a comma around 12–16 words, else 14 words.
-            if (splitAt === -1 || wordCount(text.slice(0, splitAt)) > 16) {
+            // Cap long first sentences (or posts without periods) to ~2 lines (~65 chars / max 10 words),
+            // preferring a comma/clause break around words 6–10.
+            if (splitAt === -1 || wordCount(text.slice(0, splitAt)) > 10 || splitAt > 70) {
                 const allWords = [];
                 for (const wm of text.matchAll(/\S+/g)) {
                     allWords.push({ end: wm.index + wm[0].length, tok: wm[0] });
-                    if (allWords.length >= 16) break;
+                    if (allWords.length >= 10) break;
                 }
-                if (allWords.length <= 16 && splitAt !== -1 && wordCount(text) <= 16) {
+                if (allWords.length <= 10 && text.length <= 70) {
                     splitAt = text.length;
-                } else if (allWords.length >= 14) {
+                } else {
                     let commaEnd = -1;
-                    for (let wi = 15; wi >= 11 && wi < allWords.length; wi--) {
-                        if (/[,;—]["”’)\]]*$/.test(allWords[wi].tok)) {
+                    for (let wi = Math.min(9, allWords.length - 1); wi >= 5; wi--) {
+                        if (allWords[wi].end <= 72 && /[,;—]["”’)\]]*$/.test(allWords[wi].tok)) {
                             commaEnd = allWords[wi].end;
                             break;
                         }
                     }
-                    splitAt = commaEnd !== -1 ? commaEnd : allWords[13].end;
-                } else {
-                    splitAt = text.length;
+                    if (commaEnd !== -1) {
+                        splitAt = commaEnd;
+                    } else {
+                        let fallbackEnd = allWords[Math.min(3, allWords.length - 1)].end;
+                        for (let wi = 0; wi < allWords.length; wi++) {
+                            if (allWords[wi].end <= 65) fallbackEnd = allWords[wi].end;
+                            else break;
+                        }
+                        splitAt = fallbackEnd;
+                    }
                 }
             }
             const html = `<span class="social-lead">${esc(text.slice(0, splitAt))}</span>${esc(text.slice(splitAt))}`;
@@ -20758,7 +20766,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 552;
+        window.APP_BUILD = 553;
 
         (async function initApp() {
             try {
