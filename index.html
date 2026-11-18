@@ -10029,7 +10029,7 @@
             // Prevents Cloudflare 1042 worker-to-worker loop error when a worker proxies another worker.
             if (feedUrl.includes('.workers.dev') || feedUrl.includes('dautovic.com')) {
                 try {
-                    const res = await fetch(feedUrl, { signal: AbortSignal.timeout(6000) });
+                    const res = await fetch(feedUrl, { cache: 'no-store', signal: AbortSignal.timeout(6000) });
                     if (res.ok) {
                         const txt = await res.text();
                         if (txt) {
@@ -10048,6 +10048,7 @@
                     // Primary: 8s covers a cold Worker start; fallbacks: 7s since primary already burned time.
                     const timeoutMs = i === 0 ? 8000 : 7000;
                     const res = await fetch(proxyUrl, {
+                        cache: 'no-store',
                         signal: AbortSignal.timeout(timeoutMs)
                     });
                     if (!res.ok) continue;
@@ -10621,7 +10622,7 @@
             let data = null;
             // Try direct fetch (public.api.bsky.app has CORS enabled)
             try {
-                const res = await fetch(apiUrl, { signal: AbortSignal.timeout(7000) });
+                const res = await fetch(apiUrl, { cache: 'no-store', signal: AbortSignal.timeout(7000) });
                 if (res.ok) data = await res.json();
             } catch (e) { console.warn('Direct fetch failed:', e.message); }
             // Fall back to proxies if direct fetch failed
@@ -10629,7 +10630,7 @@
                 for (const proxyFn of PROXIES) {
                     try {
                         const proxyUrl = proxyFn(apiUrl);
-                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(7000) });
+                        const res = await fetch(proxyUrl, { cache: 'no-store', signal: AbortSignal.timeout(7000) });
                         if (!res.ok) continue;
                         let text;
                         if (proxyUrl.includes('allorigins')) {
@@ -10755,11 +10756,13 @@
             }
             restoreRetained(_keep);
 
-            if (!isBackground) {
-                renderTimeline(true);
-                renderFeeds();
-            } else if (window.currentSourceFilter === sourceName) {
-                renderTimeline(true);
+            if (!window._preBatchLinks) {
+                if (!isBackground) {
+                    renderTimeline(true);
+                    renderFeeds();
+                } else if (window.currentSourceFilter === sourceName) {
+                    renderTimeline(true);
+                }
             }
             // No save here: as for an RSS feed, the batch saves once at its end (a per-feed save rewrote the
             // whole store after each Bluesky feed).
@@ -10783,7 +10786,7 @@
         async function fetchRecentArticles(feedUrl, sourceName, maxItems = null, isBackground = false) {
             if (isBlueskyFeed(feedUrl)) {
                 const ok = await fetchBlueskyArticles(feedUrl, sourceName, maxItems, isBackground);
-                if (ok) return;
+                if (ok) return true;
                 // fall through to RSS on failure
             }
             try {
@@ -10956,13 +10959,14 @@
                 });
                 restoreRetained(_keep);
 
-                if (!isBackground) {
+                if (!window._preBatchLinks && !isBackground) {
                     renderTimeline(true);
                     renderFeeds();
                 }
                 // Note: saveArticleCache() is NOT called per-feed. fetchAllStaggered
                 // coalesces it into a single write after the whole batch completes —
                 // a per-feed write storm (40x heavy IDB serialize) is a mobile OOM risk.
+                return true;
             } catch (e) {
                 console.warn(`Feed fetch failed [${sourceName}]:`, e.message);
                 if (!window._feedHealth[feedUrl]) window._feedHealth[feedUrl] = { lastSuccess: null, errorCount: 0 };
@@ -10970,6 +10974,7 @@
                 // A feed that failed all proxies (or timed out) is slow — send it to the
                 // back of the queue next refresh so it can't stall the healthy feeds.
                 window._feedHealth[feedUrl].slow = true;
+                return false;
             }
         }
 
@@ -11724,6 +11729,7 @@
             // Hold the indicator open with its spinner until the refresh - and any pass
             // queued behind one already running - has finished, then show what came in.
             const refreshToday = async (p) => {
+                if (window._appUpdateAvailable && window.applyPendingAppUpdate?.()) return;
                 _loading = true;
                 p.indicator.style.top = '0px';
                 p.indicator.classList.remove('ptr-ready');
@@ -11731,7 +11737,8 @@
                 p.label.textContent = 'Refreshing...';
                 document.body.classList.add('today-refreshing');
                 try {
-                    // false = coalesced behind a refresh already in flight; ours runs after it.
+                    window.checkForAppUpdate?.({ allowQuietReload: false, force: true });
+                    // Joins an already-running uncapped refresh instead of queuing a duplicate pass.
                     await window.runFullRefresh({ isBackground: true });
                     while (window._refreshInFlight || window._refreshPending) {
                         await new Promise(r => setTimeout(r, 300));
@@ -11757,7 +11764,14 @@
                     const cur = window.currentArticle;
                     const isToday = cur && cur.id === window.TODAY_BRIEF_ID;
                     if (atTop && window._mobilePane === 'viewer' && isToday) {
-                        window.openToday();
+                        if (window._appUpdateAvailable && window.applyPendingAppUpdate?.()) return;
+                        const briefAge = Date.now() - (window._todayBrief?.timestamp || 0);
+                        if (window._todayNewCount > 0 || briefAge > 60000) {
+                            rebuildTodayInPlace(true);
+                        } else {
+                            window.updateTodayStatus?.();
+                            window.syncBriefCards?.(null, { now: true });
+                        }
                     }
                 }
             };
@@ -14509,10 +14523,12 @@
                 refreshUI();
             };
 
+            let okCount = 0;
+            const totalFeeds = (feeds || []).length;
             async function worker(take) {
                 for (let f = take(); f; f = take()) {
                     try {
-                        await fetchRecentArticles(f.url, f.name, maxItems, isBackground);
+                        if (await fetchRecentArticles(f.url, f.name, maxItems, isBackground)) okCount++;
                     } catch (e) { /* fetchRecentArticles already swallows its own errors */ }
                     progressiveRender();
                     // Small stagger between a worker's successive feeds smooths the
@@ -14555,22 +14571,32 @@
             // feeds landed, flags reconciled. Runs for foreground refreshes too.
             window._preBatchLinks = null;
             refreshUI();
+            return { total: totalFeeds, ok: okCount };
         }
 
         // One in-flight guard for full refreshes: the pull, the header button, the timer and the first
         // cloud snapshot could otherwise overlap and double peak memory. Cleared in finally(), so a hung
-        // fetch can't wedge it. A request mid-flight is coalesced, not dropped (_refreshPending): it runs
-        // once after the current batch, with the widest scope seen (maxItems: null beats 15).
+        // fetch can't wedge it. An identical request joins the active pass instead of running everything
+        // twice; a wider scope or changed feed list coalesces into _refreshPending to run once after.
         window._refreshInFlight = false;
         window._refreshPending = null; // null = nothing queued; else the opts to run next
+        window._refreshPromise = null;
+        window._refreshInFlightMeta = null;
         window.runFullRefresh = async (opts = {}) => {
+            const curFeedKey = (window.feeds || []).map(f => f.url).sort().join('|');
+            const newMax = opts.maxItems ?? null;
             if (window._refreshInFlight) {
+                const meta = window._refreshInFlightMeta;
+                const coveredByActive = !opts.forceQueue && meta && meta.feedKey === curFeedKey
+                    && (meta.maxItems === null || (newMax !== null && newMax <= meta.maxItems));
+                if (coveredByActive && window._refreshPromise) {
+                    return window._refreshPromise;
+                }
                 // Merge the scope: an uncapped request must not be narrowed by a later capped one.
                 const prev = window._refreshPending;
                 // Normalize each request's cap: absent -> null (treat a request with no
                 // maxItems as uncapped, matching runFullRefresh's own `?? null` default).
                 const prevMax = prev ? (prev.maxItems ?? null) : undefined; // undefined = no queued request yet
-                const newMax = opts.maxItems ?? null;
                 // null (uncapped) always wins; if both are capped, keep the larger cap.
                 let mergedMax;
                 if (prevMax === undefined) mergedMax = newMax;
@@ -14584,9 +14610,10 @@
                     // foreground, run the coalesced pass as foreground.
                     isBackground: (opts.isBackground ?? true) && (prev ? (prev.isBackground ?? true) : true),
                 };
-                return false;
+                return window._refreshPromise || false;
             }
             window._refreshInFlight = true;
+            window._refreshInFlightMeta = { maxItems: newMax, feedKey: curFeedKey };
             window.updateTodayStatus?.();   // "Updating..."
             // From an empty list, show the "Refreshing feeds" spinner at once rather than "All caught up".
             if (_lastTimelineKey === '__empty__') {
@@ -14596,37 +14623,50 @@
             if (typeof todayOnScreen === 'function' && todayOnScreen() && (!window._todayBrief || window._todayBrief.totalStories === 0)) {
                 if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
             }
-            try {
-                await fetchAllStaggered(window.feeds, opts.maxItems ?? null, opts.isBackground ?? false);
-                return true;
-            } finally {
-                window._refreshInFlight = false;
-                // Stamp last-updated for the header status line, then refresh it.
-                window._lastRefreshAt = Date.now();
-                window.updateHeaderStatus?.();
-                // Keep Today's source rankings current in a long session (24h cache).
-                fetchMemoRankings().catch(() => { });
-                // If we were showing the refreshing spinner and still have nothing to
-                // display, force one render so it returns to "All caught up" instead of
-                // spinning forever.
-                if (_lastTimelineKey === '__refreshing__') {
-                    _lastTimelineKey = '';
-                    renderTimeline(true);
-                }
-                // Drain a coalesced request, in a fresh microtask so _refreshInFlight reads false first and the
-                // stack doesn't grow. Today's status and new stories wait for the LAST queued pass.
-                if (!window._refreshPending) {
-                    window.updateTodayStatus?.();
-                    window.checkTodayForNewStories?.();
-                    if (typeof todayOnScreen === 'function' && todayOnScreen() && (!window._todayBrief || window._todayBrief.totalStories === 0)) {
-                        if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
+            let result = { total: 0, ok: 0 };
+            const run = (async () => {
+                try {
+                    result = await fetchAllStaggered(window.feeds, newMax, opts.isBackground ?? false) || result;
+                    return result.ok > 0;
+                } finally {
+                    window._refreshInFlight = false;
+                    window._refreshInFlightMeta = null;
+                    // Only stamp last-updated when at least one feed succeeded (or there are no feeds),
+                    // so an offline or total-timeout pass never claims "Updated just now".
+                    if (result.ok > 0 || result.total === 0) {
+                        window._lastRefreshAt = Date.now();
                     }
+                    window.updateHeaderStatus?.();
+                    // Keep Today's source rankings current in a long session (24h cache).
+                    fetchMemoRankings().catch(() => { });
+                    // If we were showing the refreshing spinner and still have nothing to
+                    // display, force one render so it returns to "All caught up" instead of
+                    // spinning forever.
+                    if (_lastTimelineKey === '__refreshing__') {
+                        _lastTimelineKey = '';
+                        renderTimeline(true);
+                    }
+                    // Drain a coalesced request, in a fresh microtask so _refreshInFlight reads false first and the
+                    // stack doesn't grow. Today's status and new stories wait for the LAST queued pass.
+                    if (!window._refreshPending) {
+                        window.updateTodayStatus?.();
+                        window.checkTodayForNewStories?.();
+                        if (typeof todayOnScreen === 'function' && todayOnScreen() && (!window._todayBrief || window._todayBrief.totalStories === 0)) {
+                            if (typeof rebuildTodayInPlace === 'function') rebuildTodayInPlace(false);
                         }
-                if (window._refreshPending) {
-                    const nextOpts = window._refreshPending;
-                    window._refreshPending = null;
-                    Promise.resolve().then(() => window.runFullRefresh(nextOpts));
+                    }
+                    if (window._refreshPending) {
+                        const nextOpts = window._refreshPending;
+                        window._refreshPending = null;
+                        Promise.resolve().then(() => window.runFullRefresh(nextOpts));
+                    }
                 }
+            })();
+            window._refreshPromise = run;
+            try {
+                return await run;
+            } finally {
+                if (window._refreshPromise === run) window._refreshPromise = null;
             }
         };
 
@@ -14634,9 +14674,11 @@
         // and any queued pass are done, then desktop Today is rebuilt in place (scroll and open story
         // kept). Automatic refreshes leave an open brief alone, so nothing reshuffles while you read.
         window.refreshAll = async () => {
+            if (window._appUpdateAvailable && window.applyPendingAppUpdate?.()) return;
             const btn = document.getElementById('header-refresh-btn');
             btn?.classList.add('is-refreshing');
             try {
+                window.checkForAppUpdate?.({ allowQuietReload: false, force: true });
                 await window.runFullRefresh();
                 while (window._refreshInFlight || window._refreshPending) {
                     await new Promise(r => setTimeout(r, 300));
@@ -16625,7 +16667,13 @@
             cardsIn(window._todayBrief.body).forEach(c => { shown.add(c.id); c.cov.forEach(x => shown.add(x)); });
             const fresh = window.buildTodayBrief();
             const n = cardsIn(fresh.body).filter(c => !shown.has(c.id) && !c.cov.some(x => shown.has(x))).length;
-            if (!n) return;
+            if (!n) {
+                if (window._todayNewCount > 0) {
+                    window._todayNewCount = 0;
+                    window.updateTodayStatus();
+                }
+                return;
+            }
             // Never rebuilt under you, not even at its top: the "N new stories" pill shows, and nothing moves
             // until you tap it. Unless nothing unread is left on screen.
             window._todayNewCount = n;
@@ -20769,34 +20817,114 @@
             updateBadges?.();
         }, 60000);
 
+        // Quietly checks whether a newer build has been deployed (for already-open PWAs that stay alive across days).
+        // Never reloads mid-article, mid-scroll, or mid-refresh, and caps session reloads to prevent loops.
+        window._bootEtag = '';
+        window._appUpdateAvailable = '';
+        window._lastUpdateCheckAt = 0;
+        window._reloadingForUpdate = false;
+
+        function canQuietlyReloadForUpdate() {
+            if (window._refreshInFlight) return false;
+            if (document.getElementById('brief-undo-bar')?.classList.contains('is-on')) return false;
+            const where = typeof todayOnScreen === 'function' ? todayOnScreen() : null;
+            if (!where) return false;
+            const scroller = document.getElementById(where === 'column' ? 'today-column' : 'reader-view');
+            return !scroller || scroller.scrollTop <= 4;
+        }
+
+        window.applyPendingAppUpdate = function (targetEtag) {
+            const key = targetEtag || window._appUpdateAvailable || 'sw';
+            if (window._reloadingForUpdate) return true;
+            if (sessionStorage.getItem('sw-reloaded') === key) return false;
+            const count = Number(sessionStorage.getItem('sw-reload-count') || 0);
+            if (count >= 2) return false;
+            sessionStorage.setItem('sw-reloaded', key);
+            sessionStorage.setItem('sw-reload-count', String(count + 1));
+            window._reloadingForUpdate = true;
+            const done = () => location.reload();
+            if (window._swReg && typeof window._swReg.update === 'function') {
+                Promise.race([
+                    window._swReg.update().catch(() => { }),
+                    new Promise(r => setTimeout(r, 1500))
+                ]).finally(done);
+            } else {
+                done();
+            }
+            return true;
+        };
+
+        window.checkForAppUpdate = async function ({ allowQuietReload = false, force = false } = {}) {
+            if (document.hidden || window._reloadingForUpdate) return false;
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return false;
+            const now = Date.now();
+            if (!force && now - window._lastUpdateCheckAt < 5 * 60 * 1000) return false;
+            window._lastUpdateCheckAt = now;
+            try { window._swReg?.update?.().catch(() => { }); } catch (e) { }
+            try {
+                const ctl = new AbortController();
+                const tid = setTimeout(() => ctl.abort(), 3000);
+                const res = await fetch('index.html?vchk=' + Math.random().toString(36).slice(2), {
+                    method: 'HEAD', cache: 'no-store', signal: ctl.signal
+                });
+                clearTimeout(tid);
+                if (!res.ok) return false;
+                const etag = res.headers.get('ETag') || res.headers.get('Last-Modified') || '';
+                if (!etag) return false;
+                const base = window._bootEtag || localStorage.getItem('newsreader_last_etag') || '';
+                if (base && etag !== base) {
+                    window._appUpdateAvailable = etag;
+                    if (allowQuietReload && canQuietlyReloadForUpdate()) {
+                        return window.applyPendingAppUpdate(etag);
+                    }
+                    return true;
+                }
+            } catch (e) { /* offline or slow — ignore */ }
+            return false;
+        };
+
         let _hiddenAt = 0;
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 _hiddenAt = Date.now();
                 try { localStorage.setItem('newsreader_last_seen_at', String(_hiddenAt)); } catch (e) { }
             } else {
+                const awayMs = _hiddenAt ? (Date.now() - _hiddenAt) : 0;
+                const hiddenAt = _hiddenAt;
+                _hiddenAt = 0;
                 // Catch-up render on return: refresh the timestamps/badges that the
                 // gated tick skipped while hidden.
                 renderFeeds();
                 updateBadges?.();
-                if (_hiddenAt && Date.now() - _hiddenAt > 5 * 60 * 1000) {
+                // Quietly check for a newer deployed build (throttled to 5 min).
+                // Only auto-reloads if away >5 min AND sitting calmly at the top of Today.
+                window.checkForAppUpdate?.({ allowQuietReload: awayMs > 5 * 60 * 1000 });
+                if (awayMs > 5 * 60 * 1000) {
                     // A new visit: "new" now means since you left.
-                    window._visitBoundary = _hiddenAt;
+                    window._visitBoundary = hiddenAt;
                     window.syncBriefCards?.();
                     // Skip the auto resume-fetch on a metered/Data-Saver connection;
                     // the user can still pull-to-refresh manually if they want it.
                     if (window.feeds.length > 0 && !window._isMeteredConnection()) {
-                        window.runFullRefresh({ isBackground: true });
+                        // Give cloud read-state resync up to 1.5s to land before fetching feeds
+                        // so cross-device read marks are already applied to badges and Today.
+                        const resync = typeof window.resyncCloudReadState === 'function'
+                            ? Promise.race([window.resyncCloudReadState(), new Promise(r => setTimeout(r, 1500))])
+                            : Promise.resolve();
+                        resync.finally(() => {
+                            if (!document.hidden && !window._reloadingForUpdate) {
+                                window.runFullRefresh({ isBackground: true });
+                            }
+                        });
                     }
                 }
-                _hiddenAt = 0;
             }
         });
 
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 564;
+        window.APP_BUILD = 565;
 
         (async function initApp() {
             try {
@@ -20809,8 +20937,8 @@
                 } catch (e) { }
 
                 // New-version check: one HEAD request with a cache-busting query compares the deploy's ETag with
-                // the last one seen, and reloads at most once per session, here, before any heavy startup work.
-                // Offline or slow (>3s): skip and start normally.
+                // the last one seen, and reloads before any heavy startup work. Stores the new ETag only after
+                // the reload lands (or once the session guard stops retries) so a stale cache never hides a deploy.
                 try {
                     const ETAG_KEY = 'newsreader_last_etag';
                     const ctl = new AbortController();
@@ -20819,13 +20947,20 @@
                         method: 'HEAD', cache: 'no-store', signal: ctl.signal
                     });
                     clearTimeout(tid);
-                    const etag = res.headers.get('ETag') || res.headers.get('Last-Modified') || '';
-                    const prev = localStorage.getItem(ETAG_KEY);
-                    if (etag) localStorage.setItem(ETAG_KEY, etag);
-                    if (etag && prev && etag !== prev && !sessionStorage.getItem('sw-reloaded')) {
-                        sessionStorage.setItem('sw-reloaded', '1');
-                        location.reload();
-                        return;   // abandon this boot; the reloaded page takes over
+                    if (res.ok) {
+                        const etag = res.headers.get('ETag') || res.headers.get('Last-Modified') || '';
+                        const prev = localStorage.getItem(ETAG_KEY);
+                        window._bootEtag = etag || prev || '';
+                        if (etag && prev && etag !== prev && sessionStorage.getItem('sw-reloaded') !== etag) {
+                            const count = Number(sessionStorage.getItem('sw-reload-count') || 0);
+                            if (count < 2) {
+                                sessionStorage.setItem('sw-reloaded', etag);
+                                sessionStorage.setItem('sw-reload-count', String(count + 1));
+                                location.reload();
+                                return;   // abandon this boot; the reloaded page takes over
+                            }
+                        }
+                        if (etag) localStorage.setItem(ETAG_KEY, etag);
                     }
                 } catch (e) { /* offline/slow — never block startup */ }
 
@@ -21336,14 +21471,28 @@
                     });
                     window.renderTimeline(true);
                     window.renderFeeds();
+                    window.syncBriefCards?.();
+                    if (window._todayNewCount > 0) window.checkTodayForNewStories?.();
                 }
             };
             onSnapshot(stateRef, applySnap, e => console.warn('Could not sync read state:', e));
-            // Force a server-fresh pull when the tab is re-focused (mobile OSes pause Firestore streams in background)
+            // Force a server-fresh pull when the tab is re-focused (mobile OSes pause Firestore streams in background).
+            // Throttled + shared promise so simultaneous visibilitychange + focus events don't double-fetch.
+            let _lastCloudResyncAt = 0;
+            let _cloudResyncPromise = null;
             const resyncOnFocus = () => {
-                if (document.visibilityState !== 'visible') return;
-                getDoc(stateRef).then(applySnap).catch(e => console.warn('Resync read state failed:', e));
+                if (document.visibilityState !== 'visible') return Promise.resolve();
+                if (_cloudResyncPromise) return _cloudResyncPromise;
+                const now = Date.now();
+                if (now - _lastCloudResyncAt < 3000) return Promise.resolve();
+                _lastCloudResyncAt = now;
+                _cloudResyncPromise = getDoc(stateRef)
+                    .then(applySnap)
+                    .catch(e => console.warn('Resync read state failed:', e))
+                    .finally(() => { _cloudResyncPromise = null; });
+                return _cloudResyncPromise;
             };
+            window.resyncCloudReadState = resyncOnFocus;
             document.addEventListener('visibilitychange', resyncOnFocus);
             window.addEventListener('focus', resyncOnFocus);
         }
@@ -21667,8 +21816,14 @@
     <!-- PWA Service Worker (Standard ./sw.js registration for Offline Reliability) -->
     <script>
         if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+            const hadController = !!navigator.serviceWorker.controller;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!hadController) return;
+                window._appUpdateAvailable = window._appUpdateAvailable || 'sw';
+            });
             navigator.serviceWorker.register('./sw.js', { scope: './' })
                 .then(reg => {
+                    window._swReg = reg;
                     console.log('Today: SW registered successfully', reg.scope);
                     try { Promise.resolve(reg.update()).catch(() => {}); } catch (e) { }
                 })

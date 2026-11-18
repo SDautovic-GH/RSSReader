@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rss-reader-v564';
+const CACHE_NAME = 'rss-reader-v565';
 const APP_SHELL = [
     './',
     './index.html',
@@ -8,6 +8,7 @@ const APP_SHELL = [
     './icon-512.png',
     './favicon.png'
 ];
+const APP_SHELL_SET = new Set(APP_SHELL);
 const EXTERNAL_ASSETS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
     'https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js',
@@ -28,7 +29,7 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME).then(cache => {
             return Promise.allSettled(
                 [...APP_SHELL, ...EXTERNAL_ASSETS].map(url =>
-                    fetch(url)
+                    fetch(url, APP_SHELL_SET.has(url) ? { cache: 'no-cache' } : undefined)
                         .then(res => { if (res && res.ok) return cache.put(url, res); })
                         .catch(() => { })
                 )
@@ -59,12 +60,15 @@ self.addEventListener('fetch', event => {
     const isStaticCdn = STATIC_CDN_HOSTS.has(url.hostname);
     if (!isSameOrigin && !isStaticCdn) return;
 
-    // Navigation / HTML: Network-first with cached shell fallback
+    // Navigation / HTML: Network-first bypassing HTTP cache, with cached shell fallback
     if (isSameOrigin && (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html'))) {
         event.respondWith(
-            fetch(req).then(res => {
-                const clone = res.clone();
-                caches.open(CACHE_NAME).then(c => c.put(req, clone));
+            fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(res => {
+                if (res && res.ok && !res.redirected) {
+                    const clone = res.clone();
+                    caches.open(CACHE_NAME).then(c => c.put(req, clone));
+                }
+                if (res && res.redirected) return Response.redirect(res.url, 302);
                 return res;
             }).catch(() => caches.match(req).then(r => r || caches.match('./index.html') || caches.match('./')))
         );
