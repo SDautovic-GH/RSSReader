@@ -10355,6 +10355,180 @@
             return labels;
         }
 
+        // Shared deduplication + topic-threading engine for both timeline lists and desktop feed-card workstations.
+        window.threadArticlePool = function (articles, opts = {}) {
+            let list = Array.isArray(articles) ? articles.slice() : [];
+            const useDedup = opts.dedup !== undefined ? !!opts.dedup : !!window._dedupByTitle;
+            const useTopics = opts.groupByTopic !== undefined ? !!opts.groupByTopic : (!!window._groupByTopic && !window.currentSourceFilter);
+            const threadMap = new Map();
+            const threadCopies = new Map();
+            const exactLosers = new Map();
+            let dedupRemovedCount = 0;
+
+            if (useDedup && list.length > 1) {
+                const before = list.length;
+                const bestForTitle = new Map();
+                for (const art of list) {
+                    const nt = getArticleNormTitle(art);
+                    if (!nt) continue;
+                    if (!bestForTitle.has(nt)) {
+                        bestForTitle.set(nt, art);
+                    } else {
+                        const existing = bestForTitle.get(nt);
+                        if (getSourceRank(art) < getSourceRank(existing)) {
+                            const prev = exactLosers.get(existing) || [];
+                            exactLosers.delete(existing);
+                            prev.push(existing);
+                            exactLosers.set(art, prev);
+                            bestForTitle.set(nt, art);
+                        } else {
+                            if (!exactLosers.has(existing)) exactLosers.set(existing, []);
+                            exactLosers.get(existing).push(art);
+                        }
+                    }
+                }
+                const exactWinners = new Set(bestForTitle.values());
+                list = list.filter(a => { const nt = getArticleNormTitle(a); return !nt || exactWinners.has(a); });
+
+                const tokens = list.map(a => getArticleTokens(a));
+                const df = buildDocFreq(tokens);
+                const dates = list.map(a => {
+                    const t = a.timestamp ? Date.parse(a.timestamp) : NaN;
+                    return Number.isFinite(t) ? t : Date.now();
+                });
+                const clusters = [];
+                for (let i = 0; i < list.length; i++) {
+                    if (!tokens[i].all.size) continue;
+                    let matchedCluster = -1;
+                    for (let c = clusters.length - 1; c >= 0; c--) {
+                        const headIdx = clusters[c].headIdx;
+                        if (Math.abs(dates[i] - dates[headIdx]) > _DEDUP_WINDOW_MS) break;
+                        if (isSameStory(tokens[i], tokens[headIdx], dates[i], dates[headIdx], df)) {
+                            matchedCluster = c;
+                            break;
+                        }
+                    }
+                    if (matchedCluster === -1) {
+                        clusters.push({ headIdx: i, memberIdxs: [i] });
+                    } else {
+                        clusters[matchedCluster].memberIdxs.push(i);
+                    }
+                }
+                const keepIdx = new Set();
+                for (const cl of clusters) {
+                    if (cl.memberIdxs.length === 1) {
+                        const leadArt = list[cl.memberIdxs[0]];
+                        keepIdx.add(cl.memberIdxs[0]);
+                        const kids = exactLosers.get(leadArt);
+                        if (kids && kids.length) threadMap.set(leadArt.id, { kind: 'dupes', topic: '', articles: kids.slice() });
+                        continue;
+                    }
+                    let bestI = cl.memberIdxs[0];
+                    let bestRank = getSourceRank(list[bestI]);
+                    let bestDate = dates[bestI];
+                    for (let k = 1; k < cl.memberIdxs.length; k++) {
+                        const j = cl.memberIdxs[k];
+                        const r = getSourceRank(list[j]);
+                        if (r < bestRank || (r === bestRank && dates[j] > bestDate)) {
+                            bestI = j; bestRank = r; bestDate = dates[j];
+                        }
+                    }
+                    keepIdx.add(bestI);
+                    const leadArt = list[bestI];
+                    const kids = (exactLosers.get(leadArt) || []).slice();
+                    for (const j of cl.memberIdxs) {
+                        if (j === bestI) continue;
+                        const memberArt = list[j];
+                        kids.push(memberArt);
+                        const memberExact = exactLosers.get(memberArt);
+                        if (memberExact && memberExact.length) kids.push(...memberExact);
+                    }
+                    if (kids.length) threadMap.set(leadArt.id, { kind: 'dupes', topic: '', articles: kids });
+                }
+                for (let i = 0; i < list.length; i++) {
+                    if (!tokens[i].all.size) {
+                        const kids = exactLosers.get(list[i]);
+                        if (kids && kids.length) threadMap.set(list[i].id, { kind: 'dupes', topic: '', articles: kids.slice() });
+                    }
+                }
+                list = list.filter((_, i) => !tokens[i].all.size || keepIdx.has(i));
+                dedupRemovedCount = before - list.length;
+            }
+
+            if (useTopics && list.length >= 3) {
+                const topicDf = new Map();
+                const artLabels = list.map(a => getTopicLabels(a));
+                for (const lblMap of artLabels) {
+                    for (const stem of lblMap.keys()) {
+                        topicDf.set(stem, (topicDf.get(stem) || 0) + 1);
+                    }
+                }
+                const maxFreq = Math.max(15, Math.floor(list.length * 0.25));
+                const topicGroups = new Map();
+                for (let i = 0; i < list.length; i++) {
+                    const lblMap = artLabels[i];
+                    if (!lblMap.size) continue;
+                    let bestStem = '';
+                    let bestDf = Infinity;
+                    let bestLen = 0;
+                    for (const [stem, label] of lblMap.entries()) {
+                        const cnt = topicDf.get(stem) || 0;
+                        if (cnt < 2 || cnt > maxFreq) continue;
+                        if (cnt < bestDf || (cnt === bestDf && label.length > bestLen)) {
+                            bestStem = stem;
+                            bestDf = cnt;
+                            bestLen = label.length;
+                        }
+                    }
+                    if (!bestStem) continue;
+                    if (!topicGroups.has(bestStem)) {
+                        topicGroups.set(bestStem, { label: lblMap.get(bestStem), idxs: [] });
+                    }
+                    topicGroups.get(bestStem).idxs.push(i);
+                }
+                const dropIdx = new Set();
+                for (const grp of topicGroups.values()) {
+                    if (grp.idxs.length < 2) continue;
+                    const leadIdx = grp.idxs[0];
+                    const leadArt = list[leadIdx];
+                    const existing = threadMap.get(leadArt.id);
+                    const kids = existing ? existing.articles.slice() : [];
+                    for (let k = 1; k < grp.idxs.length; k++) {
+                        const childArt = list[grp.idxs[k]];
+                        dropIdx.add(grp.idxs[k]);
+                        kids.push(childArt);
+                        const childThread = threadMap.get(childArt.id);
+                        if (childThread && childThread.articles.length) {
+                            kids.push(...childThread.articles);
+                            threadMap.delete(childArt.id);
+                        }
+                    }
+                    threadMap.set(leadArt.id, { kind: 'topic', topic: grp.label, articles: kids });
+                }
+                if (dropIdx.size > 0) {
+                    list = list.filter((_, i) => !dropIdx.has(i));
+                }
+            }
+
+            for (const [leadId, th] of threadMap.entries()) {
+                const seenIds = new Set([leadId]);
+                const cleanKids = [];
+                for (const c of th.articles) {
+                    if (c && c.id && !seenIds.has(c.id)) {
+                        seenIds.add(c.id);
+                        cleanKids.push(c);
+                    }
+                }
+                if (cleanKids.length) {
+                    th.articles = cleanKids;
+                    threadCopies.set(leadId, cleanKids.map(c => c.id));
+                } else {
+                    threadMap.delete(leadId);
+                }
+            }
+            return { kept: list, threadMap, threadCopies, dedupRemovedCount };
+        };
+
         function jaccard(a, b) {
             if (a.size === 0 || b.size === 0) return 0;
             let inter = 0;
@@ -10642,12 +10816,12 @@
 
         window.toggleGroupByTopic = () => {
             window._groupByTopic = !window._groupByTopic;
-            const btn = document.getElementById('group-topic-toggle');
-            if (btn) btn.setAttribute('data-on', window._groupByTopic ? 'true' : 'false');
-            const hdrBtn = document.getElementById('topic-thread-btn');
-            if (hdrBtn) hdrBtn.setAttribute('data-on', window._groupByTopic ? 'true' : 'false');
+            const on = window._groupByTopic ? 'true' : 'false';
+            document.querySelectorAll('#group-topic-toggle, #topic-thread-btn, .brief-topic-btn').forEach(el => {
+                el.setAttribute('data-on', on);
+            });
             saveTypographyPrefs();
-            renderTimeline();
+            refreshUI();
         };
 
         window.toggleCardThread = (btn) => {
@@ -10655,6 +10829,42 @@
             if (!wrap) return;
             const expanded = wrap.classList.toggle('is-expanded');
             btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        };
+
+        window.buildCardThreadHtml = (leadId, leadSource, thread) => {
+            if (!thread || !thread.articles || !thread.articles.length) return '';
+            const kids = thread.articles;
+            let pillLabel = '';
+            if (thread.kind === 'topic' && thread.topic) {
+                pillLabel = `+${kids.length} related on ${thread.topic}`;
+            } else {
+                const uniqSources = [];
+                const seenSrc = new Set([leadSource]);
+                for (const c of kids) {
+                    const s = c.source || 'News';
+                    if (!seenSrc.has(s)) { seenSrc.add(s); uniqSources.push(s); }
+                }
+                if (!uniqSources.length && kids[0]?.source) uniqSources.push(kids[0].source);
+                const preview = uniqSources.slice(0, 3).join(', ') + (uniqSources.length > 3 ? ` +${uniqSources.length - 3}` : '');
+                pillLabel = `+${kids.length} ${kids.length === 1 ? 'source' : 'sources'}${preview ? ' · ' + preview : ''}`;
+            }
+            const rowsHtml = kids.map(c => {
+                const cid = escJs(c.id);
+                const cSrc = c.source || 'News';
+                const cFav = typeof getFavicon === 'function' ? getFavicon(cSrc) : '';
+                const cTitle = c.title || c.excerpt || 'Untitled';
+                return `<button type="button" class="card-thread-row" onclick="event.stopPropagation(); (window._todayInColumn ? window.openArticleInReader('${cid}') : selectArticle('${cid}'))">`
+                    + `<span class="card-thread-row-src">${cFav}${esc(cSrc)}</span>`
+                    + `<span class="card-thread-row-title">${esc(cTitle)}</span>`
+                    + `</button>`;
+            }).join('');
+            return `<div class="card-thread-wrap" onclick="event.stopPropagation()">`
+                + `<button type="button" class="card-thread-pill" aria-expanded="false" onclick="event.stopPropagation(); window.toggleCardThread(this)">`
+                + `<span class="card-thread-pill-text">${esc(pillLabel)}</span>`
+                + `<svg class="card-thread-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`
+                + `</button>`
+                + `<div class="card-thread-list">${rowsHtml}</div>`
+                + `</div>`;
         };
 
         // ===== BLUESKY AT PROTOCOL INTEGRATION =====
@@ -11463,213 +11673,35 @@
 
             // --- Title dedup (fuzzy: exact-match pass + Jaccard cluster pass) + Story Threading ---
             let dedupRemovedCount = 0;
-            const threadMap = new Map();     // leadId -> { kind: 'dupes' | 'topic', topic: string, articles: Article[] }
-            const threadCopies = new Map();  // leadId -> [childId, ...]
-            const exactLosers = new Map();   // winnerArticle -> Article[]
-
             if (window._dedupByTitle && window._preBatchLinks && window._dedupHiddenLinks) {
                 // Mid-batch, the dedup verdict cannot change (see below), so reuse it as a Set lookup.
                 // Recomputing it 1-2x a second contributed to an iOS WebKit out-of-memory crash.
                 const before = filtered.length;
                 filtered = filtered.filter(a => !window._preBatchLinks.has(a.link) || !window._dedupHiddenLinks.has(a.link));
                 dedupRemovedCount = before - filtered.length;
-            } else if (window._dedupByTitle) {
-                const before = filtered.length;
-                // Mid-refresh stability (see fetchAllStaggered): while a batch fills the list, dedup runs only
-                // among pre-batch articles, so no visible item changes fate; batch arrivals skip dedup until
-                // the final render.
+            } else {
                 let _ddAll = null;
                 const _preDedup = filtered;
-                if (window._preBatchLinks) {
+                if (window._dedupByTitle && window._preBatchLinks) {
                     _ddAll = filtered;
                     filtered = filtered.filter(a => window._preBatchLinks.has(a.link));
                 }
-
-                // Pass 1: exact normalized-title collapse (cheap, catches reposts/wire copies)
-                const bestForTitle = new Map();
-                for (const art of filtered) {
-                    const nt = getArticleNormTitle(art);
-                    if (!nt) continue;
-                    if (!bestForTitle.has(nt)) {
-                        bestForTitle.set(nt, art);
-                    } else {
-                        const existing = bestForTitle.get(nt);
-                        if (getSourceRank(art) < getSourceRank(existing)) {
-                            const prev = exactLosers.get(existing) || [];
-                            exactLosers.delete(existing);
-                            prev.push(existing);
-                            exactLosers.set(art, prev);
-                            bestForTitle.set(nt, art);
-                        } else {
-                            if (!exactLosers.has(existing)) exactLosers.set(existing, []);
-                            exactLosers.get(existing).push(art);
-                        }
-                    }
-                }
-                const exactWinners = new Set(bestForTitle.values());
-                filtered = filtered.filter(a => { const nt = getArticleNormTitle(a); return !nt || exactWinners.has(a); });
-
-                // Pass 2: fuzzy cluster within a sliding 24h window. Tokenize eagerly: buildDocFreq() needs every
-                // title's tokens up front, and tokens[i] is reused across the match loop.
-                const tokens = filtered.map(a => getArticleTokens(a));
-                const df = buildDocFreq(tokens);
-                const dates = filtered.map(a => {
-                    const t = a.timestamp ? Date.parse(a.timestamp) : NaN;
-                    return Number.isFinite(t) ? t : Date.now();
+                const pooled = window.threadArticlePool(filtered, {
+                    dedup: !!window._dedupByTitle,
+                    groupByTopic: !!window._groupByTopic && !window.currentSourceFilter
                 });
-                const clusterOf = new Array(filtered.length).fill(-1); // index into clusters[]
-                const clusters = []; // each: { headIdx, memberIdxs: [] }
-                for (let i = 0; i < filtered.length; i++) {
-                    if (!tokens[i].all.size) continue;
-                    let matchedCluster = -1;
-                    // Walk recent clusters backward; bail when their head falls outside the window
-                    for (let c = clusters.length - 1; c >= 0; c--) {
-                        const headIdx = clusters[c].headIdx;
-                        if (Math.abs(dates[i] - dates[headIdx]) > _DEDUP_WINDOW_MS) break;
-                        if (isSameStory(tokens[i], tokens[headIdx], dates[i], dates[headIdx], df)) {
-                            matchedCluster = c;
-                            break;
-                        }
-                    }
-                    if (matchedCluster === -1) {
-                        clusterOf[i] = clusters.length;
-                        clusters.push({ headIdx: i, memberIdxs: [i] });
-                    } else {
-                        clusterOf[i] = matchedCluster;
-                        clusters[matchedCluster].memberIdxs.push(i);
-                    }
-                }
-                // Pick a winner per cluster: lowest Memeorandum rank wins; ties (and unranked) → newest.
-                const keepIdx = new Set();
-                for (const cl of clusters) {
-                    if (cl.memberIdxs.length === 1) {
-                        const leadArt = filtered[cl.memberIdxs[0]];
-                        keepIdx.add(cl.memberIdxs[0]);
-                        const kids = exactLosers.get(leadArt);
-                        if (kids && kids.length) threadMap.set(leadArt.id, { kind: 'dupes', topic: '', articles: kids.slice() });
-                        continue;
-                    }
-                    let bestI = cl.memberIdxs[0];
-                    let bestRank = getSourceRank(filtered[bestI]);
-                    let bestDate = dates[bestI];
-                    for (let k = 1; k < cl.memberIdxs.length; k++) {
-                        const j = cl.memberIdxs[k];
-                        const r = getSourceRank(filtered[j]);
-                        if (r < bestRank || (r === bestRank && dates[j] > bestDate)) {
-                            bestI = j; bestRank = r; bestDate = dates[j];
-                        }
-                    }
-                    keepIdx.add(bestI);
-                    const leadArt = filtered[bestI];
-                    const kids = (exactLosers.get(leadArt) || []).slice();
-                    for (const j of cl.memberIdxs) {
-                        if (j === bestI) continue;
-                        const memberArt = filtered[j];
-                        kids.push(memberArt);
-                        const memberExact = exactLosers.get(memberArt);
-                        if (memberExact && memberExact.length) kids.push(...memberExact);
-                    }
-                    if (kids.length) threadMap.set(leadArt.id, { kind: 'dupes', topic: '', articles: kids });
-                }
-                // Preserve exact-title threads for articles with empty token sets too
-                for (let i = 0; i < filtered.length; i++) {
-                    if (!tokens[i].all.size) {
-                        const kids = exactLosers.get(filtered[i]);
-                        if (kids && kids.length) threadMap.set(filtered[i].id, { kind: 'dupes', topic: '', articles: kids.slice() });
-                    }
-                }
-                filtered = filtered.filter((_, i) => !tokens[i].all.size || keepIdx.has(i));
-
-                // Restore batch-fresh articles (exempt from dedup this render) in
-                // their original sort positions.
+                filtered = pooled.kept;
+                dedupRemovedCount = pooled.dedupRemovedCount;
                 if (_ddAll) {
                     const kept = new Set(filtered);
                     filtered = _ddAll.filter(a => !window._preBatchLinks.has(a.link) || kept.has(a));
                 }
-                dedupRemovedCount = before - filtered.length;
-                // Record the verdict (hidden links) so mid-batch progressive renders
-                // reuse it via the cheap path above instead of recomputing.
-                const _keptLinks = new Set(filtered.map(a => a.link));
-                window._dedupHiddenLinks = new Set(_preDedup.filter(a => !_keptLinks.has(a.link)).map(a => a.link));
-            }
-
-            // --- Optional Topic / Storyline Grouping across the active list (no time window) ---
-            if (window._groupByTopic && !window.currentSourceFilter && filtered.length >= 3 && !(window._preBatchLinks && window._dedupHiddenLinks)) {
-                const topicDf = new Map();
-                const artLabels = filtered.map(a => getTopicLabels(a));
-                for (const lblMap of artLabels) {
-                    for (const stem of lblMap.keys()) {
-                        topicDf.set(stem, (topicDf.get(stem) || 0) + 1);
-                    }
+                if (window._dedupByTitle) {
+                    const _keptLinks = new Set(filtered.map(a => a.link));
+                    window._dedupHiddenLinks = new Set(_preDedup.filter(a => !_keptLinks.has(a.link)).map(a => a.link));
                 }
-                const maxFreq = Math.max(15, Math.floor(filtered.length * 0.25));
-                const topicGroups = new Map(); // stem -> { label, idxs: [] }
-                for (let i = 0; i < filtered.length; i++) {
-                    const lblMap = artLabels[i];
-                    if (!lblMap.size) continue;
-                    // Pick the most specific shared proper noun (lowest df >= 2, tie-break by longer label)
-                    let bestStem = '';
-                    let bestDf = Infinity;
-                    let bestLen = 0;
-                    for (const [stem, label] of lblMap.entries()) {
-                        const cnt = topicDf.get(stem) || 0;
-                        if (cnt < 2 || cnt > maxFreq) continue;
-                        if (cnt < bestDf || (cnt === bestDf && label.length > bestLen)) {
-                            bestStem = stem;
-                            bestDf = cnt;
-                            bestLen = label.length;
-                        }
-                    }
-                    if (!bestStem) continue;
-                    if (!topicGroups.has(bestStem)) {
-                        topicGroups.set(bestStem, { label: lblMap.get(bestStem), idxs: [] });
-                    }
-                    topicGroups.get(bestStem).idxs.push(i);
-                }
-                const dropIdx = new Set();
-                for (const grp of topicGroups.values()) {
-                    if (grp.idxs.length < 2) continue;
-                    const leadIdx = grp.idxs[0];
-                    const leadArt = filtered[leadIdx];
-                    const existing = threadMap.get(leadArt.id);
-                    const kids = existing ? existing.articles.slice() : [];
-                    for (let k = 1; k < grp.idxs.length; k++) {
-                        const childArt = filtered[grp.idxs[k]];
-                        dropIdx.add(grp.idxs[k]);
-                        kids.push(childArt);
-                        const childThread = threadMap.get(childArt.id);
-                        if (childThread && childThread.articles.length) {
-                            kids.push(...childThread.articles);
-                            threadMap.delete(childArt.id);
-                        }
-                    }
-                    threadMap.set(leadArt.id, { kind: 'topic', topic: grp.label, articles: kids });
-                }
-                if (dropIdx.size > 0) {
-                    filtered = filtered.filter((_, i) => !dropIdx.has(i));
-                }
-            }
-
-            if (!(window._preBatchLinks && window._dedupHiddenLinks)) {
-                for (const [leadId, th] of threadMap.entries()) {
-                    // Deduplicate children by id and exclude the lead itself
-                    const seenIds = new Set([leadId]);
-                    const cleanKids = [];
-                    for (const c of th.articles) {
-                        if (c && c.id && !seenIds.has(c.id)) {
-                            seenIds.add(c.id);
-                            cleanKids.push(c);
-                        }
-                    }
-                    if (cleanKids.length) {
-                        th.articles = cleanKids;
-                        threadCopies.set(leadId, cleanKids.map(c => c.id));
-                    } else {
-                        threadMap.delete(leadId);
-                    }
-                }
-                window._timelineThreads = threadMap;
-                window._timelineThreadCopies = threadCopies;
+                window._timelineThreads = pooled.threadMap;
+                window._timelineThreadCopies = pooled.threadCopies;
             }
             const dedupBadge = document.getElementById('dedup-badge');
             if (dedupBadge) {
@@ -11808,41 +11840,7 @@
             ` : '';
 
             const thread = window._timelineThreads?.get(a.id);
-            let threadHtml = '';
-            if (thread && thread.articles && thread.articles.length > 0) {
-                const kids = thread.articles;
-                let pillLabel = '';
-                if (thread.kind === 'topic' && thread.topic) {
-                    pillLabel = `+${kids.length} related on ${thread.topic}`;
-                } else {
-                    const uniqSources = [];
-                    const seenSrc = new Set([sourceLabel]);
-                    for (const c of kids) {
-                        const s = c.source || 'News';
-                        if (!seenSrc.has(s)) { seenSrc.add(s); uniqSources.push(s); }
-                    }
-                    if (!uniqSources.length && kids[0]?.source) uniqSources.push(kids[0].source);
-                    const preview = uniqSources.slice(0, 3).join(', ') + (uniqSources.length > 3 ? ` +${uniqSources.length - 3}` : '');
-                    pillLabel = `+${kids.length} ${kids.length === 1 ? 'source' : 'sources'}${preview ? ' · ' + preview : ''}`;
-                }
-                const rowsHtml = kids.map(c => {
-                    const cid = escJs(c.id);
-                    const cSrc = c.source || 'News';
-                    const cFav = getFavicon(cSrc);
-                    const cTitle = c.title || c.excerpt || 'Untitled';
-                    return `<button type="button" class="card-thread-row" onclick="event.stopPropagation(); selectArticle('${cid}')">`
-                        + `<span class="card-thread-row-src">${cFav}${esc(cSrc)}</span>`
-                        + `<span class="card-thread-row-title">${esc(cTitle)}</span>`
-                        + `</button>`;
-                }).join('');
-                threadHtml = `<div class="card-thread-wrap" onclick="event.stopPropagation()">`
-                    + `<button type="button" class="card-thread-pill" aria-expanded="false" onclick="event.stopPropagation(); window.toggleCardThread(this)">`
-                    + `<span class="card-thread-pill-text">${esc(pillLabel)}</span>`
-                    + `<svg class="card-thread-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`
-                    + `</button>`
-                    + `<div class="card-thread-list">${rowsHtml}</div>`
-                    + `</div>`;
-            }
+            const threadHtml = window.buildCardThreadHtml ? window.buildCardThreadHtml(a.id, sourceLabel, thread) : '';
 
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 ${swipeHintsHtml()}
@@ -16153,7 +16151,12 @@
             if (viewType === 'all') {
                 title = 'Unread';
                 icon = 'icon-newspaper';
-                pool = (window.articles || []).filter(a => (a.unread && (window._showMuted || !window.isMuted(a))) || window._pinnedArticleIds.has(a.id));
+                const rawPool = (window.articles || []).filter(a => (a.unread && (window._showMuted || !window.isMuted(a))) || window._pinnedArticleIds.has(a.id));
+                const pooled = window.threadArticlePool(rawPool, { dedup: !!window._dedupByTitle, groupByTopic: !!window._groupByTopic });
+                pool = pooled.kept.map(a => {
+                    const th = pooled.threadMap.get(a.id);
+                    return th ? { ...a, _threadData: th, coverage: [a, ...th.articles] } : a;
+                });
                 const catMap = new Map();
                 pool.forEach(a => {
                     const cat = getCategoryForArticle(a) || 'Uncategorized';
@@ -16189,11 +16192,16 @@
                 const catFeeds = allFeeds.filter(f => (f.category || '').trim().toLowerCase() === (title).trim().toLowerCase());
                 const catSources = new Set(catFeeds.map(f => f.name));
                 const catUrls = new Set(catFeeds.map(f => f.url));
-                pool = (window.articles || []).filter(a => {
+                const rawPool = (window.articles || []).filter(a => {
                     if (!a.unread || a.isBrief || window.isMuted(a)) return false;
                     return catSources.has(a.source) ||
                         (a.feedUrl && catUrls.has(a.feedUrl)) ||
                         (typeof getCategoryForArticle === 'function' && getCategoryForArticle(a).trim().toLowerCase() === title.trim().toLowerCase());
+                });
+                const pooled = window.threadArticlePool(rawPool, { dedup: !!window._dedupByTitle, groupByTopic: !!window._groupByTopic });
+                pool = pooled.kept.map(a => {
+                    const th = pooled.threadMap.get(a.id);
+                    return th ? { ...a, _threadData: th, coverage: [a, ...th.articles] } : a;
                 });
                 const srcMap = new Map();
                 pool.forEach(a => {
@@ -16229,6 +16237,10 @@
                 ? `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'}`
                 : `${sections.length} ${sections.length === 1 ? (viewType === 'category' ? 'feed' : 'section') : (viewType === 'category' ? 'feeds' : 'sections')} · ${totalStories} unread stories`;
 
+            const topicBtnHtml = viewType !== 'source'
+                ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-topic-btn" id="topic-thread-btn-brief" onclick="window.toggleGroupByTopic()" data-on="${window._groupByTopic ? 'true' : 'false'}" title="Group related stories by topic" aria-label="Group related stories by topic" style="display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:9999px;font-size:11.5px;font-weight:600;border:1px solid ${window._groupByTopic ? 'rgba(var(--accent-rgb),0.35)' : 'rgba(128,128,128,0.24)'};background:${window._groupByTopic ? 'rgba(var(--accent-rgb),0.14)' : 'transparent'};color:${window._groupByTopic ? 'var(--accent)' : 'inherit'};"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="19" cy="15" r="3"/></svg><span>Topics</span></button>`
+                : '';
+
             const composed = composeSlotBrief({
                 id: `brief:${viewType}:${filterParam || ''}`,
                 slot: viewType,
@@ -16238,6 +16250,7 @@
                 triggerTs: now,
                 windowStart: 0,
                 windowEnd: now,
+                metaExtra: topicBtnHtml,
                 headerAction: '',
                 noFooterMarkRead: false,
                 isPersonalHub: false,
@@ -17308,9 +17321,12 @@
                     // Other outlets grouped under this story, on their own line under the summary (at the end of the
                     // source line they were squeezed to a few letters).
                     const alsoNames = st.alsoReportedBy || [];
-                    const alsoReported = alsoNames.length
-                        ? `<div class="brief-story-also">Also from ${esc(alsoNames.slice(0, 4).join(', '))}${alsoNames.length > 4 ? ` and ${alsoNames.length - 4} more` : ''}</div>`
+                    const briefThreadHtml = st._threadData && window.buildCardThreadHtml
+                        ? window.buildCardThreadHtml(st.id, st.source, st._threadData)
                         : '';
+                    const alsoReported = briefThreadHtml || (alsoNames.length
+                        ? `<div class="brief-story-also">Also from ${esc(alsoNames.slice(0, 4).join(', '))}${alsoNames.length > 4 ? ` and ${alsoNames.length - 4} more` : ''}</div>`
+                        : '');
                     const saId = escJs(st.id);
                     // When the story first arrived: its EARLIEST copy, so a new outlet joining a story you had seen
                     // doesn't make it "new". 0 = unknown.
@@ -21312,7 +21328,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 569;
+        window.APP_BUILD = 570;
 
         (async function initApp() {
             try {
