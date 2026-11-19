@@ -10408,77 +10408,118 @@
         }
 
         // Precision topic grouper shared by timeline and Today Brief:
-        // weights the opening 5-7 words of each headline and requires 2+ shared meaningful tokens
-        // (or a multi-word entity phrase + shared context) so single-word coincidences never merge.
+        // compares the opening 7 words of each headline (plus full headline) and groups stories
+        // sharing 2+ opening tokens, 3+ headline tokens, or a multi-word proper-noun phrase + context.
         function groupItemsByTopic(items, getArt) {
             if (!items || items.length < 3) return [];
-            const topicDf = new Map();
-            const artLabels = items.map(it => getTopicLabels(getArt(it)));
-            for (const lblMap of artLabels) {
-                for (const k of lblMap.keys()) topicDf.set(k, (topicDf.get(k) || 0) + 1);
-            }
             const maxFreq = Math.max(12, Math.floor(items.length * 0.20));
             const openTokens = items.map(it => getOpeningTokens(getArt(it)));
             const titleTokens = items.map(it => getArticleTokens(getArt(it)).all);
             const sumTokens = items.map(it => getArticleSummaryTokens(getArt(it)).all);
+            const artLabels = items.map(it => getTopicLabels(getArt(it)));
             const cats = items.map(it => {
                 const a = getArt(it);
                 return typeof getCategoryForArticle === 'function' ? getCategoryForArticle(a) : '';
             });
 
-            // Build candidate buckets keyed by each item's highest-precision shared topic
-            const candidates = new Map(); // key -> { meta, df, idxs: [] }
-            for (let i = 0; i < items.length; i++) {
-                const lblMap = artLabels[i];
-                if (!lblMap.size) continue;
-                let bestKey = '';
-                let bestMeta = null;
-                let bestDf = Infinity;
-                for (const [key, meta] of lblMap.entries()) {
-                    const cnt = topicDf.get(key) || 0;
-                    if (cnt < 2 || cnt > maxFreq) continue;
-                    // Prefer multi-word phrases, then rarer entities, then longer labels
-                    const better = !bestMeta
-                        || (meta.isPhrase && !bestMeta.isPhrase)
-                        || (meta.isPhrase === bestMeta.isPhrase && (cnt < bestDf || (cnt === bestDf && meta.label.length > bestMeta.label.length)));
-                    if (better) { bestKey = key; bestMeta = meta; bestDf = cnt; }
+            // Build document frequency across opening tokens and filter out stop/ultra-common words
+            const openDf = new Map();
+            const openFiltered = openTokens.map(toks => {
+                const s = new Set();
+                for (const t of toks) {
+                    if (t.length >= 2 && !_TOPIC_STOP_ENTITIES.has(t)) s.add(t);
                 }
-                if (!bestKey) continue;
-                if (!candidates.has(bestKey)) candidates.set(bestKey, { meta: bestMeta, df: bestDf, idxs: [] });
-                candidates.get(bestKey).idxs.push(i);
-            }
+                for (const t of s) openDf.set(t, (openDf.get(t) || 0) + 1);
+                return s;
+            });
 
-            const countOverlap = (a, b, excludeSet) => {
-                let n = 0;
-                const [small, big] = a.size <= b.size ? [a, b] : [b, a];
-                for (const t of small) {
-                    if ((!excludeSet || !excludeSet.has(t)) && big.has(t)) n++;
+            // Inverted index on opening tokens (within frequency cap) so we only compare plausible pairs
+            const byToken = new Map();
+            openFiltered.forEach((toks, i) => {
+                for (const t of toks) {
+                    const df = openDf.get(t) || 0;
+                    if (df < 2 || df > maxFreq) continue;
+                    if (!byToken.has(t)) byToken.set(t, []);
+                    byToken.get(t).push(i);
                 }
-                return n;
+            });
+
+            // Also index multi-word proper phrases
+            const byPhrase = new Map();
+            artLabels.forEach((lblMap, i) => {
+                for (const [k, meta] of lblMap.entries()) {
+                    if (!meta.isPhrase) continue;
+                    if (!byPhrase.has(k)) byPhrase.set(k, []);
+                    byPhrase.get(k).push(i);
+                }
+            });
+
+            const sharedList = (a, b) => {
+                const out = [];
+                const [small, big] = a.size <= b.size ? [a, b] : [b, a];
+                for (const t of small) if (big.has(t)) out.push(t);
+                return out;
             };
 
-            const groups = [];
-            for (const cand of candidates.values()) {
-                if (cand.idxs.length < 2) continue;
-                const leadIdx = cand.idxs[0];
-                const topicStems = new Set(cand.meta.stems);
-                const members = [leadIdx];
+            const parent = items.map((_, i) => i);
+            const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+            const union = (i, j) => { const x = find(i), y = find(j); if (x !== y) parent[y] = x; };
+            const pairLabel = new Map(); // "i:j" -> display label
 
-                for (let k = 1; k < cand.idxs.length; k++) {
-                    const idx = cand.idxs[k];
-                    const sameCat = !cats[leadIdx] || !cats[idx] || cats[leadIdx] === cats[idx];
-                    const openingShared = countOverlap(openTokens[leadIdx], openTokens[idx], null);
-                    const titleShared = countOverlap(titleTokens[leadIdx], titleTokens[idx], null);
-                    const extraSummaryShared = countOverlap(sumTokens[leadIdx], sumTokens[idx], topicStems);
+            const tryPair = (i, j, phraseMeta) => {
+                if (i >= j || find(i) === find(j)) return;
+                const sameCat = !cats[i] || !cats[j] || cats[i] === cats[j];
+                const openHits = sharedList(openFiltered[i], openFiltered[j]);
+                const titleHits = sharedList(titleTokens[i], titleTokens[j]);
+                if (!sameCat && titleHits.length < 3) return;
 
-                    if (!sameCat && titleShared < 3) continue;
-                    // Require at least 2 meaningful shared words in the opening 5-7 words,
-                    // 3+ across the headline, or a multi-word entity phrase + 1 extra shared word.
-                    if (openingShared >= 2 || titleShared >= 3 || (cand.meta.isPhrase && (openingShared >= 1 || extraSummaryShared >= 1))) {
-                        members.push(idx);
+                const sumHits = phraseMeta ? sharedList(sumTokens[i], sumTokens[j]).length : 0;
+                const ok = openHits.length >= 2
+                    || titleHits.length >= 3
+                    || (phraseMeta && (openHits.length >= 1 || sumHits >= 1));
+                if (!ok) return;
+
+                union(i, j);
+                // Pick the cleanest display label: phrase > proper noun > top 2 shared opening words
+                let label = phraseMeta ? phraseMeta.label : '';
+                if (!label) {
+                    for (const [k, meta] of artLabels[i].entries()) {
+                        if (!meta.isPhrase && artLabels[j].has(k)) { label = meta.label; break; }
                     }
                 }
-                if (members.length >= 2) groups.push({ label: cand.meta.label, idxs: members });
+                if (!label) {
+                    const top = (openHits.length >= 2 ? openHits : titleHits).slice(0, 2)
+                        .map(w => w.charAt(0).toUpperCase() + w.slice(1));
+                    label = top.join(' · ');
+                }
+                if (label) pairLabel.set(`${find(i)}`, label);
+            };
+
+            for (const [k, idxs] of byPhrase.entries()) {
+                if (idxs.length < 2) continue;
+                const meta = artLabels[idxs[0]].get(k);
+                for (let a = 0; a < idxs.length; a++) {
+                    for (let b = a + 1; b < idxs.length; b++) tryPair(idxs[a], idxs[b], meta);
+                }
+            }
+            for (const idxs of byToken.values()) {
+                if (idxs.length < 2) continue;
+                for (let a = 0; a < idxs.length; a++) {
+                    for (let b = a + 1; b < idxs.length; b++) tryPair(idxs[a], idxs[b], null);
+                }
+            }
+
+            const buckets = new Map();
+            for (let i = 0; i < items.length; i++) {
+                const r = find(i);
+                if (!buckets.has(r)) buckets.set(r, []);
+                buckets.get(r).push(i);
+            }
+
+            const groups = [];
+            for (const [root, idxs] of buckets.entries()) {
+                if (idxs.length < 2) continue;
+                groups.push({ label: pairLabel.get(String(root)) || 'this topic', idxs });
             }
             return groups;
         }
@@ -21465,7 +21506,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 573;
+        window.APP_BUILD = 574;
 
         (async function initApp() {
             try {
