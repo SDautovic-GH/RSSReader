@@ -4812,6 +4812,128 @@
             display: none !important;
         }
 
+        #topic-thread-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            height: 30px;
+            padding: 0 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            border: 1px solid rgba(128, 128, 128, 0.22);
+            background: transparent;
+            color: var(--text-2, #6b7280);
+            cursor: pointer;
+            transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+        }
+
+        #topic-thread-btn[data-on="true"] {
+            background: rgba(var(--accent-rgb), 0.14);
+            border-color: rgba(var(--accent-rgb), 0.35);
+            color: var(--accent);
+        }
+
+        .dark #topic-thread-btn[data-on="true"] {
+            background: rgba(var(--accent-rgb), 0.20);
+        }
+
+        .card-thread-wrap {
+            margin-top: 8px;
+        }
+
+        .card-thread-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            max-width: 100%;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 11.5px;
+            font-weight: 500;
+            line-height: 1.35;
+            background: rgba(var(--accent-rgb), 0.10);
+            color: var(--accent);
+            border: 1px solid rgba(var(--accent-rgb), 0.20);
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+
+        .card-thread-pill:hover {
+            background: rgba(var(--accent-rgb), 0.18);
+        }
+
+        .card-thread-pill-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .card-thread-chevron {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+            transition: transform 0.15s ease;
+        }
+
+        .card-thread-wrap.is-expanded .card-thread-chevron {
+            transform: rotate(180deg);
+        }
+
+        .card-thread-list {
+            display: none;
+            margin-top: 6px;
+            padding-left: 10px;
+            border-left: 2px solid rgba(var(--accent-rgb), 0.30);
+            gap: 4px;
+        }
+
+        .card-thread-wrap.is-expanded .card-thread-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-thread-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            padding: 4px 6px;
+            border-radius: 6px;
+            font-size: 12.5px;
+            line-height: 1.35;
+            text-align: left;
+            color: var(--text-2, #4b5563);
+            cursor: pointer;
+            transition: background-color 0.12s;
+        }
+
+        .dark .card-thread-row {
+            color: var(--text-2, #cbd5e1);
+        }
+
+        .card-thread-row:hover {
+            background: rgba(var(--accent-rgb), 0.08);
+        }
+
+        .card-thread-row-src {
+            font-weight: 600;
+            font-size: 11.5px;
+            color: var(--accent);
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-thread-row-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
         #viewer-back-btn {
             display: inline-flex !important;
             align-items: center !important;
@@ -8356,6 +8478,11 @@
                     </div>
                     <!-- Desktop Personal Hub Switcher (Retired on desktop — redundant with sidebar navigation) -->
                     <div id="desk-saved-switcher" class="hidden" style="display: none !important;"></div>
+                    <button id="topic-thread-btn" type="button" onclick="toggleGroupByTopic()" data-on="false"
+                        title="Group related stories by topic" aria-label="Group related stories by topic">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="19" cy="15" r="3"/></svg>
+                        <span>Topics</span>
+                    </button>
                     <button id="desk-search-trigger" onclick="toggleSearchSheet()"
                         class="p-1.5 rounded-lg text-gray-500 ml-2 flex-shrink-0"
                         title="Search Articles (/)">
@@ -8891,10 +9018,18 @@
                         <div class="settings-row">
                             <div class="min-w-0 flex-1">
                                 <label class="settings-item-label-sm">Deduplicate by title</label>
-                                <p class="settings-hint">One copy of each story</p>
+                                <p class="settings-hint">Thread duplicate coverage under one lead story</p>
                             </div>
                             <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch"
                                 data-on="true" aria-label="Deduplicate by title"></button>
+                        </div>
+                        <div class="settings-row">
+                            <div class="min-w-0 flex-1">
+                                <label class="settings-item-label-sm">Group stories by topic</label>
+                                <p class="settings-hint">Thread related stories sharing a subject</p>
+                            </div>
+                            <button id="group-topic-toggle" onclick="toggleGroupByTopic()" class="toggle-switch"
+                                data-on="false" aria-label="Group stories by topic"></button>
                         </div>
                         <!-- MUTED WORDS -->
                         <div class="settings-row settings-row-stacked">
@@ -10088,8 +10223,11 @@
             return { text: null, proxyIndex: -1 };
         }
 
-        // --- TITLE DEDUPLICATION ---
+        // --- TITLE DEDUPLICATION & THREADING ---
         window._dedupByTitle = true;
+        window._groupByTopic = false;
+        window._timelineThreads = new Map();
+        window._timelineThreadCopies = new Map();
         window._memoRankMap = null;
 
         function normTitle(t) {
@@ -10179,6 +10317,42 @@
                 if (all.has(sp)) proper.add(sp);
             }
             return { all, proper };
+        }
+
+        const _TOPIC_STOP_ENTITIES = new Set([
+            'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+            'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
+            'the', 'this', 'that', 'these', 'those', 'what', 'when', 'where', 'which', 'while', 'who', 'why', 'how',
+            'here', 'there', 'after', 'before', 'during', 'under', 'over', 'into', 'from', 'with', 'without', 'about',
+            'new', 'first', 'last', 'next', 'best', 'worst', 'most', 'more', 'many', 'some', 'all', 'just', 'now', 'still',
+            'report', 'reports', 'update', 'updates', 'review', 'reviews', 'watch', 'live', 'video', 'opinion', 'analysis',
+            'exclusive', 'breaking', 'developing', 'podcast', 'newsletter', 'morning', 'evening', 'daily', 'weekly', 'today',
+            'say', 'says', 'said', 'could', 'would', 'should', 'can', 'will', 'may', 'might', 'must', 'get', 'gets', 'got',
+            'make', 'makes', 'made', 'take', 'takes', 'took', 'see', 'sees', 'look', 'looks', 'need', 'needs', 'want', 'wants',
+            'one', 'two', 'three', 'four', 'five', 'year', 'years', 'day', 'days', 'week', 'weeks', 'month', 'months'
+        ]);
+
+        // Maps stemmed proper-noun token -> clean capitalized display label from the headline (e.g. "Nvidia", "OpenAI").
+        function getTopicLabels(art) {
+            if (!art || !art.title) return new Map();
+            if (art._topicLabelsSrc === art.title && art._topicLabels) return art._topicLabels;
+            const labels = new Map();
+            const words = art.title.replace(/^[^:–—-]{1,30}[:–—-]\s+/, '').split(/\s+/);
+            for (const w of words) {
+                const clean = w.replace(/[^A-Za-z0-9]/g, '');
+                if (!clean) continue;
+                const isProper = (clean.length >= 3 && /^[A-Z]/.test(clean) && !/^[A-Z]+$/.test(clean))
+                    || (clean.length >= 2 && clean.length <= 6 && /^[A-Z][A-Z0-9]*$/.test(clean));
+                if (!isProper) continue;
+                const low = clean.toLowerCase();
+                if (_TOPIC_STOP_ENTITIES.has(low) || _DEDUP_STOPWORDS.has(low)) continue;
+                const stemmed = _dedupStem(low);
+                if (stemmed.length < 2) continue;
+                if (!labels.has(stemmed)) labels.set(stemmed, clean);
+            }
+            art._topicLabelsSrc = art.title;
+            art._topicLabels = labels;
+            return labels;
         }
 
         function jaccard(a, b) {
@@ -10464,6 +10638,23 @@
             if (window._dedupByTitle && !window._memoRankMap) fetchMemoRankings();
             saveTypographyPrefs();
             renderTimeline();
+        };
+
+        window.toggleGroupByTopic = () => {
+            window._groupByTopic = !window._groupByTopic;
+            const btn = document.getElementById('group-topic-toggle');
+            if (btn) btn.setAttribute('data-on', window._groupByTopic ? 'true' : 'false');
+            const hdrBtn = document.getElementById('topic-thread-btn');
+            if (hdrBtn) hdrBtn.setAttribute('data-on', window._groupByTopic ? 'true' : 'false');
+            saveTypographyPrefs();
+            renderTimeline();
+        };
+
+        window.toggleCardThread = (btn) => {
+            const wrap = btn && btn.closest('.card-thread-wrap');
+            if (!wrap) return;
+            const expanded = wrap.classList.toggle('is-expanded');
+            btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         };
 
         // ===== BLUESKY AT PROTOCOL INTEGRATION =====
@@ -11270,8 +11461,12 @@
                 return sortOrder === 'desc' ? -diff : diff;
             });
 
-            // --- Title dedup (fuzzy: exact-match pass + Jaccard cluster pass within 24h) ---
+            // --- Title dedup (fuzzy: exact-match pass + Jaccard cluster pass) + Story Threading ---
             let dedupRemovedCount = 0;
+            const threadMap = new Map();     // leadId -> { kind: 'dupes' | 'topic', topic: string, articles: Article[] }
+            const threadCopies = new Map();  // leadId -> [childId, ...]
+            const exactLosers = new Map();   // winnerArticle -> Article[]
+
             if (window._dedupByTitle && window._preBatchLinks && window._dedupHiddenLinks) {
                 // Mid-batch, the dedup verdict cannot change (see below), so reuse it as a Set lookup.
                 // Recomputing it 1-2x a second contributed to an iOS WebKit out-of-memory crash.
@@ -11299,7 +11494,16 @@
                         bestForTitle.set(nt, art);
                     } else {
                         const existing = bestForTitle.get(nt);
-                        if (getSourceRank(art) < getSourceRank(existing)) bestForTitle.set(nt, art);
+                        if (getSourceRank(art) < getSourceRank(existing)) {
+                            const prev = exactLosers.get(existing) || [];
+                            exactLosers.delete(existing);
+                            prev.push(existing);
+                            exactLosers.set(art, prev);
+                            bestForTitle.set(nt, art);
+                        } else {
+                            if (!exactLosers.has(existing)) exactLosers.set(existing, []);
+                            exactLosers.get(existing).push(art);
+                        }
                     }
                 }
                 const exactWinners = new Set(bestForTitle.values());
@@ -11338,7 +11542,13 @@
                 // Pick a winner per cluster: lowest Memeorandum rank wins; ties (and unranked) → newest.
                 const keepIdx = new Set();
                 for (const cl of clusters) {
-                    if (cl.memberIdxs.length === 1) { keepIdx.add(cl.memberIdxs[0]); continue; }
+                    if (cl.memberIdxs.length === 1) {
+                        const leadArt = filtered[cl.memberIdxs[0]];
+                        keepIdx.add(cl.memberIdxs[0]);
+                        const kids = exactLosers.get(leadArt);
+                        if (kids && kids.length) threadMap.set(leadArt.id, { kind: 'dupes', topic: '', articles: kids.slice() });
+                        continue;
+                    }
                     let bestI = cl.memberIdxs[0];
                     let bestRank = getSourceRank(filtered[bestI]);
                     let bestDate = dates[bestI];
@@ -11350,6 +11560,23 @@
                         }
                     }
                     keepIdx.add(bestI);
+                    const leadArt = filtered[bestI];
+                    const kids = (exactLosers.get(leadArt) || []).slice();
+                    for (const j of cl.memberIdxs) {
+                        if (j === bestI) continue;
+                        const memberArt = filtered[j];
+                        kids.push(memberArt);
+                        const memberExact = exactLosers.get(memberArt);
+                        if (memberExact && memberExact.length) kids.push(...memberExact);
+                    }
+                    if (kids.length) threadMap.set(leadArt.id, { kind: 'dupes', topic: '', articles: kids });
+                }
+                // Preserve exact-title threads for articles with empty token sets too
+                for (let i = 0; i < filtered.length; i++) {
+                    if (!tokens[i].all.size) {
+                        const kids = exactLosers.get(filtered[i]);
+                        if (kids && kids.length) threadMap.set(filtered[i].id, { kind: 'dupes', topic: '', articles: kids.slice() });
+                    }
                 }
                 filtered = filtered.filter((_, i) => !tokens[i].all.size || keepIdx.has(i));
 
@@ -11364,6 +11591,85 @@
                 // reuse it via the cheap path above instead of recomputing.
                 const _keptLinks = new Set(filtered.map(a => a.link));
                 window._dedupHiddenLinks = new Set(_preDedup.filter(a => !_keptLinks.has(a.link)).map(a => a.link));
+            }
+
+            // --- Optional Topic / Storyline Grouping across the active list (no time window) ---
+            if (window._groupByTopic && !window.currentSourceFilter && filtered.length >= 3 && !(window._preBatchLinks && window._dedupHiddenLinks)) {
+                const topicDf = new Map();
+                const artLabels = filtered.map(a => getTopicLabels(a));
+                for (const lblMap of artLabels) {
+                    for (const stem of lblMap.keys()) {
+                        topicDf.set(stem, (topicDf.get(stem) || 0) + 1);
+                    }
+                }
+                const maxFreq = Math.max(15, Math.floor(filtered.length * 0.25));
+                const topicGroups = new Map(); // stem -> { label, idxs: [] }
+                for (let i = 0; i < filtered.length; i++) {
+                    const lblMap = artLabels[i];
+                    if (!lblMap.size) continue;
+                    // Pick the most specific shared proper noun (lowest df >= 2, tie-break by longer label)
+                    let bestStem = '';
+                    let bestDf = Infinity;
+                    let bestLen = 0;
+                    for (const [stem, label] of lblMap.entries()) {
+                        const cnt = topicDf.get(stem) || 0;
+                        if (cnt < 2 || cnt > maxFreq) continue;
+                        if (cnt < bestDf || (cnt === bestDf && label.length > bestLen)) {
+                            bestStem = stem;
+                            bestDf = cnt;
+                            bestLen = label.length;
+                        }
+                    }
+                    if (!bestStem) continue;
+                    if (!topicGroups.has(bestStem)) {
+                        topicGroups.set(bestStem, { label: lblMap.get(bestStem), idxs: [] });
+                    }
+                    topicGroups.get(bestStem).idxs.push(i);
+                }
+                const dropIdx = new Set();
+                for (const grp of topicGroups.values()) {
+                    if (grp.idxs.length < 2) continue;
+                    const leadIdx = grp.idxs[0];
+                    const leadArt = filtered[leadIdx];
+                    const existing = threadMap.get(leadArt.id);
+                    const kids = existing ? existing.articles.slice() : [];
+                    for (let k = 1; k < grp.idxs.length; k++) {
+                        const childArt = filtered[grp.idxs[k]];
+                        dropIdx.add(grp.idxs[k]);
+                        kids.push(childArt);
+                        const childThread = threadMap.get(childArt.id);
+                        if (childThread && childThread.articles.length) {
+                            kids.push(...childThread.articles);
+                            threadMap.delete(childArt.id);
+                        }
+                    }
+                    threadMap.set(leadArt.id, { kind: 'topic', topic: grp.label, articles: kids });
+                }
+                if (dropIdx.size > 0) {
+                    filtered = filtered.filter((_, i) => !dropIdx.has(i));
+                }
+            }
+
+            if (!(window._preBatchLinks && window._dedupHiddenLinks)) {
+                for (const [leadId, th] of threadMap.entries()) {
+                    // Deduplicate children by id and exclude the lead itself
+                    const seenIds = new Set([leadId]);
+                    const cleanKids = [];
+                    for (const c of th.articles) {
+                        if (c && c.id && !seenIds.has(c.id)) {
+                            seenIds.add(c.id);
+                            cleanKids.push(c);
+                        }
+                    }
+                    if (cleanKids.length) {
+                        th.articles = cleanKids;
+                        threadCopies.set(leadId, cleanKids.map(c => c.id));
+                    } else {
+                        threadMap.delete(leadId);
+                    }
+                }
+                window._timelineThreads = threadMap;
+                window._timelineThreadCopies = threadCopies;
             }
             const dedupBadge = document.getElementById('dedup-badge');
             if (dedupBadge) {
@@ -11501,6 +11807,43 @@
                 </div>
             ` : '';
 
+            const thread = window._timelineThreads?.get(a.id);
+            let threadHtml = '';
+            if (thread && thread.articles && thread.articles.length > 0) {
+                const kids = thread.articles;
+                let pillLabel = '';
+                if (thread.kind === 'topic' && thread.topic) {
+                    pillLabel = `+${kids.length} related on ${thread.topic}`;
+                } else {
+                    const uniqSources = [];
+                    const seenSrc = new Set([sourceLabel]);
+                    for (const c of kids) {
+                        const s = c.source || 'News';
+                        if (!seenSrc.has(s)) { seenSrc.add(s); uniqSources.push(s); }
+                    }
+                    if (!uniqSources.length && kids[0]?.source) uniqSources.push(kids[0].source);
+                    const preview = uniqSources.slice(0, 3).join(', ') + (uniqSources.length > 3 ? ` +${uniqSources.length - 3}` : '');
+                    pillLabel = `+${kids.length} ${kids.length === 1 ? 'source' : 'sources'}${preview ? ' · ' + preview : ''}`;
+                }
+                const rowsHtml = kids.map(c => {
+                    const cid = escJs(c.id);
+                    const cSrc = c.source || 'News';
+                    const cFav = getFavicon(cSrc);
+                    const cTitle = c.title || c.excerpt || 'Untitled';
+                    return `<button type="button" class="card-thread-row" onclick="event.stopPropagation(); selectArticle('${cid}')">`
+                        + `<span class="card-thread-row-src">${cFav}${esc(cSrc)}</span>`
+                        + `<span class="card-thread-row-title">${esc(cTitle)}</span>`
+                        + `</button>`;
+                }).join('');
+                threadHtml = `<div class="card-thread-wrap" onclick="event.stopPropagation()">`
+                    + `<button type="button" class="card-thread-pill" aria-expanded="false" onclick="event.stopPropagation(); window.toggleCardThread(this)">`
+                    + `<span class="card-thread-pill-text">${esc(pillLabel)}</span>`
+                    + `<svg class="card-thread-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`
+                    + `</button>`
+                    + `<div class="card-thread-list">${rowsHtml}</div>`
+                    + `</div>`;
+            }
+
             return `<div data-id="${esc(a.id)}" onclick="selectArticle('${saId}')" oncontextmenu="showArticleContextMenu(event,'${saId}')" class="article-item-card relative cursor-pointer hover:bg-blue-950/30 transition-colors ${selCls}${readDimCls}">
                 ${swipeHintsHtml()}
                 <div class="min-w-0 list-card-body">
@@ -11518,6 +11861,7 @@
                     ${thumbHtml}
                     ${isBsky ? `${titleHtml}<p class="${previewCls}">${a._socialLeadHtml || (a._socialLeadHtml = formatSocialLeadHtml(a.excerpt, true))}</p>` : `<div class="list-card-copy">${titleHtml}<p class="${previewCls}">${a._excerptHtml || (a._excerptHtml = linkify(esc(a.excerpt)))}</p></div>`}
                     ${parentCardHtml}
+                    ${threadHtml}
                 </div>
             </div>`;
         }
@@ -13518,7 +13862,9 @@
         window._copiesTakenAlong = new Map();   // lead id -> copy articles its read mark changed
         function syncStoryCopies(leadId, unread) {
             if (!unread) {
-                const ids = window._briefCopies?.get(leadId);
+                const briefIds = window._briefCopies?.get(leadId) || [];
+                const threadIds = window._timelineThreadCopies?.get(leadId) || [];
+                const ids = briefIds.length && threadIds.length ? [...new Set([...briefIds, ...threadIds])] : (briefIds.length ? briefIds : threadIds);
                 if (!ids || !ids.length) return;
                 const took = [];
                 ids.forEach(cid => {
@@ -18978,7 +19324,22 @@
                 toMark = toMark.filter(a => (a._ts || (a.timestamp ? new Date(a.timestamp).getTime() : 0)) <= cutoff);
             }
 
-            toMark.forEach(a => { a.unread = false; window._readLinks.add(a.link); archiveReadArticle(a); });
+            toMark.forEach(a => {
+                a.unread = false;
+                window._readLinks.add(a.link);
+                archiveReadArticle(a);
+                const threadIds = window._timelineThreadCopies?.get(a.id);
+                if (threadIds && threadIds.length) {
+                    threadIds.forEach(cid => {
+                        const c = (window.articles || []).find(x => x.id === cid);
+                        if (c && c.unread && !c.isBrief) {
+                            c.unread = false;
+                            window._readLinks.add(c.link);
+                            archiveReadArticle(c);
+                        }
+                    });
+                }
+            });
             saveReadState();
             window._pinnedArticleIds.clear();
             refreshUI();
@@ -19852,6 +20213,7 @@
                     ...previewLines,
                     ...previewLinesSoc,
                     dedupByTitle: window._dedupByTitle || false,
+                    groupByTopic: window._groupByTopic || false,
                     mergeTitlePreview: window._mergeTitlePreview || false,
                     // Written by updateRecentlyReadDays; left out, any save dropped it.
                     recentlyReadDays: prevPrefs.recentlyReadDays,
@@ -20002,6 +20364,13 @@
                 window._dedupByTitle = prefs.dedupByTitle;
                 const btn = document.getElementById('dedup-title-toggle');
                 if (btn) btn.setAttribute('data-on', prefs.dedupByTitle ? 'true' : 'false');
+            }
+            if (typeof prefs.groupByTopic === 'boolean') {
+                window._groupByTopic = prefs.groupByTopic;
+                const btn = document.getElementById('group-topic-toggle');
+                if (btn) btn.setAttribute('data-on', prefs.groupByTopic ? 'true' : 'false');
+                const hdrBtn = document.getElementById('topic-thread-btn');
+                if (hdrBtn) hdrBtn.setAttribute('data-on', prefs.groupByTopic ? 'true' : 'false');
             }
             if (typeof prefs.mergeTitlePreview === 'boolean') {
                 window._mergeTitlePreview = prefs.mergeTitlePreview;
@@ -20943,7 +21312,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 568;
+        window.APP_BUILD = 569;
 
         (async function initApp() {
             try {
