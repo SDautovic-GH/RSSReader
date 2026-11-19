@@ -10821,7 +10821,11 @@
                 el.setAttribute('data-on', on);
             });
             saveTypographyPrefs();
-            refreshUI();
+            if (typeof todayOnScreen === 'function' && todayOnScreen()) {
+                window.rebuildTodayInPlace?.(true);
+            } else {
+                refreshUI();
+            }
         };
 
         window.toggleCardThread = (btn) => {
@@ -15910,8 +15914,8 @@
             const chrono = !window._todayRank;
             const newestFirst = document.getElementById('pref-sort-order')?.value === 'desc';
             const built = buildStoryClusters(pool, chrono
-                ? { limitPerCat: window._briefStoriesPerCat || 10, chronological: true, newestFirst }
-                : { limitPerCat: window._briefStoriesPerCat || 10, leadByImportance: 5, newestFirst, lift: window.readingLiftMap?.() || null });
+                ? { limitPerCat: window._briefStoriesPerCat || 10, chronological: true, newestFirst, groupByTopic: !!window._groupByTopic }
+                : { limitPerCat: window._briefStoriesPerCat || 10, leadByImportance: 5, newestFirst, lift: window.readingLiftMap?.() || null, groupByTopic: !!window._groupByTopic });
             let sections = built.categorySections;
             let totalStories = built.totalStories;
 
@@ -17561,6 +17565,58 @@
                 });
             });
 
+            // Optional Topic Grouping across clusters in the active pool (no time window)
+            if (opts.groupByTopic && clusters.length >= 3 && typeof getTopicLabels === 'function') {
+                const topicDf = new Map();
+                const clLabels = clusters.map(cl => getTopicLabels(cl.leadArticle));
+                for (const lblMap of clLabels) {
+                    for (const stem of lblMap.keys()) topicDf.set(stem, (topicDf.get(stem) || 0) + 1);
+                }
+                const maxFreq = Math.max(15, Math.floor(clusters.length * 0.25));
+                const topicGroups = new Map();
+                for (let i = 0; i < clusters.length; i++) {
+                    const lblMap = clLabels[i];
+                    if (!lblMap.size) continue;
+                    let bestStem = '', bestDf = Infinity, bestLen = 0;
+                    for (const [stem, label] of lblMap.entries()) {
+                        const cnt = topicDf.get(stem) || 0;
+                        if (cnt < 2 || cnt > maxFreq) continue;
+                        if (cnt < bestDf || (cnt === bestDf && label.length > bestLen)) {
+                            bestStem = stem; bestDf = cnt; bestLen = label.length;
+                        }
+                    }
+                    if (!bestStem) continue;
+                    if (!topicGroups.has(bestStem)) topicGroups.set(bestStem, { label: lblMap.get(bestStem), idxs: [] });
+                    topicGroups.get(bestStem).idxs.push(i);
+                }
+                const dropCl = new Set();
+                for (const grp of topicGroups.values()) {
+                    if (grp.idxs.length < 2) continue;
+                    // Lead = lowest Memeorandum rank, tie-break by newest leadDate
+                    let leadI = grp.idxs[0];
+                    for (let k = 1; k < grp.idxs.length; k++) {
+                        const j = grp.idxs[k];
+                        if (clusters[j].leadRank < clusters[leadI].leadRank ||
+                            (clusters[j].leadRank === clusters[leadI].leadRank && clusters[j].leadDate > clusters[leadI].leadDate)) {
+                            leadI = j;
+                        }
+                    }
+                    const leadCl = clusters[leadI];
+                    leadCl._topicLabel = grp.label;
+                    for (const j of grp.idxs) {
+                        if (j === leadI) continue;
+                        dropCl.add(j);
+                        clusters[j].articles.forEach(a => leadCl.articles.push(a));
+                        clusters[j].sources.forEach(s => leadCl.sources.add(s));
+                        if (clusters[j].leadDate > leadCl.leadDate) leadCl.leadDate = clusters[j].leadDate;
+                    }
+                }
+                if (dropCl.size > 0) {
+                    const merged = clusters.filter((_, i) => !dropCl.has(i));
+                    clusters.splice(0, clusters.length, ...merged);
+                }
+            }
+
             // 3. Score clusters, then file each under its lead outlet's folder
             // Base score = Memeorandum source rank (1 = NYT, 2 = Politico, etc., 9999 = unranked)
             // Multi-outlet consensus bonus: If multiple outlets report the story, it is a major event
@@ -17655,16 +17711,21 @@
                             ...ranked.slice(0, n), ...ranked.slice(n).sort((a, b) => opts.newestFirst ? shownAt(b) - shownAt(a) : shownAt(a) - shownAt(b)));
                     }
 
-                    // Build final selected story objects with alsoReportedBy metadata
+                    // Build final selected story objects with alsoReportedBy + expandable thread metadata
                     const selectedStories = selectedClusters.map(cl => {
                         const lead = cl.leadArticle;
                         const otherSources = Array.from(cl.sources).filter(s => s && s !== lead.source);
+                        const others = (cl.articles || []).filter(a => a && a.id !== lead.id);
+                        const threadData = others.length
+                            ? { kind: cl._topicLabel ? 'topic' : 'dupes', topic: cl._topicLabel || '', articles: others }
+                            : null;
                         return {
                             ...lead,
                             alsoReportedBy: otherSources,
                             sourceCount: cl.sourceCount,
                             effectiveRank: cl.effectiveRank,
-                            coverage: cl.articles
+                            coverage: cl.articles,
+                            _threadData: threadData
                         };
                     });
 
@@ -21328,7 +21389,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 570;
+        window.APP_BUILD = 571;
 
         (async function initApp() {
             try {
