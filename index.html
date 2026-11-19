@@ -10322,37 +10322,138 @@
         const _TOPIC_STOP_ENTITIES = new Set([
             'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
             'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
-            'the', 'this', 'that', 'these', 'those', 'what', 'when', 'where', 'which', 'while', 'who', 'why', 'how',
-            'here', 'there', 'after', 'before', 'during', 'under', 'over', 'into', 'from', 'with', 'without', 'about',
-            'new', 'first', 'last', 'next', 'best', 'worst', 'most', 'more', 'many', 'some', 'all', 'just', 'now', 'still',
-            'report', 'reports', 'update', 'updates', 'review', 'reviews', 'watch', 'live', 'video', 'opinion', 'analysis',
-            'exclusive', 'breaking', 'developing', 'podcast', 'newsletter', 'morning', 'evening', 'daily', 'weekly', 'today',
-            'say', 'says', 'said', 'could', 'would', 'should', 'can', 'will', 'may', 'might', 'must', 'get', 'gets', 'got',
-            'make', 'makes', 'made', 'take', 'takes', 'took', 'see', 'sees', 'look', 'looks', 'need', 'needs', 'want', 'wants',
-            'one', 'two', 'three', 'four', 'five', 'year', 'years', 'day', 'days', 'week', 'weeks', 'month', 'months'
+            'the', 'this', 'that', 'these', 'those', 'what', 'when', 'where', 'which', 'while', 'who', 'whom', 'whose', 'why', 'how',
+            'here', 'there', 'after', 'before', 'during', 'under', 'over', 'into', 'onto', 'from', 'with', 'without', 'about', 'around',
+            'inside', 'outside', 'behind', 'between', 'against', 'through', 'beyond', 'across', 'toward', 'towards', 'because', 'since',
+            'new', 'old', 'young', 'early', 'late', 'first', 'last', 'next', 'best', 'worst', 'most', 'more', 'many', 'much', 'some', 'all',
+            'every', 'each', 'other', 'another', 'such', 'only', 'just', 'now', 'still', 'even', 'also', 'very', 'back', 'down', 'away', 'home',
+            'big', 'small', 'large', 'huge', 'tiny', 'high', 'low', 'good', 'bad', 'great', 'real', 'true', 'full', 'free', 'open', 'hard', 'long', 'short',
+            'top', 'major', 'minor', 'main', 'key', 'hot', 'cold', 'fast', 'slow', 'easy', 'right', 'left', 'white', 'black', 'red', 'blue', 'green', 'gold',
+            'report', 'reports', 'update', 'updates', 'review', 'reviews', 'watch', 'live', 'video', 'opinion', 'analysis', 'guide', 'deal', 'deals',
+            'exclusive', 'breaking', 'developing', 'podcast', 'newsletter', 'morning', 'evening', 'daily', 'weekly', 'today', 'yesterday', 'tomorrow',
+            'say', 'says', 'said', 'tell', 'tells', 'told', 'ask', 'asks', 'asked', 'could', 'would', 'should', 'can', 'will', 'may', 'might', 'must',
+            'get', 'gets', 'got', 'make', 'makes', 'made', 'take', 'takes', 'took', 'see', 'sees', 'saw', 'look', 'looks', 'need', 'needs', 'want', 'wants',
+            'find', 'finds', 'found', 'give', 'gives', 'gave', 'keep', 'keeps', 'kept', 'call', 'calls', 'called', 'work', 'works', 'worked',
+            'use', 'uses', 'used', 'using', 'try', 'tries', 'tried', 'trying', 'going', 'coming', 'being', 'having', 'doing', 'meet', 'show', 'shows',
+            'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'zero', 'hundred', 'thousand', 'million', 'billion',
+            'year', 'years', 'day', 'days', 'week', 'weeks', 'month', 'months', 'time', 'times', 'way', 'part', 'case', 'point', 'fact', 'idea', 'plan',
+            'world', 'state', 'states', 'city', 'cities', 'county', 'country', 'nation', 'national', 'global', 'local', 'federal', 'public', 'private',
+            'house', 'senate', 'congress', 'court', 'police', 'market', 'markets', 'company', 'companies', 'business', 'tech', 'media', 'news',
+            'game', 'games', 'season', 'team', 'teams', 'league', 'player', 'players', 'coach', 'star', 'stars', 'man', 'men', 'woman', 'women', 'people',
+            'family', 'child', 'children', 'school', 'life', 'law', 'laws', 'rule', 'rules', 'test', 'data', 'code', 'app', 'apps', 'site', 'web', 'online',
+            'pro', 'max', 'ultra', 'plus', 'mini', 'lite', 'super', 'mega', 'smart', 'digital', 'ai', 'us', 'uk', 'eu'
         ]);
 
-        // Maps stemmed proper-noun token -> clean capitalized display label from the headline (e.g. "Nvidia", "OpenAI").
+        // Extracts precise topic candidates: multi-word proper phrases ("Donald Trump", "Red Sox")
+        // and specific single proper nouns/acronyms ("Anthropic", "Nvidia"), stripping possessives.
         function getTopicLabels(art) {
             if (!art || !art.title) return new Map();
             if (art._topicLabelsSrc === art.title && art._topicLabels) return art._topicLabels;
             const labels = new Map();
-            const words = art.title.replace(/^[^:–—-]{1,30}[:–—-]\s+/, '').split(/\s+/);
-            for (const w of words) {
-                const clean = w.replace(/[^A-Za-z0-9]/g, '');
-                if (!clean) continue;
+            const rawWords = art.title.replace(/^[^:–—-]{1,30}[:–—-]\s+/, '').split(/\s+/);
+            const run = []; // consecutive capitalized proper words for multi-word phrase extraction
+
+            const flushRun = () => {
+                if (run.length >= 2) {
+                    const phraseWords = run.slice(0, 3);
+                    const phraseLabel = phraseWords.map(x => x.clean).join(' ');
+                    const phraseKey = 'p:' + phraseWords.map(x => x.low).join(' ');
+                    if (!labels.has(phraseKey)) labels.set(phraseKey, { label: phraseLabel, isPhrase: true, stems: phraseWords.map(x => x.stemmed) });
+                }
+                run.length = 0;
+            };
+
+            for (const w of rawWords) {
+                const stripped = w.replace(/['’]s$/i, '');
+                const clean = stripped.replace(/[^A-Za-z0-9]/g, '');
+                if (!clean) { flushRun(); continue; }
                 const isProper = (clean.length >= 3 && /^[A-Z]/.test(clean) && !/^[A-Z]+$/.test(clean))
                     || (clean.length >= 2 && clean.length <= 6 && /^[A-Z][A-Z0-9]*$/.test(clean));
-                if (!isProper) continue;
                 const low = clean.toLowerCase();
-                if (_TOPIC_STOP_ENTITIES.has(low) || _DEDUP_STOPWORDS.has(low)) continue;
+                if (!isProper || _TOPIC_STOP_ENTITIES.has(low) || _DEDUP_STOPWORDS.has(low)) {
+                    flushRun();
+                    continue;
+                }
                 const stemmed = _dedupStem(low);
-                if (stemmed.length < 2) continue;
-                if (!labels.has(stemmed)) labels.set(stemmed, clean);
+                if (stemmed.length < 2) { flushRun(); continue; }
+                run.push({ clean, low, stemmed });
+                if (!labels.has(stemmed)) labels.set(stemmed, { label: clean, isPhrase: false, stems: [stemmed] });
             }
+            flushRun();
+
             art._topicLabelsSrc = art.title;
             art._topicLabels = labels;
             return labels;
+        }
+
+        // Precision topic grouper shared by timeline and Today Brief:
+        // requires same category (or 2+ shared non-topic words) AND either a multi-word phrase,
+        // a secondary shared content token in headline/summary, or a rare specific entity (df <= 4, len >= 5).
+        function groupItemsByTopic(items, getArt) {
+            if (!items || items.length < 3) return [];
+            const topicDf = new Map();
+            const artLabels = items.map(it => getTopicLabels(getArt(it)));
+            for (const lblMap of artLabels) {
+                for (const k of lblMap.keys()) topicDf.set(k, (topicDf.get(k) || 0) + 1);
+            }
+            const maxFreq = Math.max(12, Math.floor(items.length * 0.20));
+            const sumTokens = items.map(it => getArticleSummaryTokens(getArt(it)).all);
+            const cats = items.map(it => {
+                const a = getArt(it);
+                return typeof getCategoryForArticle === 'function' ? getCategoryForArticle(a) : '';
+            });
+
+            // Build candidate buckets keyed by each item's highest-precision shared topic
+            const candidates = new Map(); // key -> { meta, df, idxs: [] }
+            for (let i = 0; i < items.length; i++) {
+                const lblMap = artLabels[i];
+                if (!lblMap.size) continue;
+                let bestKey = '';
+                let bestMeta = null;
+                let bestDf = Infinity;
+                for (const [key, meta] of lblMap.entries()) {
+                    const cnt = topicDf.get(key) || 0;
+                    if (cnt < 2 || cnt > maxFreq) continue;
+                    // Prefer multi-word phrases, then rarer entities, then longer labels
+                    const better = !bestMeta
+                        || (meta.isPhrase && !bestMeta.isPhrase)
+                        || (meta.isPhrase === bestMeta.isPhrase && (cnt < bestDf || (cnt === bestDf && meta.label.length > bestMeta.label.length)));
+                    if (better) { bestKey = key; bestMeta = meta; bestDf = cnt; }
+                }
+                if (!bestKey) continue;
+                if (!candidates.has(bestKey)) candidates.set(bestKey, { meta: bestMeta, df: bestDf, idxs: [] });
+                candidates.get(bestKey).idxs.push(i);
+            }
+
+            const groups = [];
+            for (const cand of candidates.values()) {
+                if (cand.idxs.length < 2) continue;
+                const leadIdx = cand.idxs[0];
+                const topicStems = new Set(cand.meta.stems);
+                const isRareSpecific = !cand.meta.isPhrase && cand.df <= 4 && cand.meta.label.length >= 5;
+                const members = [leadIdx];
+
+                for (let k = 1; k < cand.idxs.length; k++) {
+                    const idx = cand.idxs[k];
+                    const sameCat = !cats[leadIdx] || !cats[idx] || cats[leadIdx] === cats[idx];
+                    let extraShared = 0;
+                    const [small, big] = sumTokens[leadIdx].size <= sumTokens[idx].size
+                        ? [sumTokens[leadIdx], sumTokens[idx]]
+                        : [sumTokens[idx], sumTokens[leadIdx]];
+                    for (const tok of small) {
+                        if (!topicStems.has(tok) && big.has(tok)) {
+                            extraShared++;
+                            if (extraShared >= 2) break;
+                        }
+                    }
+                    if (!sameCat && extraShared < 2) continue;
+                    if (cand.meta.isPhrase || extraShared >= 1 || isRareSpecific) {
+                        members.push(idx);
+                    }
+                }
+                if (members.length >= 2) groups.push({ label: cand.meta.label, idxs: members });
+            }
+            return groups;
         }
 
         // Shared deduplication + topic-threading engine for both timeline lists and desktop feed-card workstations.
@@ -10456,39 +10557,9 @@
             }
 
             if (useTopics && list.length >= 3) {
-                const topicDf = new Map();
-                const artLabels = list.map(a => getTopicLabels(a));
-                for (const lblMap of artLabels) {
-                    for (const stem of lblMap.keys()) {
-                        topicDf.set(stem, (topicDf.get(stem) || 0) + 1);
-                    }
-                }
-                const maxFreq = Math.max(15, Math.floor(list.length * 0.25));
-                const topicGroups = new Map();
-                for (let i = 0; i < list.length; i++) {
-                    const lblMap = artLabels[i];
-                    if (!lblMap.size) continue;
-                    let bestStem = '';
-                    let bestDf = Infinity;
-                    let bestLen = 0;
-                    for (const [stem, label] of lblMap.entries()) {
-                        const cnt = topicDf.get(stem) || 0;
-                        if (cnt < 2 || cnt > maxFreq) continue;
-                        if (cnt < bestDf || (cnt === bestDf && label.length > bestLen)) {
-                            bestStem = stem;
-                            bestDf = cnt;
-                            bestLen = label.length;
-                        }
-                    }
-                    if (!bestStem) continue;
-                    if (!topicGroups.has(bestStem)) {
-                        topicGroups.set(bestStem, { label: lblMap.get(bestStem), idxs: [] });
-                    }
-                    topicGroups.get(bestStem).idxs.push(i);
-                }
+                const topicGroups = groupItemsByTopic(list, a => a);
                 const dropIdx = new Set();
-                for (const grp of topicGroups.values()) {
-                    if (grp.idxs.length < 2) continue;
+                for (const grp of topicGroups) {
                     const leadIdx = grp.idxs[0];
                     const leadArt = list[leadIdx];
                     const existing = threadMap.get(leadArt.id);
@@ -17566,32 +17637,10 @@
             });
 
             // Optional Topic Grouping across clusters in the active pool (no time window)
-            if (opts.groupByTopic && clusters.length >= 3 && typeof getTopicLabels === 'function') {
-                const topicDf = new Map();
-                const clLabels = clusters.map(cl => getTopicLabels(cl.leadArticle));
-                for (const lblMap of clLabels) {
-                    for (const stem of lblMap.keys()) topicDf.set(stem, (topicDf.get(stem) || 0) + 1);
-                }
-                const maxFreq = Math.max(15, Math.floor(clusters.length * 0.25));
-                const topicGroups = new Map();
-                for (let i = 0; i < clusters.length; i++) {
-                    const lblMap = clLabels[i];
-                    if (!lblMap.size) continue;
-                    let bestStem = '', bestDf = Infinity, bestLen = 0;
-                    for (const [stem, label] of lblMap.entries()) {
-                        const cnt = topicDf.get(stem) || 0;
-                        if (cnt < 2 || cnt > maxFreq) continue;
-                        if (cnt < bestDf || (cnt === bestDf && label.length > bestLen)) {
-                            bestStem = stem; bestDf = cnt; bestLen = label.length;
-                        }
-                    }
-                    if (!bestStem) continue;
-                    if (!topicGroups.has(bestStem)) topicGroups.set(bestStem, { label: lblMap.get(bestStem), idxs: [] });
-                    topicGroups.get(bestStem).idxs.push(i);
-                }
+            if (opts.groupByTopic && clusters.length >= 3 && typeof groupItemsByTopic === 'function') {
+                const topicGroups = groupItemsByTopic(clusters, cl => cl.leadArticle);
                 const dropCl = new Set();
-                for (const grp of topicGroups.values()) {
-                    if (grp.idxs.length < 2) continue;
+                for (const grp of topicGroups) {
                     // Lead = lowest Memeorandum rank, tie-break by newest leadDate
                     let leadI = grp.idxs[0];
                     for (let k = 1; k < grp.idxs.length; k++) {
@@ -21389,7 +21438,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 571;
+        window.APP_BUILD = 572;
 
         (async function initApp() {
             try {
