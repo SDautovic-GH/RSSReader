@@ -4897,16 +4897,18 @@
 
         .card-thread-row {
             display: flex;
-            align-items: baseline;
-            gap: 6px;
-            padding: 4px 6px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+            padding: 6px 8px;
             border-radius: 6px;
             font-size: 12.5px;
-            line-height: 1.35;
+            line-height: 1.38;
             text-align: left;
             color: var(--text-2, #4b5563);
             cursor: pointer;
             transition: background-color 0.12s;
+            width: 100%;
         }
 
         .dark .card-thread-row {
@@ -4919,7 +4921,7 @@
 
         .card-thread-row-src {
             font-weight: 600;
-            font-size: 11.5px;
+            font-size: 11px;
             color: var(--accent);
             flex-shrink: 0;
             display: inline-flex;
@@ -4928,10 +4930,18 @@
         }
 
         .card-thread-row-title {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
             overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            min-width: 0;
+            white-space: normal;
+            color: var(--text-1, #111827);
+            width: 100%;
+        }
+
+        .dark .card-thread-row-title {
+            color: var(--text-1, #f1f5f9);
         }
 
         #viewer-back-btn {
@@ -10386,9 +10396,20 @@
             return labels;
         }
 
+        // Stemmed content tokens from the first 7 words of the headline (the subject/actor+action).
+        function getOpeningTokens(art) {
+            if (!art || !art.title) return new Set();
+            if (art._openTokSrc === art.title && art._openTok) return art._openTok;
+            const headWords = art.title.replace(/^[^:–—-]{1,30}[:–—-]\s+/, '').trim().split(/\s+/).slice(0, 7).join(' ');
+            const toks = dedupTokens(headWords).all;
+            art._openTokSrc = art.title;
+            art._openTok = toks;
+            return toks;
+        }
+
         // Precision topic grouper shared by timeline and Today Brief:
-        // requires same category (or 2+ shared non-topic words) AND either a multi-word phrase,
-        // a secondary shared content token in headline/summary, or a rare specific entity (df <= 4, len >= 5).
+        // weights the opening 5-7 words of each headline and requires 2+ shared meaningful tokens
+        // (or a multi-word entity phrase + shared context) so single-word coincidences never merge.
         function groupItemsByTopic(items, getArt) {
             if (!items || items.length < 3) return [];
             const topicDf = new Map();
@@ -10397,6 +10418,8 @@
                 for (const k of lblMap.keys()) topicDf.set(k, (topicDf.get(k) || 0) + 1);
             }
             const maxFreq = Math.max(12, Math.floor(items.length * 0.20));
+            const openTokens = items.map(it => getOpeningTokens(getArt(it)));
+            const titleTokens = items.map(it => getArticleTokens(getArt(it)).all);
             const sumTokens = items.map(it => getArticleSummaryTokens(getArt(it)).all);
             const cats = items.map(it => {
                 const a = getArt(it);
@@ -10425,29 +10448,33 @@
                 candidates.get(bestKey).idxs.push(i);
             }
 
+            const countOverlap = (a, b, excludeSet) => {
+                let n = 0;
+                const [small, big] = a.size <= b.size ? [a, b] : [b, a];
+                for (const t of small) {
+                    if ((!excludeSet || !excludeSet.has(t)) && big.has(t)) n++;
+                }
+                return n;
+            };
+
             const groups = [];
             for (const cand of candidates.values()) {
                 if (cand.idxs.length < 2) continue;
                 const leadIdx = cand.idxs[0];
                 const topicStems = new Set(cand.meta.stems);
-                const isRareSpecific = !cand.meta.isPhrase && cand.df <= 4 && cand.meta.label.length >= 5;
                 const members = [leadIdx];
 
                 for (let k = 1; k < cand.idxs.length; k++) {
                     const idx = cand.idxs[k];
                     const sameCat = !cats[leadIdx] || !cats[idx] || cats[leadIdx] === cats[idx];
-                    let extraShared = 0;
-                    const [small, big] = sumTokens[leadIdx].size <= sumTokens[idx].size
-                        ? [sumTokens[leadIdx], sumTokens[idx]]
-                        : [sumTokens[idx], sumTokens[leadIdx]];
-                    for (const tok of small) {
-                        if (!topicStems.has(tok) && big.has(tok)) {
-                            extraShared++;
-                            if (extraShared >= 2) break;
-                        }
-                    }
-                    if (!sameCat && extraShared < 2) continue;
-                    if (cand.meta.isPhrase || extraShared >= 1 || isRareSpecific) {
+                    const openingShared = countOverlap(openTokens[leadIdx], openTokens[idx], null);
+                    const titleShared = countOverlap(titleTokens[leadIdx], titleTokens[idx], null);
+                    const extraSummaryShared = countOverlap(sumTokens[leadIdx], sumTokens[idx], topicStems);
+
+                    if (!sameCat && titleShared < 3) continue;
+                    // Require at least 2 meaningful shared words in the opening 5-7 words,
+                    // 3+ across the headline, or a multi-word entity phrase + 1 extra shared word.
+                    if (openingShared >= 2 || titleShared >= 3 || (cand.meta.isPhrase && (openingShared >= 1 || extraSummaryShared >= 1))) {
                         members.push(idx);
                     }
                 }
@@ -21438,7 +21465,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 572;
+        window.APP_BUILD = 573;
 
         (async function initApp() {
             try {
