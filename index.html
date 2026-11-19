@@ -4812,34 +4812,6 @@
             display: none !important;
         }
 
-        #topic-thread-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            height: 30px;
-            padding: 0 10px;
-            border-radius: 9999px;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            border: 1px solid rgba(128, 128, 128, 0.22);
-            background: transparent;
-            color: var(--text-2, #6b7280);
-            cursor: pointer;
-            transition: background-color 0.15s, color 0.15s, border-color 0.15s;
-            flex-shrink: 0;
-        }
-
-        #topic-thread-btn[data-on="true"] {
-            background: rgba(var(--accent-rgb), 0.14);
-            border-color: rgba(var(--accent-rgb), 0.35);
-            color: var(--accent);
-        }
-
-        .dark #topic-thread-btn[data-on="true"] {
-            background: rgba(var(--accent-rgb), 0.20);
-        }
-
         .card-thread-wrap {
             margin-top: 8px;
         }
@@ -8488,11 +8460,6 @@
                     </div>
                     <!-- Desktop Personal Hub Switcher (Retired on desktop — redundant with sidebar navigation) -->
                     <div id="desk-saved-switcher" class="hidden" style="display: none !important;"></div>
-                    <button id="topic-thread-btn" type="button" onclick="toggleGroupByTopic()" data-on="false"
-                        title="Group related stories by topic" aria-label="Group related stories by topic">
-                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="19" cy="15" r="3"/></svg>
-                        <span>Topics</span>
-                    </button>
                     <button id="desk-search-trigger" onclick="toggleSearchSheet()"
                         class="p-1.5 rounded-lg text-gray-500 ml-2 flex-shrink-0"
                         title="Search Articles (/)">
@@ -9032,14 +8999,6 @@
                             </div>
                             <button id="dedup-title-toggle" onclick="toggleDedupByTitle()" class="toggle-switch"
                                 data-on="true" aria-label="Deduplicate by title"></button>
-                        </div>
-                        <div class="settings-row">
-                            <div class="min-w-0 flex-1">
-                                <label class="settings-item-label-sm">Group stories by topic</label>
-                                <p class="settings-hint">Thread related stories sharing a subject</p>
-                            </div>
-                            <button id="group-topic-toggle" onclick="toggleGroupByTopic()" class="toggle-switch"
-                                data-on="false" aria-label="Group stories by topic"></button>
                         </div>
                         <!-- MUTED WORDS -->
                         <div class="settings-row settings-row-stacked">
@@ -10235,7 +10194,6 @@
 
         // --- TITLE DEDUPLICATION & THREADING ---
         window._dedupByTitle = true;
-        window._groupByTopic = false;
         window._timelineThreads = new Map();
         window._timelineThreadCopies = new Map();
         window._memoRankMap = null;
@@ -10329,206 +10287,10 @@
             return { all, proper };
         }
 
-        const _TOPIC_STOP_ENTITIES = new Set([
-            'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-            'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
-            'the', 'this', 'that', 'these', 'those', 'what', 'when', 'where', 'which', 'while', 'who', 'whom', 'whose', 'why', 'how',
-            'here', 'there', 'after', 'before', 'during', 'under', 'over', 'into', 'onto', 'from', 'with', 'without', 'about', 'around',
-            'inside', 'outside', 'behind', 'between', 'against', 'through', 'beyond', 'across', 'toward', 'towards', 'because', 'since',
-            'new', 'old', 'young', 'early', 'late', 'first', 'last', 'next', 'best', 'worst', 'most', 'more', 'many', 'much', 'some', 'all',
-            'every', 'each', 'other', 'another', 'such', 'only', 'just', 'now', 'still', 'even', 'also', 'very', 'back', 'down', 'away', 'home',
-            'big', 'small', 'large', 'huge', 'tiny', 'high', 'low', 'good', 'bad', 'great', 'real', 'true', 'full', 'free', 'open', 'hard', 'long', 'short',
-            'top', 'major', 'minor', 'main', 'key', 'hot', 'cold', 'fast', 'slow', 'easy', 'right', 'left', 'white', 'black', 'red', 'blue', 'green', 'gold',
-            'report', 'reports', 'update', 'updates', 'review', 'reviews', 'watch', 'live', 'video', 'opinion', 'analysis', 'guide', 'deal', 'deals',
-            'exclusive', 'breaking', 'developing', 'podcast', 'newsletter', 'morning', 'evening', 'daily', 'weekly', 'today', 'yesterday', 'tomorrow',
-            'say', 'says', 'said', 'tell', 'tells', 'told', 'ask', 'asks', 'asked', 'could', 'would', 'should', 'can', 'will', 'may', 'might', 'must',
-            'get', 'gets', 'got', 'make', 'makes', 'made', 'take', 'takes', 'took', 'see', 'sees', 'saw', 'look', 'looks', 'need', 'needs', 'want', 'wants',
-            'find', 'finds', 'found', 'give', 'gives', 'gave', 'keep', 'keeps', 'kept', 'call', 'calls', 'called', 'work', 'works', 'worked',
-            'use', 'uses', 'used', 'using', 'try', 'tries', 'tried', 'trying', 'going', 'coming', 'being', 'having', 'doing', 'meet', 'show', 'shows',
-            'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'zero', 'hundred', 'thousand', 'million', 'billion',
-            'year', 'years', 'day', 'days', 'week', 'weeks', 'month', 'months', 'time', 'times', 'way', 'part', 'case', 'point', 'fact', 'idea', 'plan',
-            'world', 'state', 'states', 'city', 'cities', 'county', 'country', 'nation', 'national', 'global', 'local', 'federal', 'public', 'private',
-            'house', 'senate', 'congress', 'court', 'police', 'market', 'markets', 'company', 'companies', 'business', 'tech', 'media', 'news',
-            'game', 'games', 'season', 'team', 'teams', 'league', 'player', 'players', 'coach', 'star', 'stars', 'man', 'men', 'woman', 'women', 'people',
-            'family', 'child', 'children', 'school', 'life', 'law', 'laws', 'rule', 'rules', 'test', 'data', 'code', 'app', 'apps', 'site', 'web', 'online',
-            'pro', 'max', 'ultra', 'plus', 'mini', 'lite', 'super', 'mega', 'smart', 'digital', 'ai', 'us', 'uk', 'eu'
-        ]);
-
-        // Extracts precise topic candidates: multi-word proper phrases ("Donald Trump", "Red Sox")
-        // and specific single proper nouns/acronyms ("Anthropic", "Nvidia"), stripping possessives.
-        function getTopicLabels(art) {
-            if (!art || !art.title) return new Map();
-            if (art._topicLabelsSrc === art.title && art._topicLabels) return art._topicLabels;
-            const labels = new Map();
-            const rawWords = art.title.replace(/^[^:–—-]{1,30}[:–—-]\s+/, '').split(/\s+/);
-            const run = []; // consecutive capitalized proper words for multi-word phrase extraction
-
-            const flushRun = () => {
-                if (run.length >= 2) {
-                    const phraseWords = run.slice(0, 3);
-                    const phraseLabel = phraseWords.map(x => x.clean).join(' ');
-                    const phraseKey = 'p:' + phraseWords.map(x => x.low).join(' ');
-                    if (!labels.has(phraseKey)) labels.set(phraseKey, { label: phraseLabel, isPhrase: true, stems: phraseWords.map(x => x.stemmed) });
-                }
-                run.length = 0;
-            };
-
-            for (const w of rawWords) {
-                const stripped = w.replace(/['’]s$/i, '');
-                const clean = stripped.replace(/[^A-Za-z0-9]/g, '');
-                if (!clean) { flushRun(); continue; }
-                const isProper = (clean.length >= 3 && /^[A-Z]/.test(clean) && !/^[A-Z]+$/.test(clean))
-                    || (clean.length >= 2 && clean.length <= 6 && /^[A-Z][A-Z0-9]*$/.test(clean));
-                const low = clean.toLowerCase();
-                if (!isProper || _TOPIC_STOP_ENTITIES.has(low) || _DEDUP_STOPWORDS.has(low)) {
-                    flushRun();
-                    continue;
-                }
-                const stemmed = _dedupStem(low);
-                if (stemmed.length < 2) { flushRun(); continue; }
-                run.push({ clean, low, stemmed });
-                if (!labels.has(stemmed)) labels.set(stemmed, { label: clean, isPhrase: false, stems: [stemmed] });
-            }
-            flushRun();
-
-            art._topicLabelsSrc = art.title;
-            art._topicLabels = labels;
-            return labels;
-        }
-
-        // Stemmed content tokens from the first 7 words of the headline (the subject/actor+action).
-        function getOpeningTokens(art) {
-            if (!art || !art.title) return new Set();
-            if (art._openTokSrc === art.title && art._openTok) return art._openTok;
-            const headWords = art.title.replace(/^[^:–—-]{1,30}[:–—-]\s+/, '').trim().split(/\s+/).slice(0, 7).join(' ');
-            const toks = dedupTokens(headWords).all;
-            art._openTokSrc = art.title;
-            art._openTok = toks;
-            return toks;
-        }
-
-        // Precision topic grouper shared by timeline and Today Brief:
-        // compares the opening 7 words of each headline (plus full headline) and groups stories
-        // sharing 2+ opening tokens, 3+ headline tokens, or a multi-word proper-noun phrase + context.
-        function groupItemsByTopic(items, getArt) {
-            if (!items || items.length < 3) return [];
-            const maxFreq = Math.max(12, Math.floor(items.length * 0.20));
-            const openTokens = items.map(it => getOpeningTokens(getArt(it)));
-            const titleTokens = items.map(it => getArticleTokens(getArt(it)).all);
-            const sumTokens = items.map(it => getArticleSummaryTokens(getArt(it)).all);
-            const artLabels = items.map(it => getTopicLabels(getArt(it)));
-            const cats = items.map(it => {
-                const a = getArt(it);
-                return typeof getCategoryForArticle === 'function' ? getCategoryForArticle(a) : '';
-            });
-
-            // Build document frequency across opening tokens and filter out stop/ultra-common words
-            const openDf = new Map();
-            const openFiltered = openTokens.map(toks => {
-                const s = new Set();
-                for (const t of toks) {
-                    if (t.length >= 2 && !_TOPIC_STOP_ENTITIES.has(t)) s.add(t);
-                }
-                for (const t of s) openDf.set(t, (openDf.get(t) || 0) + 1);
-                return s;
-            });
-
-            // Inverted index on opening tokens (within frequency cap) so we only compare plausible pairs
-            const byToken = new Map();
-            openFiltered.forEach((toks, i) => {
-                for (const t of toks) {
-                    const df = openDf.get(t) || 0;
-                    if (df < 2 || df > maxFreq) continue;
-                    if (!byToken.has(t)) byToken.set(t, []);
-                    byToken.get(t).push(i);
-                }
-            });
-
-            // Also index multi-word proper phrases
-            const byPhrase = new Map();
-            artLabels.forEach((lblMap, i) => {
-                for (const [k, meta] of lblMap.entries()) {
-                    if (!meta.isPhrase) continue;
-                    if (!byPhrase.has(k)) byPhrase.set(k, []);
-                    byPhrase.get(k).push(i);
-                }
-            });
-
-            const sharedList = (a, b) => {
-                const out = [];
-                const [small, big] = a.size <= b.size ? [a, b] : [b, a];
-                for (const t of small) if (big.has(t)) out.push(t);
-                return out;
-            };
-
-            const parent = items.map((_, i) => i);
-            const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-            const union = (i, j) => { const x = find(i), y = find(j); if (x !== y) parent[y] = x; };
-            const pairLabel = new Map(); // "i:j" -> display label
-
-            const tryPair = (i, j, phraseMeta) => {
-                if (i >= j || find(i) === find(j)) return;
-                const sameCat = !cats[i] || !cats[j] || cats[i] === cats[j];
-                const openHits = sharedList(openFiltered[i], openFiltered[j]);
-                const titleHits = sharedList(titleTokens[i], titleTokens[j]);
-                if (!sameCat && titleHits.length < 3) return;
-
-                const sumHits = phraseMeta ? sharedList(sumTokens[i], sumTokens[j]).length : 0;
-                const ok = openHits.length >= 2
-                    || titleHits.length >= 3
-                    || (phraseMeta && (openHits.length >= 1 || sumHits >= 1));
-                if (!ok) return;
-
-                union(i, j);
-                // Pick the cleanest display label: phrase > proper noun > top 2 shared opening words
-                let label = phraseMeta ? phraseMeta.label : '';
-                if (!label) {
-                    for (const [k, meta] of artLabels[i].entries()) {
-                        if (!meta.isPhrase && artLabels[j].has(k)) { label = meta.label; break; }
-                    }
-                }
-                if (!label) {
-                    const top = (openHits.length >= 2 ? openHits : titleHits).slice(0, 2)
-                        .map(w => w.charAt(0).toUpperCase() + w.slice(1));
-                    label = top.join(' · ');
-                }
-                if (label) pairLabel.set(`${find(i)}`, label);
-            };
-
-            for (const [k, idxs] of byPhrase.entries()) {
-                if (idxs.length < 2) continue;
-                const meta = artLabels[idxs[0]].get(k);
-                for (let a = 0; a < idxs.length; a++) {
-                    for (let b = a + 1; b < idxs.length; b++) tryPair(idxs[a], idxs[b], meta);
-                }
-            }
-            for (const idxs of byToken.values()) {
-                if (idxs.length < 2) continue;
-                for (let a = 0; a < idxs.length; a++) {
-                    for (let b = a + 1; b < idxs.length; b++) tryPair(idxs[a], idxs[b], null);
-                }
-            }
-
-            const buckets = new Map();
-            for (let i = 0; i < items.length; i++) {
-                const r = find(i);
-                if (!buckets.has(r)) buckets.set(r, []);
-                buckets.get(r).push(i);
-            }
-
-            const groups = [];
-            for (const [root, idxs] of buckets.entries()) {
-                if (idxs.length < 2) continue;
-                groups.push({ label: pairLabel.get(String(root)) || 'this topic', idxs });
-            }
-            return groups;
-        }
-
-        // Shared deduplication + topic-threading engine for both timeline lists and desktop feed-card workstations.
+        // Shared deduplication + duplicate-threading engine for both timeline lists and desktop feed-card workstations.
         window.threadArticlePool = function (articles, opts = {}) {
             let list = Array.isArray(articles) ? articles.slice() : [];
             const useDedup = opts.dedup !== undefined ? !!opts.dedup : !!window._dedupByTitle;
-            const useTopics = opts.groupByTopic !== undefined ? !!opts.groupByTopic : (!!window._groupByTopic && !window.currentSourceFilter);
             const threadMap = new Map();
             const threadCopies = new Map();
             const exactLosers = new Map();
@@ -10622,31 +10384,6 @@
                 }
                 list = list.filter((_, i) => !tokens[i].all.size || keepIdx.has(i));
                 dedupRemovedCount = before - list.length;
-            }
-
-            if (useTopics && list.length >= 3) {
-                const topicGroups = groupItemsByTopic(list, a => a);
-                const dropIdx = new Set();
-                for (const grp of topicGroups) {
-                    const leadIdx = grp.idxs[0];
-                    const leadArt = list[leadIdx];
-                    const existing = threadMap.get(leadArt.id);
-                    const kids = existing ? existing.articles.slice() : [];
-                    for (let k = 1; k < grp.idxs.length; k++) {
-                        const childArt = list[grp.idxs[k]];
-                        dropIdx.add(grp.idxs[k]);
-                        kids.push(childArt);
-                        const childThread = threadMap.get(childArt.id);
-                        if (childThread && childThread.articles.length) {
-                            kids.push(...childThread.articles);
-                            threadMap.delete(childArt.id);
-                        }
-                    }
-                    threadMap.set(leadArt.id, { kind: 'topic', topic: grp.label, articles: kids });
-                }
-                if (dropIdx.size > 0) {
-                    list = list.filter((_, i) => !dropIdx.has(i));
-                }
             }
 
             for (const [leadId, th] of threadMap.entries()) {
@@ -10953,20 +10690,6 @@
             renderTimeline();
         };
 
-        window.toggleGroupByTopic = () => {
-            window._groupByTopic = !window._groupByTopic;
-            const on = window._groupByTopic ? 'true' : 'false';
-            document.querySelectorAll('#group-topic-toggle, #topic-thread-btn, .brief-topic-btn').forEach(el => {
-                el.setAttribute('data-on', on);
-            });
-            saveTypographyPrefs();
-            if (typeof todayOnScreen === 'function' && todayOnScreen()) {
-                window.rebuildTodayInPlace?.(true);
-            } else {
-                refreshUI();
-            }
-        };
-
         window.toggleCardThread = (btn) => {
             const wrap = btn && btn.closest('.card-thread-wrap');
             if (!wrap) return;
@@ -10977,20 +10700,15 @@
         window.buildCardThreadHtml = (leadId, leadSource, thread) => {
             if (!thread || !thread.articles || !thread.articles.length) return '';
             const kids = thread.articles;
-            let pillLabel = '';
-            if (thread.kind === 'topic' && thread.topic) {
-                pillLabel = `+${kids.length} related on ${thread.topic}`;
-            } else {
-                const uniqSources = [];
-                const seenSrc = new Set([leadSource]);
-                for (const c of kids) {
-                    const s = c.source || 'News';
-                    if (!seenSrc.has(s)) { seenSrc.add(s); uniqSources.push(s); }
-                }
-                if (!uniqSources.length && kids[0]?.source) uniqSources.push(kids[0].source);
-                const preview = uniqSources.slice(0, 3).join(', ') + (uniqSources.length > 3 ? ` +${uniqSources.length - 3}` : '');
-                pillLabel = `+${kids.length} ${kids.length === 1 ? 'source' : 'sources'}${preview ? ' · ' + preview : ''}`;
+            const uniqSources = [];
+            const seenSrc = new Set([leadSource]);
+            for (const c of kids) {
+                const s = c.source || 'News';
+                if (!seenSrc.has(s)) { seenSrc.add(s); uniqSources.push(s); }
             }
+            if (!uniqSources.length && kids[0]?.source) uniqSources.push(kids[0].source);
+            const preview = uniqSources.slice(0, 3).join(', ') + (uniqSources.length > 3 ? ` +${uniqSources.length - 3}` : '');
+            const pillLabel = `+${kids.length} ${kids.length === 1 ? 'source' : 'sources'}${preview ? ' · ' + preview : ''}`;
             const rowsHtml = kids.map(c => {
                 const cid = escJs(c.id);
                 const cSrc = c.source || 'News';
@@ -11830,8 +11548,7 @@
                     filtered = filtered.filter(a => window._preBatchLinks.has(a.link));
                 }
                 const pooled = window.threadArticlePool(filtered, {
-                    dedup: !!window._dedupByTitle,
-                    groupByTopic: !!window._groupByTopic && !window.currentSourceFilter
+                    dedup: !!window._dedupByTitle
                 });
                 filtered = pooled.kept;
                 dedupRemovedCount = pooled.dedupRemovedCount;
@@ -16053,8 +15770,8 @@
             const chrono = !window._todayRank;
             const newestFirst = document.getElementById('pref-sort-order')?.value === 'desc';
             const built = buildStoryClusters(pool, chrono
-                ? { limitPerCat: window._briefStoriesPerCat || 10, chronological: true, newestFirst, groupByTopic: !!window._groupByTopic }
-                : { limitPerCat: window._briefStoriesPerCat || 10, leadByImportance: 5, newestFirst, lift: window.readingLiftMap?.() || null, groupByTopic: !!window._groupByTopic });
+                ? { limitPerCat: window._briefStoriesPerCat || 10, chronological: true, newestFirst }
+                : { limitPerCat: window._briefStoriesPerCat || 10, leadByImportance: 5, newestFirst, lift: window.readingLiftMap?.() || null });
             let sections = built.categorySections;
             let totalStories = built.totalStories;
 
@@ -16295,7 +16012,7 @@
                 title = 'Unread';
                 icon = 'icon-newspaper';
                 const rawPool = (window.articles || []).filter(a => (a.unread && (window._showMuted || !window.isMuted(a))) || window._pinnedArticleIds.has(a.id));
-                const pooled = window.threadArticlePool(rawPool, { dedup: !!window._dedupByTitle, groupByTopic: !!window._groupByTopic });
+                const pooled = window.threadArticlePool(rawPool, { dedup: !!window._dedupByTitle });
                 pool = pooled.kept.map(a => {
                     const th = pooled.threadMap.get(a.id);
                     return th ? { ...a, _threadData: th, coverage: [a, ...th.articles] } : a;
@@ -16341,7 +16058,7 @@
                         (a.feedUrl && catUrls.has(a.feedUrl)) ||
                         (typeof getCategoryForArticle === 'function' && getCategoryForArticle(a).trim().toLowerCase() === title.trim().toLowerCase());
                 });
-                const pooled = window.threadArticlePool(rawPool, { dedup: !!window._dedupByTitle, groupByTopic: !!window._groupByTopic });
+                const pooled = window.threadArticlePool(rawPool, { dedup: !!window._dedupByTitle });
                 pool = pooled.kept.map(a => {
                     const th = pooled.threadMap.get(a.id);
                     return th ? { ...a, _threadData: th, coverage: [a, ...th.articles] } : a;
@@ -16380,10 +16097,6 @@
                 ? `${totalStories} unread ${totalStories === 1 ? 'story' : 'stories'}`
                 : `${sections.length} ${sections.length === 1 ? (viewType === 'category' ? 'feed' : 'section') : (viewType === 'category' ? 'feeds' : 'sections')} · ${totalStories} unread stories`;
 
-            const topicBtnHtml = viewType !== 'source'
-                ? `<span class="brief-meta-dot text-gray-500 flex-shrink-0">•</span><button type="button" class="brief-topic-btn" id="topic-thread-btn-brief" onclick="window.toggleGroupByTopic()" data-on="${window._groupByTopic ? 'true' : 'false'}" title="Group related stories by topic" aria-label="Group related stories by topic" style="display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:9999px;font-size:11.5px;font-weight:600;border:1px solid ${window._groupByTopic ? 'rgba(var(--accent-rgb),0.35)' : 'rgba(128,128,128,0.24)'};background:${window._groupByTopic ? 'rgba(var(--accent-rgb),0.14)' : 'transparent'};color:${window._groupByTopic ? 'var(--accent)' : 'inherit'};"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h6"/><circle cx="19" cy="15" r="3"/></svg><span>Topics</span></button>`
-                : '';
-
             const composed = composeSlotBrief({
                 id: `brief:${viewType}:${filterParam || ''}`,
                 slot: viewType,
@@ -16393,7 +16106,6 @@
                 triggerTs: now,
                 windowStart: 0,
                 windowEnd: now,
-                metaExtra: topicBtnHtml,
                 headerAction: '',
                 noFooterMarkRead: false,
                 isPersonalHub: false,
@@ -17704,36 +17416,6 @@
                 });
             });
 
-            // Optional Topic Grouping across clusters in the active pool (no time window)
-            if (opts.groupByTopic && clusters.length >= 3 && typeof groupItemsByTopic === 'function') {
-                const topicGroups = groupItemsByTopic(clusters, cl => cl.leadArticle);
-                const dropCl = new Set();
-                for (const grp of topicGroups) {
-                    // Lead = lowest Memeorandum rank, tie-break by newest leadDate
-                    let leadI = grp.idxs[0];
-                    for (let k = 1; k < grp.idxs.length; k++) {
-                        const j = grp.idxs[k];
-                        if (clusters[j].leadRank < clusters[leadI].leadRank ||
-                            (clusters[j].leadRank === clusters[leadI].leadRank && clusters[j].leadDate > clusters[leadI].leadDate)) {
-                            leadI = j;
-                        }
-                    }
-                    const leadCl = clusters[leadI];
-                    leadCl._topicLabel = grp.label;
-                    for (const j of grp.idxs) {
-                        if (j === leadI) continue;
-                        dropCl.add(j);
-                        clusters[j].articles.forEach(a => leadCl.articles.push(a));
-                        clusters[j].sources.forEach(s => leadCl.sources.add(s));
-                        if (clusters[j].leadDate > leadCl.leadDate) leadCl.leadDate = clusters[j].leadDate;
-                    }
-                }
-                if (dropCl.size > 0) {
-                    const merged = clusters.filter((_, i) => !dropCl.has(i));
-                    clusters.splice(0, clusters.length, ...merged);
-                }
-            }
-
             // 3. Score clusters, then file each under its lead outlet's folder
             // Base score = Memeorandum source rank (1 = NYT, 2 = Politico, etc., 9999 = unranked)
             // Multi-outlet consensus bonus: If multiple outlets report the story, it is a major event
@@ -17834,7 +17516,7 @@
                         const otherSources = Array.from(cl.sources).filter(s => s && s !== lead.source);
                         const others = (cl.articles || []).filter(a => a && a.id !== lead.id);
                         const threadData = others.length
-                            ? { kind: cl._topicLabel ? 'topic' : 'dupes', topic: cl._topicLabel || '', articles: others }
+                            ? { kind: 'dupes', topic: '', articles: others }
                             : null;
                         return {
                             ...lead,
@@ -20407,7 +20089,6 @@
                     ...previewLines,
                     ...previewLinesSoc,
                     dedupByTitle: window._dedupByTitle || false,
-                    groupByTopic: window._groupByTopic || false,
                     mergeTitlePreview: window._mergeTitlePreview || false,
                     // Written by updateRecentlyReadDays; left out, any save dropped it.
                     recentlyReadDays: prevPrefs.recentlyReadDays,
@@ -20558,13 +20239,6 @@
                 window._dedupByTitle = prefs.dedupByTitle;
                 const btn = document.getElementById('dedup-title-toggle');
                 if (btn) btn.setAttribute('data-on', prefs.dedupByTitle ? 'true' : 'false');
-            }
-            if (typeof prefs.groupByTopic === 'boolean') {
-                window._groupByTopic = prefs.groupByTopic;
-                const btn = document.getElementById('group-topic-toggle');
-                if (btn) btn.setAttribute('data-on', prefs.groupByTopic ? 'true' : 'false');
-                const hdrBtn = document.getElementById('topic-thread-btn');
-                if (hdrBtn) hdrBtn.setAttribute('data-on', prefs.groupByTopic ? 'true' : 'false');
             }
             if (typeof prefs.mergeTitlePreview === 'boolean') {
                 window._mergeTitlePreview = prefs.mergeTitlePreview;
@@ -21506,7 +21180,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 574;
+        window.APP_BUILD = 575;
 
         (async function initApp() {
             try {
