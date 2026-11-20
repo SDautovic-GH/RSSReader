@@ -10413,16 +10413,15 @@
             return inter / (a.size + b.size - inter);
         }
 
-        // Same story = >= 2 shared proper-noun tokens (the guard against false merges), within 24h, and
-        // either Jaccard >= _DEDUP_JACCARD or >= 3 shared rare tokens (in <= 2 articles), which catches
-        // reworded headlines about one specific event.
+        // Same story = within 24h and either:
+        // - >= 2 shared proper nouns + Jaccard >= 0.30 (or >= 3 shared rare tokens in <= 5 articles)
+        // - >= 1 shared proper noun + >= 3 shared headline tokens (or Jaccard >= 0.35)
+        // - >= 4 shared non-stopword headline tokens (catches sentence-case / non-English pairs)
         const _DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000;
-        // 0.40: paraphrases of one story across outlets share 3-5 stemmed tokens, 0.40-0.60 Jaccard
-        // (0.55 missed most). Two different Google / EU stories score ~0.29.
-        const _DEDUP_JACCARD = 0.40;
+        const _DEDUP_JACCARD = 0.30;
         const _DEDUP_MIN_SHARED_PROPER = 2;
         const _DEDUP_MIN_SHARED_RARE = 3;
-        const _DEDUP_RARE_MAX_DF = 2; // a token is "rare" if it appears in <= 2 articles in the current timeline
+        const _DEDUP_RARE_MAX_DF = 5;
 
         function buildDocFreq(allTokens) {
             const df = new Map();
@@ -10437,12 +10436,19 @@
             let sharedProper = 0;
             const [smallP, bigP] = aTok.proper.size <= bTok.proper.size ? [aTok.proper, bTok.proper] : [bTok.proper, aTok.proper];
             for (const x of smallP) if (bigP.has(x)) { sharedProper++; if (sharedProper >= _DEDUP_MIN_SHARED_PROPER) break; }
-            if (sharedProper < _DEDUP_MIN_SHARED_PROPER) return false;
-            if (jaccard(aTok.all, bTok.all) >= _DEDUP_JACCARD) return true;
-            // Rare-token fallback
-            if (!df) return false;
-            let sharedRare = 0;
+
+            let sharedAll = 0;
             const [smallA, bigA] = aTok.all.size <= bTok.all.size ? [aTok.all, bTok.all] : [bTok.all, aTok.all];
+            for (const x of smallA) if (bigA.has(x)) sharedAll++;
+
+            const jac = sharedAll / (aTok.all.size + bTok.all.size - sharedAll || 1);
+            if (sharedProper >= _DEDUP_MIN_SHARED_PROPER && jac >= _DEDUP_JACCARD) return true;
+            if (sharedProper >= 1 && (sharedAll >= 3 || jac >= 0.35)) return true;
+            if (sharedAll >= 4 || jac >= 0.45) return true;
+            if (sharedProper < 1 || !df) return false;
+
+            // Rare-token fallback
+            let sharedRare = 0;
             for (const x of smallA) {
                 if (!bigA.has(x)) continue;
                 if ((df.get(x) || 0) <= _DEDUP_RARE_MAX_DF) {
@@ -17378,10 +17384,11 @@
                 tTok[i].proper.forEach(p => byProper.get(p).forEach(j => { if (j > i) cand.add(j); }));
                 for (const j of cand) {
                     if (find(i) === find(j)) continue;
+                    const sn = sharedNames(i, j);
+                    const sumJac = Math.abs(dates[i] - dates[j]) <= _DEDUP_WINDOW_MS ? jaccard(xTok[i].all, xTok[j].all) : 0;
                     if (isSameStory(tTok[i], tTok[j], dates[i], dates[j], df)
-                        || (Math.abs(dates[i] - dates[j]) <= _DEDUP_WINDOW_MS
-                            && sharedNames(i, j) >= _DEDUP_MIN_SHARED_PROPER
-                            && jaccard(xTok[i].all, xTok[j].all) >= BRIEF_SUMMARY_JACCARD)) {
+                        || (sn >= _DEDUP_MIN_SHARED_PROPER && sumJac >= 0.22)
+                        || (sn >= 1 && sumJac >= 0.28)) {
                         union(i, j);
                     }
                 }
@@ -21180,7 +21187,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 579;
+        window.APP_BUILD = 580;
 
         (async function initApp() {
             try {
