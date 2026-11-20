@@ -3681,11 +3681,30 @@
 
             /* Viewer header flows cleanly past the "Today" brand anchor when sidebar is collapsed */
             body.sidebar-collapsed:not(.is-fullscreen) #viewer-header {
-                padding-left: 68px !important;
+                padding-left: 4.5rem !important;
             }
 
-            body.sidebar-collapsed.desktop-today-story:not(.is-fullscreen) #viewer-header .viewer-header-inner {
-                padding-left: calc(2.5rem + 48px) !important;
+            body.sidebar-collapsed.desktop-today-story:not(.story-beside):not(.is-fullscreen) #reader-view {
+                padding-left: 4.5rem !important;
+            }
+
+            body.desktop-today-story:not(.story-beside):not(.is-fullscreen) #viewer-header {
+                padding-left: 2.5rem !important;
+                padding-right: 2.5rem !important;
+            }
+
+            body.sidebar-collapsed.desktop-today-story:not(.story-beside):not(.is-fullscreen) #viewer-header {
+                padding-left: 4.5rem !important;
+            }
+
+            body.desktop-today-story:not(.story-beside):not(.is-fullscreen) #viewer-header .viewer-header-inner {
+                max-width: 760px !important;
+                width: 100% !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                box-sizing: border-box !important;
             }
 
             /* Smart Feeds in Expanded Sidebar (Option 1 aesthetic): clean rounded floating pill rows */
@@ -4049,8 +4068,7 @@
                 margin-left: max(0px, calc((100vw - (var(--sidebar-w) + var(--timeline-w, 440px) + 760px + 5rem)) / 2)) !important;
             }
 
-            body.ultrawide-centered.desktop-today-cards-wide #timeline-header .timeline-header-inner,
-            body.ultrawide-centered.desktop-today-story:not(.story-beside):not(.is-fullscreen) #viewer-header .viewer-header-inner {
+            body.ultrawide-centered.desktop-today-cards-wide #timeline-header .timeline-header-inner {
                 max-width: calc(var(--deck-w) + 5rem) !important;
                 margin-left: 0 !important;
                 margin-right: auto !important;
@@ -4059,8 +4077,7 @@
                 box-sizing: border-box !important;
             }
 
-            body.sidebar-collapsed.desktop-today-cards-wide #timeline-header .timeline-header-inner,
-            body.sidebar-collapsed.desktop-today-story:not(.story-beside):not(.is-fullscreen) #viewer-header .viewer-header-inner {
+            body.sidebar-collapsed.desktop-today-cards-wide #timeline-header .timeline-header-inner {
                 padding-left: calc(2.5rem + 48px) !important;
             }
 
@@ -4074,8 +4091,9 @@
                 box-sizing: border-box !important;
             }
 
-            /* Story: the right padding narrows the canvas area to the deck, so the 760px
-               canvas centres where the cards were. */
+            /* Story: the right padding narrows the canvas area to the deck, so both the 760px header
+               and the 760px story canvas centre identically where the cards were. */
+            body.ultrawide-centered.desktop-today-story:not(.story-beside):not(.is-fullscreen) #viewer-header,
             body.ultrawide-centered.desktop-today-story:not(.story-beside):not(.is-fullscreen) #reader-view {
                 padding-right: max(2.5rem, calc(100% - 2.5rem - var(--deck-w))) !important;
             }
@@ -4960,7 +4978,8 @@
             cursor: default;
         }
 
-        #viewer-back-btn {
+        #viewer-back-btn,
+        #viewer-bottom-back-btn {
             display: inline-flex !important;
             align-items: center !important;
             gap: 6px !important;
@@ -4977,29 +4996,40 @@
             transition: background 0.15s ease, color 0.15s ease !important;
         }
 
-        :root:not(.dark) #viewer-back-btn {
+        :root:not(.dark) #viewer-back-btn,
+        :root:not(.dark) #viewer-bottom-back-btn {
             background: rgba(0, 0, 0, 0.045) !important;
             color: var(--text-2, rgba(0, 0, 0, 0.75)) !important;
         }
 
-        #viewer-back-btn:hover {
+        #viewer-back-btn:hover,
+        #viewer-bottom-back-btn:hover {
             background: rgba(255, 255, 255, 0.1) !important;
             color: var(--text-1, #ffffff) !important;
         }
 
-        :root:not(.dark) #viewer-back-btn:hover {
+        :root:not(.dark) #viewer-back-btn:hover,
+        :root:not(.dark) #viewer-bottom-back-btn:hover {
             background: rgba(0, 0, 0, 0.075) !important;
             color: var(--text-1, #000000) !important;
         }
 
-        #viewer-back-btn svg {
+        #viewer-back-btn svg,
+        #viewer-bottom-back-btn svg {
             width: 14px !important;
             height: 14px !important;
             stroke-width: 2.4 !important;
         }
 
-        #viewer-back-btn.hidden {
+        #viewer-back-btn.hidden,
+        .article-footer-back.hidden {
             display: none !important;
+        }
+
+        .article-footer-back {
+            margin-top: 2.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid rgba(128, 128, 128, 0.14);
         }
 
         #desk-search-trigger {
@@ -8708,6 +8738,15 @@
                             </div>
                             <div id="article-body"
                                 class="article-content dynamic-view-text text-gray-800 dark:text-gray-300 leading-relaxed space-y-4">
+                            </div>
+                            <div id="article-footer-back" class="article-footer-back hidden">
+                                <button id="viewer-bottom-back-btn" onclick="onViewerBackClick()" type="button" aria-label="Back"
+                                    class="pill-btn inline-flex">
+                                    <svg class="stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <polyline points="15 18 9 12 15 6"></polyline>
+                                    </svg>
+                                    <span>Back</span>
+                                </button>
                             </div>
                         </article>
                     </div>
@@ -20711,8 +20750,9 @@
                 document.body.classList.remove('tabbar-tucked');
             }
 
-            if (!art || isToday) {
+            if (!art || isToday || isAnyBrief) {
                 if (backBtn) backBtn.classList.add('hidden');
+                document.getElementById('article-footer-back')?.classList.add('hidden');
                 if (viewerHeader && isMobile()) {
                     if (!document.body.classList.contains('desktop-today-story')) {
                         viewerHeader.style.display = 'none';
@@ -20729,6 +20769,7 @@
                 backBtn.classList.remove('hidden');
                 if (backLabel) backLabel.textContent = 'Back';
             }
+            document.getElementById('article-footer-back')?.classList.remove('hidden');
         }
         window.updateViewerBackBtn = updateViewerBackBtn;
 
@@ -21280,7 +21321,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 586;
+        window.APP_BUILD = 587;
 
         (async function initApp() {
             try {
