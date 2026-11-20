@@ -10554,6 +10554,12 @@
         const _DEDUP_MIN_SHARED_PROPER = 2;
         const _DEDUP_MIN_SHARED_RARE = 3;
         const _DEDUP_RARE_MAX_DF = 5;
+        // Generic headline verbs/modals that shouldn't carry a 1-proper-noun match on their own
+        const _DEDUP_WEAK_TOKENS = new Set([
+            'plan', 'build', 'show', 'mak', 'launch', 'want', 'need', 'use', 'get', 'set',
+            'take', 'give', 'tell', 'call', 'ask', 'try', 'keep', 'turn', 'start', 'run',
+            'may', 'could', 'would', 'should', 'can', 'might', 'must', 'seem', 'look'
+        ]);
 
         function buildDocFreq(allTokens) {
             const df = new Map();
@@ -10575,19 +10581,15 @@
 
             const jac = sharedAll / (aTok.all.size + bTok.all.size - sharedAll || 1);
             if (sharedProper >= _DEDUP_MIN_SHARED_PROPER && jac >= _DEDUP_JACCARD) return true;
-            if (sharedProper >= 1 && (sharedAll >= 3 || jac >= 0.35)) return true;
             if (sharedAll >= 4 || jac >= 0.45) return true;
-            if (sharedProper < 1 || !df) return false;
 
-            // Rare-token fallback
             let sharedRare = 0;
             for (const x of smallA) {
-                if (!bigA.has(x)) continue;
-                if ((df.get(x) || 0) <= _DEDUP_RARE_MAX_DF) {
-                    sharedRare++;
-                    if (sharedRare >= _DEDUP_MIN_SHARED_RARE) return true;
-                }
+                if (!bigA.has(x) || _DEDUP_WEAK_TOKENS.has(x)) continue;
+                if (!df || (df.get(x) || 0) <= _DEDUP_RARE_MAX_DF) sharedRare++;
             }
+            if (sharedProper >= 1 && (sharedAll >= 4 || jac >= 0.35 || (sharedAll >= 3 && (sharedRare >= 2 || jac >= 0.28)))) return true;
+            if (sharedProper >= 1 && df && sharedRare >= _DEDUP_MIN_SHARED_RARE) return true;
             return false;
         }
 
@@ -21354,7 +21356,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 589;
+        window.APP_BUILD = 590;
 
         (async function initApp() {
             try {
