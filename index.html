@@ -4916,6 +4916,57 @@
             color: var(--text-1, #f1f5f9);
         }
 
+        .reader-cluster-outlets {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 6px 0 14px 0;
+        }
+
+        .reader-cluster-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-3, #6b7280);
+            margin-right: 2px;
+        }
+
+        .reader-outlet-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12.5px;
+            font-weight: 500;
+            line-height: 1.3;
+            color: var(--text-2, #4b5563);
+            background: rgba(128, 128, 128, 0.08);
+            border: 1px solid rgba(128, 128, 128, 0.18);
+            cursor: pointer;
+            transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+        }
+
+        .dark .reader-outlet-pill {
+            color: var(--text-2, #cbd5e1);
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .reader-outlet-pill:hover {
+            background: rgba(var(--accent-rgb), 0.12);
+            border-color: rgba(var(--accent-rgb), 0.30);
+            color: var(--accent);
+        }
+
+        .reader-outlet-pill.is-active {
+            background: rgba(var(--accent-rgb), 0.16);
+            border-color: rgba(var(--accent-rgb), 0.42);
+            color: var(--accent);
+            font-weight: 600;
+            cursor: default;
+        }
+
         #viewer-back-btn {
             display: inline-flex !important;
             align-items: center !important;
@@ -8620,6 +8671,7 @@
                                     <span id="article-source-label"></span>
                                     <span id="article-meta-time" class="article-meta-time"></span>
                                 </p>
+                                <div id="reader-cluster-outlets" class="reader-cluster-outlets hidden"></div>
                                 <h1 id="article-title" tabindex="0" role="link" onclick="openExternal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openExternal();}"
                                     class="font-extrabold leading-tight mb-6 dark:text-white cursor-pointer hover:opacity-80 transition-opacity"
                                     style="font-size: 1.5em;"></h1>
@@ -10703,6 +10755,18 @@
             btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         };
 
+        window.findClusterLeadId = (articleId) => {
+            if (!articleId) return '';
+            if (window._briefCopies?.has(articleId) || window._timelineThreadCopies?.has(articleId)) return articleId;
+            for (const map of [window._briefCopies, window._timelineThreadCopies]) {
+                if (!map) continue;
+                for (const [leadId, copyIds] of map.entries()) {
+                    if (Array.isArray(copyIds) && copyIds.includes(articleId)) return leadId;
+                }
+            }
+            return articleId;
+        };
+
         window.buildCardThreadHtml = (leadId, leadSource, thread) => {
             if (!thread || !thread.articles || !thread.articles.length) return '';
             const kids = thread.articles;
@@ -10715,12 +10779,13 @@
             if (!uniqSources.length && kids[0]?.source) uniqSources.push(kids[0].source);
             const preview = uniqSources.slice(0, 3).join(', ') + (uniqSources.length > 3 ? ` +${uniqSources.length - 3}` : '');
             const pillLabel = `+${kids.length} ${kids.length === 1 ? 'source' : 'sources'}${preview ? ' · ' + preview : ''}`;
+            const lid = escJs(leadId);
             const rowsHtml = kids.map(c => {
                 const cid = escJs(c.id);
                 const cSrc = c.source || 'News';
                 const cFav = typeof getFavicon === 'function' ? getFavicon(cSrc) : '';
                 const cTitle = c.title || c.excerpt || 'Untitled';
-                return `<button type="button" class="card-thread-row" onclick="event.stopPropagation(); (window._todayInColumn ? window.openArticleInReader('${cid}') : selectArticle('${cid}'))">`
+                return `<button type="button" class="card-thread-row" onclick="event.stopPropagation(); (window._todayInColumn ? window.openArticleInReader('${cid}', '${lid}') : selectArticle('${cid}', '${lid}'))">`
                     + `<span class="card-thread-row-src">${cFav}${esc(cSrc)}</span>`
                     + `<span class="card-thread-row-title">${esc(cTitle)}</span>`
                     + `</button>`;
@@ -12503,7 +12568,7 @@
             window.updateBriefMarkReadButtons?.();
         }
 
-        window.selectArticle = function (id) {
+        window.selectArticle = function (id, leadCardId) {
             // Bucket-backed views (Saved, Read Later) and the History view keep
             // their own synthetic article lists with prefixed IDs (sv:, rl:, ra:)
             // that aren't in window.articles. Search them all.
@@ -12523,30 +12588,42 @@
 
             if (!article) return;
 
+            const hostId = (!article.isBrief && (leadCardId || (typeof window.findClusterLeadId === 'function' ? window.findClusterLeadId(id) : id))) || id;
             const prevArticle = window.currentArticle;   // Today kept alive below
             window.currentArticle = article;
-            // Manage "Back to Brief" state: clear if navigating to an unrelated article
+            // Manage "Back to Brief" state: anchor to hostId when opening a clustered child outlet
             if (window._returnToBriefState) {
                 const s = window._returnToBriefState;
-                const isStoryInBrief = Array.isArray(s.storyIds) && s.storyIds.includes(article.id);
+                const isStoryInBrief = Array.isArray(s.storyIds) && (s.storyIds.includes(article.id) || s.storyIds.includes(hostId));
                 if (article.isBrief) {
                     // Do nothing here, returnToBrief handles returning
-                } else if (!isStoryInBrief && article.id !== s.articleId && article.id !== s.sourceCardId) {
+                } else if (!isStoryInBrief && article.id !== s.articleId && hostId !== s.sourceCardId) {
                     window._returnToBriefState = null;
                 } else {
                     s.articleId = article.id;
-                    s.sourceCardId = article.id;
-                    if (Array.isArray(s.storyIds)) s.storyIndex = s.storyIds.indexOf(article.id);
+                    s.sourceCardId = hostId;
+                    if (Array.isArray(s.storyIds)) {
+                        const idx = s.storyIds.indexOf(hostId);
+                        s.storyIndex = idx >= 0 ? idx : s.storyIds.indexOf(article.id);
+                    }
                 }
             }
 
             window.syncBriefCards?.();
             if (!article.isBrief) {
-                window.articles.forEach(a => { if (a.id === id) a.unread = false; });
+                window.articles.forEach(a => { if (a.id === id || a.id === hostId) a.unread = false; });
                 window._readLinks.add(article.link);
                 archiveReadArticle(article);
+                if (hostId !== id) {
+                    const hostArt = window.articles.find(a => a.id === hostId);
+                    if (hostArt) {
+                        window._readLinks.add(hostArt.link);
+                        archiveReadArticle(hostArt);
+                    }
+                }
                 window.logReading?.(article, true);   // opened in the reader
-                syncStoryCopies(id, false);   // its grouped copies are read too
+                syncStoryCopies(hostId, false);   // its grouped copies are read too
+                if (hostId !== id) syncStoryCopies(id, false);
                 saveReadState();
             }
 
@@ -12586,6 +12663,35 @@
                 if (headerCard) headerCard.classList.add('hidden');
             } else {
                 if (headerCard) headerCard.classList.remove('hidden');
+            }
+            // In-reader outlet switcher when the open story belongs to a multi-source cluster
+            const clusterOutletsEl = document.getElementById('reader-cluster-outlets');
+            if (clusterOutletsEl) {
+                const copyIds = !article.isBrief
+                    ? [...new Set([...(window._briefCopies?.get(hostId) || []), ...(window._timelineThreadCopies?.get(hostId) || [])])]
+                    : [];
+                const memberIds = !article.isBrief && copyIds.length ? [...new Set([hostId, ...copyIds])] : [];
+                const memberArts = memberIds
+                    .map(mid => (typeof window.readerArticleById === 'function' ? window.readerArticleById(mid) : null) || (window.articles || []).find(a => a.id === mid))
+                    .filter(Boolean);
+                if (memberArts.length > 1) {
+                    const hid = escJs(hostId);
+                    const pillsHtml = memberArts.map(m => {
+                        const mid = escJs(m.id);
+                        const mSrc = m.source || 'News';
+                        const mFav = typeof getFavicon === 'function' ? getFavicon(mSrc) : '';
+                        const active = m.id === article.id ? ' is-active' : '';
+                        const clickAttr = m.id === article.id
+                            ? ''
+                            : ` onclick="window._todayInColumn ? window.openArticleInReader('${mid}', '${hid}') : selectArticle('${mid}', '${hid}')"`;
+                        return `<button type="button" class="reader-outlet-pill${active}" title="${esc(m.title || mSrc)}"${clickAttr}>${mFav}<span>${esc(mSrc)}</span></button>`;
+                    }).join('');
+                    clusterOutletsEl.innerHTML = `<span class="reader-cluster-label">Coverage:</span>${pillsHtml}`;
+                    clusterOutletsEl.classList.remove('hidden');
+                } else {
+                    clusterOutletsEl.innerHTML = '';
+                    clusterOutletsEl.classList.add('hidden');
+                }
             }
             // Bluesky posts always render Mastodon-style: no headline, no author/date row.
             const titleEl = document.getElementById('article-title');
@@ -15781,17 +15887,36 @@
             let sections = built.categorySections;
             let totalStories = built.totalStories;
 
-            // Top Stories: strongest clusters across every folder (authority rank, then
-            // multi-outlet consensus, then recency). Lifted out of their folder sections
-            // so no story appears twice. Only worth it when there is enough to choose from.
+            // Top Stories: strongest clusters across every folder (multi-outlet consensus first,
+            // then authority rank, then recency, with a max-2-per-feed diversity cap so no single
+            // publication monopolizes all 5 slots). Lifted out of their folder sections so no story appears twice.
             if (!chrono && sections.length > 1 && totalStories > window.TODAY_TOP_N * 2) {
                 const all = [];
                 sections.forEach(cs => cs.stories.forEach(st => all.push(st)));
                 all.sort((x, y) =>
+                    (((y.sourceCount || 1) > 1 ? 1 : 0) - ((x.sourceCount || 1) > 1 ? 1 : 0)) ||
                     ((x.effectiveRank ?? 9999) - (y.effectiveRank ?? 9999)) ||
                     ((y.sourceCount || 1) - (x.sourceCount || 1)) ||
                     ((y._ts || 0) - (x._ts || 0)));
-                const top = all.slice(0, window.TODAY_TOP_N);
+                const top = [];
+                const overflow = [];
+                const perSource = new Map();
+                const MAX_PER_SOURCE_IN_TOP = 2;
+                for (const st of all) {
+                    if (top.length >= window.TODAY_TOP_N) break;
+                    const src = st.source || '';
+                    const cnt = perSource.get(src) || 0;
+                    if (src && cnt >= MAX_PER_SOURCE_IN_TOP) {
+                        overflow.push(st);
+                        continue;
+                    }
+                    top.push(st);
+                    if (src) perSource.set(src, cnt + 1);
+                }
+                for (const st of overflow) {
+                    if (top.length >= window.TODAY_TOP_N) break;
+                    top.push(st);
+                }
                 const topIds = new Set(top.map(s => s.id));
                 // Each folder then fills back up to Stories per Category from the stories after them, so none
                 // comes up short or drops out of Today for the Top Stories it gave.
@@ -18043,14 +18168,15 @@
             else requestAnimationFrame(() => { setTimeout(land, 60); });
         };
 
-        window.openArticleInReader = function (articleId) {
+        window.openArticleInReader = function (articleId, leadCardId) {
             const art = window.readerArticleById(articleId);
             if (art) {
+                const hostId = (!art.isBrief && (leadCardId || (typeof window.findClusterLeadId === 'function' ? window.findClusterLeadId(articleId) : articleId))) || articleId;
                 let tappedTop = null;   // desktop: the card's height in the column, so Back lands the next one there
                 if (!isMobile()) {
                     const beside = window._todayInColumn && !art.isBrief && document.body.classList.contains('story-beside');
                     const col = document.getElementById('today-column');
-                    const cardSel = `.brief-story-card[data-sa-id="${CSS.escape(articleId)}"]`;
+                    const cardSel = `.brief-story-card[data-sa-id="${CSS.escape(hostId)}"]`;
                     const tapped = window._todayInColumn && !document.body.classList.contains('desktop-today-story') ? col?.querySelector(cardSel) : null;
                     if (tapped && tapped.getClientRects().length) tappedTop = tapped.getBoundingClientRect().top - col.getBoundingClientRect().top;
                     // Opening beside the list narrows it: the clicked card keeps its height on the screen.
@@ -18076,14 +18202,14 @@
                     const col = document.getElementById('today-column');
                     // Read stories have left the brief: walk what is left.
                     const colIds = Array.from(col?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
-                        .filter(c => !c.classList.contains('brief-card-read') || c.getAttribute('data-sa-id') === art.id)
+                        .filter(c => !c.classList.contains('brief-card-read') || c.getAttribute('data-sa-id') === hostId)
                         .map(c => c.getAttribute('data-sa-id')).filter(Boolean);
-                    const colIdx = colIds.indexOf(art.id);
+                    const colIdx = colIds.indexOf(hostId);
                     window._returnToBriefState = {
                         briefId: window.TODAY_BRIEF_ID,
                         articleId: art.id,
-                        sourceCardId: articleId,
-                        storyIds: colIds.length ? colIds : [art.id],
+                        sourceCardId: hostId,
+                        storyIds: colIds.length ? colIds : [hostId],
                         storyIndex: colIdx >= 0 ? colIdx : 0,
                         scrollTop: col ? col.scrollTop : 0,
                         cardTop: tappedTop,
@@ -18092,30 +18218,30 @@
                 } else if (window.currentArticle && window.currentArticle.isBrief) {
                     const readerView = document.getElementById('reader-view');
                     const storyCards = Array.from(readerView?.querySelectorAll('.brief-story-card[data-sa-id]') || [])
-                        .filter(c => !c.classList.contains('brief-card-read') || c.getAttribute('data-sa-id') === art.id);
+                        .filter(c => !c.classList.contains('brief-card-read') || c.getAttribute('data-sa-id') === hostId);
                     const storyIds = storyCards.map(c => c.getAttribute('data-sa-id')).filter(Boolean);
                     // Where the tapped story sat on screen, so the return lands at that height.
-                    const tapped = storyCards.find(c => c.getAttribute('data-sa-id') === art.id);
+                    const tapped = storyCards.find(c => c.getAttribute('data-sa-id') === hostId);
 
                     window._returnToBriefState = {
                         briefId: window.currentArticle.id,
                         articleId: art.id,
-                        sourceCardId: articleId,
-                        storyIds: storyIds.length ? storyIds : [art.id],
-                        storyIndex: storyIds.indexOf(art.id) >= 0 ? storyIds.indexOf(art.id) : 0,
+                        sourceCardId: hostId,
+                        storyIds: storyIds.length ? storyIds : [hostId],
+                        storyIndex: storyIds.indexOf(hostId) >= 0 ? storyIds.indexOf(hostId) : 0,
                         scrollTop: readerView ? readerView.scrollTop : 0,
                         cardTop: tapped && readerView ? tapped.getBoundingClientRect().top - readerView.getBoundingClientRect().top : null
                     };
                 } else if (window._returnToBriefState) {
                     window._returnToBriefState.articleId = art.id;
-                    window._returnToBriefState.sourceCardId = articleId;
+                    window._returnToBriefState.sourceCardId = hostId;
                     if (Array.isArray(window._returnToBriefState.storyIds)) {
-                        const idx = window._returnToBriefState.storyIds.indexOf(articleId);
+                        const idx = window._returnToBriefState.storyIds.indexOf(hostId);
                         if (idx >= 0) window._returnToBriefState.storyIndex = idx;
                     }
                 }
                 if (isMobile()) setMobilePane('viewer');
-                selectArticle(art.id);
+                selectArticle(art.id, hostId);
             } else {
                 if (window.showToast) window.showToast("Article not found in local cache", true);
             }
@@ -21187,7 +21313,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 580;
+        window.APP_BUILD = 581;
 
         (async function initApp() {
             try {
