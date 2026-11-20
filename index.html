@@ -3258,7 +3258,7 @@
             border-radius: 14px !important;
             background: transparent !important;
             padding: 14px 16px !important;
-            margin: 0 0 4px 0 !important;
+            margin: 0 0 10px 0 !important;
             display: flex !important;
             flex-direction: column !important;
             gap: 6px !important;
@@ -5394,14 +5394,19 @@
             display: none !important;
         }
 
-        /* Jump Bar — vertically centered between the thin hairline border above and the stories box below */
+        .brief-header {
+            border-bottom: none !important;
+            padding-bottom: 4px !important;
+        }
+
+        /* Jump Bar — vertically centered between the header above and the stories box below */
         .brief-jump-bar {
             position: relative;
             display: flex;
             gap: 6px;
             overflow-x: auto;
-            padding-top: 20px !important;
-            padding-bottom: 20px !important;
+            padding-top: 12px !important;
+            padding-bottom: 16px !important;
             margin-top: 0 !important;
             margin-bottom: 0 !important;
             border: none !important;
@@ -5413,6 +5418,12 @@
             scroll-behavior: smooth;
             width: 100%;
             box-sizing: border-box;
+        }
+
+        .brief-jump-count {
+            font-size: 0.88em;
+            opacity: 0.65;
+            font-variant-numeric: tabular-nums;
         }
 
         .brief-jump-bar::-webkit-scrollbar {
@@ -5951,11 +5962,16 @@
 
         /* The meta row already carries Source Name Size, so the name takes 1em of it; sizing both
            multiplied the setting. Four classes outrank every source-name rule above. */
-        .dark #article-body .brief-story-card .brief-story-meta .brief-story-source.list-source-label,
         #article-body .brief-story-card .brief-story-meta .brief-story-source.list-source-label,
         .brief-story-card .brief-story-meta .brief-story-source.list-source-label {
             font-size: 1em !important;
-            color: var(--text-3) !important;
+            color: var(--text-2, #374151) !important;
+        }
+
+        .dark #article-body .brief-story-card .brief-story-meta .brief-story-source.list-source-label,
+        .dark .brief-story-card .brief-story-meta .brief-story-source.list-source-label {
+            font-size: 1em !important;
+            color: #cbd5e1 !important;
         }
 
         /* The time is the source's size, set apart by weight. */
@@ -15621,7 +15637,7 @@
             const showStatus = !isPersonalHub && !isFeedCards;
             const statusHtml = showStatus ? `<div class="brief-header-status app-subtitle"><span data-today-status>${esc(statusText)}</span><span class="brief-header-new" data-today-new></span></div>` : '';
             return `
-                <div class="brief-header border-b border-gray-100 dark:border-gray-800${isEmptyBrief ? ' brief-header-empty' : ''}">
+                <div class="brief-header${isEmptyBrief ? ' brief-header-empty' : ''}">
                     <div class="app-header-row">
                         <span class="app-logo brief-header-logo" aria-hidden="true"><svg><use href="#${headerIcon || 'icon-today-logo'}"/></svg></span>
                         <div class="app-header-text">
@@ -15923,7 +15939,7 @@
                 const refilled = built.reselect(topIds);
                 sections = refilled.categorySections;
                 totalStories = refilled.totalStories + top.length;
-                sections.unshift({ name: 'Top Stories', slug: 'top_stories', icon: 'icon-newspaper', noMarkRead: true, stories: top });
+                sections.unshift({ name: 'Top Stories', slug: 'top_stories', icon: 'icon-newspaper', noMarkRead: false, stories: top });
             }
 
             const dateStr = typeof getETParts === 'function' ? getETParts(new Date(now)).dateStr : '';
@@ -16422,7 +16438,11 @@
                         const countEl = sec.querySelector('.brief-cat-count');
                         if (countEl) countEl.textContent = `${secCount} ${secCount === 1 ? 'story' : 'stories'}`;
                         const pill = sec.id ? root.querySelector(`.brief-jump-pill[href="#${CSS.escape(sec.id)}"]`) : null;
-                        if (pill) pill.classList.remove('brief-gone');
+                        if (pill) {
+                            pill.classList.remove('brief-gone');
+                            const pCount = pill.querySelector('.brief-jump-count');
+                            if (pCount) pCount.textContent = String(secCount);
+                        }
                     });
                     const bar = root.querySelector('.brief-jump-bar');
                     if (bar) bar.classList.remove('brief-gone');
@@ -16475,6 +16495,8 @@
                     if (pill) {
                         if (shown === 0) pill.classList.add('brief-gone');
                         else pill.classList.remove('brief-gone');
+                        const pCount = pill.querySelector('.brief-jump-count');
+                        if (pCount) pCount.textContent = String(shown);
                     }
                     const end = sec.querySelector('.brief-cat-end');
                     if (end) {
@@ -17736,7 +17758,7 @@
                 html += `<button type="button" class="brief-jump-nav brief-jump-nav-left hidden" onclick="window.scrollBriefJumpBar(-240)" aria-label="Previous categories"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>`;
                 html += `<div class="brief-jump-bar" onscroll="window.updateBriefJumpNav(this)">`;
                 categorySections.forEach((cs, idx) => {
-                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill${idx === 0 ? ' is-active' : ''}" onclick="event.preventDefault(); window.briefJumpTo(this);">${esc(cs.name)}</a>`;
+                    html += `<a href="#brief-cat-${cs.slug}" class="brief-jump-pill${idx === 0 ? ' is-active' : ''}" onclick="event.preventDefault(); window.briefJumpTo(this);"><span class="brief-jump-name">${esc(cs.name)}</span><span class="brief-jump-count">${cs.stories.length}</span></a>`;
                 });
                 html += `</div>`;
                 html += `<button type="button" class="brief-jump-nav brief-jump-nav-right hidden" onclick="window.scrollBriefJumpBar(240)" aria-label="More categories"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></button>`;
@@ -19996,9 +20018,13 @@
         window.markBriefCategoryRead = function (catName, btnEl) {
             if (!catName || !window.articles) return;
             const sec = btnEl ? btnEl.closest('.brief-cat-section') : null;
+            const normCat = catName.trim().toLowerCase();
+            if (normCat === 'top stories' || sec?.id === 'brief-cat-top_stories') {
+                window.markBriefSectionRead?.(btnEl);
+                return;
+            }
             const next = sec ? window.briefNextShown(sec) : null;
             const nextBefore = next ? next.getBoundingClientRect().top : 0;
-            const normCat = catName.trim().toLowerCase();
 
             const allFeeds = [...(window.feeds || [])];
             if (Array.isArray(window.accountStates?.local)) {
@@ -21313,7 +21339,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 581;
+        window.APP_BUILD = 582;
 
         (async function initApp() {
             try {
