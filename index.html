@@ -4823,15 +4823,36 @@
             display: none !important;
         }
 
+        #reader-view,
+        #article-list,
+        .brief-container,
+        .brief-cat-section {
+            overflow-x: hidden !important;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        #reader-view,
+        #article-list,
+        .brief-story-card,
+        .article-item-card {
+            touch-action: pan-y;
+        }
+
         .card-thread-wrap {
             margin-top: 8px;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
         }
 
         .card-thread-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            min-width: 0;
             max-width: 100%;
+            box-sizing: border-box;
             padding: 5px 12px;
             border-radius: 9999px;
             font-size: 13.5px;
@@ -4849,6 +4870,8 @@
         }
 
         .card-thread-pill-text {
+            min-width: 0;
+            flex: 1 1 auto;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -11932,6 +11955,7 @@
                 if (Math.abs(dx) < 8 && Math.abs(dy) > 4) { _t.cancelled = true; return; }
 
                 _t.moved = true;
+                if (e.cancelable) e.preventDefault();
                 const [leftHint, rightHint] = hintsOf(_t.card);
                 const progress = Math.min(1, Math.abs(dx) / SWIPE_THRESHOLD);
                 const shiftX = Math.max(-28, Math.min(28, dx * 0.35));
@@ -11949,7 +11973,7 @@
                 } else {
                     reset(_t.card);
                 }
-            }, { passive: true });
+            }, { passive: false });
 
             container.addEventListener('touchcancel', () => {
                 if (_t) { reset(_t.card); _t = null; }
@@ -21321,7 +21345,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 587;
+        window.APP_BUILD = 588;
 
         (async function initApp() {
             try {
