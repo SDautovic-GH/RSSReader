@@ -1,12 +1,15 @@
-const CACHE_NAME = 'rss-reader-v575';
+const CACHE_NAME = 'rss-reader-v576';
 const APP_SHELL = [
     './',
     './index.html',
-    './manifest.json',
-    './apple-touch-icon.png',
-    './icon-192.png',
-    './icon-512.png',
-    './favicon.png'
+    './manifest.webmanifest',
+    './apple-touch-icon.png?v=576',
+    './favicon.svg?v=576',
+    './favicon-64x64.png?v=576',
+    './favicon-32x32.png?v=576',
+    './favicon.ico?v=576',
+    './icon-192.png?v=576',
+    './icon-512.png?v=576'
 ];
 const APP_SHELL_SET = new Set(APP_SHELL);
 const EXTERNAL_ASSETS = [
