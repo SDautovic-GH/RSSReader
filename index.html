@@ -7856,30 +7856,6 @@
             border-radius: 4px;
         }
 
-        /* 5. Top 2px reading progress hairline in the reader pane */
-        #reader-progress-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 2px;
-            width: 100%;
-            background: var(--accent, #3d6bb0);
-            transform: scaleX(0);
-            transform-origin: 0 50%;
-            transition: transform 80ms linear, opacity 180ms ease;
-            opacity: 0;
-            z-index: 45;
-            pointer-events: none;
-        }
-
-        html.dark #reader-progress-bar {
-            background: var(--accent, #4d7cc7);
-        }
-
-        #viewer-pane.has-article:not(.is-brief-view) #reader-progress-bar.is-active {
-            opacity: 1;
-        }
-
         /* 6. Mobile Reader Apple-Style Top Bar (Circular Back + Glass Action Capsule) */
         :root {
             --phone-clock-inset: env(safe-area-inset-top, 0px);
@@ -8137,7 +8113,6 @@
             #viewer-header,
             #mobile-tab-bar,
             #mobile-reader-bar,
-            #reader-progress-bar,
             #tts-player,
             #mobile-search-sheet,
             #login-modal,
@@ -8695,7 +8670,6 @@
             </div>
 
             <div class="flex-1 relative">
-                <div id="reader-progress-bar" aria-hidden="true"></div>
                 <div id="mobile-reader-bar" class="phone-only" aria-label="Article navigation and actions">
                     <button type="button" id="mobile-reader-back-btn" class="mobile-reader-pill mobile-reader-back-circle" onclick="closeMobileReader()" aria-label="Back" title="Back">
                         <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -12864,7 +12838,6 @@
             }
             const readerElEarly = document.getElementById('reader-view');
             if (readerElEarly) readerElEarly.scrollTop = keptScroll ?? 0;   // kept Today: where you were
-            window.updateReaderProgressBar?.();
 
             if (!article.isBrief) attemptFullContentLoad(article);
 
@@ -13356,7 +13329,6 @@
                             // snap back to the top so the reader doesn't appear mid-article.
                             const readerEl = document.getElementById('reader-view');
                             if (readerEl) readerEl.scrollTop = 0;
-                            window.updateReaderProgressBar?.();
                         }
                         return;
                     }
@@ -16965,7 +16937,6 @@
         document.addEventListener('scroll', e => {   // scroll events come at most once a frame
             const sc = e.target;
             if (!(sc instanceof Element) || (sc.id !== 'today-column' && sc.id !== 'reader-view')) return;
-            if (sc.id === 'reader-view') window.updateReaderProgressBar?.();
             const bar = [...sc.querySelectorAll('.brief-jump-bar')].find(b => b.getClientRects().length);
             if (!bar) return;
             if (bar._jumpTarget != null) {
@@ -19329,28 +19300,6 @@
             metaTimeEl.textContent = base ? `${base} · ${mins} min read` : `${mins} min read`;
         };
 
-        window.updateReaderProgressBar = function () {
-            const bar = document.getElementById('reader-progress-bar');
-            const rv = document.getElementById('reader-view');
-            const art = window.currentArticle;
-            if (!bar || !rv || !art || art.isBrief) {
-                if (bar) {
-                    bar.classList.remove('is-active');
-                    bar.style.transform = 'scaleX(0)';
-                }
-                return;
-            }
-            const maxScroll = rv.scrollHeight - rv.clientHeight;
-            if (maxScroll <= 40) {
-                bar.classList.remove('is-active');
-                bar.style.transform = 'scaleX(0)';
-                return;
-            }
-            const ratio = Math.max(0, Math.min(1, rv.scrollTop / maxScroll));
-            bar.classList.add('is-active');
-            bar.style.transform = `scaleX(${ratio.toFixed(4)})`;
-        };
-
         window.closeMobileReader = function () {
             const cur = window.currentArticle;
             const s = window._returnToBriefState;
@@ -21377,7 +21326,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 594;
+        window.APP_BUILD = 595;
 
         (async function initApp() {
             try {
