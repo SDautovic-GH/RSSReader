@@ -20817,8 +20817,11 @@
         }
         window.updateViewerBackBtn = updateViewerBackBtn;
 
-        // Desktop only: the phone has no reader top bar (the tabs do this).
         window.onViewerBackClick = () => {
+            if (isMobile()) {
+                window.closeMobileReader();
+                return;
+            }
             if (window._todayInColumn) {
                 window.closeStoryToTodayColumn();
                 return;
@@ -20836,10 +20839,11 @@
                 if (el) el.classList.toggle('mobile-active', key === pane);
             });
 
+            const isPersonalFeed = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
             if (pane === 'sidebar') {
                 setMobileTab('following');
             } else if (pane === 'timeline') {
-                if (window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'saved') {
+                if (isPersonalFeed) {
                     setMobileTab('saved');
                 } else {
                     setMobileTab('following');
@@ -20849,7 +20853,7 @@
                 const isTodayArt = cur && cur.id === window.TODAY_BRIEF_ID;
                 if (!cur || isTodayArt || window._returnToBriefState) {
                     setMobileTab('today');
-                } else if (window._activeTab === 'saved' || window.currentSmartFeed === 'read-later' || window.currentSmartFeed === 'saved') {
+                } else if (window._activeTab === 'saved' || isPersonalFeed) {
                     setMobileTab('saved');
                 } else {
                     setMobileTab('following');
@@ -21365,7 +21369,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 603;
+        window.APP_BUILD = 604;
 
         (async function initApp() {
             try {
