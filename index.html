@@ -3856,6 +3856,14 @@
                 display: inline !important;
             }
 
+            body.sidebar-collapsed #smart-feeds-card .smart-feed-btn {
+                color: rgba(255, 255, 255, 0.58) !important;
+            }
+
+            :root:not(.dark) body.sidebar-collapsed #smart-feeds-card .smart-feed-btn {
+                color: rgba(15, 25, 35, 0.56) !important;
+            }
+
             body.sidebar-collapsed #smart-feeds-card .smart-feed-btn:hover:not(.active-item),
             body.sidebar-collapsed .smart-feed-btn:hover:not(.active-item),
             :root:not(.dark) body.sidebar-collapsed #smart-feeds-card .smart-feed-btn:hover:not(.active-item),
@@ -3881,7 +3889,7 @@
             }
 
             body.sidebar-collapsed .smart-feed-btn.active-item::before {
-                background-color: rgba(255, 255, 255, 0.16) !important;
+                background-color: transparent !important;
             }
 
             :root:not(.dark) body.sidebar-collapsed #smart-feeds-card .smart-feed-btn.active-item,
@@ -3892,7 +3900,12 @@
             }
 
             :root:not(.dark) body.sidebar-collapsed .smart-feed-btn.active-item::before {
-                background-color: rgba(0, 0, 0, 0.08) !important;
+                background-color: transparent !important;
+            }
+
+            body.sidebar-collapsed #smart-feeds-card .smart-feed-btn.active-item .smart-feed-icon,
+            :root:not(.dark) body.sidebar-collapsed #smart-feeds-card .smart-feed-btn.active-item .smart-feed-icon {
+                color: var(--accent) !important;
             }
 
             /* Floating badge on top-right shoulder of Unread item */
@@ -8447,6 +8460,13 @@
                 <path d="M3 12a9 9 0 1 0 3-6.7" />
                 <path d="M3 4v5h5" />
                 <path d="M12 7v5l3 2" />
+            </symbol>
+            <mask id="history-hands-cutout">
+                <rect x="0" y="0" width="24" height="24" fill="white" />
+                <path d="M12 7v5l3 2" fill="none" stroke="black" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+            </mask>
+            <symbol id="icon-history-filled" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9.5" fill="currentColor" mask="url(#history-hands-cutout)" />
             </symbol>
             <symbol id="icon-sidebar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -14373,6 +14393,12 @@
         window.updateSavedSwitcherState = () => {
             const isPersonalHub = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
             const cur = window.currentSmartFeed;
+            const rlUse = document.querySelector('#feed-btn-read-later use');
+            if (rlUse) rlUse.setAttribute('href', document.getElementById('feed-btn-read-later')?.classList.contains('active-item') ? '#icon-bookmark-filled' : '#icon-bookmark');
+            const svUse = document.querySelector('#feed-btn-saved use');
+            if (svUse) svUse.setAttribute('href', document.getElementById('feed-btn-saved')?.classList.contains('active-item') ? '#icon-star-filled' : '#icon-star');
+            const hsUse = document.querySelector('#feed-btn-recently-read use');
+            if (hsUse) hsUse.setAttribute('href', document.getElementById('feed-btn-recently-read')?.classList.contains('active-item') ? '#icon-history-filled' : '#icon-history');
             const timelinePane = document.getElementById('timeline-pane');
             const savedBar = document.getElementById('saved-readlater-bar');
             if (timelinePane) timelinePane.classList.toggle('is-saved-active', isPersonalHub);
@@ -21501,7 +21527,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 614;
+        window.APP_BUILD = 615;
 
         (async function initApp() {
             try {
