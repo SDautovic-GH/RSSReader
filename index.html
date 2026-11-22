@@ -1684,6 +1684,14 @@
             border-color: transparent;
         }
 
+        #mobile-tab-bar .tab-btn.smart-empty {
+            opacity: 0.52;
+        }
+
+        #mobile-tab-bar .tab-btn.smart-empty.active {
+            opacity: 1;
+        }
+
         /* Active icons fill */
         #mob-tab-today.active .tab-ico,
         #mob-tab-following.active .tab-ico,
@@ -3771,13 +3779,13 @@
             }
 
             body.sidebar-collapsed .smart-feed-btn {
-                width: 60px !important;
-                height: 56px !important;
-                min-height: 56px !important;
-                border-radius: 9999px !important;
+                width: 62px !important;
+                height: 54px !important;
+                min-height: 54px !important;
+                border-radius: 14px !important;
                 border: none !important;
                 border-bottom: none !important;
-                padding: 0 !important;
+                padding: 0 4px !important;
                 margin: 0 auto !important;
                 display: flex !important;
                 flex-direction: column !important;
@@ -3803,7 +3811,7 @@
             }
 
             body.sidebar-collapsed .smart-feed-text {
-                font-size: 10.5px !important;
+                font-size: 10px !important;
                 line-height: 1.15 !important;
                 letter-spacing: -0.01em !important;
                 font-weight: 500 !important;
@@ -3835,13 +3843,13 @@
             body.sidebar-collapsed .smart-feed-btn.active-item {
                 background-color: rgba(255, 255, 255, 0.16) !important;
                 color: #ffffff !important;
-                border-radius: 9999px !important;
+                border-radius: 14px !important;
             }
 
             :root:not(.dark) body.sidebar-collapsed .smart-feed-btn.active-item {
                 background-color: rgba(0, 0, 0, 0.08) !important;
                 color: #111827 !important;
-                border-radius: 9999px !important;
+                border-radius: 14px !important;
             }
 
             /* Floating badge on top-right shoulder of Unread item */
@@ -14547,6 +14555,8 @@
             const btnSaved = document.getElementById('feed-btn-saved');
             if (btnReadLater) btnReadLater.classList.toggle('smart-empty', readLaterCount === 0);
             if (btnSaved) btnSaved.classList.toggle('smart-empty', savedCount === 0);
+            const mobSaved = document.getElementById('mob-tab-saved');
+            if (mobSaved) mobSaved.classList.toggle('smart-empty', readLaterCount === 0 && savedCount === 0);
 
             // The same total on the Today tab (mobile), here because this runs after every read-state change,
             // opening a story included.
@@ -15069,6 +15079,7 @@
             }
             window._refreshInFlight = true;
             window._refreshInFlightMeta = { maxItems: newMax, feedKey: curFeedKey };
+            document.getElementById('header-refresh-btn')?.classList.add('is-refreshing');
             window.updateTodayStatus?.();   // "Updating..."
             // From an empty list, show the "Refreshing feeds" spinner at once rather than "All caught up".
             if (_lastTimelineKey === '__empty__') {
@@ -15104,6 +15115,7 @@
                     // Drain a coalesced request, in a fresh microtask so _refreshInFlight reads false first and the
                     // stack doesn't grow. Today's status and new stories wait for the LAST queued pass.
                     if (!window._refreshPending) {
+                        document.getElementById('header-refresh-btn')?.classList.remove('is-refreshing');
                         window.updateTodayStatus?.();
                         window.checkTodayForNewStories?.();
                         if (typeof todayOnScreen === 'function' && todayOnScreen() && (!window._todayBrief || window._todayBrief.totalStories === 0)) {
@@ -16654,6 +16666,7 @@
                         note = document.createElement('div');
                         note.className = 'brief-all-read-note';
                         note.innerHTML = `
+                            <svg class="w-8 h-8 mx-auto mb-3 opacity-35" fill="none" viewBox="10 10 44 44" aria-hidden="true"><use href="#icon-today-tab"/></svg>
                             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">All caught up</h2>
                             <p class="text-sm text-gray-500 dark:text-gray-400"><span class="desk-only">No unread stories.</span><span class="phone-only">Pull down to refresh.</span></p>
                         `;
@@ -21395,7 +21408,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 606;
+        window.APP_BUILD = 607;
 
         (async function initApp() {
             try {
