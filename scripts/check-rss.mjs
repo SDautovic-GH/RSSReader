@@ -194,6 +194,6 @@ if (doSmoke) {
         ws.close();
     } finally {
         chrome.kill('SIGKILL');
-        fs.rmSync(tmpDir, { recursive: true, force: true });
+        try { fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); } catch {}
     }
 }

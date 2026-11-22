@@ -17177,7 +17177,12 @@
         }
         // Where Today is on screen right now: 'column' (desktop), 'reader' (phone), or null.
         function todayOnScreen() {
-            if (window._todayInColumn) return 'column';
+            if (window._todayInColumn) {
+                const isPersonal = ['read-later', 'saved', 'recently-read'].includes(window.currentSmartFeed);
+                const isTodayCol = !isPersonal && !window.currentCategoryFilter && !window.currentSourceFilter
+                    && (document.getElementById('feed-btn-today')?.classList.contains('active-item') || window.currentSmartFeed === 'today');
+                if (isTodayCol) return 'column';
+            }
             const cur = window.currentArticle;
             const isToday = cur && cur.id === window.TODAY_BRIEF_ID;
             if (isMobile() && window._mobilePane === 'viewer' && isToday) return 'reader';
@@ -21472,7 +21477,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 611;
+        window.APP_BUILD = 612;
 
         (async function initApp() {
             try {
