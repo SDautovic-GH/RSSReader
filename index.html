@@ -454,7 +454,7 @@
             --accent: #4d7cc7;
             --accent-rgb: 77, 124, 199;
             --text-1: #e6edf3;
-            --text-2: #d0d7de;
+            --text-2: #b1bac4;
             --text-3: #8b949e;
             --surface-sheet: #0d1117;
             --divider: rgba(255, 255, 255, 0.09);
@@ -10198,6 +10198,15 @@
             return out;
         }
 
+        function cleanExcerptText(raw) {
+            if (!raw) return '';
+            return decodeEntities(String(raw))
+                .replace(/<br\s*\/?>/gi, ' ')
+                .replace(/<\/?(?:p|div|span|strong|em|b|i|a|ul|ol|li|blockquote|h[1-6]|img|figure|figcaption)[^>]*>/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
         // Cache relative time per render cycle — avoids repeated Date construction per card
         let _relTimeCache = {};
         let _relTimeCacheTime = 0;
@@ -11369,7 +11378,7 @@
                         author: decodeEntities(getText(item, 'author name', 'author', 'dc\\:creator')) || sourceName,
                         timestamp: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
                         _ts: pubDate ? new Date(pubDate).getTime() : Date.now(),
-                        excerpt: decodeEntities(rawBody.replace(/(<([^>]+)>)/gi, '')).substring(0, 3000),
+                        excerpt: cleanExcerptText(rawBody.replace(/(<([^>]+)>)/gi, '')).substring(0, 3000),
                         _excerptHtml: null,
                         // The body is stored RAW (fixLazyImages only). It is sanitized at the one display sink,
                         // selectArticle's DOMPurify.sanitize(linkify(article.body)); sanitizing at fetch time was the
@@ -20488,7 +20497,7 @@
                     // Decode any HTML entities left over from older cached articles (e.g. CDATA-wrapped titles)
                     if (a.title) a.title = decodeEntities(a.title);
                     if (a.author) a.author = decodeEntities(a.author);
-                    if (a.excerpt) a.excerpt = decodeEntities(a.excerpt);
+                    if (a.excerpt) a.excerpt = cleanExcerptText(a.excerpt);
                     if (a._fullBodyLoaded && a.link) window._bodyCache[a.link] = a.body;
                     if (!a.body) a.body = '';
                 });
@@ -21326,7 +21335,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 600;
+        window.APP_BUILD = 601;
 
         (async function initApp() {
             try {
