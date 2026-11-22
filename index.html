@@ -10899,7 +10899,7 @@
             const rowsHtml = kids.map(c => {
                 const cid = escJs(c.id);
                 const cSrc = c.source || 'News';
-                const cFav = typeof getFavicon === 'function' ? getFavicon(cSrc) : '';
+                const cFav = typeof getFavicon === 'function' ? getFavicon(cSrc, c.feedUrl) : '';
                 const cTitle = c.title || c.excerpt || 'Untitled';
                 return `<button type="button" class="card-thread-row" onclick="event.stopPropagation(); (window._todayInColumn ? window.openArticleInReader('${cid}', '${lid}') : selectArticle('${cid}', '${lid}'))">`
                     + `<span class="card-thread-row-src">${cFav}${esc(cSrc)}</span>`
@@ -11120,6 +11120,7 @@
                 const cached = (() => { try { return localStorage.getItem('favicon_' + feedUrl); } catch (e) { return null; } })();
                 feedObj.favicon = cached || `https://www.google.com/s2/favicons?domain=bsky.app&sz=32`;
                 if (!cached) { try { localStorage.setItem('favicon_' + feedUrl, feedObj.favicon); } catch (e) { console.warn('Storage error:', e.message); } }
+                updateFaviconStyles();
             }
 
             // Preserve existing IDs by link so DOM onclick handlers stay valid after re-fetch
@@ -11812,16 +11813,32 @@
             } catch (e) { return false; }
         }
 
-        function getFavicon(sourceName) {
-            if (!sourceName) return '';
+        function getFavicon(sourceName, feedUrl) {
+            if (!sourceName && !feedUrl) return '';
             if (sourceName === 'Brief') {
                 return '<svg class="source-favicon inline text-blue-400"><use href="#icon-newspaper"/></svg>';
             }
-            const feedObj = (window.feeds || []).find(f => (f.name === sourceName || f.title === sourceName));
-            if (!feedObj?.favicon) return '';
-            const slug = getFaviconSlug(sourceName);
-            const fav = escJs(feedObj.favicon);
-            const invert = faviconNeedsInvert(feedObj) ? ' favicon-invert' : '';
+            const feedObj = (window.feeds || []).find(f =>
+                (feedUrl && f.url === feedUrl) || (sourceName && (f.name === sourceName || f.title === sourceName))
+            );
+            const resolvedFeedUrl = feedUrl || feedObj?.url || '';
+            let favUrl = feedObj?.favicon || '';
+            if (!favUrl && resolvedFeedUrl && isBlueskyFeed(resolvedFeedUrl)) {
+                favUrl = 'https://www.google.com/s2/favicons?domain=bsky.app&sz=32';
+                if (feedObj) feedObj.favicon = favUrl;
+            }
+            if (!favUrl && resolvedFeedUrl) {
+                try {
+                    let domain = new URL(resolvedFeedUrl).hostname;
+                    const parts = domain.split('.');
+                    if (parts.length > 2) domain = parts.slice(-2).join('.');
+                    if (domain) favUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+                } catch (e) { }
+            }
+            if (!favUrl) return '';
+            const slug = getFaviconSlug(sourceName || resolvedFeedUrl);
+            const fav = escJs(favUrl);
+            const invert = faviconNeedsInvert(feedObj || (resolvedFeedUrl ? { url: resolvedFeedUrl } : null)) ? ' favicon-invert' : '';
             return `<span class="source-favicon ${slug}${invert} inline-block rounded-sm flex-shrink-0" style="display:inline-block;background-image:url('${fav}');background-size:contain;background-repeat:no-repeat;background-position:center;"></span>`;
         }
 
@@ -11842,7 +11859,7 @@
             // Bluesky posts use Mastodon-style: no headline, full text in the preview row.
             const feedObj = (window.feeds || []).find(f => (f.name === a.source || f.title === a.source || f.id === a.feedId || f.url === a.feedUrl));
             const sourceLabel = a.source || feedObj?.name || feedObj?.title || 'News';
-            const favicon = getFavicon(sourceLabel);
+            const favicon = getFavicon(sourceLabel, a.feedUrl);
 
             // A repost: who shared it on the top line (the feed), the post's own author on the source line.
             const isRepost = !!(isBsky && a.bskyIsRepost && a.bskyOriginalAuthor);
@@ -12780,7 +12797,7 @@
                     const pillsHtml = memberArts.map(m => {
                         const mid = escJs(m.id);
                         const mSrc = m.source || 'News';
-                        const mFav = typeof getFavicon === 'function' ? getFavicon(mSrc) : '';
+                        const mFav = typeof getFavicon === 'function' ? getFavicon(mSrc, m.feedUrl) : '';
                         const active = m.id === article.id ? ' is-active' : '';
                         const clickAttr = m.id === article.id
                             ? ''
@@ -17403,7 +17420,7 @@
                         <div class="brief-cat-stories flex flex-col divide-y divide-gray-100 dark:divide-white/[0.05]">
                 `;
                 cs.stories.forEach(st => {
-                    const favHtml = typeof getFavicon === 'function' ? getFavicon(st.source) : '';
+                    const favHtml = typeof getFavicon === 'function' ? getFavicon(st.source, st.feedUrl) : '';
                     const relTime = storyTime(st.timestamp);
                     // Other outlets grouped under this story, on their own line under the summary (at the end of the
                     // source line they were squeezed to a few letters).
@@ -21176,7 +21193,12 @@
             // cosmetic and still load lazily when feed rows render. Saves a burst of
             // image requests (data + battery) on every load/sync.
             if (window._isDataSaver && window._isDataSaver()) return;
-            window.feeds.forEach(f => { if (f.favicon) preloadFavicon(f.favicon); });
+            window.feeds.forEach(f => {
+                if (!f.favicon && f.url && isBlueskyFeed(f.url)) {
+                    f.favicon = 'https://www.google.com/s2/favicons?domain=bsky.app&sz=32';
+                }
+                if (f.favicon) preloadFavicon(f.favicon);
+            });
         }
 
         // --- EMPTY STATE ---
@@ -21369,7 +21391,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 604;
+        window.APP_BUILD = 605;
 
         (async function initApp() {
             try {
