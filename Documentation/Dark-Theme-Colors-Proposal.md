@@ -7,7 +7,7 @@
 | Target File | `index.html` |
 | Measured On | Build 531 (commit `38741cd`) |
 | Date | 2026-11-23 |
-| Status | Proposed, not applied |
+| Status | Applied in Build 622 |
 
 ---
 
@@ -41,6 +41,8 @@ replace:
 `#4d7cc7` with `#5d8cd7`
 
 Required by 2.1, not a matter of taste: the current link blue passes the 4.5:1 minimum for body text on `#0d1117` by a hair (4.53:1) and fails on `#16191f` (4.21:1). Buttons keep `#4d7cc7`, because white text on `#5d8cd7` would fall to 3.39:1.
+
+> **Implementation note (Build 622):** `--accent` remains `#4d7cc7` for buttons and the collapsed-rail active state (`4.69:1` on `#0b0d10`), while dark-mode story link text (`.dark .article-content a` and `.dark #article-body a:not(.brief-jump-pill)`) explicitly uses `#5d8cd7` (`5.20:1` on `#16191f`).
 
 ### 2.4 Kept as they are
 
