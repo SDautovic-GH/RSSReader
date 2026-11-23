@@ -30,10 +30,10 @@ replace:
 
 ### 2.2 Sidebar
 
-Where: `.dark #sidebar-pane` and `.dark #sidebar-pane .p-4` (lines 2329-2336); the sidebar's `dark:bg-[#0d1117]` class (line 8131); the unread badge's ring fallback `var(--bg, #0d1117)` (line 3797), which sits on the sidebar.
+Where: `.dark #sidebar-pane` and `.dark #sidebar-pane .p-4`; the sidebar's `dark:bg-[#16191f]` class; the unread badge's ring `box-shadow: 0 0 0 2px #16191f`.
 
 replace:
-`#0d1117` with `#0b0d10`
+`#0d1117` with `#16191f` (unified with the reading panes; `#0b0d10` was tested in Build 622 and created an unwanted dark stripe along the left edge, so Build 623 unified the sidebar to `#16191f`).
 
 ### 2.3 Link text in stories (dark theme only)
 
@@ -42,7 +42,7 @@ replace:
 
 Required by 2.1, not a matter of taste: the current link blue passes the 4.5:1 minimum for body text on `#0d1117` by a hair (4.53:1) and fails on `#16191f` (4.21:1). Buttons keep `#4d7cc7`, because white text on `#5d8cd7` would fall to 3.39:1.
 
-> **Implementation note (Build 622):** `--accent` remains `#4d7cc7` for buttons and the collapsed-rail active state (`4.69:1` on `#0b0d10`), while dark-mode story link text (`.dark .article-content a` and `.dark #article-body a:not(.brief-jump-pill)`) explicitly uses `#5d8cd7` (`5.20:1` on `#16191f`).
+> **Implementation note (Build 622–623):** `--accent` remains `#4d7cc7` for buttons and the collapsed-rail active state (`4.21:1` / crisp icon+label on `#16191f`), while dark-mode story link text (`.dark .article-content a` and `.dark #article-body a:not(.brief-jump-pill)`) explicitly uses `#5d8cd7` (`5.20:1` on `#16191f`).
 
 ### 2.4 Kept as they are
 
