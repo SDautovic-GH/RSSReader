@@ -7,7 +7,7 @@
 | Target File | `index.html` |
 | Measured On | Build 531 (commit `38741cd`) |
 | Date | 2026-11-23 |
-| Status | Applied in Build 622 |
+| Status | Applied in Build 622–623 |
 
 ---
 
@@ -15,7 +15,7 @@
 
 The dark theme draws every pane on `#0d1117`, a near-black with a blue tint (GitHub's dark canvas). Light text on near-black has the strongest possible contrast, and over long reading it glows: letters seem to bleed into the background (halation), more so for readers with astigmatism. A reading page compared side by side (Dave Winer's Markdown web page) uses a dark grey, `#1a1c1f`, and reads noticeably softer. Apple's and Google's dark themes use grey backgrounds for the same reason.
 
-The proposal lifts the stories' panes to the house dark "paper" color, keeps the sidebar darker so the step in color separates the panes without a divider line, and adjusts the one color that the change pushes below the contrast minimum.
+The proposal lifts the desktop panes and sidebar to the house dark "paper" color (`#16191f`) for a unified surface without harsh edge contrast, and adjusts the one color that the change pushes below the contrast minimum. (Originally proposed with a `#0b0d10` sidebar in Build 622, then unified to `#16191f` in Build 623.)
 
 House tokens (`ScriptLibrary\DesignSystem\README.md`): dark canvas `#0b0d10`, dark paper `#16191f`, dark accent `#4d7cc7`, dark accent hover `#5d8cd7`.
 
