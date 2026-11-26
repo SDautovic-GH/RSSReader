@@ -13260,6 +13260,70 @@
                 }
             } catch (e) { return; }
 
+            const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
+
+            // Phase 1 (Blaze): Server-side Readability Cloud Function (fast, no CORS proxy hop, local IDB cache only).
+            // Falls through to the client proxy loop below if signed out, offline, or upstream fails.
+            if (typeof window.getFirebaseIdToken === 'function') {
+                const t0 = Date.now();
+                try {
+                    const idToken = await window.getFirebaseIdToken();
+                    if (idToken) {
+                        const res = await fetch('https://extractarticle-dj3dxu3xwq-uc.a.run.app', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${idToken}`,
+                            },
+                            body: JSON.stringify({ url: article.link }),
+                            signal: AbortSignal.timeout(10000),
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data?.ok && data.content && data.wordCount > 100 && data.wordCount > rssWordCount + 80) {
+                                console.log(`[extract] cloud-readability: ${data.wordCount} words in ${Date.now() - t0}ms (server ${data.ms}ms)`);
+                                if (window.currentArticle?.id !== article.id) return;
+                                const bodyEl = document.getElementById('article-body');
+                                if (bodyEl) {
+                                    const extractedHtml = DOMPurify.sanitize(fixLazyImages(data.content), {
+                                        ADD_TAGS: ['iframe', 'video', 'audio', 'source'],
+                                        ADD_ATTR: ['loading', 'data-fullsize', 'srcset', 'sizes', 'src', 'allowfullscreen', 'frameborder', 'allow', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'poster', 'type'],
+                                    });
+                                    const ogLead = (data.ogImage
+                                        && !/<(?:img|picture|video|audio)[\s>]/i.test(extractedHtml)
+                                        && !/^https?:\/\//i.test(article.image || ''))
+                                        ? '<figure class="lead-image"><img src="' + esc(data.ogImage) + '" alt="" loading="eager"></figure>'
+                                        : '';
+                                    bodyEl.innerHTML = ogLead + extractedHtml;
+                                    stripPageChrome(bodyEl);
+                                    stripJsonBlobs(bodyEl);
+                                    stripImagePlaceholders(bodyEl);
+                                    tidyArticle(bodyEl);
+                                    stripLeadingEmptyBlocks(bodyEl);
+                                    stripRepeatedHeader(bodyEl, article);
+                                    normalizeBodyStyles(bodyEl);
+                                    initBodyImages(bodyEl, article);
+                                    ensureLeadImage(bodyEl, article);
+                                    tidyArticle(bodyEl);
+                                    article.body = bodyEl.innerHTML;
+                                    article._fullBodyLoaded = true;
+                                    try { window.appDB?.put?.('articles', article); } catch (e) { }
+                                    window.updateArticleReadTimeEstimate?.(bodyEl, article);
+                                    const readerEl = document.getElementById('reader-view');
+                                    if (readerEl) readerEl.scrollTop = 0;
+                                }
+                                return;
+                            }
+                            console.log(`[extract] cloud-readability: insufficient content (${data?.wordCount || 0} words) in ${Date.now() - t0}ms -> falling back to proxy`);
+                        } else {
+                            console.log(`[extract] cloud-readability: HTTP ${res.status} in ${Date.now() - t0}ms -> falling back to proxy`);
+                        }
+                    }
+                } catch (e) {
+                    console.log(`[extract] cloud-readability: ${e.name || e} in ${Date.now() - t0}ms -> falling back to proxy`);
+                }
+            }
+
             // Per-proxy timeouts: some hosts are reachable only through allorigins (the Worker gets
             // Cloudflare 1106 from them), which takes 6-17s. The fast proxies keep a tight cap; only the
             // last resort may be slow, via /raw (no JSON envelope; it sends CORS for this origin).
@@ -13267,8 +13331,6 @@
                 url => ({ url: `https://still-shadow-1ebe.sdfyix.workers.dev/?url=${encodeURIComponent(url)}`, isJson: false, timeout: 5000 }),
                 url => ({ url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, isJson: false, timeout: 12000 }),
             ];
-
-            const rssWordCount = (article.body || '').replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length;
 
             for (const proxyFn of proxies) {
                 // One log line per extraction attempt, so a report from the user's own network shows which proxy
@@ -21555,7 +21617,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 628;
+        window.APP_BUILD = 629;
 
         (async function initApp() {
             try {
@@ -21765,6 +21827,7 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        window.getFirebaseIdToken = async () => auth.currentUser ? await auth.currentUser.getIdToken() : null;
         const db = getFirestore(app);
         const APP_ID = 'rss-reader-fyi';
         let userId = null;

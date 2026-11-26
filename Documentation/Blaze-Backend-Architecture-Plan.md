@@ -7,7 +7,7 @@
 | **Target Platform** | Firebase Blaze (Cloud Firestore + Cloud Functions v2 + Cloud Scheduler + Firestore TTL) |
 | **Baseline Build** | Build 628 (`6c26a2f`) |
 | **Date** | 2026-11-26 |
-| **Status** | Planned, not yet enabled |
+| **Status** | Phase 0 & Phase 1 deployed (Build 629) |
 
 ---
 
