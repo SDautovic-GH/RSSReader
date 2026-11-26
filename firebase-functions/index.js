@@ -323,9 +323,10 @@ export const pollFeeds = onSchedule(
                             let bodyExtracted = false;
                             let image = item.image || '';
 
-                            // Tier A: Pre-extract truncated stories for user-selected priority feeds
+                            // Tier A: Pre-extract truncated stories for all non-social/non-newsletter feeds unless opted out (preExtract === false)
                             const rssWords = stripTags(body).split(/\s+/).filter(Boolean).length;
-                            if (feed.preExtract && rssWords < 250) {
+                            const isYouTube = /youtube\.com|youtu\.be/i.test(feed.url || '');
+                            if (feed.preExtract !== false && !isYouTube && rssWords < 250) {
                                 try {
                                     const ext = await extractArticleHtml(item.link, 8000);
                                     if (ext.ok && ext.content && ext.wordCount > 100 && ext.wordCount > rssWords + 80) {

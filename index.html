@@ -16924,8 +16924,8 @@
                 const st = feedStatus(f, newest.get(f.url) || newest.get(f.name));
                 if (st.bad) failing.push(f.name);
                 const sfId = escJs(f.id);
-                const isClientOnly = /bsky\.app|bsky\.social|today-newsletter-bridge/i.test(f.url || '') || (f.url || '').startsWith('@');
-                const preOn = !!f.preExtract;
+                const isClientOnly = /bsky\.app|bsky\.social|today-newsletter-bridge|youtube\.com|youtu\.be/i.test(f.url || '') || (f.url || '').startsWith('@');
+                const preOn = f.preExtract !== false;
                 return `
                 <div class="feed-row">
                     <button type="button" class="fm-feed-open min-w-0 flex-1" onclick="openFeedFromManager('${escJs(f.name)}')" title="Show its stories">
@@ -16987,7 +16987,7 @@
         window.toggleFeedPreExtract = (feedId) => {
             const feed = (window.accountStates.local || []).find(f => f.id === feedId);
             if (!feed) return;
-            feed.preExtract = !feed.preExtract;
+            feed.preExtract = (feed.preExtract === false);
             if (typeof saveLocalFeeds === 'function') saveLocalFeeds();
             if (typeof window.saveFeeds === 'function') window.saveFeeds([feed]);
             renderLocalFeedList();
@@ -24147,7 +24147,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 632;
+        window.APP_BUILD = 633;
 
         (async function initApp() {
             try {
