@@ -14412,6 +14412,8 @@
                 const st = feedStatus(f, newest.get(f.url) || newest.get(f.name));
                 if (st.bad) failing.push(f.name);
                 const sfId = escJs(f.id);
+                const isClientOnly = /bsky\.app|bsky\.social|today-newsletter-bridge/i.test(f.url || '') || (f.url || '').startsWith('@');
+                const preOn = !!f.preExtract;
                 return `
                 <div class="feed-row">
                     <button type="button" class="fm-feed-open min-w-0 flex-1" onclick="openFeedFromManager('${escJs(f.name)}')" title="Show its stories">
@@ -14419,6 +14421,9 @@
                         <div class="feed-row-cat${st.bad ? ' fm-bad' : ''}">${esc(st.text)}</div>
                     </button>
                     <div class="feed-row-actions">
+                        ${!isClientOnly ? `<button type="button" onclick="toggleFeedPreExtract('${sfId}')" class="feed-row-action edit${preOn ? ' text-blue-500' : ' opacity-50'}" title="${preOn ? 'Pre-fetch full text: ON (0 ms open)' : 'Pre-fetch full text: OFF — click to enable'}" aria-label="Pre-fetch full text for ${esc(f.name)}" aria-pressed="${preOn}">
+                            <svg class="w-4 h-4" fill="${preOn ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        </button>` : ''}
                         ${st.bad ? `<button onclick="retryFeed('${escJs(f.url)}', '${escJs(f.name)}', this)" class="feed-row-action edit" title="Retry now" aria-label="Retry ${esc(f.name)}">
                             <svg class="w-4 h-4"><use href="#icon-refresh"/></svg>
                         </button>` : ''}
@@ -14466,6 +14471,16 @@
                 : '';
             localList.innerHTML = summary + html;
         }
+
+        window.toggleFeedPreExtract = (feedId) => {
+            const feed = (window.accountStates.local || []).find(f => f.id === feedId);
+            if (!feed) return;
+            feed.preExtract = !feed.preExtract;
+            if (typeof saveLocalFeeds === 'function') saveLocalFeeds();
+            if (typeof window.saveFeeds === 'function') window.saveFeeds([feed]);
+            renderLocalFeedList();
+            window.showToast?.(feed.preExtract ? `Pre-fetch enabled for ${feed.name}` : `Pre-fetch off for ${feed.name}`);
+        };
 
         // How a feed is doing, from its health record (lastSuccess persists) and its newest story. "Not
         // loading" = it failed the latest full refresh (before one this session: not for 48 hours).
@@ -15297,6 +15312,9 @@
             let result = { total: 0, ok: 0 };
             const run = (async () => {
                 try {
+                    if (typeof window.pullCloudStories === 'function') {
+                        await window.pullCloudStories().catch(e => console.warn('[cloud-stories] pull failed:', e?.message || e));
+                    }
                     result = await fetchAllStaggered(window.feeds, newMax, opts.isBackground ?? false) || result;
                     return result.ok > 0;
                 } finally {
@@ -21617,7 +21635,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 629;
+        window.APP_BUILD = 630;
 
         (async function initApp() {
             try {
@@ -21814,7 +21832,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc, updateDoc, arrayUnion, runTransaction, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, onSnapshot, collection, deleteDoc, updateDoc, arrayUnion, runTransaction, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBA4sMC6MGHYSCEd1ldTs2JPKVRAAbyYQk",
@@ -21976,6 +21994,79 @@
 
         function syncCloudFeeds() {
             const feedsRef = collection(db, 'artifacts', APP_ID, 'users', userId, 'feeds');
+
+            // Phase 2: Delta-sync server-polled stories (including Tier A pre-extracted full bodies)
+            window.pullCloudStories = async () => {
+                if (!userId) return 0;
+                const key = 'newsreader_cloud_stories_ts';
+                const fallbackTs = Date.now() - 3 * 86400000;
+                let lastTs = parseInt(localStorage.getItem(key) || '0', 10);
+                if (!lastTs || lastTs < fallbackTs) lastTs = fallbackTs;
+                const q = query(
+                    collection(db, 'artifacts', APP_ID, 'users', userId, 'stories'),
+                    where('fetchedAt', '>', lastTs),
+                    orderBy('fetchedAt', 'asc'),
+                    limit(300)
+                );
+                const snap = await getDocs(q);
+                if (snap.empty) return 0;
+
+                const byLink = new Map((window.articles || []).map(a => [a.link, a]));
+                let maxTs = lastTs;
+                let changed = 0;
+                const toStore = [];
+
+                snap.forEach(d => {
+                    const s = d.data();
+                    if (!s || !s.link) return;
+                    if (s.fetchedAt && s.fetchedAt > maxTs) maxTs = s.fetchedAt;
+                    const existing = byLink.get(s.link);
+                    if (existing) {
+                        if (s.bodyExtracted && s.body && !existing._fullBodyLoaded) {
+                            existing.body = s.body;
+                            existing._fullBodyLoaded = true;
+                            if (!existing.image && s.image) existing.image = s.image;
+                            toStore.push(existing);
+                            changed++;
+                        }
+                        return;
+                    }
+                    const ts = s.publishedAt || s.fetchedAt || Date.now();
+                    const art = {
+                        id: s.id || ('cs:' + s.link),
+                        link: s.link,
+                        title: s.title || 'Untitled',
+                        source: s.source || 'Feed',
+                        feedUrl: s.feedUrl || '',
+                        category: s.category || 'Uncategorized',
+                        author: s.author || '',
+                        excerpt: s.excerpt || '',
+                        body: s.body || '',
+                        _fullBodyLoaded: !!s.bodyExtracted,
+                        image: s.image || '',
+                        timestamp: new Date(ts).toISOString(),
+                        _ts: ts,
+                        unread: typeof window.isLinkRead === 'function' ? !window.isLinkRead(s.link) : true,
+                        readLater: window._readLaterLinks ? window._readLaterLinks.has(s.link) : false,
+                        saved: window.savedBucket ? window.savedBucket.has(s.link) : false,
+                    };
+                    window.articles.push(art);
+                    byLink.set(art.link, art);
+                    toStore.push(art);
+                    changed++;
+                });
+
+                try { localStorage.setItem(key, String(maxTs)); } catch (e) { }
+                if (toStore.length > 0 && window.appDB) {
+                    Promise.all(toStore.map(a => window.appDB.put('articles', a))).catch(() => {});
+                }
+                if (changed > 0) {
+                    window.articles = window.articles.slice();
+                    if (typeof refreshUI === 'function') refreshUI();
+                }
+                console.log(`[cloud-stories] delta synced ${snap.size} docs (${changed} new/upgraded)`);
+                return changed;
+            };
 
             let _firstSnapshot = true;
             onSnapshot(feedsRef, (snap) => {
