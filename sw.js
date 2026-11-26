@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rss-reader-v631';
+const CACHE_NAME = 'rss-reader-v632';
 const APP_SHELL = [
     './',
     './index.html',
