@@ -289,7 +289,9 @@ export const pollFeeds = onSchedule(
                 continue;
             }
             const effectiveMins = Math.max(15, Number.isNaN(intervalMins) ? 30 : intervalMins);
-            const lastPolledAt = metaSnap.exists ? (metaSnap.data()?.lastPolledAt || 0) : 0;
+            const metaData = metaSnap.exists ? (metaSnap.data() || {}) : {};
+            const lastPolledAt = metaData.lastPolledAt || 0;
+            const feedValidators = { ...(metaData.feedValidators || {}) };
             // 2-minute tolerance prevents scheduler jitter from pushing a 60m interval out to 75m
             if (lastPolledAt && (now - lastPolledAt) < (effectiveMins - 2) * 60000) {
                 continue;
@@ -310,6 +312,7 @@ export const pollFeeds = onSchedule(
             const storiesCol = userRef.collection('stories');
             let newCount = 0;
             let preExtractedCount = 0;
+            let notModifiedCount = 0;
 
             // Bounded concurrency pool of 8 feeds at a time
             let idx = 0;
@@ -317,12 +320,32 @@ export const pollFeeds = onSchedule(
                 while (idx < feeds.length) {
                     const feed = feeds[idx++];
                     try {
+                        const headers = {
+                            'User-Agent': UA,
+                            'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
+                        };
+                        const prevVal = feedValidators[feed.url];
+                        if (prevVal?.etag) headers['If-None-Match'] = prevVal.etag;
+                        if (prevVal?.lastModified) headers['If-Modified-Since'] = prevVal.lastModified;
+
                         const res = await fetch(feed.url, {
                             redirect: 'follow',
                             signal: AbortSignal.timeout(8000),
-                            headers: { 'User-Agent': UA, 'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*' },
+                            headers,
                         });
+                        if (res.status === 304) {
+                            notModifiedCount++;
+                            continue;
+                        }
                         if (!res.ok) continue;
+                        const etag = res.headers.get('etag');
+                        const lastModified = res.headers.get('last-modified');
+                        if (etag || lastModified) {
+                            feedValidators[feed.url] = {
+                                ...(etag ? { etag } : {}),
+                                ...(lastModified ? { lastModified } : {}),
+                            };
+                        }
                         const xml = await res.text();
                         if (!xml || !xml.trim().startsWith('<')) continue;
 
@@ -388,8 +411,8 @@ export const pollFeeds = onSchedule(
             }
 
             await Promise.all(Array.from({ length: Math.min(8, feeds.length) }, () => worker()));
-            await userRef.collection('state').doc('pollMeta').set({ lastPolledAt: now, intervalMins: effectiveMins }, { merge: true });
-            console.log(`[pollFeeds] user=${userRef.id} interval=${effectiveMins}m feeds=${feeds.length} new=${newCount} preExtracted=${preExtractedCount}`);
+            await userRef.collection('state').doc('pollMeta').set({ lastPolledAt: now, intervalMins: effectiveMins, feedValidators }, { merge: true });
+            console.log(`[pollFeeds] user=${userRef.id} interval=${effectiveMins}m feeds=${feeds.length} 304=${notModifiedCount} new=${newCount} preExtracted=${preExtractedCount}`);
         }
     }
 );
