@@ -17824,10 +17824,27 @@
             let result = { total: 0, ok: 0 };
             const run = (async () => {
                 try {
-                    if (typeof window.pullCloudStories === 'function') {
-                        await window.pullCloudStories().catch(e => console.warn('[cloud-stories] pull failed:', e?.message || e));
+                    const isBg = opts.isBackground ?? false;
+                    const hasCloudPoller = typeof window.pullCloudStories === 'function';
+                    if (isBg && hasCloudPoller) {
+                        // Background/startup pass: pollFeeds already polled standard RSS on the server,
+                        // so pull Firestore stories in parallel with client-only feeds (Bluesky + Newsletters).
+                        const clientFeeds = (window.feeds || []).filter(f => {
+                            const u = String(f?.url || '').toLowerCase();
+                            return u.includes('bsky.app') || u.includes('bsky.social') || u.includes('today-newsletter-bridge') || u.startsWith('@');
+                        });
+                        const [cloudChanged, clientRes] = await Promise.all([
+                            window.pullCloudStories().catch(e => { console.warn('[cloud-stories] pull failed:', e?.message || e); return 0; }),
+                            clientFeeds.length > 0 ? fetchAllStaggered(clientFeeds, newMax, true) : Promise.resolve({ total: 0, ok: 0 }),
+                        ]);
+                        result = clientRes || result;
+                        if (cloudChanged > 0 && result.ok === 0) result = { total: Math.max(result.total, 1), ok: 1 };
+                    } else {
+                        if (hasCloudPoller) {
+                            await window.pullCloudStories().catch(e => console.warn('[cloud-stories] pull failed:', e?.message || e));
+                        }
+                        result = await fetchAllStaggered(window.feeds, newMax, isBg) || result;
                     }
-                    result = await fetchAllStaggered(window.feeds, newMax, opts.isBackground ?? false) || result;
                     return result.ok > 0;
                 } finally {
                     window._refreshInFlight = false;
@@ -24147,7 +24164,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 634;
+        window.APP_BUILD = 635;
 
         (async function initApp() {
             try {
@@ -24575,13 +24592,6 @@
                 if (changed > 0) {
                     window.articles = window.articles.slice();
                     if (typeof refreshUI === 'function') refreshUI();
-                    // If Today is currently blank ("Checking for stories..." / "All caught up"),
-                    // render the server-polled stories immediately without waiting for client feeds.
-                    if (typeof window.showNewTodayIfBlank === 'function' && window.showNewTodayIfBlank()) {
-                        window.updateTodayStatus?.();
-                    } else {
-                        window.checkTodayForNewStories?.();
-                    }
                 }
                 console.log(`[cloud-stories] delta synced ${snap.size} docs (${changed} new/upgraded)`);
                 return changed;
