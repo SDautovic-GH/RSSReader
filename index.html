@@ -24147,7 +24147,7 @@
         // --- ASYNC STARTUP SEQUENCE ---
         // Build number, in step with CACHE_NAME's vNN in the service worker below (the deploy bumps both).
         // The footer shows it, so a stale SW-cached page is easy to spot.
-        window.APP_BUILD = 633;
+        window.APP_BUILD = 634;
 
         (async function initApp() {
             try {
@@ -24575,6 +24575,13 @@
                 if (changed > 0) {
                     window.articles = window.articles.slice();
                     if (typeof refreshUI === 'function') refreshUI();
+                    // If Today is currently blank ("Checking for stories..." / "All caught up"),
+                    // render the server-polled stories immediately without waiting for client feeds.
+                    if (typeof window.showNewTodayIfBlank === 'function' && window.showNewTodayIfBlank()) {
+                        window.updateTodayStatus?.();
+                    } else {
+                        window.checkTodayForNewStories?.();
+                    }
                 }
                 console.log(`[cloud-stories] delta synced ${snap.size} docs (${changed} new/upgraded)`);
                 return changed;
