@@ -259,10 +259,11 @@ function isClientOnlyFeed(url) {
     return u.includes('bsky.app') || u.includes('bsky.social') || u.includes('today-newsletter-bridge') || u.startsWith('@');
 }
 
-// Phase 2: Scheduled 20-min feed poller + Tier A pre-extraction for feeds with preExtract: true
+// Phase 2: Scheduled 15-min tick that honors each user's App Settings autoRefresh interval
+// (e.g., 15 / 30 / 60 min, or 0 = Manual/Off) + Tier A pre-extraction for non-social feeds.
 export const pollFeeds = onSchedule(
     {
-        schedule: 'every 20 minutes',
+        schedule: 'every 15 minutes',
         region: 'us-central1',
         memory: '512MiB',
         timeoutSeconds: 180,
@@ -276,6 +277,24 @@ export const pollFeeds = onSchedule(
         const expireAt = Timestamp.fromMillis(now + 7 * 86400000);
 
         for (const userRef of userRefs) {
+            // Respect user's App Settings Auto-Refresh interval (state/uiPrefs.autoRefresh, in minutes)
+            const [prefsSnap, metaSnap] = await db.getAll(
+                userRef.collection('state').doc('uiPrefs'),
+                userRef.collection('state').doc('pollMeta')
+            );
+            const rawInterval = prefsSnap.exists ? prefsSnap.data()?.autoRefresh : undefined;
+            const intervalMins = rawInterval !== undefined && rawInterval !== '' ? parseInt(rawInterval, 10) : 30;
+            if (!Number.isNaN(intervalMins) && intervalMins <= 0) {
+                console.log(`[pollFeeds] user=${userRef.id} skipped (autoRefresh=0 / manual)`);
+                continue;
+            }
+            const effectiveMins = Math.max(15, Number.isNaN(intervalMins) ? 30 : intervalMins);
+            const lastPolledAt = metaSnap.exists ? (metaSnap.data()?.lastPolledAt || 0) : 0;
+            // 2-minute tolerance prevents scheduler jitter from pushing a 60m interval out to 75m
+            if (lastPolledAt && (now - lastPolledAt) < (effectiveMins - 2) * 60000) {
+                continue;
+            }
+
             const feedsSnap = await userRef.collection('feeds').get();
             if (feedsSnap.empty) continue;
 
@@ -369,7 +388,8 @@ export const pollFeeds = onSchedule(
             }
 
             await Promise.all(Array.from({ length: Math.min(8, feeds.length) }, () => worker()));
-            console.log(`[pollFeeds] user=${userRef.id} feeds=${feeds.length} new=${newCount} preExtracted=${preExtractedCount}`);
+            await userRef.collection('state').doc('pollMeta').set({ lastPolledAt: now, intervalMins: effectiveMins }, { merge: true });
+            console.log(`[pollFeeds] user=${userRef.id} interval=${effectiveMins}m feeds=${feeds.length} new=${newCount} preExtracted=${preExtractedCount}`);
         }
     }
 );
