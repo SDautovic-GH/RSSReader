@@ -4,10 +4,10 @@
 | :--- | :--- |
 | **Project** | Today — RSS Reader Web Application (`today.dautovic.com`) |
 | **Document** | Architecture & Rollout Plan: Server-Side Extraction, Scheduled Polling & Cross-Device History |
-| **Target Platform** | Firebase Blaze (Cloud Firestore + Cloud Functions v2 + Cloud Scheduler + Firestore TTL) |
-| **Baseline Build** | Build 628 (`6c26a2f`) |
-| **Date** | 2026-11-26 |
-| **Status** | Phase 0–3 deployed (Build 631) |
+| **Target Platform** | Firebase Blaze (Cloud Firestore + Cloud Functions v2 in `firebase-functions/` + Cloud Scheduler + Firestore TTL) |
+| **Current Build** | Build 635 (`1ae5917` / functions `bafd845`) |
+| **Date** | 2026-11-27 |
+| **Status** | Phases 0–3 live in production; Phase 4 optional open tasks remain |
 
 ---
 
@@ -194,7 +194,15 @@ Modeled at the **high end** of actual habits: **400 stories/day** (including soc
 - Merge remote history into IndexedDB `recently-read` so History stays consistent across iPhone and desktop.
 - **Verification:** Open a story on iPhone, confirm it appears in desktop History within seconds, and verify `expireAt` is set to +90 days.
 
-### Phase 4 — Optional Hardening & Cleanup
-- Enable scheduled Firestore backups (or PITR) if desired for `feeds`, `saved`, and `readLater`.
-- Retire `allorigins.win` fallback once server-side polling and extraction prove stable over 2+ weeks.
-- Update `Today-PRD-v3.0.md` to reflect the new backend topology.
+### Phase 4 — Open Tasks (Optional, After 1–2 Weeks of Soaking)
+- [ ] **Billing sanity check:** Confirm spend at https://console.firebase.google.com/project/rss-reader-fyi/usage/details stays at ~\$0.00/mo under 15-minute `pollFeeds` + `304` `ETag`/`If-Modified-Since` caching.
+- [ ] **Optional backups / PITR:** Decide whether to enable scheduled Firestore backups or Point-in-Time Recovery (~\$0.05–\$0.15/mo for `feeds`, `saved`, and `readLater`).
+- [ ] **Retire `allorigins.win` fallback:** Remove `allorigins.win` once `extractArticle` and `pollFeeds` prove stable over 2+ weeks.
+- [ ] **Update `Today-PRD-v3.0.md`:** Record the Blaze backend topology and unified `#16191f` dark theme when ready.
+
+### Deployed Implementation Notes (Phases 0–3)
+- **Cloudflare Pages compatibility:** Functions live in `firebase-functions/` (not root `functions/`, which Cloudflare Pages compiles as Pages Functions and fails deploys).
+- **Scheduler & `304` caching:** `pollFeeds` runs on a 15-minute Cloud Scheduler tick, honors each user's `state/uiPrefs.autoRefresh` interval (e.g., 15 / 30 / 60 min or 0 = Manual), and caches `ETag` / `If-Modified-Since` validators in `state/pollMeta.feedValidators` to skip unchanged `304` feeds.
+- **Default-on Tier A pre-fetch:** All non-social, non-newsletter, non-YouTube feeds pre-extract full text by default (`feed.preExtract !== false`), with a blue `⚡` opt-out toggle per feed in **Edit Feeds**.
+- **Calm parallel startup:** On background startup (`isBackground: true`), `runFullRefresh()` runs `pullCloudStories()` in parallel with client-only feeds (Bluesky + Newsletters) and paints `Today` once when both complete.
+- **Guardrails active:** \$5/month hard spend cap on Cloud Run Functions; 1-day Artifact Registry image cleanup policy; `minInstances: 0`; `maxInstances: 2` (`extractArticle`) / `1` (`pollFeeds`); Firestore TTL policies active on `stories.expireAt` (7d) and `history.expireAt` (90d).
